@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "pattern_id",
+    "name",
+    "description",
+    "feasibility",
+    "pattern_type",
+    "input_requirements",
+    "tech_stack",
+    "confidence_score"
+  ],
+  "properties": {
+    "pattern_id": {
+      "type": "string",
+      "pattern": "^PAT-[0-9]{3,}$"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "feasibility": {
+      "enum": ["Automatable", "Partially Automatable", "Not Automatable"]
+    },
+    "pattern_type": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "input_requirements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tech_stack": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "related_patterns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "confidence_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "banned_tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "required_integrations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "domain": {
+      "type": "string"
+    },
+    "complexity": {
+      "enum": ["Low", "Medium", "High"]
+    },
+    "estimated_effort": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

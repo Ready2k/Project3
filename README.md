@@ -1,10 +1,334 @@
-# Project3
-AgenticOrNot
+# AgenticOrNot v1.3.2
 
-user stories , can the outcome be done by an AI agentic solution. 
+Interactive GUI + API system that judges if user stories/requirements are automatable with agentic AI. The system asks clarifying questions, matches requirements to reusable solution patterns, and exports results with feasibility assessments.
 
-will
-1: read the User Stories and requirements
-2: check the known solutions from a soluion library
-3: advise if the solution can be automated
-4: suggest a pattern
+## Features
+
+- 🤖 **Multi-Provider LLM Support**: OpenAI, Anthropic/Bedrock, Claude Direct, Internal HTTP
+- 🔍 **Intelligent Pattern Matching**: Tag filtering + vector similarity with FAISS
+- ❓ **Interactive Q&A System**: Clarifying questions to gather missing requirements
+- 📊 **Feasibility Assessment**: Automatable, Partially Automatable, or Not Automatable
+- 📤 **Export Results**: JSON and Markdown formats
+- 🎯 **Constraint-Aware**: Filters banned tools and applies business constraints
+- 🧪 **100% Test Coverage**: TDD approach with deterministic fakes
+- 🐳 **Docker Ready**: Complete containerization with docker-compose
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.10+
+- pip or uv package manager
+
+### Installation
+
+```bash
+# Clone and enter directory
+cd agentic_or_not
+
+# Install dependencies
+make install
+# or
+python3 -m pip install -r requirements.txt
+```
+
+### Running the Application
+
+#### Option 1: Using Make (Recommended)
+
+```bash
+# Start both API and UI (opens browser automatically)
+make dev
+# or
+make up
+
+# Or start services individually:
+make api        # FastAPI only
+make streamlit  # Streamlit UI only (opens browser)
+```
+
+This starts:
+- FastAPI server at http://localhost:8000
+- Streamlit UI at http://localhost:8501 (opens automatically in browser)
+
+#### Option 2: Manual Start
+
+```bash
+# Terminal 1: Start API server
+make api
+# or
+python3 -m uvicorn app.api:app --reload --host 0.0.0.0 --port 8000
+
+# Terminal 2: Start Streamlit UI
+make streamlit
+# or
+make ui
+# or
+python3 run_streamlit.py
+```
+
+#### Option 3: Docker Compose
+
+```bash
+# Start all services with Redis
+docker-compose up
+```
+
+## Usage
+
+### 1. Web Interface (Streamlit)
+
+1. Open http://localhost:8501
+2. **Input Tab**: Enter your automation requirement
+   - Choose input method: Text, File Upload, or Jira
+   - Provide description and optional domain/pattern types
+   - Click "Start Analysis"
+
+3. **Q&A Tab**: Answer clarifying questions
+   - System asks about frequency, criticality, data sensitivity, etc.
+   - Answer questions to improve recommendation accuracy
+
+4. **Results Tab**: View analysis results
+   - Click "Find Pattern Matches" to see similar patterns
+   - Click "Generate Recommendations" for feasibility assessment
+   - Export results in JSON or Markdown format
+
+### 2. API Usage
+
+#### Start Analysis
+```bash
+curl -X POST "http://localhost:8000/ingest" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "text",
+    "payload": {
+      "text": "I need to automate web scraping for data collection",
+      "domain": "data_processing"
+    }
+  }'
+```
+
+#### Check Status
+```bash
+curl "http://localhost:8000/status/{session_id}"
+```
+
+#### Answer Questions
+```bash
+curl -X POST "http://localhost:8000/qa/{session_id}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "answers": {
+      "frequency": "daily",
+      "data_sensitivity": "medium"
+    }
+  }'
+```
+
+#### Get Recommendations
+```bash
+curl -X POST "http://localhost:8000/recommend" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "{session_id}",
+    "top_k": 3
+  }'
+```
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env` file (see `.env.example`):
+
+```bash
+# LLM Provider API Keys
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=...
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+
+# Jira Integration (optional)
+JIRA_BASE_URL=https://your-domain.atlassian.net
+JIRA_EMAIL=you@example.com
+JIRA_API_TOKEN=...
+
+# Configuration Overrides
+PROVIDER=openai
+MODEL=gpt-4o
+LOGGING_LEVEL=INFO
+```
+
+### YAML Configuration
+
+Edit `config.yaml` for advanced settings:
+
+```yaml
+provider: openai
+model: gpt-4o
+pattern_library_path: ./data/patterns
+export_path: ./exports
+constraints:
+  unavailable_tools: []
+timeouts:
+  llm: 20
+  http: 10
+logging:
+  level: INFO
+  redact_pii: true
+bedrock:
+  region: eu-west-2
+```
+
+## Development
+
+### Available Make Commands
+
+For a complete list of available commands, run:
+
+```bash
+make help
+```
+
+Key commands:
+- `make dev` - Start both API and Streamlit UI (recommended for development)
+- `make streamlit` - Start Streamlit UI only (opens browser automatically)
+- `make api` - Start FastAPI backend only
+- `make test` - Run all tests with coverage
+- `make fmt` - Format code
+- `make lint` - Lint code
+- `make install` - Install dependencies
+- `make clean` - Clean cache files
+
+### Running Tests
+
+```bash
+# All tests with coverage
+make test
+
+# Unit tests only
+python3 -m pytest app/tests/unit/ -v
+
+# Integration tests
+python3 -m pytest app/tests/integration/ -v
+
+# Specific test
+python3 -m pytest app/tests/unit/test_config.py -v
+```
+
+### Code Quality
+
+```bash
+# Format code
+make fmt
+
+# Lint code
+make lint
+
+# Type checking
+mypy app/ --ignore-missing-imports
+```
+
+### Adding New Patterns
+
+1. Create a new JSON file in `data/patterns/`:
+
+```json
+{
+  "pattern_id": "PAT-004",
+  "name": "Email Automation",
+  "description": "Automated email processing and response system",
+  "feasibility": "Automatable",
+  "pattern_type": ["email_automation", "workflow_automation"],
+  "input_requirements": ["email_templates", "trigger_conditions"],
+  "tech_stack": ["Python", "SMTP", "IMAP"],
+  "confidence_score": 0.85,
+  "domain": "communication",
+  "complexity": "Medium"
+}
+```
+
+2. Restart the application to load new patterns
+
+## Architecture
+
+### Components
+
+- **FastAPI Backend**: REST API with async endpoints
+- **Streamlit Frontend**: Interactive web interface
+- **Pattern Library**: JSON-based reusable solution patterns
+- **FAISS Index**: Vector similarity search for pattern matching
+- **Q&A System**: Template-based question generation
+- **State Management**: Session persistence with diskcache/Redis
+- **Export System**: JSON and Markdown result export
+
+### Request Flow
+
+1. **Ingest** → Create session, parse requirements
+2. **Q&A Loop** → Collect missing information
+3. **Pattern Matching** → Tag filtering + vector similarity
+4. **Recommendations** → Generate feasibility assessment
+5. **Export** → Download results in preferred format
+
+## API Documentation
+
+Once running, visit:
+- **API Docs**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
+
+## Sample Patterns
+
+The system includes 3 sample patterns:
+
+1. **PAT-001**: Web Scraping Automation
+2. **PAT-002**: API Integration Workflow  
+3. **PAT-003**: Document Processing Pipeline
+
+## Troubleshooting
+
+### 🔧 LLM Provider Issues
+
+If you're getting "❌ Connection failed" when testing providers:
+
+1. **Check Model Name**: Use `gpt-4o` (not `gpt-5` or `gpt4-o`)
+2. **Verify API Key**: Ensure it starts with `sk-` and is valid
+3. **Enable Debug Mode**: Check the debug checkbox in Streamlit sidebar
+4. **Test Directly**: Run `python3 test_provider.py YOUR_API_KEY`
+
+### 📋 Common Issues
+
+1. **Import Errors**: Ensure `PYTHONPATH` includes the project root
+2. **Port Conflicts**: Change ports in docker-compose.yml or Makefile  
+3. **Missing Dependencies**: Run `make install` or `pip install -r requirements.txt`
+4. **FAISS Issues**: Install `faiss-cpu` for CPU-only environments
+
+### 📖 Detailed Troubleshooting
+
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for comprehensive debugging guide including:
+- Detailed error solutions
+- Debug mode usage
+- Test scripts and commands
+- Performance optimization tips
+
+### 📝 Logs
+
+- API logs: Check console output from uvicorn
+- Streamlit logs: Check browser console and terminal
+- Application logs: Configured via `config.yaml` logging section
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Write tests for new functionality
+4. Ensure 100% test coverage: `make test`
+5. Format and lint code: `make fmt && make lint`
+6. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details.
+
+---
+
+**AgenticOrNot v1.3.2** - Assess automation feasibility with AI-powered pattern matching.

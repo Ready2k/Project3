@@ -1,0 +1,23 @@
+{
+  "pattern_id": "PAT-003",
+  "name": "Document Processing Pipeline",
+  "description": "Automated processing of documents including OCR, text extraction, classification, and data validation",
+  "feasibility": "Partially Automatable",
+  "pattern_type": ["document_processing", "ml_pipeline"],
+  "input_requirements": [
+    "Document types and formats",
+    "Extraction requirements",
+    "Quality thresholds",
+    "Human review criteria"
+  ],
+  "tech_stack": ["Python", "Tesseract", "spaCy", "PyPDF2", "OpenCV"],
+  "related_patterns": ["PAT-001", "PAT-002"],
+  "confidence_score": 0.75,
+  "constraints": {
+    "banned_tools": ["proprietary_ocr"],
+    "required_integrations": ["human_review", "quality_control"]
+  },
+  "domain": "document_management",
+  "complexity": "High",
+  "estimated_effort": "6-12 weeks"
+}
