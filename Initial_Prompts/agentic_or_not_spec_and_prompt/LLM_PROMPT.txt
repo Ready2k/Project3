@@ -1,0 +1,61 @@
+You are a senior Python engineer. Generate production-grade code for the project described in SPEC.md. Follow TDD strictly: write tests first, then minimal implementations to pass tests. Use clean architecture, strong typing, and deterministic fakes.
+
+## Hard Requirements
+- Language: Python 3.10+
+- Backend: FastAPI (streaming/polling status OK)
+- UI: Streamlit
+- Config: Pydantic + config.yaml + .env (.env.example provided)
+- LLM Providers: OpenAI, Bedrock/Claude, Claude Direct, Internal (HTTP)
+- Embeddings: sentence-transformers + FAISS
+- State: diskcache (Redis optional)
+- Pattern validation: jsonschema
+- Logging: Loguru with PII redaction
+- Tests: pytest, pytest-asyncio, pytest-mock, hypothesis where useful
+- Static: mypy --strict, ruff, black
+- Coverage: 100% statements AND branches (enforce in CI config)
+- Docker: Dockerfile + docker-compose.yml
+- Security: redact secrets in logs & audit; never persist API keys
+
+## Deliverables
+- Project tree exactly as in SPEC.md
+- Minimal but complete implementations to satisfy tests
+- Deterministic fakes in `app/llm/fakes.py`
+- `qa/templates.json` with at least 6 targeted questions covering workflow variability, data sensitivity, human-in-the-loop, SLAs, integration endpoints, volume/spike behavior
+- `pattern/schema.json` as in SPEC
+- Sample patterns (3) in `data/patterns/` with diverse domains
+- `requirements.txt`, `Makefile`, `.env.example`, `config.yaml`
+- CI-friendly `pytest.ini` and coverage config in `pyproject.toml` or `.coveragerc`
+
+## Implementation Guidance
+1. START by writing unit tests for:
+   - config loading/merging/redaction
+   - provider base + OpenAI provider (mock httpx)
+   - matcher (tag + vector blend + constraints)
+   - question loop state machine
+   - exporters (JSON schema validate + Markdown contents)
+2. Create FakeLLM + FakeEmbedder (seeded vectors) used by tests.
+3. Build FastAPI routes with dependency injection of provider + stores.
+4. Build Streamlit UI that:
+   - Lets user pick input (text/file/Jira)
+   - Polls `/status/{session_id}` and shows phases
+   - Displays results and export buttons
+   - Switches provider live and hits `/providers/test`
+5. Ensure banned tools are filtered BEFORE creating prompts and BEFORE final recommendations.
+6. Add SQLite audit with minimal ORM via SQLAlchemy and redact PII.
+7. Provide e2e tests using Playwright OR a lightweight headless runner for Streamlit routes (ok to stub UI request layer).
+
+## Coding Conventions
+- Type hints everywhere; no implicit Any
+- No seaborn; matplotlib only if needed (rare)
+- Small functions, pure where possible
+- Raise domain errors (`ProviderTimeout`, `PatternValidationError`, etc.)
+- Log structured fields (session_id, phase, provider)
+
+## Output Format
+- Write files to the repo; include runnable examples and sample data.
+- After writing code, output a concise summary of what was created and how to run:
+  - `make up` to start
+  - `make test` for tests
+  - default creds and sample flows
+
+If the SPEC is ambiguous, make the safest, testable choice and note it in comments.
