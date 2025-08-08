@@ -1,0 +1,14 @@
+provider: openai
+model: gpt-4o
+pattern_library_path: ./data/patterns
+export_path: ./exports
+constraints:
+  unavailable_tools: []
+timeouts:
+  llm: 20
+  http: 10
+logging:
+  level: INFO
+  redact_pii: true
+bedrock:
+  region: eu-west-2

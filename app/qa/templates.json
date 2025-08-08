@@ -1,0 +1,92 @@
+{
+  "workflow_variability": {
+    "questions": [
+      "How often does this workflow need to run? (e.g., hourly, daily, weekly, on-demand)",
+      "Are there different variations of this workflow for different scenarios?",
+      "What triggers should initiate this automation? (e.g., file upload, API call, schedule)"
+    ],
+    "fields": ["frequency", "variations", "triggers"],
+    "domain": "general"
+  },
+  "data_sensitivity": {
+    "questions": [
+      "Does this process handle sensitive or confidential data? (e.g., PII, financial, medical)",
+      "What are the data retention requirements for this process?",
+      "Are there specific compliance requirements? (e.g., GDPR, HIPAA, SOX)"
+    ],
+    "fields": ["data_sensitivity", "retention_policy", "compliance"],
+    "domain": "general"
+  },
+  "human_in_the_loop": {
+    "questions": [
+      "Are there steps that require human review or approval?",
+      "What should happen if the automation encounters an error or exception?",
+      "Who should be notified when the process completes or fails?"
+    ],
+    "fields": ["human_review", "error_handling", "notifications"],
+    "domain": "general"
+  },
+  "sla_requirements": {
+    "questions": [
+      "What is the expected processing time for this automation?",
+      "How critical is this process to business operations? (low, medium, high, critical)",
+      "What are the acceptable downtime limits?"
+    ],
+    "fields": ["processing_time", "criticality", "downtime_tolerance"],
+    "domain": "general"
+  },
+  "integration_endpoints": {
+    "questions": [
+      "What systems or APIs does this process need to integrate with?",
+      "Are there existing authentication mechanisms for these integrations?",
+      "What data formats are expected for input and output? (JSON, XML, CSV, etc.)"
+    ],
+    "fields": ["integrations", "authentication", "data_formats"],
+    "domain": "system_integration"
+  },
+  "volume_and_spikes": {
+    "questions": [
+      "What is the typical volume of data or transactions this process handles?",
+      "Are there predictable spikes in volume? (e.g., end of month, seasonal)",
+      "What is the maximum expected load the system should handle?"
+    ],
+    "fields": ["typical_volume", "volume_spikes", "max_load"],
+    "domain": "general"
+  },
+  "web_scraping_specific": {
+    "questions": [
+      "What websites or web pages need to be scraped?",
+      "How frequently does the target website content change?",
+      "Are there any rate limiting or anti-bot measures on the target sites?"
+    ],
+    "fields": ["target_websites", "content_change_frequency", "rate_limits"],
+    "domain": "data_processing"
+  },
+  "document_processing_specific": {
+    "questions": [
+      "What types of documents need to be processed? (PDF, images, scanned documents)",
+      "What specific information needs to be extracted from the documents?",
+      "What is the expected accuracy requirement for data extraction?"
+    ],
+    "fields": ["document_types", "extraction_fields", "accuracy_requirements"],
+    "domain": "document_management"
+  },
+  "api_integration_specific": {
+    "questions": [
+      "What is the API rate limit and how should it be handled?",
+      "Are there specific error codes or responses that need special handling?",
+      "What authentication method does the API use? (API key, OAuth, JWT)"
+    ],
+    "fields": ["api_rate_limits", "error_handling", "auth_method"],
+    "domain": "system_integration"
+  },
+  "ml_pipeline_specific": {
+    "questions": [
+      "What type of machine learning task is this? (classification, regression, clustering)",
+      "What is the expected model accuracy or performance threshold?",
+      "How often should the model be retrained or updated?"
+    ],
+    "fields": ["ml_task_type", "performance_threshold", "retraining_frequency"],
+    "domain": "machine_learning"
+  }
+}

@@ -1,0 +1,158 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgenticOrNot Export Schema",
+  "description": "Schema for validating AgenticOrNot export data",
+  "type": "object",
+  "required": [
+    "session_id",
+    "export_timestamp",
+    "requirements",
+    "feasibility_assessment",
+    "recommendations",
+    "pattern_matches",
+    "qa_history",
+    "processing_phases"
+  ],
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Unique session identifier"
+    },
+    "export_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp when export was generated"
+    },
+    "requirements": {
+      "type": "object",
+      "description": "Original requirements data",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "frequency": {
+          "type": "string"
+        },
+        "criticality": {
+          "type": "string"
+        },
+        "pattern_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "feasibility_assessment": {
+      "type": "string",
+      "enum": ["Automatable", "Partially Automatable", "Not Automatable", "Unknown"],
+      "description": "Overall feasibility assessment"
+    },
+    "recommendations": {
+      "type": "array",
+      "description": "List of automation recommendations",
+      "items": {
+        "type": "object",
+        "required": ["pattern_id", "feasibility", "confidence", "tech_stack", "reasoning"],
+        "properties": {
+          "pattern_id": {
+            "type": "string",
+            "pattern": "^PAT-[0-9]{3,}$"
+          },
+          "feasibility": {
+            "type": "string",
+            "enum": ["Automatable", "Partially Automatable", "Not Automatable"]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "tech_stack": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reasoning": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "pattern_matches": {
+      "type": "array",
+      "description": "Pattern matching results",
+      "items": {
+        "type": "object",
+        "required": ["pattern_id", "score", "rationale", "confidence"],
+        "properties": {
+          "pattern_id": {
+            "type": "string",
+            "pattern": "^PAT-[0-9]{3,}$"
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "qa_history": {
+      "type": "array",
+      "description": "Question and answer history",
+      "items": {
+        "type": "object",
+        "required": ["questions", "answers", "timestamp"],
+        "properties": {
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "answers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "processing_phases": {
+      "type": "object",
+      "required": ["final_phase", "progress"],
+      "properties": {
+        "final_phase": {
+          "type": "string",
+          "enum": ["PARSING", "VALIDATING", "QNA", "MATCHING", "RECOMMENDING", "DONE"]
+        },
+        "progress": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

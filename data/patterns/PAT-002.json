@@ -1,0 +1,23 @@
+{
+  "pattern_id": "PAT-002",
+  "name": "API Integration Workflow",
+  "description": "Automated integration between multiple APIs with data transformation, error handling, and retry mechanisms",
+  "feasibility": "Automatable",
+  "pattern_type": ["api_integration", "workflow_automation"],
+  "input_requirements": [
+    "Source and target API specifications",
+    "Data mapping requirements",
+    "Authentication methods",
+    "Error handling preferences"
+  ],
+  "tech_stack": ["Python", "FastAPI", "httpx", "Pydantic", "Celery"],
+  "related_patterns": ["PAT-001", "PAT-003"],
+  "confidence_score": 0.95,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": ["authentication", "logging"]
+  },
+  "domain": "system_integration",
+  "complexity": "Medium",
+  "estimated_effort": "3-6 weeks"
+}

@@ -1,0 +1,23 @@
+{
+  "pattern_id": "PAT-001",
+  "name": "Web Scraping Automation",
+  "description": "Automated data extraction from websites using web scraping techniques with proper rate limiting and error handling",
+  "feasibility": "Automatable",
+  "pattern_type": ["data_extraction", "web_automation"],
+  "input_requirements": [
+    "Target website URLs",
+    "Data fields to extract",
+    "Update frequency requirements",
+    "Rate limiting constraints"
+  ],
+  "tech_stack": ["Python", "BeautifulSoup", "Scrapy", "Selenium", "Requests"],
+  "related_patterns": ["PAT-002", "PAT-003"],
+  "confidence_score": 0.9,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": ["database", "monitoring"]
+  },
+  "domain": "data_processing",
+  "complexity": "Medium",
+  "estimated_effort": "2-4 weeks"
+}
