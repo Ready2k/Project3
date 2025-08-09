@@ -110,7 +110,8 @@ class SessionState:
             "matches": [match.dict() for match in self.matches],
             "recommendations": [rec.dict() for rec in self.recommendations],
             "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat()
+            "updated_at": self.updated_at.isoformat(),
+            "provider_config": self.provider_config
         }
     
     @classmethod
@@ -126,7 +127,8 @@ class SessionState:
             matches=[PatternMatch.from_dict(match) for match in data["matches"]],
             recommendations=[Recommendation.from_dict(rec) for rec in data["recommendations"]],
             created_at=datetime.fromisoformat(data["created_at"]),
-            updated_at=datetime.fromisoformat(data["updated_at"])
+            updated_at=datetime.fromisoformat(data["updated_at"]),
+            provider_config=data.get("provider_config")
         )
 
 

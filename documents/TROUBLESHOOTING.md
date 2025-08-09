@@ -29,7 +29,52 @@ If you see JavaScript console errors about "Infinite extent" in charts:
 2. **Check Data**: Ensure you've run at least one successful analysis
 3. **Refresh Page**: Sometimes charts need a page refresh to render properly
 
-## LLM Provider Connection Issues
+## LLM Provider Issues
+
+### 🤖 Using Fake LLM Instead of Real Provider
+
+If you see "fake/fake-llm" in the observability dashboard instead of your configured provider:
+
+1. **Check API Key**: The most common cause is an empty or invalid API key
+   - Make sure your API key is entered in the Streamlit sidebar
+   - Check it starts with `sk-` for OpenAI
+   - Ensure no extra spaces or characters
+
+2. **Test Connection**: Click "🔍 Test Connection" to verify your API key works
+   - ✅ Success = Your provider will be used
+   - ❌ Failed = System will fall back to FakeLLM
+
+3. **Submit New Analysis**: Provider configuration is applied when you submit requirements
+   - Old sessions continue using their original provider
+   - New sessions use the current sidebar configuration
+
+4. **Disable FakeLLM Fallback** (Advanced):
+   - Expand "⚙️ Advanced Options" in the sidebar
+   - Check "Disable Fake LLM Fallback"
+   - System will fail instead of using FakeLLM
+
+**Quick Fix:**
+```bash
+# In Streamlit sidebar:
+1. Select your provider (e.g., "openai")
+2. Enter your API key (starts with sk-)
+3. Click "Test Connection" (should show ✅)
+4. Submit a new analysis
+5. Check observability dashboard for real provider
+```
+
+**Debug Steps:**
+```bash
+# Check API logs for provider creation:
+# Look for these log messages:
+# ✅ "Using OpenAI provider from config: gpt-4o"
+# ✅ "🚀 Created provider: openai/gpt-4o"
+# ❌ "OpenAI API key is required" (if FakeLLM is not selected)
+
+# Check observability dashboard:
+# Should show your actual provider (e.g., "openai/gpt-4o")
+# Not "fake/fake-llm" unless you selected FakeLLM
+```
 
 ### ❌ "Connection failed" Error
 
@@ -78,6 +123,35 @@ Enable debug mode in the Streamlit sidebar to see:
 - Detailed API request/response
 - Full error messages
 - Connection attempt logs
+
+### 📊 Diagram Generation Issues
+
+If diagrams show "Error generating diagram" or syntax errors:
+
+1. **Check Provider Configuration**:
+   - Diagrams require OpenAI provider with valid API key
+   - FakeLLM provides basic fallback diagrams
+   - Other providers not yet supported for diagram generation
+
+2. **Mermaid Syntax Errors**:
+   - System automatically cleans LLM responses
+   - If issues persist, check the "View Mermaid Code" section
+   - Copy code to https://mermaid.live for validation
+
+3. **Missing Session Data**:
+   - Submit a requirement first before generating diagrams
+   - Complete the analysis process (including Q&A if prompted)
+   - Check debug info shows session ID and requirements
+
+**Quick Fix:**
+```bash
+# In Streamlit:
+1. Ensure OpenAI provider is selected with valid API key
+2. Submit and complete a requirement analysis
+3. Go to Diagrams tab
+4. Click "Generate [Diagram Type]"
+5. View generated Mermaid diagram
+```
 
 ### 🧪 Testing Provider Connection
 

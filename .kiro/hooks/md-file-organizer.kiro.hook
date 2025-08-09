@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Markdown File Organizer",
+  "description": "Automatically moves newly created .md files to the documents folder for better organization",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "*.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A new markdown file has been created. Please move it to the documents folder to keep the workspace organized."
+  }
+}

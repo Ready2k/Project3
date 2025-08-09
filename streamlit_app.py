@@ -11,20 +11,241 @@ import httpx
 import streamlit as st
 from streamlit.components.v1 import html
 
-# Import the existing Mermaid diagram functions
-import sys
-mermaid_path = Path(__file__).parent.parent / "Initial_Prompts" / "agentic_or_not_diagram_bootstrap"
-sys.path.append(str(mermaid_path))
-
+# Optional import for OpenAI (for diagram generation)
 try:
-    from app.diagrams.mermaid import build_context_diagram, build_container_diagram, build_sequence_diagram
-    MERMAID_AVAILABLE = True
+    import openai
+    OPENAI_AVAILABLE = True
 except ImportError:
-    MERMAID_AVAILABLE = False
-    # Fallback functions if mermaid is not available
-    def build_context_diagram(config): return "graph LR\n  A[Context Diagram Not Available]"
-    def build_container_diagram(config): return "graph TB\n  A[Container Diagram Not Available]"
-    def build_sequence_diagram(run, phase): return "sequenceDiagram\n  A->>B: Sequence Diagram Not Available"
+    OPENAI_AVAILABLE = False
+
+# Mermaid diagram functions (LLM-generated for specific requirements)
+async def make_llm_request(prompt: str, provider_config: Dict) -> str:
+    """Make a request to the LLM for diagram generation."""
+    if not OPENAI_AVAILABLE:
+        raise Exception("OpenAI library not available. Please install: pip install openai")
+    
+    if provider_config.get('provider') == 'openai' and provider_config.get('api_key'):
+        try:
+            client = openai.AsyncOpenAI(api_key=provider_config['api_key'])
+            response = await client.chat.completions.create(
+                model=provider_config.get('model', 'gpt-4o'),
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=1000,
+                temperature=0.3
+            )
+            content = response.choices[0].message.content
+            if not content:
+                raise Exception("Empty response from OpenAI")
+            
+            # Clean the response - remove markdown code blocks if present
+            content = content.strip()
+            if content.startswith('```mermaid'):
+                content = content.replace('```mermaid', '').replace('```', '').strip()
+            elif content.startswith('```'):
+                content = content.replace('```', '').strip()
+            
+            return content
+        except Exception as e:
+            raise Exception(f"OpenAI request failed: {str(e)}")
+    else:
+        raise Exception("Only OpenAI provider supported for diagram generation")
+
+def _sanitize(label: str) -> str:
+    """Sanitize labels for Mermaid diagrams."""
+    allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_.:")
+    return ''.join(ch if ch in allowed else '_' for ch in (label or '')) or 'unknown'
+
+async def build_context_diagram(requirement: str, recommendations: List[Dict]) -> str:
+    """Build a context diagram using LLM based on the specific requirement."""
+    prompt = f"""Generate a Mermaid context diagram (C4 Level 1) for this automation requirement:
+
+REQUIREMENT: {requirement}
+
+RECOMMENDATIONS: {recommendations[0].get('reasoning', 'No recommendations available') if recommendations else 'No recommendations available'}
+
+Create a context diagram showing:
+- The user/actor who will use the system
+- The main system being automated
+- External systems it needs to integrate with
+- Data sources it needs to access
+
+Use Mermaid flowchart syntax. Start with "flowchart LR" and use:
+- Circles for people: user([User Name])
+- Rectangles for systems: system[System Name]
+- Cylinders for databases: db[(Database)]
+
+Example format:
+flowchart LR
+  user([Warehouse Supervisor])
+  scanner[Mobile Scanner App]
+  api[Inventory API]
+  db[(Inventory Database)]
+  erp[ERP System]
+  
+  user --> scanner --> api
+  api --> db
+  api --> erp
+
+IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)."""
+
+    try:
+        # Use the current provider config to generate the diagram
+        provider_config = st.session_state.get('provider_config', {})
+        if provider_config.get('provider') == 'fake':
+            # Fallback for fake provider
+            return """flowchart LR
+  user([User])
+  system[Automated System]
+  db[(Database)]
+  api[External API]
+  
+  user --> system
+  system --> db
+  system --> api"""
+        
+        response = await make_llm_request(prompt, provider_config)
+        return response.strip()
+    except Exception as e:
+        return f"""flowchart LR
+  user([User])
+  system[System]
+  note[Diagram generation failed: {str(e)}]
+  
+  user --> system
+  system --> note"""
+
+async def build_container_diagram(requirement: str, recommendations: List[Dict]) -> str:
+    """Build a container diagram using LLM based on the specific requirement."""
+    prompt = f"""Generate a Mermaid container diagram (C4 Level 2) for this automation requirement:
+
+REQUIREMENT: {requirement}
+
+RECOMMENDATIONS: {recommendations[0].get('reasoning', 'No recommendations available') if recommendations else 'No recommendations available'}
+
+Create a container diagram showing the internal components and how they interact:
+- Web/mobile interfaces
+- APIs and services
+- Databases and data stores
+- Background processes
+- Integration points
+
+Use Mermaid flowchart syntax with subgraphs. Start with "flowchart TB" and use:
+- Rectangles for containers: api[API Service]
+- Cylinders for databases: db[(Database)]
+- Subgraphs for system boundaries
+
+Example format:
+flowchart TB
+  subgraph "Inventory System"
+    ui[Mobile Scanner UI]
+    api[Inventory API]
+    rules[Business Rules Engine]
+    queue[Message Queue]
+  end
+  
+  db[(Inventory DB)]
+  erp[ERP System]
+  
+  ui --> api
+  api --> rules
+  api --> db
+  rules --> queue
+  queue --> erp
+
+IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)."""
+
+    try:
+        provider_config = st.session_state.get('provider_config', {})
+        if provider_config.get('provider') == 'fake':
+            return """flowchart TB
+  subgraph "Automated System"
+    ui[User Interface]
+    api[API Layer]
+    logic[Business Logic]
+  end
+  
+  db[(Database)]
+  external[External System]
+  
+  ui --> api
+  api --> logic
+  logic --> db
+  logic --> external"""
+        
+        response = await make_llm_request(prompt, provider_config)
+        return response.strip()
+    except Exception as e:
+        return f"""flowchart TB
+  system[System]
+  error[Container diagram generation failed: {str(e)}]
+  
+  system --> error"""
+
+async def build_sequence_diagram(requirement: str, recommendations: List[Dict]) -> str:
+    """Build a sequence diagram using LLM based on the specific requirement."""
+    prompt = f"""Generate a Mermaid sequence diagram for this automation requirement:
+
+REQUIREMENT: {requirement}
+
+RECOMMENDATIONS: {recommendations[0].get('reasoning', 'No recommendations available') if recommendations else 'No recommendations available'}
+
+Create a sequence diagram showing the step-by-step flow of the automated process:
+- User interactions
+- System calls and responses
+- Database operations
+- External API calls
+- Decision points and alternatives
+
+Use Mermaid sequenceDiagram syntax:
+- participant A as Actor Name
+- A->>B: Message
+- B-->>A: Response
+- alt/else for conditions
+- Note over A: Comments
+
+Example (like your warehouse example):
+sequenceDiagram
+  participant W as Worker (Android Scanner)
+  participant API as FastAPI Orchestrator
+  participant DB as PostgreSQL (Inventory/Thresholds)
+  participant ERP as ERP API
+  
+  W->>API: POST /scan {{sku, qty, location, ts}}
+  API->>DB: GET inventory, reorder_threshold, supplier
+  API-->>API: Apply rules (seasonality, high-value gate)
+  alt Below threshold & not seasonal
+    API->>ERP: Create purchase order (sku, qty, supplier)
+    ERP-->>API: PO ID
+  else High-value item
+    API-->>W: Event (Approval required)
+  end
+
+IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)."""
+
+    try:
+        provider_config = st.session_state.get('provider_config', {})
+        if provider_config.get('provider') == 'fake':
+            return """sequenceDiagram
+  participant U as User
+  participant S as System
+  participant D as Database
+  participant E as External API
+  
+  U->>S: Trigger automation
+  S->>D: Query data
+  D-->>S: Return data
+  S->>E: Process request
+  E-->>S: Response
+  S-->>U: Result"""
+        
+        response = await make_llm_request(prompt, provider_config)
+        return response.strip()
+    except Exception as e:
+        return f"""sequenceDiagram
+  participant U as User
+  participant E as Error
+  
+  U->>E: Sequence diagram generation failed: {str(e)}"""
 
 # Configuration
 API_BASE_URL = "http://localhost:8000"
@@ -94,7 +315,7 @@ class AgenticOrNotUI:
         st.sidebar.header("🔧 Provider Configuration")
         
         # Provider selection
-        provider_options = ["openai", "bedrock", "claude", "internal"]
+        provider_options = ["openai", "bedrock", "claude", "internal", "fake"]
         current_provider = st.sidebar.selectbox(
             "LLM Provider",
             provider_options,
@@ -135,7 +356,7 @@ class AgenticOrNotUI:
             endpoint_url = ""
             region = ""
         
-        else:  # internal
+        elif current_provider == "internal":
             model_options = ["internal-model"]
             model = st.sidebar.selectbox("Model", model_options)
             endpoint_url = st.sidebar.text_input(
@@ -145,6 +366,14 @@ class AgenticOrNotUI:
             api_key = ""
             region = ""
         
+        else:  # fake
+            model_options = ["fake-model"]
+            model = st.sidebar.selectbox("Model", model_options)
+            api_key = ""
+            endpoint_url = ""
+            region = ""
+            st.sidebar.info("🎭 Using FakeLLM for testing - no API key required")
+        
         # Update session state
         st.session_state.provider_config.update({
             'provider': current_provider,
@@ -153,6 +382,10 @@ class AgenticOrNotUI:
             'endpoint_url': endpoint_url,
             'region': region
         })
+        
+        # Advanced options (placeholder for future options)
+        # with st.sidebar.expander("⚙️ Advanced Options"):
+        #     pass
         
         # Test connection button
         if st.sidebar.button("🔍 Test Connection"):
@@ -292,6 +525,26 @@ class AgenticOrNotUI:
                 
                 st.session_state.session_id = response['session_id']
                 st.session_state.processing = False
+                
+                # Store requirements in session state for diagram generation
+                if source == "text":
+                    st.session_state.requirements = {
+                        "description": payload.get("text", ""),
+                        "domain": payload.get("domain"),
+                        "pattern_types": payload.get("pattern_types", [])
+                    }
+                elif source == "file":
+                    st.session_state.requirements = {
+                        "description": payload.get("content", ""),
+                        "filename": payload.get("filename")
+                    }
+                elif source == "jira":
+                    st.session_state.requirements = {
+                        "description": payload.get("summary", "") + " " + payload.get("description", ""),
+                        "jira_key": payload.get("key"),
+                        "priority": payload.get("priority")
+                    }
+                
                 st.success(f"✅ Requirements submitted! Session ID: {st.session_state.session_id}")
                 
                 # Start polling for progress
@@ -340,11 +593,11 @@ class AgenticOrNotUI:
             if phase == "QNA" and missing_fields:
                 self.render_qa_section()
             
-            # Auto-refresh if not done
-            if phase != "DONE":
+            # Auto-refresh if not done, but skip for Q&A phase (user-driven)
+            if phase != "DONE" and phase != "QNA":
                 time.sleep(POLL_INTERVAL)
                 st.rerun()
-            else:
+            elif phase == "DONE":
                 # Load final results
                 self.load_recommendations()
         
@@ -356,37 +609,61 @@ class AgenticOrNotUI:
         st.subheader("❓ Clarifying Questions")
         st.info("Please answer the following questions to improve recommendation accuracy:")
         
-        # For now, simulate some common questions since the Q&A system might not be fully implemented
+        # Load questions from API if not already loaded
         if not st.session_state.qa_questions:
-            st.session_state.qa_questions = [
-                {
-                    "id": "workflow_variability",
-                    "question": "How variable is your workflow? (e.g., always the same steps vs. many exceptions)",
-                    "type": "text"
-                },
-                {
-                    "id": "data_sensitivity",
-                    "question": "What is the sensitivity level of the data involved?",
-                    "type": "select",
-                    "options": ["Low", "Medium", "High", "Confidential"]
-                },
-                {
-                    "id": "human_oversight",
-                    "question": "Is human oversight required at any step?",
-                    "type": "select",
-                    "options": ["Yes", "No", "Sometimes"]
-                }
-            ]
+            try:
+                with st.spinner("🤖 AI is generating personalized questions for your requirement..."):
+                    response = asyncio.run(self.make_api_request(
+                        "GET",
+                        f"/qa/{st.session_state.session_id}/questions"
+                    ))
+                    questions = response.get('questions', [])
+                    if questions:
+                        st.session_state.qa_questions = questions
+                        st.success(f"✅ Generated {len(questions)} questions")
+                    else:
+                        st.info("No additional questions needed - proceeding to analysis...")
+                        return
+            except Exception as e:
+                st.error(f"❌ Error loading questions: {str(e)}")
+                # Fallback to basic questions
+                st.session_state.qa_questions = [
+                    {
+                        "id": "physical_vs_digital",
+                        "question": "Does this process involve physical objects or digital/virtual entities?",
+                        "type": "text"
+                    },
+                    {
+                        "id": "current_process",
+                        "question": "How is this process currently performed?",
+                        "type": "text"
+                    }
+                ]
+                st.warning("Using fallback questions due to error")
         
-        answers = {}
-        for q in st.session_state.qa_questions:
-            if q["type"] == "text":
-                answers[q["id"]] = st.text_input(q["question"], key=f"qa_{q['id']}")
-            elif q["type"] == "select":
-                answers[q["id"]] = st.selectbox(q["question"], q["options"], key=f"qa_{q['id']}")
-        
-        if st.button("Submit Answers"):
-            self.submit_qa_answers(answers)
+        # Show questions if we have them
+        if st.session_state.qa_questions:
+            answers = {}
+            for q in st.session_state.qa_questions:
+                if q["type"] == "text":
+                    answers[q["id"]] = st.text_input(q["question"], key=f"qa_{q['id']}")
+                elif q["type"] == "select":
+                    answers[q["id"]] = st.selectbox(q["question"], q["options"], key=f"qa_{q['id']}")
+            
+            # Check if all questions are answered
+            answered_count = sum(1 for answer in answers.values() if answer and answer.strip())
+            total_questions = len(st.session_state.qa_questions)
+            
+            st.write(f"📝 Answered: {answered_count}/{total_questions} questions")
+            
+            # Submit button
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("🚀 Submit Answers", type="primary", use_container_width=True):
+                    if answered_count == 0:
+                        st.warning("Please answer at least one question before submitting.")
+                    else:
+                        self.submit_qa_answers(answers)
     
     def submit_qa_answers(self, answers: Dict[str, str]):
         """Submit Q&A answers to the API."""
@@ -401,6 +678,8 @@ class AgenticOrNotUI:
                 if response['complete']:
                     st.success("✅ All questions answered! Proceeding to matching...")
                     st.session_state.qa_questions = []
+                    # Force a status refresh to pick up the phase change
+                    st.session_state.phase = None  # Clear cached phase
                 else:
                     st.info("Additional questions may be needed...")
                     # Update questions if provided
@@ -521,40 +800,74 @@ class AgenticOrNotUI:
         """Render Mermaid diagrams panel."""
         st.header("📊 System Diagrams")
         
+        # Check if we have session data
+        if not st.session_state.get('session_id'):
+            st.info("Please submit a requirement first to generate diagrams.")
+            return
+        
         diagram_type = st.selectbox(
             "Select diagram type:",
             ["Context Diagram", "Container Diagram", "Sequence Diagram"]
         )
         
-        # Prepare configuration for diagrams
-        config = {
-            'user_role': 'Business Analyst',
-            'provider': st.session_state.provider_config['provider'],
-            'model': st.session_state.provider_config['model'],
-            'jira_enabled': True,
-            'vector_index': True,
-            'db': 'SQLite',
-            'state': 'diskcache'
-        }
+        # Get current session data
+        requirements = st.session_state.get('requirements', {})
+        recommendations_response = st.session_state.get('recommendations', {})
+        provider_config = st.session_state.get('provider_config', {})
         
-        if diagram_type == "Context Diagram":
-            mermaid_code = build_context_diagram(config)
-        elif diagram_type == "Container Diagram":
-            mermaid_code = build_container_diagram(config)
-        else:  # Sequence Diagram
-            run_config = {
-                'provider': config['provider'],
-                'model': config['model']
-            }
-            phase = st.session_state.current_phase or "PARSING"
-            mermaid_code = build_sequence_diagram(run_config, phase)
+        # Extract recommendations list from the API response
+        recommendations = recommendations_response.get('recommendations', []) if recommendations_response else []
         
-        # Display Mermaid diagram
-        self.render_mermaid(mermaid_code)
+        # Debug info
+        st.write("**Debug Info:**")
+        st.write(f"- Session ID: {st.session_state.get('session_id', 'None')}")
+        st.write(f"- Requirements keys: {list(requirements.keys()) if requirements else 'None'}")
+        st.write(f"- Recommendations count: {len(recommendations)}")
+        st.write(f"- Provider: {provider_config.get('provider', 'None')}")
+        st.write(f"- API Key present: {bool(provider_config.get('api_key'))}")
         
-        # Show code
-        with st.expander("View Mermaid Code"):
-            st.code(mermaid_code, language="mermaid")
+        requirement_text = requirements.get('description', 'No requirement available')
+        
+        if st.button(f"Generate {diagram_type}", type="primary"):
+            try:
+                # Additional validation
+                if not requirement_text or requirement_text == 'No requirement available':
+                    st.error("No requirement found. Please submit a requirement first.")
+                    return
+                
+                if not provider_config.get('api_key'):
+                    st.error("No API key found. Please configure your provider in the sidebar.")
+                    return
+                
+                st.write(f"**Generating diagram for:** {requirement_text[:100]}...")
+                
+                with st.spinner(f"🤖 Generating {diagram_type.lower()} using AI..."):
+                    if diagram_type == "Context Diagram":
+                        mermaid_code = asyncio.run(build_context_diagram(requirement_text, recommendations))
+                    elif diagram_type == "Container Diagram":
+                        mermaid_code = asyncio.run(build_container_diagram(requirement_text, recommendations))
+                    else:  # Sequence Diagram
+                        mermaid_code = asyncio.run(build_sequence_diagram(requirement_text, recommendations))
+                    
+                    # Store the generated diagram
+                    st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
+                    st.success("✅ Diagram generated successfully!")
+                    
+            except Exception as e:
+                st.error(f"❌ Error generating diagram: {str(e)}")
+                st.write(f"**Error details:** {type(e).__name__}: {str(e)}")
+                return
+        
+        # Display the diagram if we have one
+        diagram_key = f'{diagram_type.lower().replace(" ", "_")}_code'
+        if diagram_key in st.session_state:
+            mermaid_code = st.session_state[diagram_key]
+            # Display Mermaid diagram
+            self.render_mermaid(mermaid_code)
+            
+            # Show code
+            with st.expander("View Mermaid Code"):
+                st.code(mermaid_code, language="mermaid")
     
     def render_mermaid(self, mermaid_code: str):
         """Render a Mermaid diagram using HTML component."""

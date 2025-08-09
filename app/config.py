@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     model: str = "gpt-4o"
     pattern_library_path: Path = Path("./data/patterns")
     export_path: Path = Path("./exports")
+    disable_fake_llm: bool = False  # If True, never fallback to FakeLLM
     constraints: ConstraintsConfig = Field(default_factory=ConstraintsConfig)
     timeouts: TimeoutConfig = Field(default_factory=TimeoutConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
