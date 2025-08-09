@@ -10,7 +10,8 @@ This is the Streamlit web interface for the AgenticOrNot application, which help
 - **Jira Integration**: Fetch requirements directly from Jira tickets (requires task 10 implementation)
 
 ### 🤖 Provider Configuration
-- **Multiple LLM Providers**: OpenAI, AWS Bedrock, Anthropic Claude, Internal HTTP
+- **Multiple LLM Providers**: OpenAI, AWS Bedrock, Anthropic Claude, Internal HTTP, FakeLLM
+- **Explicit Provider Selection**: Choose FakeLLM for testing or real providers for production
 - **Live Provider Switching**: Change providers without losing session state
 - **Connection Testing**: Validate provider credentials and connectivity
 - **Model Selection**: Choose from available models for each provider
@@ -20,10 +21,11 @@ This is the Streamlit web interface for the AgenticOrNot application, which help
 - **Phase Descriptions**: Clear explanations of current processing phase
 - **Auto-refresh**: Automatic polling for status updates
 
-### ❓ Interactive Q&A
-- **Clarifying Questions**: System asks targeted questions when information is missing
-- **Dynamic Forms**: Question types include text input and multiple choice
-- **Confidence Tracking**: System proceeds when confidence threshold is met
+### ❓ AI-Powered Q&A
+- **AI-Generated Questions**: LLM creates contextual questions based on your specific requirement
+- **Smart Question Focus**: Questions target physical vs digital, data sources, and complexity
+- **Submit Button Interface**: Batch answer submission to prevent constant API calls
+- **Intelligent Completion**: System determines when sufficient information is gathered
 
 ### 🎯 Results Display
 - **Feasibility Assessment**: Clear Yes/Partial/No feasibility indication
@@ -36,11 +38,12 @@ This is the Streamlit web interface for the AgenticOrNot application, which help
 - **Markdown Export**: Human-readable format for documentation
 - **Download Links**: Direct file download capabilities
 
-### 📊 System Diagrams
-- **Context Diagrams**: High-level system overview
-- **Container Diagrams**: Internal system architecture
-- **Sequence Diagrams**: Process flow visualization
-- **Mermaid Integration**: Interactive diagram rendering
+### 📊 AI-Generated Architecture Diagrams
+- **Context Diagrams**: System boundaries and external integrations tailored to your requirement
+- **Container Diagrams**: Internal components and data flow specific to your solution
+- **Sequence Diagrams**: Step-by-step process flow with decision points and alternatives
+- **C4 Architecture Patterns**: Proper architectural modeling using industry standards
+- **Mermaid Integration**: Interactive diagram rendering with code viewing
 
 ## Usage
 

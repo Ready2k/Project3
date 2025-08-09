@@ -16,13 +16,15 @@ class Question:
     text: str
     field: str
     template_category: str
+    question_type: str = "text"  # Default to text input
     options: Optional[List[str]] = None
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            "text": self.text,
-            "field": self.field,
+            "question": self.text,  # UI expects "question" not "text"
+            "id": self.field,       # UI expects "id" not "field"
+            "type": self.question_type,
             "template_category": self.template_category,
             "options": self.options
         }
@@ -131,83 +133,122 @@ class QuestionLoop:
     
     def _identify_missing_fields(self, requirements: Dict[str, Any]) -> List[str]:
         """Identify missing fields from requirements."""
-        # Core fields that should be present for most automations
-        core_fields = [
-            "frequency", "data_sensitivity", "human_review", "processing_time",
-            "criticality", "integrations", "typical_volume"
-        ]
+        # For LLM-generated Q&A, we consider the process complete if:
+        # 1. We have a description
+        # 2. We have at least 2 additional fields from Q&A
+        # 3. Or we've already done one round of Q&A
         
-        missing_fields = []
-        for field in core_fields:
-            if field not in requirements or not requirements[field]:
-                missing_fields.append(field)
+        description = requirements.get("description", "")
+        if not description or len(description.strip()) < 10:
+            return ["description"]
         
-        # Domain-specific fields
-        domain = requirements.get("domain", "")
-        if domain == "data_processing":
-            domain_fields = ["target_websites", "content_change_frequency"]
-            for field in domain_fields:
-                if field not in requirements:
-                    missing_fields.append(field)
-        elif domain == "system_integration":
-            domain_fields = ["api_rate_limits", "auth_method"]
-            for field in domain_fields:
-                if field not in requirements:
-                    missing_fields.append(field)
-        elif domain == "document_management":
-            domain_fields = ["document_types", "extraction_fields", "accuracy_requirements"]
-            for field in domain_fields:
-                if field not in requirements:
-                    missing_fields.append(field)
+        # Count non-description fields (these come from Q&A answers)
+        qa_fields = {k: v for k, v in requirements.items() 
+                    if k not in ["description", "domain", "pattern_types", "filename", "jira_key", "priority"]}
         
-        return missing_fields
+        # If we have at least 2 Q&A answers, consider it sufficient
+        answered_fields = [k for k, v in qa_fields.items() if v and str(v).strip()]
+        
+        if len(answered_fields) >= 2:
+            return []  # Sufficient information
+        
+        # If we have some answers but not enough, we might need more
+        if len(answered_fields) >= 1:
+            return []  # One good answer is often enough for basic analysis
+        
+        # If no Q&A answers yet, we need some
+        return ["additional_context"]
     
     def _calculate_confidence(self, requirements: Dict[str, Any]) -> float:
         """Calculate confidence based on requirement completeness."""
-        total_possible_fields = 10  # Approximate number of important fields
-        filled_fields = len([v for v in requirements.values() if v])
-        
-        # Base confidence on completeness
-        completeness_ratio = min(filled_fields / total_possible_fields, 1.0)
-        
-        # Boost confidence if description is detailed
+        # Base confidence on having a good description
         description = requirements.get("description", "")
-        if len(description) > 100:
-            completeness_ratio += 0.1
+        if not description or len(description.strip()) < 10:
+            return 0.1
         
-        # Boost confidence if domain is specified
-        if requirements.get("domain"):
-            completeness_ratio += 0.1
+        base_confidence = 0.6  # Good description gives us decent confidence
         
-        return min(completeness_ratio, 1.0)
+        # Count Q&A answers (excluding metadata fields)
+        qa_fields = {k: v for k, v in requirements.items() 
+                    if k not in ["description", "domain", "pattern_types", "filename", "jira_key", "priority"]}
+        
+        answered_fields = [k for k, v in qa_fields.items() if v and str(v).strip()]
+        
+        # Each Q&A answer increases confidence
+        qa_boost = min(len(answered_fields) * 0.15, 0.3)  # Max 0.3 boost from Q&A
+        
+        final_confidence = min(base_confidence + qa_boost, 1.0)
+        return final_confidence
     
     async def _generate_question_from_template(self, 
                                              template: Dict[str, Any], 
                                              requirements: Dict[str, Any]) -> List[Question]:
-        """Generate questions from a template."""
-        questions = []
-        template_questions = template.get("questions", [])
-        template_fields = template.get("fields", [])
+        """Generate questions from a template using LLM."""
         template_name = template.get("name", "unknown")
+        template_domain = template.get("domain", "general")
         
-        # For now, use template questions directly
-        # In a more advanced implementation, we could use LLM to contextualize
-        for i, question_text in enumerate(template_questions):
-            field = template_fields[i] if i < len(template_fields) else f"field_{i}"
+        # Create a prompt for the LLM to generate contextual questions
+        prompt = f"""You are an expert automation consultant analyzing whether a requirement can be automated with AI agents.
+
+REQUIREMENT: {requirements.get('description', 'No description provided')}
+
+ANALYSIS FOCUS: {template_name} ({template_domain} domain)
+
+Your role is to ask 2-3 specific clarifying questions that will help determine if this requirement can be automated by AI agents. Focus on:
+
+1. **Physical vs Digital**: Is this about physical objects or digital processes?
+2. **Data Availability**: What data sources exist to make automated decisions?
+3. **Decision Complexity**: How complex are the decisions involved?
+4. **Integration Points**: What systems would need to connect?
+
+Generate questions that are:
+- Specific to this requirement
+- Help distinguish between "Automatable", "Partially Automatable", or "Not Automatable"
+- Focus on technical feasibility, not business value
+
+Format your response as a JSON array of questions:
+[
+  {{"text": "Question 1?", "field": "field_name_1"}},
+  {{"text": "Question 2?", "field": "field_name_2"}},
+  {{"text": "Question 3?", "field": "field_name_3"}}
+]
+
+Only return the JSON array, no other text."""
+
+        try:
+            # Generate questions using LLM
+            response = await self.llm_provider.generate(prompt)
             
-            question = Question(
-                text=question_text,
-                field=field,
-                template_category=template_name
-            )
-            questions.append(question)
-        
-        return questions
+            # Parse the JSON response
+            import json
+            questions_data = json.loads(response.strip())
+            
+            questions = []
+            for q_data in questions_data:
+                question = Question(
+                    text=q_data["text"],
+                    field=q_data["field"],
+                    template_category=template_name,
+                    question_type="text"
+                )
+                questions.append(question)
+            
+            return questions
+            
+        except Exception as e:
+            app_logger.error(f"Error generating LLM questions for {template_name}: {e}")
+            # Fallback to a generic question
+            return [Question(
+                text=f"Please provide more details about the {template_name.replace('_', ' ')} aspects of this requirement.",
+                field=f"{template_name}_details",
+                template_category=template_name,
+                question_type="text"
+            )]
     
     async def generate_questions(self, 
                                session_id: str, 
                                max_questions: int = 5) -> List[Question]:
-        """Generate questions for missing information.
+        """Generate questions for missing information using LLM.
         
         Args:
             session_id: Session identifier
@@ -227,39 +268,99 @@ class QuestionLoop:
             app_logger.info(f"Max questions ({max_questions}) already reached for session {session_id}")
             return []
         
-        # Identify missing fields
-        missing_fields = self._identify_missing_fields(session.requirements)
-        
-        if not missing_fields:
-            app_logger.info(f"No missing fields identified for session {session_id}")
-            return []
-        
-        # Get relevant templates
-        templates = self.template_loader.get_templates_for_fields(missing_fields)
-        
-        # Also get domain-specific templates if domain is known
-        domain = session.requirements.get("domain")
-        if domain:
-            domain_templates = self.template_loader.get_templates_for_domain(domain)
-            templates.extend(domain_templates)
-        
-        # Generate questions from templates
-        all_questions = []
-        for template in templates:
-            template_questions = await self._generate_question_from_template(template, session.requirements)
-            all_questions.extend(template_questions)
-        
-        # Remove duplicates and limit to max_questions
-        seen_fields = set()
-        unique_questions = []
-        
-        for question in all_questions:
-            if question.field not in seen_fields and len(unique_questions) < max_questions:
-                seen_fields.add(question.field)
-                unique_questions.append(question)
-        
-        app_logger.info(f"Generated {len(unique_questions)} questions for session {session_id}")
-        return unique_questions
+        # Generate questions directly using LLM instead of templates
+        prompt = f"""You are an expert automation consultant. Analyze this requirement and generate clarifying questions.
+
+REQUIREMENT: {session.requirements.get('description', 'No description provided')}
+
+Generate 3-4 specific questions to determine if this can be automated by AI agents.
+
+Focus on:
+- Physical vs digital processes
+- Available data sources
+- Decision complexity
+- Current workflow
+
+CRITICAL: Respond with ONLY a valid JSON array, no other text:
+
+[
+  {{"text": "Question 1?", "field": "field1"}},
+  {{"text": "Question 2?", "field": "field2"}},
+  {{"text": "Question 3?", "field": "field3"}}
+]"""
+
+        try:
+            # Generate questions using LLM
+            app_logger.info(f"Generating LLM questions for session {session_id}")
+            response = await self.llm_provider.generate(prompt)
+            
+            app_logger.info(f"LLM response for questions: {response[:200]}...")  # Log first 200 chars
+            
+            if not response or not response.strip():
+                app_logger.error("Empty response from LLM")
+                raise ValueError("Empty LLM response")
+            
+            # Clean the response - sometimes LLM adds extra text
+            response = response.strip()
+            
+            # Try to extract JSON if it's wrapped in other text
+            if not response.startswith('['):
+                # Look for JSON array in the response
+                import re
+                json_match = re.search(r'\[.*\]', response, re.DOTALL)
+                if json_match:
+                    response = json_match.group(0)
+                else:
+                    app_logger.error(f"No JSON array found in response: {response}")
+                    raise ValueError("No JSON array in response")
+            
+            # Parse the JSON response
+            questions_data = json.loads(response)
+            
+            if not isinstance(questions_data, list):
+                app_logger.error(f"Expected list, got {type(questions_data)}: {questions_data}")
+                raise ValueError("Response is not a list")
+            
+            questions = []
+            for q_data in questions_data[:max_questions]:  # Limit to max_questions
+                if not isinstance(q_data, dict) or 'text' not in q_data or 'field' not in q_data:
+                    app_logger.warning(f"Skipping invalid question data: {q_data}")
+                    continue
+                    
+                question = Question(
+                    text=q_data["text"],
+                    field=q_data["field"],
+                    template_category="llm_generated",
+                    question_type="text"
+                )
+                questions.append(question)
+            
+            app_logger.info(f"Generated {len(questions)} LLM questions for session {session_id}")
+            return questions
+            
+        except Exception as e:
+            app_logger.error(f"Error generating LLM questions for session {session_id}: {e}")
+            # Fallback to essential questions
+            return [
+                Question(
+                    text="Does this process involve physical objects or digital/virtual entities?",
+                    field="physical_vs_digital",
+                    template_category="fallback",
+                    question_type="text"
+                ),
+                Question(
+                    text="What data sources are currently available to assess the condition or trigger the action?",
+                    field="data_sources",
+                    template_category="fallback",
+                    question_type="text"
+                ),
+                Question(
+                    text="How is this process currently performed? (manual inspection, automated monitoring, scheduled intervals)",
+                    field="current_process",
+                    template_category="fallback",
+                    question_type="text"
+                )
+            ]
     
     def _merge_answers(self, requirements: Dict[str, Any], answers: Dict[str, str]) -> Dict[str, Any]:
         """Merge user answers into requirements."""
@@ -291,6 +392,10 @@ class QuestionLoop:
         # Check completeness and confidence
         missing_fields = self._identify_missing_fields(updated_requirements)
         confidence = self._calculate_confidence(updated_requirements)
+        
+        app_logger.info(f"Updated requirements: {list(updated_requirements.keys())}")
+        app_logger.info(f"Missing fields: {missing_fields}")
+        app_logger.info(f"Confidence: {confidence:.2f}")
         
         # Create Q&A exchange record
         qa_exchange = QAExchange(

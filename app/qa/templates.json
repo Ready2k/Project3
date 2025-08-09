@@ -88,5 +88,23 @@
     ],
     "fields": ["ml_task_type", "performance_threshold", "retraining_frequency"],
     "domain": "machine_learning"
+  },
+  "physical_vs_digital": {
+    "questions": [
+      "Does this process involve physical objects or digital/virtual entities?",
+      "How is the current state or condition detected? (manual inspection, sensors, automated monitoring)",
+      "What triggers the need for action? (schedule, condition-based, event-driven)"
+    ],
+    "fields": ["physical_digital", "detection_method", "trigger_type"],
+    "domain": "general"
+  },
+  "facilities_management": {
+    "questions": [
+      "Are IoT sensors or monitoring systems available to detect wear-and-tear automatically?",
+      "How is maintenance currently scheduled? (time-based, condition-based, reactive)",
+      "What data sources are available to assess the condition? (visual inspection, sensor data, usage logs)"
+    ],
+    "fields": ["iot_sensors", "maintenance_schedule", "condition_data"],
+    "domain": "facilities"
   }
 }

@@ -22,6 +22,16 @@ from app.services.recommendation import RecommendationService
 from app.state.store import SessionState, Phase, DiskCacheStore
 from app.utils.logger import app_logger
 
+
+# Request/Response models
+class ProviderConfig(BaseModel):
+    provider: str = "openai"
+    model: str = "gpt-4o"
+    api_key: Optional[str] = None
+    endpoint_url: Optional[str] = None
+    region: Optional[str] = None
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="AgenticOrNot API",
@@ -54,10 +64,11 @@ def get_session_store() -> DiskCacheStore:
     return session_store
 
 
-def get_pattern_matcher() -> PatternMatcher:
-    """Get pattern matcher instance."""
+async def get_pattern_matcher() -> PatternMatcher:
+    """Get pattern matcher instance with properly built FAISS index."""
     global pattern_matcher
     if pattern_matcher is None:
+        app_logger.info("Initializing pattern matcher...")
         settings = get_settings()
         
         # Initialize components
@@ -69,49 +80,79 @@ def get_pattern_matcher() -> PatternMatcher:
         patterns = pattern_loader.load_patterns()
         if patterns:
             descriptions = [p["description"] for p in patterns]
-            import asyncio
-            asyncio.create_task(faiss_index.build_from_texts(descriptions))
+            app_logger.info(f"Building FAISS index from {len(patterns)} patterns")
+            await faiss_index.build_from_texts(descriptions)
+            app_logger.info("✅ FAISS index built successfully")
+        else:
+            app_logger.warning("No patterns found, FAISS index will be empty")
         
         pattern_matcher = PatternMatcher(
             pattern_loader=pattern_loader,
             embedding_provider=embedder,
             faiss_index=faiss_index
         )
+        
+        app_logger.info("✅ Pattern matcher initialized")
     
     return pattern_matcher
 
 
-def create_llm_provider(provider_config: Optional[ProviderConfig] = None):
-    """Create LLM provider based on configuration."""
+def create_llm_provider(provider_config: Optional[ProviderConfig] = None, session_id: str = "unknown"):
+    """Create LLM provider based on configuration with audit logging."""
+    from app.utils.audit_integration import create_audited_provider
+    
+    settings = get_settings()
+    base_provider = None
+    
+    app_logger.info(f"Creating LLM provider for session {session_id}")
+    app_logger.info(f"Provider config: {provider_config.dict() if provider_config else 'None'}")
+    app_logger.info(f"Settings provider: {settings.provider}")
+    app_logger.info(f"OPENAI_API_KEY exists: {bool(os.getenv('OPENAI_API_KEY'))}")
+    
     if not provider_config:
         # Use settings default or fallback to fake
-        settings = get_settings()
+        app_logger.info(f"No provider config, using settings: provider={settings.provider}")
         if settings.provider == "openai" and os.getenv("OPENAI_API_KEY"):
-            return OpenAIProvider(
+            base_provider = OpenAIProvider(
                 api_key=os.getenv("OPENAI_API_KEY"),
                 model=settings.model
             )
+            app_logger.info(f"✅ Using OpenAI provider from environment: {settings.model}")
         else:
-            app_logger.warning("No provider configuration found, using FakeLLM")
-            return FakeLLM({}, seed=42)
-    
-    if provider_config.provider == "openai":
-        if not provider_config.api_key:
-            app_logger.error("OpenAI API key is required")
-            return FakeLLM({}, seed=42)
-        
-        return OpenAIProvider(
-            api_key=provider_config.api_key,
-            model=provider_config.model
-        )
+            if settings.disable_fake_llm:
+                raise ValueError("No valid LLM provider configuration found and FakeLLM is disabled")
+            app_logger.warning("⚠️ No provider configuration found, using FakeLLM")
+            base_provider = FakeLLM({}, seed=42)
     else:
-        app_logger.warning(f"Provider {provider_config.provider} not implemented, using FakeLLM")
-        return FakeLLM({}, seed=42)
+        app_logger.info(f"Using provider config: {provider_config.provider}/{provider_config.model}")
+        
+        if provider_config.provider == "openai":
+            if not provider_config.api_key:
+                raise ValueError("OpenAI API key is required")
+            base_provider = OpenAIProvider(
+                api_key=provider_config.api_key,
+                model=provider_config.model
+            )
+            app_logger.info(f"✅ Using OpenAI provider from config: {provider_config.model}")
+        
+        elif provider_config.provider == "fake":
+            base_provider = FakeLLM({}, seed=42)
+            app_logger.info("✅ Using FakeLLM provider from config")
+        
+        else:
+            raise ValueError(f"Provider {provider_config.provider} not implemented")
+    
+    # Log final provider info
+    model_info = base_provider.get_model_info()
+    app_logger.info(f"🚀 Created provider: {model_info['provider']}/{model_info['model']}")
+    
+    # Wrap with audit logging
+    return create_audited_provider(base_provider, session_id)
 
 
-def get_question_loop(provider_config: Optional[ProviderConfig] = None) -> QuestionLoop:
+def get_question_loop(provider_config: Optional[ProviderConfig] = None, session_id: str = "unknown") -> QuestionLoop:
     """Get question loop instance with provider configuration."""
-    llm_provider = create_llm_provider(provider_config)
+    llm_provider = create_llm_provider(provider_config, session_id)
     template_loader = TemplateLoader()
     store = get_session_store()
     
@@ -137,15 +178,6 @@ def get_export_service() -> ExportService:
         settings = get_settings()
         export_service = ExportService(settings.export_path)
     return export_service
-
-
-# Request/Response models
-class ProviderConfig(BaseModel):
-    provider: str = "openai"
-    model: str = "gpt-4o"
-    api_key: Optional[str] = None
-    endpoint_url: Optional[str] = None
-    region: Optional[str] = None
 
 
 class IngestRequest(BaseModel):
@@ -226,6 +258,11 @@ async def ingest_requirements(request: IngestRequest):
         # Generate session ID
         session_id = str(uuid.uuid4())
         
+        # Debug logging
+        app_logger.info(f"🔍 Ingest request for session {session_id}")
+        app_logger.info(f"Source: {request.source}")
+        app_logger.info(f"Provider config received: {request.provider_config.dict() if request.provider_config else 'None'}")
+        
         # Extract requirements from payload
         requirements = {}
         if request.source == "text":
@@ -258,16 +295,17 @@ async def ingest_requirements(request: IngestRequest):
             matches=[],
             recommendations=[],
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
+            provider_config=request.provider_config.dict() if request.provider_config else None
         )
+        
+        # Store provider configuration in session for later use
+        if request.provider_config:
+            app_logger.info(f"Stored provider config in session: {session_state.provider_config}")
         
         # Store session
         store = get_session_store()
         await store.update_session(session_id, session_state)
-        
-        # Store provider configuration in session for later use
-        if request.provider_config:
-            session_state.provider_config = request.provider_config.dict()
         
         # Immediately advance to VALIDATING phase (simulate processing)
         session_state.phase = Phase.VALIDATING
@@ -276,15 +314,11 @@ async def ingest_requirements(request: IngestRequest):
         await store.update_session(session_id, session_state)
         
         # Check if we need Q&A or can proceed to matching
-        if not requirements.get("description") or len(requirements.get("description", "").strip()) < 10:
-            # Need more information - go to Q&A phase
-            session_state.phase = Phase.QNA
-            session_state.progress = 40
-            session_state.missing_fields = ["workflow_variability", "data_sensitivity", "human_oversight"]
-        else:
-            # Sufficient information - proceed to matching
-            session_state.phase = Phase.MATCHING
-            session_state.progress = 60
+        # Always go to Q&A phase to gather clarifying information
+        # The Q&A system will determine if questions are actually needed
+        session_state.phase = Phase.QNA
+        session_state.progress = 40
+        session_state.missing_fields = ["workflow_variability", "data_sensitivity", "human_oversight"]
         
         session_state.updated_at = datetime.now()
         await store.update_session(session_id, session_state)
@@ -308,7 +342,29 @@ async def get_status(session_id: str):
             raise HTTPException(status_code=404, detail="Session not found")
         
         # Auto-advance phases if needed
-        if session.phase == Phase.MATCHING and not session.matches:
+        if session.phase == Phase.QNA:
+            try:
+                # Check if we have questions to ask
+                provider_config = None
+                if session.provider_config:
+                    app_logger.info(f"Creating ProviderConfig from: {session.provider_config}")
+                    provider_config = ProviderConfig(**session.provider_config)
+                
+                question_loop = get_question_loop(provider_config, session_id)
+                questions = await question_loop.generate_questions(session_id, max_questions=5)
+                
+                if not questions:
+                    # No questions needed, advance to matching
+                    session.phase = Phase.MATCHING
+                    session.progress = 60
+                    session.updated_at = datetime.now()
+                    await store.update_session(session_id, session)
+                    app_logger.info(f"Advanced session {session_id} from QNA to MATCHING phase (no questions needed)")
+            except Exception as e:
+                app_logger.error(f"Error in QNA phase processing: {e}")
+                # Continue without advancing phase
+        
+        elif session.phase == Phase.MATCHING and not session.matches:
             # Simulate pattern matching completion
             session.phase = Phase.RECOMMENDING
             session.progress = 80
@@ -324,11 +380,13 @@ async def get_status(session_id: str):
             await store.update_session(session_id, session)
             app_logger.info(f"Advanced session {session_id} to DONE phase")
         
-        return StatusResponse(
+        response = StatusResponse(
             phase=session.phase.value,
             progress=session.progress,
             missing_fields=session.missing_fields
         )
+        app_logger.info(f"Status response for {session_id}: {response.dict()}")
+        return response
         
     except HTTPException:
         raise
@@ -337,12 +395,73 @@ async def get_status(session_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/qa/{session_id}/questions")
+async def get_qa_questions(session_id: str):
+    """Get Q&A questions for a session."""
+    try:
+        # Get session to retrieve provider configuration
+        store = get_session_store()
+        session = await store.get_session(session_id)
+        
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        if session.phase != Phase.QNA:
+            return {"questions": []}
+        
+        # Create provider config from session
+        provider_config = None
+        if session.provider_config:
+            app_logger.info(f"Retrieved provider config from session for questions: {session.provider_config}")
+            provider_config = ProviderConfig(**session.provider_config)
+        else:
+            app_logger.warning("No provider config found in session for questions")
+        
+        question_loop = get_question_loop(provider_config, session_id)
+        questions = await question_loop.generate_questions(session_id, max_questions=5)
+        
+        return {
+            "questions": [q.to_dict() for q in questions],
+            "session_id": session_id,
+            "phase": session.phase.value
+        }
+        
+    except Exception as e:
+        app_logger.error(f"Error getting Q&A questions for {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/qa/{session_id}", response_model=QAResponse)
 async def process_qa(session_id: str, request: QARequest):
     """Process Q&A answers."""
     try:
-        question_loop = get_question_loop()
+        # Get session to retrieve provider configuration
+        store = get_session_store()
+        session = await store.get_session(session_id)
+        
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        # Create provider config from session
+        provider_config = None
+        if session.provider_config:
+            app_logger.info(f"Retrieved provider config from session: {session.provider_config}")
+            provider_config = ProviderConfig(**session.provider_config)
+        else:
+            app_logger.warning("No provider config found in session")
+        
+        question_loop = get_question_loop(provider_config, session_id)
         result = await question_loop.process_answers(session_id, request.answers)
+        
+        # If Q&A is complete, advance to MATCHING phase
+        if result.complete:
+            session = await store.get_session(session_id)  # Refresh session
+            if session and session.phase == Phase.QNA:
+                session.phase = Phase.MATCHING
+                session.progress = 60
+                session.updated_at = datetime.now()
+                await store.update_session(session_id, session)
+                app_logger.info(f"Advanced session {session_id} from QNA to MATCHING phase")
         
         return QAResponse(
             complete=result.complete,
@@ -364,7 +483,7 @@ async def match_patterns(request: MatchRequest):
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         
-        matcher = get_pattern_matcher()
+        matcher = await get_pattern_matcher()
         constraints = {"banned_tools": []}  # TODO: Get from config
         
         matches = await matcher.match_patterns(
@@ -413,7 +532,7 @@ async def generate_recommendations(request: RecommendRequest):
         
         # First get pattern matches if not already done
         if not session.matches:
-            matcher = get_pattern_matcher()
+            matcher = await get_pattern_matcher()
             constraints = {"banned_tools": []}
             matches = await matcher.match_patterns(
                 session.requirements, 
@@ -540,6 +659,12 @@ async def test_provider(request: ProviderTestRequest):
             return ProviderTestResponse(
                 ok=success,
                 message="Connection successful" if success else f"Connection failed: {error_msg}"
+            )
+        elif request.provider == "fake":
+            # FakeLLM always works
+            return ProviderTestResponse(
+                ok=True,
+                message="FakeLLM connection successful (no real API call made)"
             )
         else:
             return ProviderTestResponse(ok=False, message=f"Provider {request.provider} not implemented")

@@ -46,12 +46,14 @@
   - Write unit tests for matching logic and score calculation
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [x] 7. Build Q&A system with question generation
-  - Create question templates JSON with 6+ targeted questions
-  - Implement QuestionLoop class for question generation and processing
-  - Add missing field detection and confidence calculation
-  - Create QAExchange and QAResult data models
-  - Write unit tests for question generation and answer processing
+- [x] 7. Build AI-powered Q&A system with dynamic question generation
+  - ✅ Create LLM-generated contextual questions based on specific requirements
+  - ✅ Implement QuestionLoop class with AI question generation
+  - ✅ Add intelligent missing field detection and confidence calculation
+  - ✅ Create QAExchange and QAResult data models with proper serialization
+  - ✅ Fix session state persistence for provider configuration
+  - ✅ Add proper phase transitions from Q&A to matching
+  - ✅ Write unit tests for question generation and answer processing
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
 - [x] 8. Implement recommendation engine
@@ -93,22 +95,34 @@
   - Write integration tests for all API endpoints
   - _Requirements: 1.1, 1.2, 2.3, 3.2, 5.1, 6.4, 7.3_
 
-- [x] 13. Build Streamlit UI with provider switching
-  - Create main UI with input methods (text, file, Jira)
-  - Implement progress tracking with polling
-  - Add provider selection panel with live switching
-  - Create results display with feasibility and recommendations
-  - Add export buttons for JSON and Markdown
-  - Integrate existing Mermaid diagram panel
-  - Write e2e tests for UI to API integration
+- [x] 13. Build Streamlit UI with enhanced provider switching and diagrams
+  - ✅ Create main UI with input methods (text, file, Jira)
+  - ✅ Implement smart progress tracking with phase-aware polling
+  - ✅ Add comprehensive provider selection (OpenAI, Bedrock, Claude, Internal, FakeLLM)
+  - ✅ Create results display with feasibility and recommendations
+  - ✅ Add export buttons for JSON and Markdown
+  - ✅ Implement AI-generated Mermaid diagrams (Context, Container, Sequence)
+  - ✅ Fix Q&A interaction with submit button and proper validation
+  - ✅ Add real-time status updates and error handling
+  - ✅ Write e2e tests for UI to API integration
   - _Requirements: 1.1, 1.2, 1.3, 2.3, 6.4, 7.3_
 
 - [x] 14. Add observability dashboard to Streamlit
-  - Create metrics charting tab for model comparison
-  - Implement performance visualization from audit data
-  - Add usage pattern analysis
-  - Write tests for dashboard functionality
+  - ✅ Create metrics charting tab for model comparison
+  - ✅ Implement performance visualization from audit data
+  - ✅ Add usage pattern analysis with provider tracking
+  - ✅ Fix provider audit logging to show real providers instead of FakeLLM
+  - ✅ Write tests for dashboard functionality
   - _Requirements: 10.3_
+
+- [x] 18. Implement AI-generated architecture diagrams
+  - ✅ Create LLM-powered diagram generation for Context, Container, and Sequence diagrams
+  - ✅ Implement Mermaid code generation with proper C4 architecture patterns
+  - ✅ Add contextual diagram prompts based on specific requirements and recommendations
+  - ✅ Fix Mermaid syntax cleaning to remove markdown code blocks
+  - ✅ Integrate diagram generation into Streamlit UI with on-demand generation
+  - ✅ Add diagram code viewing and validation
+  - _Requirements: Enhanced visualization and architecture documentation_
 
 - [ ] 15. Create comprehensive test suite with 100% coverage
   - Ensure all unit tests achieve 100% statement and branch coverage

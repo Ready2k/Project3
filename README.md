@@ -4,14 +4,16 @@ Interactive GUI + API system that judges if user stories/requirements are automa
 
 ## Features
 
-- 🤖 **Multi-Provider LLM Support**: OpenAI, Anthropic/Bedrock, Claude Direct, Internal HTTP
+- 🤖 **Multi-Provider LLM Support**: OpenAI, Anthropic/Bedrock, Claude Direct, Internal HTTP, FakeLLM for testing
 - 🔍 **Intelligent Pattern Matching**: Tag filtering + vector similarity with FAISS
-- ❓ **Interactive Q&A System**: Clarifying questions to gather missing requirements
-- 📊 **Feasibility Assessment**: Automatable, Partially Automatable, or Not Automatable
-- 📤 **Export Results**: JSON and Markdown formats
+- ❓ **AI-Generated Q&A System**: LLM creates contextual clarifying questions based on your specific requirement
+- 📊 **Feasibility Assessment**: Automatable, Partially Automatable, or Not Automatable with confidence scores
+- 📈 **AI-Generated Architecture Diagrams**: Context, Container, and Sequence diagrams using Mermaid
+- 📤 **Export Results**: JSON and Markdown formats with comprehensive analysis
 - 🎯 **Constraint-Aware**: Filters banned tools and applies business constraints
 - 🧪 **100% Test Coverage**: TDD approach with deterministic fakes
 - 🐳 **Docker Ready**: Complete containerization with docker-compose
+- 🔄 **Real-time Progress Tracking**: Live status updates during analysis phases
 
 ## Quick Start
 
@@ -78,20 +80,37 @@ docker-compose up
 
 ### 1. Web Interface (Streamlit)
 
-1. Open http://localhost:8501
-2. **Input Tab**: Enter your automation requirement
+1. **Configure Provider** (Sidebar):
+   - Select LLM provider: OpenAI, Bedrock, Claude, Internal, or FakeLLM
+   - Enter API key and select model
+   - Test connection to verify setup
+
+2. **Submit Requirements** (Analysis Tab):
    - Choose input method: Text, File Upload, or Jira
-   - Provide description and optional domain/pattern types
-   - Click "Start Analysis"
+   - Enter your automation requirement description
+   - Optionally specify domain and pattern types
+   - Click "🚀 Analyze Requirements"
 
-3. **Q&A Tab**: Answer clarifying questions
-   - System asks about frequency, criticality, data sensitivity, etc.
-   - Answer questions to improve recommendation accuracy
+3. **Answer AI Questions** (Automatic):
+   - System generates personalized questions using AI
+   - Questions focus on physical vs digital, data sources, complexity
+   - Answer questions and click "🚀 Submit Answers"
+   - System progresses through: Parsing → Validating → Q&A → Matching → Recommending → Done
 
-4. **Results Tab**: View analysis results
-   - Click "Find Pattern Matches" to see similar patterns
-   - Click "Generate Recommendations" for feasibility assessment
+4. **View Results** (Analysis Tab):
+   - See feasibility assessment with confidence scores
+   - Review detailed reasoning and tech stack recommendations
    - Export results in JSON or Markdown format
+
+5. **Generate Diagrams** (Diagrams Tab):
+   - Create AI-generated architecture diagrams
+   - Context Diagram: System boundaries and external integrations
+   - Container Diagram: Internal components and data flow
+   - Sequence Diagram: Step-by-step process flow with decision points
+
+6. **Monitor Performance** (Observability Tab):
+   - View API call statistics and response times
+   - Track provider usage and performance metrics
 
 ### 2. API Usage
 
