@@ -489,20 +489,135 @@ class AgenticOrNotUI:
     
     def render_jira_input(self):
         """Render Jira integration interface."""
-        st.info("🚧 Jira integration is not yet implemented in the backend.")
+        st.subheader("🎫 Jira Integration")
         
-        col1, col2 = st.columns(2)
+        with st.form("jira_form"):
+            st.write("**Jira Configuration**")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                jira_base_url = st.text_input(
+                    "Jira Base URL",
+                    placeholder="https://your-domain.atlassian.net",
+                    help="Your Jira instance URL"
+                )
+                jira_email = st.text_input(
+                    "Email",
+                    placeholder="your-email@company.com",
+                    help="Your Jira account email"
+                )
+            
+            with col2:
+                jira_api_token = st.text_input(
+                    "API Token",
+                    type="password",
+                    help="Generate from Jira Account Settings > Security > API tokens"
+                )
+                jira_ticket_key = st.text_input(
+                    "Ticket Key",
+                    placeholder="PROJ-123",
+                    help="Jira ticket key (e.g., PROJ-123)"
+                )
+            
+            col1, col2, col3 = st.columns([1, 1, 2])
+            
+            with col1:
+                test_connection = st.form_submit_button("🔗 Test Connection", type="secondary")
+            
+            with col2:
+                fetch_ticket = st.form_submit_button("📥 Fetch Ticket", type="secondary")
+            
+            with col3:
+                submit_jira = st.form_submit_button("🚀 Start Analysis", type="primary")
         
-        with col1:
-            jira_url = st.text_input("Jira URL:", placeholder="https://company.atlassian.net")
-            ticket_key = st.text_input("Ticket Key:", placeholder="PROJ-123")
+        # Handle test connection
+        if test_connection:
+            if not all([jira_base_url, jira_email, jira_api_token]):
+                st.error("❌ Please fill in all Jira configuration fields")
+            else:
+                with st.spinner("Testing Jira connection..."):
+                    test_result = self.call_api("/jira/test", {
+                        "base_url": jira_base_url,
+                        "email": jira_email,
+                        "api_token": jira_api_token
+                    })
+                    
+                    if test_result and test_result.get("ok"):
+                        st.success("✅ Jira connection successful!")
+                    else:
+                        error_msg = test_result.get("message", "Unknown error") if test_result else "Connection failed"
+                        st.error(f"❌ Connection failed: {error_msg}")
         
-        with col2:
-            username = st.text_input("Username:")
-            api_token = st.text_input("API Token:", type="password")
+        # Handle fetch ticket
+        if fetch_ticket:
+            if not all([jira_base_url, jira_email, jira_api_token, jira_ticket_key]):
+                st.error("❌ Please fill in all fields including ticket key")
+            else:
+                with st.spinner(f"Fetching ticket {jira_ticket_key}..."):
+                    fetch_result = self.call_api("/jira/fetch", {
+                        "ticket_key": jira_ticket_key,
+                        "base_url": jira_base_url,
+                        "email": jira_email,
+                        "api_token": jira_api_token
+                    })
+                    
+                    if fetch_result:
+                        ticket_data = fetch_result.get("ticket_data", {})
+                        requirements = fetch_result.get("requirements", {})
+                        
+                        st.success(f"✅ Successfully fetched ticket: {ticket_data.get('key', 'Unknown')}")
+                        
+                        # Display ticket preview
+                        with st.expander("📋 Ticket Preview", expanded=True):
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                st.write(f"**Key:** {ticket_data.get('key', 'N/A')}")
+                                st.write(f"**Summary:** {ticket_data.get('summary', 'N/A')}")
+                                st.write(f"**Status:** {ticket_data.get('status', 'N/A')}")
+                                st.write(f"**Priority:** {ticket_data.get('priority', 'N/A')}")
+                            
+                            with col2:
+                                st.write(f"**Type:** {ticket_data.get('issue_type', 'N/A')}")
+                                st.write(f"**Assignee:** {ticket_data.get('assignee', 'N/A')}")
+                                st.write(f"**Reporter:** {ticket_data.get('reporter', 'N/A')}")
+                                
+                                if ticket_data.get('labels'):
+                                    st.write(f"**Labels:** {', '.join(ticket_data['labels'])}")
+                            
+                            if ticket_data.get('description'):
+                                st.write("**Description:**")
+                                st.write(ticket_data['description'][:500] + "..." if len(ticket_data.get('description', '')) > 500 else ticket_data.get('description', ''))
+                            
+                            # Show inferred requirements
+                            st.write("**Inferred Requirements:**")
+                            if requirements.get('domain'):
+                                st.write(f"- **Domain:** {requirements['domain']}")
+                            if requirements.get('pattern_types'):
+                                st.write(f"- **Pattern Types:** {', '.join(requirements['pattern_types'])}")
+                    else:
+                        st.error("❌ Failed to fetch ticket. Please check your credentials and ticket key.")
         
-        if st.button("🚀 Fetch from Jira", disabled=True):
-            st.warning("Jira integration will be implemented in task 10.")
+        # Handle submit analysis
+        if submit_jira:
+            if not all([jira_base_url, jira_email, jira_api_token, jira_ticket_key]):
+                st.error("❌ Please fill in all fields")
+            else:
+                with st.spinner("Starting Jira analysis..."):
+                    # Use the ingest endpoint with Jira source
+                    payload = {
+                        "ticket_key": jira_ticket_key,
+                        "base_url": jira_base_url,
+                        "email": jira_email,
+                        "api_token": jira_api_token
+                    }
+                    
+                    # Add provider config if set
+                    provider_config = None
+                    if hasattr(st.session_state, "provider_config") and st.session_state.provider_config:
+                        provider_config = st.session_state.provider_config
+                    
+                    self.submit_requirements("jira", payload)
     
     def submit_requirements(self, source: str, payload: Dict):
         """Submit requirements to the API."""
@@ -539,10 +654,12 @@ class AgenticOrNotUI:
                         "filename": payload.get("filename")
                     }
                 elif source == "jira":
+                    # For Jira, the payload contains credentials and ticket_key
+                    # The actual ticket data will be fetched by the backend
                     st.session_state.requirements = {
-                        "description": payload.get("summary", "") + " " + payload.get("description", ""),
-                        "jira_key": payload.get("key"),
-                        "priority": payload.get("priority")
+                        "description": f"Jira ticket: {payload.get('ticket_key', 'Unknown')}",
+                        "jira_key": payload.get("ticket_key"),
+                        "source": "jira"
                     }
                 
                 st.success(f"✅ Requirements submitted! Session ID: {st.session_state.session_id}")
@@ -714,30 +831,74 @@ class AgenticOrNotUI:
         
         st.header("🎯 Results & Recommendations")
         
+        # Show original requirements
+        if st.session_state.get('requirements'):
+            with st.expander("📋 Original Requirements", expanded=False):
+                req = st.session_state.requirements
+                
+                if req.get('description'):
+                    st.write(f"**Description:** {req['description']}")
+                
+                if req.get('domain'):
+                    st.write(f"**Domain:** {req['domain']}")
+                
+                if req.get('pattern_types'):
+                    st.write(f"**Pattern Types:** {', '.join(req['pattern_types'])}")
+                
+                if req.get('jira_key'):
+                    st.write(f"**Jira Ticket:** {req['jira_key']}")
+                
+                if req.get('filename'):
+                    st.write(f"**Source File:** {req['filename']}")
+                
+                # Show any additional requirement fields
+                for key, value in req.items():
+                    if key not in ['description', 'domain', 'pattern_types', 'jira_key', 'filename', 'source'] and value:
+                        st.write(f"**{key.replace('_', ' ').title()}:** {value}")
+            
+            st.markdown("---")
+        
         rec = st.session_state.recommendations
         
-        # Overall feasibility
+        # Overall feasibility with better display
         feasibility = rec['feasibility']
-        feasibility_colors = {
-            "Yes": "🟢",
-            "Partial": "🟡", 
-            "No": "🔴"
+        feasibility_info = {
+            "Yes": {"color": "🟢", "label": "Fully Automatable", "desc": "This requirement can be completely automated with high confidence."},
+            "Partial": {"color": "🟡", "label": "Partially Automatable", "desc": "This requirement can be mostly automated, but may need human oversight for some steps."},
+            "No": {"color": "🔴", "label": "Not Automatable", "desc": "This requirement is not suitable for automation at this time."},
+            "Automatable": {"color": "🟢", "label": "Fully Automatable", "desc": "This requirement can be completely automated with high confidence."},
+            "Partially Automatable": {"color": "🟡", "label": "Partially Automatable", "desc": "This requirement can be mostly automated, but may need human oversight for some steps."},
+            "Not Automatable": {"color": "🔴", "label": "Not Automatable", "desc": "This requirement is not suitable for automation at this time."}
         }
         
-        st.subheader(f"{feasibility_colors.get(feasibility, '⚪')} Feasibility: {feasibility}")
+        feas_info = feasibility_info.get(feasibility, {"color": "⚪", "label": feasibility, "desc": "Assessment pending."})
         
-        # Tech stack
+        st.subheader(f"{feas_info['color']} Feasibility: {feas_info['label']}")
+        st.write(feas_info['desc'])
+        
+        # Solution Overview
+        if rec.get('recommendations') and len(rec['recommendations']) > 0:
+            st.subheader("💡 Recommended Solution")
+            
+            # Get the best recommendation for solution overview
+            best_rec = rec['recommendations'][0]
+            
+            # Generate solution explanation
+            solution_explanation = self._generate_solution_explanation(best_rec, rec)
+            st.write(solution_explanation)
+        
+        # Tech stack with explanations
         if rec.get('tech_stack'):
             st.subheader("🛠️ Recommended Tech Stack")
-            tech_cols = st.columns(min(len(rec['tech_stack']), 4))
-            for i, tech in enumerate(rec['tech_stack']):
-                with tech_cols[i % 4]:
-                    st.info(tech)
+            
+            # Show tech stack with explanations
+            self._render_tech_stack_explanation(rec['tech_stack'])
         
-        # Reasoning
+        # Detailed reasoning
         if rec.get('reasoning'):
-            st.subheader("💭 Reasoning")
-            st.write(rec['reasoning'])
+            st.subheader("💭 Technical Analysis")
+            with st.expander("View detailed technical reasoning", expanded=False):
+                st.write(rec['reasoning'])
         
         # Individual recommendations
         if rec.get('recommendations'):
@@ -758,6 +919,149 @@ class AgenticOrNotUI:
         
         # Export buttons
         self.render_export_buttons()
+    
+    def _generate_solution_explanation(self, best_recommendation: Dict, overall_rec: Dict) -> str:
+        """Generate a user-friendly solution explanation."""
+        feasibility = overall_rec.get('feasibility', 'Unknown')
+        confidence = best_recommendation.get('confidence', 0)
+        pattern_id = best_recommendation.get('pattern_id', 'Unknown')
+        
+        explanations = {
+            "Yes": "This solution would work by creating an automated system that handles the entire workflow without human intervention. ",
+            "Automatable": "This solution would work by creating an automated system that handles the entire workflow without human intervention. ",
+            "Partial": "This solution would work by automating the routine parts of the workflow while keeping humans in the loop for decision-making and oversight. ",
+            "Partially Automatable": "This solution would work by automating the routine parts of the workflow while keeping humans in the loop for decision-making and oversight. ",
+            "No": "While full automation isn't recommended, this analysis suggests areas where manual processes could be improved with better tooling. ",
+            "Not Automatable": "While full automation isn't recommended, this analysis suggests areas where manual processes could be improved with better tooling. "
+        }
+        
+        base_explanation = explanations.get(feasibility, "This solution would involve a custom approach based on your specific requirements. ")
+        
+        # Add confidence-based details
+        if confidence > 0.8:
+            confidence_text = "We have high confidence in this approach based on similar successful implementations."
+        elif confidence > 0.6:
+            confidence_text = "This approach has been validated in similar scenarios, though some customization may be needed."
+        else:
+            confidence_text = "This approach would require careful planning and possibly a proof-of-concept phase."
+        
+        # Add implementation approach
+        if feasibility in ["Yes", "Automatable"]:
+            implementation = " The system would integrate with your existing tools, process data automatically, and provide real-time monitoring and alerts."
+        elif feasibility in ["Partial", "Partially Automatable"]:
+            implementation = " The automated components would handle data processing and routine tasks, while presenting key decisions to human operators through a user-friendly interface."
+        else:
+            implementation = " The focus would be on providing better tools and dashboards to make manual processes more efficient and less error-prone."
+        
+        return base_explanation + confidence_text + implementation
+    
+    def _render_tech_stack_explanation(self, tech_stack: List[str]):
+        """Render tech stack with explanations of how components work together."""
+        if not tech_stack:
+            return
+        
+        # Categorize technologies
+        categories = {
+            "Backend/API": ["Python", "FastAPI", "Flask", "Django", "Node.js", "Express"],
+            "Database": ["PostgreSQL", "MySQL", "MongoDB", "SQLAlchemy", "Redis"],
+            "Message Queue": ["Celery", "RabbitMQ", "Apache Kafka", "AWS SQS"],
+            "Cloud/Infrastructure": ["Docker", "Kubernetes", "AWS", "Azure", "GCP"],
+            "Monitoring": ["Prometheus", "Grafana", "ELK Stack", "DataDog"],
+            "Security": ["cryptography", "OAuth2", "JWT", "SSL/TLS"],
+            "Integration": ["httpx", "requests", "Webhook", "REST API"],
+            "Frontend": ["React", "Vue.js", "Streamlit", "HTML/CSS/JS"]
+        }
+        
+        # Group technologies by category
+        categorized_tech = {}
+        uncategorized = []
+        
+        for tech in tech_stack:
+            found_category = None
+            for category, techs in categories.items():
+                if any(t.lower() in tech.lower() or tech.lower() in t.lower() for t in techs):
+                    found_category = category
+                    break
+            
+            if found_category:
+                if found_category not in categorized_tech:
+                    categorized_tech[found_category] = []
+                categorized_tech[found_category].append(tech)
+            else:
+                uncategorized.append(tech)
+        
+        # Display categorized tech stack
+        for category, techs in categorized_tech.items():
+            with st.expander(f"{category} ({len(techs)} technologies)", expanded=True):
+                cols = st.columns(min(len(techs), 3))
+                for i, tech in enumerate(techs):
+                    with cols[i % 3]:
+                        st.info(f"**{tech}**")
+                
+                # Add category explanation
+                explanations = {
+                    "Backend/API": "Handles business logic, data processing, and provides APIs for integration.",
+                    "Database": "Stores and manages data with reliability and performance optimization.",
+                    "Message Queue": "Enables asynchronous processing and reliable communication between components.",
+                    "Cloud/Infrastructure": "Provides scalable hosting, deployment, and infrastructure management.",
+                    "Monitoring": "Tracks system performance, errors, and provides operational insights.",
+                    "Security": "Ensures data protection, authentication, and secure communications.",
+                    "Integration": "Connects with external systems and APIs for data exchange.",
+                    "Frontend": "Provides user interfaces for monitoring and manual interventions."
+                }
+                
+                if category in explanations:
+                    st.write(f"*{explanations[category]}*")
+        
+        # Show uncategorized technologies
+        if uncategorized:
+            with st.expander(f"Additional Technologies ({len(uncategorized)})", expanded=True):
+                cols = st.columns(min(len(uncategorized), 4))
+                for i, tech in enumerate(uncategorized):
+                    with cols[i % 4]:
+                        st.info(tech)
+        
+        # Add overall architecture explanation
+        st.subheader("🏗️ How It All Works Together")
+        
+        architecture_explanation = self._generate_architecture_explanation(categorized_tech, uncategorized)
+        st.write(architecture_explanation)
+    
+    def _generate_architecture_explanation(self, categorized_tech: Dict, uncategorized: List[str]) -> str:
+        """Generate explanation of how the tech stack components work together."""
+        explanation_parts = []
+        
+        # Data flow explanation
+        if "Backend/API" in categorized_tech:
+            explanation_parts.append("The **backend services** serve as the core processing engine, handling business logic and orchestrating workflows.")
+        
+        if "Database" in categorized_tech:
+            explanation_parts.append("**Data storage** components ensure reliable persistence and fast retrieval of information.")
+        
+        if "Message Queue" in categorized_tech:
+            explanation_parts.append("**Message queues** enable asynchronous processing, allowing the system to handle high volumes and provide resilience.")
+        
+        if "Integration" in categorized_tech:
+            explanation_parts.append("**Integration layers** connect with your existing systems and external APIs to exchange data seamlessly.")
+        
+        if "Security" in categorized_tech:
+            explanation_parts.append("**Security components** protect data in transit and at rest, ensuring compliance and trust.")
+        
+        if "Monitoring" in categorized_tech:
+            explanation_parts.append("**Monitoring tools** provide visibility into system performance and help detect issues before they impact users.")
+        
+        if "Cloud/Infrastructure" in categorized_tech:
+            explanation_parts.append("**Cloud infrastructure** provides scalable hosting and deployment capabilities.")
+        
+        if "Frontend" in categorized_tech:
+            explanation_parts.append("**User interfaces** allow operators to monitor the system and handle exceptions.")
+        
+        # Add flow description
+        flow_description = (" The typical flow starts with data ingestion through APIs or integrations, "
+                          "processing by backend services, storage in databases, and notification through "
+                          "monitoring systems. Message queues ensure reliable processing even during high load periods.")
+        
+        return " ".join(explanation_parts) + flow_description
     
     def render_export_buttons(self):
         """Render export functionality."""

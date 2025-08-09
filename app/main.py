@@ -182,7 +182,146 @@ def main():
                     st.rerun()
         
         elif input_method == "Jira":
-            st.info("🚧 Jira integration coming soon!")
+            st.subheader("🎫 Jira Integration")
+            
+            with st.form("jira_form"):
+                st.write("**Jira Configuration**")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    jira_base_url = st.text_input(
+                        "Jira Base URL",
+                        placeholder="https://your-domain.atlassian.net",
+                        help="Your Jira instance URL"
+                    )
+                    jira_email = st.text_input(
+                        "Email",
+                        placeholder="your-email@company.com",
+                        help="Your Jira account email"
+                    )
+                
+                with col2:
+                    jira_api_token = st.text_input(
+                        "API Token",
+                        type="password",
+                        help="Generate from Jira Account Settings > Security > API tokens"
+                    )
+                    jira_ticket_key = st.text_input(
+                        "Ticket Key",
+                        placeholder="PROJ-123",
+                        help="Jira ticket key (e.g., PROJ-123)"
+                    )
+                
+                col1, col2, col3 = st.columns([1, 1, 2])
+                
+                with col1:
+                    test_connection = st.form_submit_button("🔗 Test Connection", type="secondary")
+                
+                with col2:
+                    fetch_ticket = st.form_submit_button("📥 Fetch Ticket", type="secondary")
+                
+                with col3:
+                    submit_jira = st.form_submit_button("🚀 Start Analysis", type="primary")
+            
+            # Handle test connection
+            if test_connection:
+                if not all([jira_base_url, jira_email, jira_api_token]):
+                    st.error("❌ Please fill in all Jira configuration fields")
+                else:
+                    with st.spinner("Testing Jira connection..."):
+                        test_result = call_api("/jira/test", {
+                            "base_url": jira_base_url,
+                            "email": jira_email,
+                            "api_token": jira_api_token
+                        })
+                        
+                        if test_result and test_result.get("ok"):
+                            st.success("✅ Jira connection successful!")
+                        else:
+                            error_msg = test_result.get("message", "Unknown error") if test_result else "Connection failed"
+                            st.error(f"❌ Connection failed: {error_msg}")
+            
+            # Handle fetch ticket
+            if fetch_ticket:
+                if not all([jira_base_url, jira_email, jira_api_token, jira_ticket_key]):
+                    st.error("❌ Please fill in all fields including ticket key")
+                else:
+                    with st.spinner(f"Fetching ticket {jira_ticket_key}..."):
+                        fetch_result = call_api("/jira/fetch", {
+                            "ticket_key": jira_ticket_key,
+                            "base_url": jira_base_url,
+                            "email": jira_email,
+                            "api_token": jira_api_token
+                        })
+                        
+                        if fetch_result:
+                            ticket_data = fetch_result.get("ticket_data", {})
+                            requirements = fetch_result.get("requirements", {})
+                            
+                            st.success(f"✅ Successfully fetched ticket: {ticket_data.get('key', 'Unknown')}")
+                            
+                            # Display ticket preview
+                            with st.expander("📋 Ticket Preview", expanded=True):
+                                col1, col2 = st.columns(2)
+                                
+                                with col1:
+                                    st.write(f"**Key:** {ticket_data.get('key', 'N/A')}")
+                                    st.write(f"**Summary:** {ticket_data.get('summary', 'N/A')}")
+                                    st.write(f"**Status:** {ticket_data.get('status', 'N/A')}")
+                                    st.write(f"**Priority:** {ticket_data.get('priority', 'N/A')}")
+                                
+                                with col2:
+                                    st.write(f"**Type:** {ticket_data.get('issue_type', 'N/A')}")
+                                    st.write(f"**Assignee:** {ticket_data.get('assignee', 'N/A')}")
+                                    st.write(f"**Reporter:** {ticket_data.get('reporter', 'N/A')}")
+                                    
+                                    if ticket_data.get('labels'):
+                                        st.write(f"**Labels:** {', '.join(ticket_data['labels'])}")
+                                
+                                if ticket_data.get('description'):
+                                    st.write("**Description:**")
+                                    st.write(ticket_data['description'][:500] + "..." if len(ticket_data.get('description', '')) > 500 else ticket_data.get('description', ''))
+                                
+                                # Show inferred requirements
+                                st.write("**Inferred Requirements:**")
+                                if requirements.get('domain'):
+                                    st.write(f"- **Domain:** {requirements['domain']}")
+                                if requirements.get('pattern_types'):
+                                    st.write(f"- **Pattern Types:** {', '.join(requirements['pattern_types'])}")
+                        else:
+                            st.error("❌ Failed to fetch ticket. Please check your credentials and ticket key.")
+            
+            # Handle submit analysis
+            if submit_jira:
+                if not all([jira_base_url, jira_email, jira_api_token, jira_ticket_key]):
+                    st.error("❌ Please fill in all fields")
+                else:
+                    with st.spinner("Starting Jira analysis..."):
+                        # Use the ingest endpoint with Jira source
+                        payload = {
+                            "ticket_key": jira_ticket_key,
+                            "base_url": jira_base_url,
+                            "email": jira_email,
+                            "api_token": jira_api_token
+                        }
+                        
+                        # Add provider config if set
+                        provider_config = None
+                        if st.session_state.get("provider_config"):
+                            provider_config = st.session_state.provider_config
+                        
+                        result = call_api("/ingest", {
+                            "source": "jira",
+                            "payload": payload,
+                            "provider_config": provider_config
+                        })
+                        
+                        if result and "session_id" in result:
+                            st.session_state.session_id = result["session_id"]
+                            st.success(f"✅ Jira analysis started! Session ID: {result['session_id']}")
+                            st.rerun()
+                        else:
+                            st.error("❌ Failed to start analysis. Please check your configuration.")
     
     with tab2:
         st.header("Questions & Answers")
