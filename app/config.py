@@ -39,6 +39,14 @@ class BedrockConfig(BaseModel):
     region: str = "eu-west-2"
 
 
+class JiraConfig(BaseModel):
+    """Configuration for Jira integration."""
+    base_url: Optional[str] = None
+    email: Optional[str] = None
+    api_token: Optional[str] = None
+    timeout: int = 30
+
+
 class Settings(BaseSettings):
     """Main application settings."""
     provider: str = "openai"
@@ -50,6 +58,7 @@ class Settings(BaseSettings):
     timeouts: TimeoutConfig = Field(default_factory=TimeoutConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     bedrock: BedrockConfig = Field(default_factory=BedrockConfig)
+    jira: JiraConfig = Field(default_factory=JiraConfig)
     audit: AuditConfig = Field(default_factory=AuditConfig)
 
     model_config = {"env_file": ".env", "env_nested_delimiter": "_"}
@@ -81,6 +90,25 @@ def load_settings(config_path: Optional[str] = None) -> Settings:
                 env_overrides['logging']['level'] = os.environ[env_key]
             else:
                 env_overrides[key] = os.environ[env_key]
+    
+    # Handle Jira environment variables
+    jira_env_vars = {
+        'JIRA_BASE_URL': 'base_url',
+        'JIRA_EMAIL': 'email', 
+        'JIRA_API_TOKEN': 'api_token',
+        'JIRA_TIMEOUT': 'timeout'
+    }
+    
+    jira_config = {}
+    for env_key, config_key in jira_env_vars.items():
+        if env_key in os.environ:
+            value = os.environ[env_key]
+            if config_key == 'timeout':
+                value = int(value)
+            jira_config[config_key] = value
+    
+    if jira_config:
+        env_overrides['jira'] = jira_config
     
     # Merge config data with environment overrides
     config_data.update(env_overrides)

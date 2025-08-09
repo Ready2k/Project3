@@ -19,6 +19,7 @@ from app.pattern.loader import PatternLoader
 from app.pattern.matcher import PatternMatcher
 from app.qa.question_loop import QuestionLoop, TemplateLoader
 from app.services.recommendation import RecommendationService
+from app.services.jira import JiraService, JiraError, JiraConnectionError, JiraTicketNotFoundError
 from app.state.store import SessionState, Phase, DiskCacheStore
 from app.utils.logger import app_logger
 
@@ -46,6 +47,7 @@ pattern_matcher: Optional[PatternMatcher] = None
 question_loop: Optional[QuestionLoop] = None
 recommendation_service: Optional[RecommendationService] = None
 export_service: Optional[ExportService] = None
+jira_service: Optional[JiraService] = None
 
 
 def get_settings() -> Settings:
@@ -180,6 +182,15 @@ def get_export_service() -> ExportService:
     return export_service
 
 
+def get_jira_service() -> JiraService:
+    """Get Jira service instance."""
+    global jira_service
+    if jira_service is None:
+        settings = get_settings()
+        jira_service = JiraService(settings.jira)
+    return jira_service
+
+
 class IngestRequest(BaseModel):
     source: str  # "text", "file", "jira"
     payload: Dict[str, Any]
@@ -250,6 +261,29 @@ class ProviderTestResponse(BaseModel):
     message: str
 
 
+class JiraTestRequest(BaseModel):
+    base_url: str
+    email: str
+    api_token: str
+
+
+class JiraTestResponse(BaseModel):
+    ok: bool
+    message: str
+
+
+class JiraFetchRequest(BaseModel):
+    ticket_key: str
+    base_url: str
+    email: str
+    api_token: str
+
+
+class JiraFetchResponse(BaseModel):
+    ticket_data: Dict[str, Any]
+    requirements: Dict[str, Any]
+
+
 # API Endpoints
 @app.post("/ingest", response_model=IngestResponse)
 async def ingest_requirements(request: IngestRequest):
@@ -278,11 +312,35 @@ async def ingest_requirements(request: IngestRequest):
                 "filename": request.payload.get("filename")
             }
         elif request.source == "jira":
-            requirements = {
-                "description": request.payload.get("summary", "") + " " + request.payload.get("description", ""),
-                "jira_key": request.payload.get("key"),
-                "priority": request.payload.get("priority")
-            }
+            # For Jira source, payload should contain ticket_key and credentials
+            ticket_key = request.payload.get("ticket_key")
+            if not ticket_key:
+                raise HTTPException(status_code=400, detail="ticket_key is required for Jira source")
+            
+            # Create temporary Jira service with provided credentials
+            from app.config import JiraConfig
+            jira_config = JiraConfig(
+                base_url=request.payload.get("base_url"),
+                email=request.payload.get("email"),
+                api_token=request.payload.get("api_token")
+            )
+            temp_jira_service = JiraService(jira_config)
+            
+            try:
+                # Fetch ticket data
+                ticket = await temp_jira_service.fetch_ticket(ticket_key)
+                # Map to requirements format
+                requirements = temp_jira_service.map_ticket_to_requirements(ticket)
+                app_logger.info(f"Successfully fetched and mapped Jira ticket {ticket_key}")
+            except JiraConnectionError as e:
+                raise HTTPException(status_code=401, detail=f"Jira connection failed: {str(e)}")
+            except JiraTicketNotFoundError as e:
+                raise HTTPException(status_code=404, detail=str(e))
+            except JiraError as e:
+                raise HTTPException(status_code=400, detail=f"Jira error: {str(e)}")
+            except Exception as e:
+                app_logger.error(f"Unexpected error fetching Jira ticket {ticket_key}: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to fetch Jira ticket: {str(e)}")
         
         # Create initial session state
         session_state = SessionState(
@@ -326,6 +384,8 @@ async def ingest_requirements(request: IngestRequest):
         app_logger.info(f"Created new session: {session_id} in phase: {session_state.phase.value}")
         return IngestResponse(session_id=session_id)
         
+    except HTTPException:
+        raise
     except Exception as e:
         app_logger.error(f"Error in ingest: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -540,21 +600,29 @@ async def generate_recommendations(request: RecommendRequest):
                 top_k=request.top_k
             )
         else:
-            # Convert stored matches back to MatchResult objects (simplified)
+            # Convert stored matches back to MatchResult objects with proper data
             from app.pattern.matcher import MatchResult
-            matches = [
-                MatchResult(
+            pattern_loader = PatternLoader(str(get_settings().pattern_library_path))
+            patterns = pattern_loader.load_patterns()
+            pattern_dict = {p["pattern_id"]: p for p in patterns}
+            
+            matches = []
+            for m in session.matches:
+                # Get pattern data for proper feasibility and tech stack
+                pattern_data = pattern_dict.get(m.pattern_id, {})
+                
+                match_result = MatchResult(
                     pattern_id=m.pattern_id,
-                    pattern_name=f"Pattern {m.pattern_id}",
-                    feasibility="Automatable",
-                    tech_stack=["Python", "FastAPI"],
+                    pattern_name=pattern_data.get("name", f"Pattern {m.pattern_id}"),
+                    feasibility=pattern_data.get("feasibility", "Partially Automatable"),
+                    tech_stack=pattern_data.get("tech_stack", ["Python", "FastAPI"]),
                     confidence=m.confidence,
                     tag_score=0.8,
                     vector_score=0.7,
                     blended_score=m.score,
                     rationale=m.rationale
-                ) for m in session.matches
-            ]
+                )
+                matches.append(match_result)
         
         # Generate recommendations
         rec_service = get_recommendation_service()
@@ -672,6 +740,65 @@ async def test_provider(request: ProviderTestRequest):
     except Exception as e:
         app_logger.error(f"Error testing provider {request.provider}: {e}")
         return ProviderTestResponse(ok=False, message=f"Unexpected error: {str(e)}")
+
+
+@app.post("/jira/test", response_model=JiraTestResponse)
+async def test_jira_connection(request: JiraTestRequest):
+    """Test Jira connection with provided credentials."""
+    try:
+        from app.config import JiraConfig
+        jira_config = JiraConfig(
+            base_url=request.base_url,
+            email=request.email,
+            api_token=request.api_token
+        )
+        
+        jira_service = JiraService(jira_config)
+        success, error_msg = await jira_service.test_connection()
+        
+        return JiraTestResponse(
+            ok=success,
+            message="Jira connection successful" if success else error_msg
+        )
+        
+    except Exception as e:
+        app_logger.error(f"Error testing Jira connection: {e}")
+        return JiraTestResponse(ok=False, message=f"Unexpected error: {str(e)}")
+
+
+@app.post("/jira/fetch", response_model=JiraFetchResponse)
+async def fetch_jira_ticket(request: JiraFetchRequest):
+    """Fetch Jira ticket and map to requirements format."""
+    try:
+        from app.config import JiraConfig
+        jira_config = JiraConfig(
+            base_url=request.base_url,
+            email=request.email,
+            api_token=request.api_token
+        )
+        
+        jira_service = JiraService(jira_config)
+        
+        # Fetch ticket
+        ticket = await jira_service.fetch_ticket(request.ticket_key)
+        
+        # Map to requirements
+        requirements = jira_service.map_ticket_to_requirements(ticket)
+        
+        return JiraFetchResponse(
+            ticket_data=ticket.model_dump(),
+            requirements=requirements
+        )
+        
+    except JiraConnectionError as e:
+        raise HTTPException(status_code=401, detail=f"Jira connection failed: {str(e)}")
+    except JiraTicketNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except JiraError as e:
+        raise HTTPException(status_code=400, detail=f"Jira error: {str(e)}")
+    except Exception as e:
+        app_logger.error(f"Error fetching Jira ticket {request.ticket_key}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch Jira ticket: {str(e)}")
 
 
 @app.get("/health")

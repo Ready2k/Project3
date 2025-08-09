@@ -92,23 +92,23 @@ class RecommendationService:
                         f"base={base_feasibility}, complexity={complexity_score}, "
                         f"risk={risk_score}, match_quality={match_quality}")
         
-        # Decision logic based on multiple factors
-        if base_feasibility == "Automatable":
-            if complexity_score >= 4 or risk_score >= 3:
+        # More lenient decision logic for better user experience
+        if base_feasibility in ["Automatable", "Yes"]:
+            if complexity_score >= 5 or risk_score >= 4:
                 return "No"
-            elif complexity_score >= 2 or risk_score >= 2 or match_quality < 0.5:
+            elif complexity_score >= 3 or risk_score >= 3 or match_quality < 0.4:
                 return "Partial"
             else:
                 return "Yes"
-        elif base_feasibility == "Partially Automatable":
-            if complexity_score >= 3 or risk_score >= 2:
+        elif base_feasibility in ["Partially Automatable", "Partial"]:
+            if complexity_score >= 4 or risk_score >= 3:
                 return "No"
-            elif match_quality < 0.4:
+            elif match_quality < 0.3:
                 return "No"
             else:
                 return "Partial"
-        else:  # Not Automatable
-            if match_quality > 0.8 and complexity_score <= 1 and risk_score <= 1:
+        else:  # Not Automatable or No
+            if match_quality > 0.7 and complexity_score <= 2 and risk_score <= 1:
                 return "Partial"
             else:
                 return "No"
@@ -133,35 +133,55 @@ class RecommendationService:
         else:
             factors["data_sensitivity"] = 0
         
-        # Integration complexity
+        # Integration complexity - be more lenient for typical use cases
         integrations = requirements.get("integrations", [])
-        if len(integrations) > 5:
+        if len(integrations) > 8:
             factors["integrations"] = 3
-        elif len(integrations) > 3:
+        elif len(integrations) > 5:
             factors["integrations"] = 2
-        elif len(integrations) > 1:
+        elif len(integrations) > 2:
             factors["integrations"] = 1
         else:
             factors["integrations"] = 0
         
-        # Workflow complexity
+        # Workflow complexity - be more lenient
         workflow_steps = requirements.get("workflow_steps", [])
-        if len(workflow_steps) > 10:
+        if len(workflow_steps) > 15:
             factors["workflow_complexity"] = 2
-        elif len(workflow_steps) > 5:
+        elif len(workflow_steps) > 8:
             factors["workflow_complexity"] = 1
         else:
             factors["workflow_complexity"] = 0
         
-        # Volume complexity
+        # Volume complexity - be more lenient
         volume = requirements.get("volume", {})
         daily_volume = volume.get("daily", 0)
-        if daily_volume > 10000:
+        if daily_volume > 50000:
             factors["volume"] = 2
-        elif daily_volume > 1000:
+        elif daily_volume > 5000:
             factors["volume"] = 1
         else:
             factors["volume"] = 0
+        
+        # Description complexity - analyze the description text
+        description = requirements.get("description", "")
+        if description:
+            desc_lower = description.lower()
+            complexity_keywords = [
+                "complex", "multiple", "various", "different", "several", 
+                "integrate", "synchronize", "coordinate", "orchestrate",
+                "real-time", "concurrent", "parallel", "distributed"
+            ]
+            
+            keyword_count = sum(1 for keyword in complexity_keywords if keyword in desc_lower)
+            if keyword_count >= 5:
+                factors["description_complexity"] = 2
+            elif keyword_count >= 2:
+                factors["description_complexity"] = 1
+            else:
+                factors["description_complexity"] = 0
+        else:
+            factors["description_complexity"] = 0
         
         return factors
     

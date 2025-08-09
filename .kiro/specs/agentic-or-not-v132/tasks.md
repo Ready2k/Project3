@@ -71,7 +71,7 @@
   - Write unit tests for export format validation
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 10. Build Jira integration service
+- [x] 10. Build Jira integration service
   - Implement Jira API client with authentication
   - Add ticket fetching and requirement mapping
   - Create error handling for Jira connectivity issues
