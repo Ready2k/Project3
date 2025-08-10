@@ -1,4 +1,4 @@
-# AgenticOrNot v1.3.2
+# Automated AI Assessment (AAA)
 
 Interactive GUI + API system that judges if user stories/requirements are automatable with agentic AI. The system asks clarifying questions, matches requirements to reusable solution patterns, and exports results with feasibility assessments.
 
@@ -72,8 +72,20 @@ python3 run_streamlit.py
 #### Option 3: Docker Compose
 
 ```bash
-# Start all services with Redis
-docker-compose up
+# Start all services with Redis (production-like)
+make docker-up
+# or
+docker-compose up -d
+
+# Development with live reloading
+make docker-dev
+# or
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+# Production deployment
+make docker-prod
+# or
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
 ## Usage
@@ -303,6 +315,36 @@ The system includes 3 sample patterns:
 2. **PAT-002**: API Integration Workflow  
 3. **PAT-003**: Document Processing Pipeline
 
+## Deployment
+
+For detailed deployment instructions including production setups, Docker configurations, and cloud deployments, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+### Quick Docker Start
+
+```bash
+# Build and start with Docker
+make docker-build
+make docker-up
+
+# Or for development
+make docker-dev
+```
+
+## Monitoring
+
+### Health Checks
+
+```bash
+# Check all services
+python3 scripts/health_check.py
+
+# JSON output
+python3 scripts/health_check.py --json
+
+# Continuous monitoring
+./scripts/monitor.sh 30  # Check every 30 seconds
+```
+
 ## Troubleshooting
 
 ### 🔧 LLM Provider Issues
@@ -350,4 +392,4 @@ MIT License - see LICENSE file for details.
 
 ---
 
-**AgenticOrNot v1.3.2** - Assess automation feasibility with AI-powered pattern matching.
+**Automated AI Assessment (AAA)** - Assess automation feasibility with AI-powered pattern matching.

@@ -1,0 +1,24 @@
+{
+  "pattern_id": "PAT-004",
+  "name": "Inventory Management Automation",
+  "description": "Automated inventory tracking and reordering system using barcode scanning, threshold monitoring, and supplier API integration",
+  "feasibility": "Automatable",
+  "pattern_type": ["inventory_management", "barcode_scanning", "api_integration"],
+  "input_requirements": [
+    "Barcode scanning capability",
+    "Inventory database schema",
+    "Reorder threshold rules",
+    "Supplier API specifications",
+    "Mobile device integration"
+  ],
+  "tech_stack": ["Python", "FastAPI", "SQLAlchemy", "barcode scanning libraries", "mobile app framework"],
+  "related_patterns": ["PAT-002"],
+  "confidence_score": 0.9,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": ["inventory_database", "supplier_apis", "mobile_devices"]
+  },
+  "domain": "inventory",
+  "complexity": "Medium",
+  "estimated_effort": "4-8 weeks"
+}

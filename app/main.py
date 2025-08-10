@@ -1,4 +1,4 @@
-"""Streamlit UI for AgenticOrNot."""
+"""Streamlit UI for Automated AI Assessment (AAA)."""
 
 import json
 import time
@@ -9,7 +9,7 @@ import streamlit as st
 
 # Configure page
 st.set_page_config(
-    page_title="AgenticOrNot v1.3.2",
+    page_title="Automated AI Assessment (AAA)",
     page_icon="🤖",
     layout="wide"
 )
@@ -44,7 +44,7 @@ def call_api(endpoint: str, method: str = "GET", data: Dict[str, Any] = None) ->
 
 def main():
     """Main Streamlit application."""
-    st.title("🤖 AgenticOrNot v1.3.2")
+    st.title("🤖 Automated AI Assessment (AAA)")
     st.markdown("**Assess automation feasibility of your requirements**")
     
     # Sidebar for configuration

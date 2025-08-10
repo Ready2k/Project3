@@ -118,7 +118,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# AgenticOrNot specific
+# Automated AI Assessment (AAA) specific
 cache/
 exports/
 *.faiss

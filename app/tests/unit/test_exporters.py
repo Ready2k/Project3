@@ -248,7 +248,7 @@ class TestMarkdownExporter:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        assert "# AgenticOrNot - Automation Feasibility Report" in content
+        assert "# Automated AI Assessment (AAA) - Automation Feasibility Report" in content
         assert "test-session-456" in content
         assert "Automate invoice processing" in content
         assert "Partially Automatable" in content

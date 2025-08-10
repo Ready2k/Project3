@@ -1,4 +1,4 @@
-"""Streamlit UI for AgenticOrNot application."""
+"""Streamlit UI for Automated AI Assessment (AAA) application."""
 
 import asyncio
 import json
@@ -252,8 +252,8 @@ API_BASE_URL = "http://localhost:8000"
 POLL_INTERVAL = 2  # seconds
 
 
-class AgenticOrNotUI:
-    """Main Streamlit UI class for AgenticOrNot."""
+class AutomatedAIAssessmentUI:
+    """Main Streamlit UI class for Automated AI Assessment (AAA)."""
     
     def __init__(self):
         self.setup_page_config()
@@ -262,7 +262,7 @@ class AgenticOrNotUI:
     def setup_page_config(self):
         """Configure Streamlit page settings."""
         st.set_page_config(
-            page_title="AgenticOrNot v1.3.2",
+            page_title="Automated AI Assessment (AAA)",
             page_icon="🤖",
             layout="wide",
             initial_sidebar_state="expanded"
@@ -1586,7 +1586,7 @@ class AgenticOrNotUI:
     
     def run(self):
         """Main application entry point."""
-        st.title("🤖 AgenticOrNot v1.3.2")
+        st.title("🤖 Automated AI Assessment (AAA)")
         st.markdown("*Assess automation feasibility of your requirements with AI*")
         
         # Sidebar with provider configuration
@@ -1623,7 +1623,7 @@ class AgenticOrNotUI:
         
         with tab4:
             st.markdown("""
-            ## About AgenticOrNot v1.3.2
+            ## About Automated AI Assessment (AAA)
             
             This application helps you assess whether your business requirements can be automated using agentic AI systems.
             
@@ -1651,7 +1651,7 @@ class AgenticOrNotUI:
 
 def main():
     """Main function to run the Streamlit app."""
-    app = AgenticOrNotUI()
+    app = AutomatedAIAssessmentUI()
     app.run()
 
 

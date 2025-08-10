@@ -2,7 +2,7 @@
 
 ## Introduction
 
-AgenticOrNot v1.3.2 is an interactive GUI + API system that judges if user stories/requirements are automatable with agentic AI. The system asks clarifying questions, matches requirements to reusable solution patterns, and exports results with feasibility assessments. It features pluggable LLM providers, vector matching capabilities, and constraint-aware recommendations while maintaining 100% test coverage and following TDD principles.
+Automated AI Assessment (AAA) is an interactive GUI + API system that judges if user stories/requirements are automatable with agentic AI. The system asks clarifying questions, matches requirements to reusable solution patterns, and exports results with feasibility assessments. It features pluggable LLM providers, vector matching capabilities, and constraint-aware recommendations while maintaining 100% test coverage and following TDD principles.
 
 ## Requirements
 

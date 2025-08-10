@@ -1,4 +1,4 @@
-"""FastAPI application for AgenticOrNot."""
+"""FastAPI application for Automated AI Assessment (AAA)."""
 
 import os
 import uuid
@@ -6,8 +6,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Depends
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Depends, Request, Response
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from pydantic import BaseModel, field_validator
 
 from app.config import Settings, load_settings
 from app.embeddings.engine import SentenceTransformerEmbedder
@@ -22,23 +23,75 @@ from app.services.recommendation import RecommendationService
 from app.services.jira import JiraService, JiraError, JiraConnectionError, JiraTicketNotFoundError
 from app.state.store import SessionState, Phase, DiskCacheStore
 from app.utils.logger import app_logger
+from app.security import SecurityMiddleware, RateLimitMiddleware, InputValidator, SecurityValidator, SecurityHeaders
+from app.security.middleware import setup_cors_middleware
 
 
-# Request/Response models
+# Global validators
+input_validator = InputValidator()
+security_validator = SecurityValidator()
+
+# Request/Response models with validation
 class ProviderConfig(BaseModel):
     provider: str = "openai"
     model: str = "gpt-4o"
     api_key: Optional[str] = None
     endpoint_url: Optional[str] = None
     region: Optional[str] = None
+    
+    @field_validator('provider')
+    @classmethod
+    def validate_provider(cls, v):
+        if not input_validator.validate_provider_name(v):
+            raise ValueError('Invalid provider name')
+        return v.lower()
+    
+    @field_validator('model')
+    @classmethod
+    def validate_model(cls, v):
+        if not input_validator.validate_model_name(v):
+            raise ValueError('Invalid model name')
+        return v
+    
+    @field_validator('api_key')
+    @classmethod
+    def validate_api_key(cls, v, info):
+        if v is not None:
+            # Get provider from context if available
+            provider = 'openai'  # Default fallback
+            if hasattr(info, 'data') and 'provider' in info.data:
+                provider = info.data['provider']
+            is_valid, message = input_validator.validate_api_key(v, provider)
+            if not is_valid:
+                raise ValueError(message)
+        return v
 
 
-# Initialize FastAPI app
+# Initialize FastAPI app with security configuration
 app = FastAPI(
-    title="AgenticOrNot API",
+    title="Automated AI Assessment (AAA) API",
     description="API for assessing automation feasibility of requirements",
-    version="1.3.2"
+    version="AAA-1.0",
+    docs_url="/docs",  # Explicitly set docs URL
+    redoc_url="/redoc",  # Explicitly set redoc URL
+    openapi_url="/openapi.json"  # Explicitly set OpenAPI URL
 )
+
+# Add security middleware (order matters!)
+# 1. Trusted Host middleware (first)
+app.add_middleware(
+    TrustedHostMiddleware, 
+    allowed_hosts=["localhost", "127.0.0.1", "*.localhost", "*"]  # Configure based on deployment
+)
+
+# 2. CORS middleware
+setup_cors_middleware(app)
+
+# 3. Rate limiting middleware
+app.add_middleware(RateLimitMiddleware, calls_per_minute=60, calls_per_hour=1000)
+
+# 4. General security middleware (last)
+app.add_middleware(SecurityMiddleware, max_request_size=10 * 1024 * 1024)  # 10MB limit
 
 # Global dependencies
 settings: Optional[Settings] = None
@@ -48,6 +101,41 @@ question_loop: Optional[QuestionLoop] = None
 recommendation_service: Optional[RecommendationService] = None
 export_service: Optional[ExportService] = None
 jira_service: Optional[JiraService] = None
+
+
+# Global exception handler for security
+@app.exception_handler(ValueError)
+async def validation_exception_handler(request: Request, exc: ValueError):
+    """Handle validation errors with security logging."""
+    client_ip = request.client.host if request.client else "unknown"
+    app_logger.warning(f"Validation error from {client_ip}: {str(exc)}")
+    
+    response = Response(
+        content=f'{{"error": "Validation Error", "message": "{str(exc)}"}}',
+        status_code=400,
+        media_type="application/json"
+    )
+    return SecurityHeaders.add_security_headers(response)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions with security headers."""
+    response = Response(
+        content=f'{{"error": "HTTP Error", "message": "{exc.detail}"}}',
+        status_code=exc.status_code,
+        media_type="application/json"
+    )
+    return SecurityHeaders.add_security_headers(response)
+
+
+# Health check endpoint (no authentication required)
+@app.get("/health")
+async def health_check(response: Response):
+    """Health check endpoint for monitoring."""
+    # Add security headers
+    SecurityHeaders.add_security_headers(response)
+    return {"status": "healthy", "version": "AAA-1.0"}
 
 
 def get_settings() -> Settings:
@@ -169,7 +257,12 @@ def get_recommendation_service() -> RecommendationService:
     """Get recommendation service instance."""
     global recommendation_service
     if recommendation_service is None:
-        recommendation_service = RecommendationService()
+        settings = get_settings()
+        # Create with pattern creation capability
+        recommendation_service = RecommendationService(
+            pattern_library_path=settings.pattern_library_path,
+            llm_provider=None  # Will be set per request if needed
+        )
     return recommendation_service
 
 
@@ -191,10 +284,46 @@ def get_jira_service() -> JiraService:
     return jira_service
 
 
+def validate_output_security(data: Any) -> bool:
+    """Validate that output doesn't contain banned tools or malicious content."""
+    try:
+        # Convert data to string for validation
+        if isinstance(data, dict):
+            text_content = str(data)
+        elif isinstance(data, list):
+            text_content = " ".join(str(item) for item in data)
+        else:
+            text_content = str(data)
+        
+        # Check for banned tools
+        if not security_validator.validate_no_banned_tools(text_content):
+            app_logger.error("Output validation failed: banned tools detected")
+            return False
+        
+        return True
+    except Exception as e:
+        app_logger.error(f"Error validating output security: {e}")
+        return False
+
+
 class IngestRequest(BaseModel):
     source: str  # "text", "file", "jira"
     payload: Dict[str, Any]
     provider_config: Optional[ProviderConfig] = None
+    
+    @field_validator('source')
+    @classmethod
+    def validate_source(cls, v):
+        allowed_sources = ["text", "file", "jira"]
+        if v not in allowed_sources:
+            raise ValueError(f'Invalid source. Must be one of: {allowed_sources}')
+        return v
+    
+    @field_validator('payload')
+    @classmethod
+    def validate_payload(cls, v):
+        # Sanitize the payload dictionary
+        return security_validator.sanitize_dict(v)
 
 
 class IngestResponse(BaseModel):
@@ -209,6 +338,23 @@ class StatusResponse(BaseModel):
 
 class QARequest(BaseModel):
     answers: Dict[str, str]
+    
+    @field_validator('answers')
+    @classmethod
+    def validate_answers(cls, v):
+        # Sanitize answers and check for reasonable limits
+        if len(v) > 20:  # Max 20 answers per request
+            raise ValueError('Too many answers in single request')
+        
+        sanitized = {}
+        for key, value in v.items():
+            if not isinstance(value, str):
+                raise ValueError('All answers must be strings')
+            if len(value) > 5000:  # Max 5KB per answer
+                raise ValueError('Answer too long')
+            sanitized[security_validator.sanitize_string(key)] = security_validator.sanitize_string(value)
+        
+        return sanitized
 
 
 class QAResponse(BaseModel):
@@ -240,6 +386,20 @@ class RecommendResponse(BaseModel):
 class ExportRequest(BaseModel):
     session_id: str
     format: str  # "json" or "md"
+    
+    @field_validator('session_id')
+    @classmethod
+    def validate_session_id(cls, v):
+        if not input_validator.validate_session_id(v):
+            raise ValueError('Invalid session ID format')
+        return v
+    
+    @field_validator('format')
+    @classmethod
+    def validate_format(cls, v):
+        if not input_validator.validate_export_format(v):
+            raise ValueError('Invalid export format')
+        return v.lower()
 
 
 class ExportResponse(BaseModel):
@@ -286,7 +446,7 @@ class JiraFetchResponse(BaseModel):
 
 # API Endpoints
 @app.post("/ingest", response_model=IngestResponse)
-async def ingest_requirements(request: IngestRequest):
+async def ingest_requirements(request: IngestRequest, http_request: Request, response: Response):
     """Ingest requirements and create a new session."""
     try:
         # Generate session ID
@@ -297,32 +457,56 @@ async def ingest_requirements(request: IngestRequest):
         app_logger.info(f"Source: {request.source}")
         app_logger.info(f"Provider config received: {request.provider_config.dict() if request.provider_config else 'None'}")
         
-        # Extract requirements from payload
+        # Extract and validate requirements from payload
         requirements = {}
         if request.source == "text":
+            text_content = request.payload.get("text", "")
+            
+            # Validate requirements text
+            is_valid, validation_message = input_validator.validate_requirements_text(text_content)
+            if not is_valid:
+                raise HTTPException(status_code=400, detail=validation_message)
+            
             requirements = {
-                "description": request.payload.get("text", ""),
-                "domain": request.payload.get("domain"),
-                "pattern_types": request.payload.get("pattern_types", [])
+                "description": security_validator.sanitize_string(text_content),
+                "domain": security_validator.sanitize_string(str(request.payload.get("domain", ""))),
+                "pattern_types": [security_validator.sanitize_string(str(pt)) for pt in request.payload.get("pattern_types", [])]
             }
         elif request.source == "file":
-            # For now, just extract text content
+            # Extract and validate file content
+            file_content = request.payload.get("content", "")
+            filename = request.payload.get("filename", "")
+            
+            # Validate file content
+            is_valid, validation_message = input_validator.validate_requirements_text(file_content)
+            if not is_valid:
+                raise HTTPException(status_code=400, detail=f"File content validation failed: {validation_message}")
+            
             requirements = {
-                "description": request.payload.get("content", ""),
-                "filename": request.payload.get("filename")
+                "description": security_validator.sanitize_string(file_content),
+                "filename": security_validator.sanitize_string(filename)
             }
         elif request.source == "jira":
             # For Jira source, payload should contain ticket_key and credentials
             ticket_key = request.payload.get("ticket_key")
+            base_url = request.payload.get("base_url")
+            email = request.payload.get("email")
+            api_token = request.payload.get("api_token")
+            
             if not ticket_key:
                 raise HTTPException(status_code=400, detail="ticket_key is required for Jira source")
+            
+            # Validate Jira credentials
+            is_valid, validation_message = input_validator.validate_jira_credentials(base_url, email, api_token)
+            if not is_valid:
+                raise HTTPException(status_code=400, detail=f"Jira credentials validation failed: {validation_message}")
             
             # Create temporary Jira service with provided credentials
             from app.config import JiraConfig
             jira_config = JiraConfig(
-                base_url=request.payload.get("base_url"),
-                email=request.payload.get("email"),
-                api_token=request.payload.get("api_token")
+                base_url=base_url,
+                email=email,
+                api_token=api_token
             )
             temp_jira_service = JiraService(jira_config)
             
@@ -382,6 +566,10 @@ async def ingest_requirements(request: IngestRequest):
         await store.update_session(session_id, session_state)
         
         app_logger.info(f"Created new session: {session_id} in phase: {session_state.phase.value}")
+        
+        # Add security headers to response
+        SecurityHeaders.add_security_headers(response)
+        
         return IngestResponse(session_id=session_id)
         
     except HTTPException:
@@ -392,9 +580,13 @@ async def ingest_requirements(request: IngestRequest):
 
 
 @app.get("/status/{session_id}", response_model=StatusResponse)
-async def get_status(session_id: str):
+async def get_status(session_id: str, response: Response):
     """Get session status and progress."""
     try:
+        # Validate session ID format
+        if not input_validator.validate_session_id(session_id):
+            raise HTTPException(status_code=400, detail="Invalid session ID format")
+        
         store = get_session_store()
         session = await store.get_session(session_id)
         
@@ -440,13 +632,17 @@ async def get_status(session_id: str):
             await store.update_session(session_id, session)
             app_logger.info(f"Advanced session {session_id} to DONE phase")
         
-        response = StatusResponse(
+        status_response = StatusResponse(
             phase=session.phase.value,
             progress=session.progress,
             missing_fields=session.missing_fields
         )
-        app_logger.info(f"Status response for {session_id}: {response.dict()}")
-        return response
+        app_logger.info(f"Status response for {session_id}: {status_response.dict()}")
+        
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        
+        return status_response
         
     except HTTPException:
         raise
@@ -456,7 +652,7 @@ async def get_status(session_id: str):
 
 
 @app.get("/qa/{session_id}/questions")
-async def get_qa_questions(session_id: str):
+async def get_qa_questions(session_id: str, response: Response):
     """Get Q&A questions for a session."""
     try:
         # Get session to retrieve provider configuration
@@ -480,6 +676,9 @@ async def get_qa_questions(session_id: str):
         question_loop = get_question_loop(provider_config, session_id)
         questions = await question_loop.generate_questions(session_id, max_questions=5)
         
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        
         return {
             "questions": [q.to_dict() for q in questions],
             "session_id": session_id,
@@ -492,7 +691,7 @@ async def get_qa_questions(session_id: str):
 
 
 @app.post("/qa/{session_id}", response_model=QAResponse)
-async def process_qa(session_id: str, request: QARequest):
+async def process_qa(session_id: str, request: QARequest, response: Response):
     """Process Q&A answers."""
     try:
         # Get session to retrieve provider configuration
@@ -523,6 +722,9 @@ async def process_qa(session_id: str, request: QARequest):
                 await store.update_session(session_id, session)
                 app_logger.info(f"Advanced session {session_id} from QNA to MATCHING phase")
         
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        
         return QAResponse(
             complete=result.complete,
             next_questions=[q.to_dict() for q in result.next_questions]
@@ -534,7 +736,7 @@ async def process_qa(session_id: str, request: QARequest):
 
 
 @app.post("/match", response_model=MatchResponse)
-async def match_patterns(request: MatchRequest):
+async def match_patterns(request: MatchRequest, response: Response):
     """Match patterns against requirements."""
     try:
         store = get_session_store()
@@ -571,6 +773,9 @@ async def match_patterns(request: MatchRequest):
         session.progress = 80
         await store.update_session(request.session_id, session)
         
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        
         return MatchResponse(
             candidates=[m.to_dict() for m in matches]
         )
@@ -581,7 +786,7 @@ async def match_patterns(request: MatchRequest):
 
 
 @app.post("/recommend", response_model=RecommendResponse)
-async def generate_recommendations(request: RecommendRequest):
+async def generate_recommendations(request: RecommendRequest, response: Response):
     """Generate automation recommendations."""
     try:
         store = get_session_store()
@@ -624,9 +829,21 @@ async def generate_recommendations(request: RecommendRequest):
                 )
                 matches.append(match_result)
         
-        # Generate recommendations
+        # Generate recommendations (now async)
         rec_service = get_recommendation_service()
-        recommendations = rec_service.generate_recommendations(matches, session.requirements)
+        
+        # Set LLM provider for pattern creation if available
+        if hasattr(rec_service, 'pattern_creator') and rec_service.pattern_creator:
+            # Get provider config from session
+            provider_config = None
+            if session.provider_config:
+                provider_config = ProviderConfig(**session.provider_config)
+            
+            # Create LLM provider for pattern creation
+            llm_provider = create_llm_provider(provider_config, request.session_id)
+            rec_service.pattern_creator.llm_provider = llm_provider
+        
+        recommendations = await rec_service.generate_recommendations(matches, session.requirements, request.session_id)
         
         # Update session
         session.recommendations = recommendations
@@ -643,12 +860,26 @@ async def generate_recommendations(request: RecommendRequest):
         
         reasoning = recommendations[0].reasoning if recommendations else "No recommendations available"
         
-        return RecommendResponse(
+        # Create response data
+        response_data = RecommendResponse(
             feasibility=overall_feasibility,
             recommendations=[rec.dict() for rec in recommendations],
             tech_stack=unique_tech_stack,
             reasoning=reasoning
         )
+        
+        # Validate output for banned tools
+        if not validate_output_security(response_data.dict()):
+            app_logger.error(f"Security validation failed for recommendations in session {request.session_id}")
+            raise HTTPException(
+                status_code=500, 
+                detail="Generated recommendations failed security validation"
+            )
+        
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        
+        return response_data
         
     except Exception as e:
         app_logger.error(f"Error generating recommendations: {e}")
@@ -656,7 +887,7 @@ async def generate_recommendations(request: RecommendRequest):
 
 
 @app.post("/export", response_model=ExportResponse)
-async def export_results(request: ExportRequest):
+async def export_results(request: ExportRequest, response: Response):
     """Export session results with format validation."""
     try:
         store = get_session_store()
@@ -687,6 +918,9 @@ async def export_results(request: ExportRequest):
         
         app_logger.info(f"Exported session {request.session_id} to {request.format} format")
         
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        
         return ExportResponse(
             download_url=download_url,
             file_path=file_path,
@@ -704,7 +938,7 @@ async def export_results(request: ExportRequest):
 
 
 @app.post("/providers/test", response_model=ProviderTestResponse)
-async def test_provider(request: ProviderTestRequest):
+async def test_provider(request: ProviderTestRequest, response: Response):
     """Test LLM provider connection."""
     try:
         app_logger.info(f"Testing provider: {request.provider} with model: {request.model}")
@@ -766,8 +1000,8 @@ async def test_jira_connection(request: JiraTestRequest):
         return JiraTestResponse(ok=False, message=f"Unexpected error: {str(e)}")
 
 
-@app.post("/jira/fetch", response_model=JiraFetchResponse)
-async def fetch_jira_ticket(request: JiraFetchRequest):
+@app.post("/jira/fetch")
+async def fetch_jira_ticket(request: dict, response: Response):
     """Fetch Jira ticket and map to requirements format."""
     try:
         from app.config import JiraConfig
@@ -785,10 +1019,14 @@ async def fetch_jira_ticket(request: JiraFetchRequest):
         # Map to requirements
         requirements = jira_service.map_ticket_to_requirements(ticket)
         
-        return JiraFetchResponse(
-            ticket_data=ticket.model_dump(),
-            requirements=requirements
-        )
+        result = {
+            "ticket_data": ticket.model_dump(),
+            "requirements": requirements
+        }
+        
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        return result
         
     except JiraConnectionError as e:
         raise HTTPException(status_code=401, detail=f"Jira connection failed: {str(e)}")
@@ -801,10 +1039,91 @@ async def fetch_jira_ticket(request: JiraFetchRequest):
         raise HTTPException(status_code=500, detail=f"Failed to fetch Jira ticket: {str(e)}")
 
 
+@app.post("/providers/test")
+async def test_provider(request: dict, response: Response):
+    """Test LLM provider connection."""
+    try:
+        provider = request.get("provider", "")
+        model = request.get("model", "")
+        api_key = request.get("api_key", "")
+        
+        app_logger.info(f"Testing provider: {provider} with model: {model}")
+        
+        if provider == "openai":
+            if not api_key:
+                result = {"ok": False, "message": "API key required for OpenAI"}
+            else:
+                # Validate model name
+                valid_models = ["gpt-4o", "gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"]
+                if model not in valid_models:
+                    result = {
+                        "ok": False, 
+                        "message": f"Invalid model '{model}'. Valid models: {', '.join(valid_models)}"
+                    }
+                else:
+                    provider_instance = OpenAIProvider(api_key=api_key, model=model)
+                    success, error_msg = await provider_instance.test_connection_detailed()
+                    
+                    result = {
+                        "ok": success,
+                        "message": "Connection successful" if success else f"Connection failed: {error_msg}"
+                    }
+        elif provider == "fake":
+            # FakeLLM always works
+            result = {
+                "ok": True,
+                "message": "FakeLLM connection successful (no real API call made)"
+            }
+        else:
+            result = {"ok": False, "message": f"Provider {provider} not implemented"}
+        
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        return result
+            
+    except Exception as e:
+        app_logger.error(f"Error testing provider {provider}: {e}")
+        result = {"ok": False, "message": f"Unexpected error: {str(e)}"}
+        SecurityHeaders.add_security_headers(response)
+        return result
+
+
+@app.post("/jira/test")
+async def test_jira_connection(request: dict, response: Response):
+    """Test Jira connection with provided credentials."""
+    try:
+        from app.config import JiraConfig
+        jira_config = JiraConfig(
+            base_url=request.get("base_url"),
+            email=request.get("email"),
+            api_token=request.get("api_token")
+        )
+        
+        jira_service = JiraService(jira_config)
+        success, error_msg = await jira_service.test_connection()
+        
+        result = {
+            "ok": success,
+            "message": "Jira connection successful" if success else error_msg
+        }
+        
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        return result
+        
+    except Exception as e:
+        app_logger.error(f"Error testing Jira connection: {e}")
+        result = {"ok": False, "message": f"Unexpected error: {str(e)}"}
+        SecurityHeaders.add_security_headers(response)
+        return result
+
+
 @app.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "version": "1.3.2"}
+async def health_check(response: Response):
+    """Health check endpoint for monitoring."""
+    # Add security headers
+    SecurityHeaders.add_security_headers(response)
+    return {"status": "healthy", "version": "AAA-1.0"}
 
 
 if __name__ == "__main__":

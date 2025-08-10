@@ -94,7 +94,7 @@ class TestExportIntegration:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        assert "# AgenticOrNot - Automation Feasibility Report" in content
+        assert "# Automated AI Assessment (AAA) - Automation Feasibility Report" in content
         assert "integration-test-session" in content
         assert "Integration test requirements" in content
         assert "✅" in content  # Automatable emoji

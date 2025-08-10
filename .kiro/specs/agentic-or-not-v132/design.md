@@ -2,7 +2,7 @@
 
 ## Overview
 
-AgenticOrNot v1.3.2 is a microservices-based system built with FastAPI backend and Streamlit frontend. The architecture follows clean architecture principles with dependency injection, pluggable providers, and comprehensive observability. The system processes user requirements through a state machine workflow, leveraging vector embeddings and pattern matching to provide automation feasibility assessments.
+Automated AI Assessment (AAA) is a microservices-based system built with FastAPI backend and Streamlit frontend. The architecture follows clean architecture principles with dependency injection, pluggable providers, and comprehensive observability. The system processes user requirements through a state machine workflow, leveraging vector embeddings and pattern matching to provide automation feasibility assessments.
 
 ## Architecture
 

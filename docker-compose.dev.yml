@@ -1,0 +1,42 @@
+version: '3.8'
+
+# Development override for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  api:
+    build:
+      context: .
+      args:
+        SKIP_TESTS: "false"  # Run tests during development build
+    command: uvicorn app.api:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./app:/app/app  # Live code reloading
+      - ./data:/app/data
+      - ./exports:/app/exports
+      - ./cache:/app/cache
+      - ./config.yaml:/app/config.yaml
+      - ./.env:/app/.env
+    environment:
+      - PYTHONPATH=/app
+      - REDIS_URL=redis://redis:6379/0
+      - LOGGING_LEVEL=DEBUG
+    
+  ui:
+    build:
+      context: .
+      args:
+        SKIP_TESTS: "false"  # Run tests during development build
+    command: streamlit run streamlit_app.py --server.port 8501 --server.address 0.0.0.0
+    volumes:
+      - ./app:/app/app  # Live code reloading
+      - ./streamlit_app.py:/app/streamlit_app.py
+      - ./run_streamlit.py:/app/run_streamlit.py
+      - ./data:/app/data
+      - ./exports:/app/exports
+      - ./config.yaml:/app/config.yaml
+      - ./.env:/app/.env
+    environment:
+      - PYTHONPATH=/app
+      - API_BASE_URL=http://api:8000
+      - LOGGING_LEVEL=DEBUG

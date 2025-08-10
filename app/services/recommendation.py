@@ -1,32 +1,46 @@
 """Recommendation generation service."""
 
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Optional
 import math
+from pathlib import Path
 
 from app.pattern.matcher import MatchResult
 from app.state.store import Recommendation
+from app.services.pattern_creator import PatternCreator
+from app.llm.base import LLMProvider
 from app.utils.logger import app_logger
 
 
 class RecommendationService:
     """Service for generating automation recommendations."""
     
-    def __init__(self, confidence_threshold: float = 0.6):
+    def __init__(self, 
+                 confidence_threshold: float = 0.6,
+                 pattern_library_path: Optional[Path] = None,
+                 llm_provider: Optional[LLMProvider] = None):
         """Initialize recommendation service.
         
         Args:
             confidence_threshold: Minimum confidence for positive recommendations
+            pattern_library_path: Path to pattern library for creating new patterns
+            llm_provider: LLM provider for pattern creation
         """
         self.confidence_threshold = confidence_threshold
+        self.pattern_creator = None
+        
+        if pattern_library_path:
+            self.pattern_creator = PatternCreator(pattern_library_path, llm_provider)
     
-    def generate_recommendations(self, 
-                               matches: List[MatchResult], 
-                               requirements: Dict[str, Any]) -> List[Recommendation]:
+    async def generate_recommendations(self, 
+                                     matches: List[MatchResult], 
+                                     requirements: Dict[str, Any],
+                                     session_id: str = "unknown") -> List[Recommendation]:
         """Generate recommendations from pattern matches.
         
         Args:
             matches: Pattern matching results
             requirements: User requirements
+            session_id: Session ID for tracking
             
         Returns:
             List of recommendations sorted by confidence
@@ -34,6 +48,37 @@ class RecommendationService:
         app_logger.info(f"Generating recommendations from {len(matches)} pattern matches")
         
         recommendations = []
+        
+        # Check if we need to create a new pattern
+        should_create_pattern = self._should_create_new_pattern(matches, requirements)
+        
+        if should_create_pattern and self.pattern_creator:
+            app_logger.info("No suitable existing patterns found, creating new pattern")
+            try:
+                new_pattern = await self.pattern_creator.create_pattern_from_requirements(
+                    requirements, session_id
+                )
+                
+                # Create a MatchResult for the new pattern
+                new_match = MatchResult(
+                    pattern_id=new_pattern["pattern_id"],
+                    pattern_name=new_pattern["name"],
+                    feasibility=new_pattern["feasibility"],
+                    tech_stack=new_pattern["tech_stack"],
+                    confidence=new_pattern["confidence_score"],
+                    tag_score=1.0,  # Perfect tag match since it was created from requirements
+                    vector_score=0.8,  # High vector score for custom pattern
+                    blended_score=0.9,  # High blended score
+                    rationale=f"Custom pattern created for this specific requirement"
+                )
+                
+                # Add the new pattern match to the beginning of the list
+                matches = [new_match] + matches
+                app_logger.info(f"Created new pattern {new_pattern['pattern_id']}: {new_pattern['name']}")
+                
+            except Exception as e:
+                app_logger.error(f"Failed to create new pattern: {e}")
+                # Continue with existing matches if pattern creation fails
         
         for match in matches:
             # Determine feasibility based on pattern and requirements
@@ -458,3 +503,56 @@ class RecommendationService:
             reasoning_parts.append(f"Recommended technologies include {tech_list}")
         
         return ". ".join(reasoning_parts) + "."
+    
+    def _should_create_new_pattern(self, matches: List[MatchResult], requirements: Dict[str, Any]) -> bool:
+        """Determine if a new pattern should be created.
+        
+        Args:
+            matches: Existing pattern matches
+            requirements: User requirements
+            
+        Returns:
+            True if a new pattern should be created
+        """
+        # Create new pattern if no matches at all
+        if not matches:
+            app_logger.info("No existing pattern matches found - will create new pattern")
+            return True
+        
+        # Create new pattern if all matches have low scores
+        best_match_score = max(match.blended_score for match in matches)
+        if best_match_score < 0.4:
+            app_logger.info(f"Best match score {best_match_score:.3f} is too low - will create new pattern")
+            return True
+        
+        # Create new pattern if the requirement is very specific and unique
+        description = requirements.get("description", "").lower()
+        
+        # Check for unique/specific scenarios that likely need custom patterns
+        unique_indicators = [
+            "amazon connect",  # Specific AWS service
+            "real-time translation",  # Specific real-time requirement
+            "bidirectional translation",  # Specific translation requirement
+            "native language",  # Language preference requirement
+            "system settings",  # User preference integration
+            "customer chat",  # Specific communication context
+        ]
+        
+        unique_score = sum(1 for indicator in unique_indicators if indicator in description)
+        if unique_score >= 2:
+            app_logger.info(f"Detected unique scenario (score: {unique_score}) - will create new pattern")
+            return True
+        
+        # Check for domain-specific requirements that don't match well
+        domain = requirements.get("domain", "")
+        if domain and matches:
+            # If we have a specific domain but the best match is from a different domain
+            # and the score isn't great, create a new pattern
+            best_match = matches[0]
+            if best_match.blended_score < 0.7 and domain not in ["general", "automation"]:
+                app_logger.info(f"Domain-specific requirement ({domain}) with mediocre match - will create new pattern")
+                return True
+        
+        # Don't create new pattern if we have good existing matches
+        app_logger.info(f"Found adequate existing matches (best: {best_match_score:.3f}) - will use existing patterns")
+        return False
