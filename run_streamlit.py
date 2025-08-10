@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Script to run the Streamlit UI for AgenticOrNot."""
+"""Script to run the Streamlit UI for Automated AI Assessment (AAA)."""
 
 import subprocess
 import sys
@@ -25,7 +25,7 @@ def main():
         "--browser.serverAddress", "localhost"
     ]
     
-    print("🚀 Starting AgenticOrNot Streamlit UI...")
+    print("🚀 Starting Automated AI Assessment (AAA) Streamlit UI...")
     print("📱 The app will automatically open in your browser at: http://localhost:8501")
     print("🔧 Make sure the FastAPI backend is running at: http://localhost:8000")
     print("💡 If the browser doesn't open automatically, visit: http://localhost:8501")

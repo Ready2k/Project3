@@ -1,4 +1,4 @@
-"""Exporters package for AgenticOrNot."""
+"""Exporters package for Automated AI Assessment (AAA)."""
 
 from .base import BaseExporter
 from .json_exporter import JSONExporter

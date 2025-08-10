@@ -1,0 +1,34 @@
+{
+  "pattern_id": "PAT-005",
+  "name": "Communication Real-time Translation",
+  "description": "Real-time language translation system with bidirectional communication support and user preference integration and integration with communication, amazon_connect",
+  "feasibility": "Partially Automatable",
+  "pattern_type": [
+    "translation_automation"
+  ],
+  "input_requirements": [
+    "Clear process definition and requirements",
+    "Access to target systems and APIs",
+    "Source and target language specifications",
+    "Translation service API credentials",
+    "User preference management system"
+  ],
+  "tech_stack": [
+    "Python",
+    "FastAPI",
+    "Google Translate API",
+    "Azure Translator",
+    "WebSocket"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.95,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": []
+  },
+  "domain": "communication",
+  "complexity": "Medium",
+  "estimated_effort": "3-6 weeks",
+  "created_from_session": "cb1a3520-87c8-4bc9-8a6f-ad90102f647b",
+  "auto_generated": true
+}

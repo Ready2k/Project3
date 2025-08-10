@@ -1,6 +1,6 @@
-# AgenticOrNot Streamlit UI
+# Automated AI Assessment (AAA) Streamlit UI
 
-This is the Streamlit web interface for the AgenticOrNot application, which helps assess automation feasibility of business requirements using AI.
+This is the Streamlit web interface for the Automated AI Assessment (AAA) application, which helps assess automation feasibility of business requirements using AI.
 
 ## Features
 
@@ -134,7 +134,7 @@ The Streamlit UI communicates with the FastAPI backend through HTTP requests:
 
 ### Key Components
 
-- **AgenticOrNotUI**: Main application class
+- **AutomatedAIAssessmentUI**: Main application class
 - **Provider Panel**: LLM provider configuration and testing
 - **Input Methods**: Text, file, and Jira input handling
 - **Progress Tracking**: Real-time status monitoring with polling
@@ -230,7 +230,7 @@ For better performance:
 
 ```
 streamlit_app.py
-├── AgenticOrNotUI (main class)
+├── AutomatedAIAssessmentUI (main class)
 ├── setup_page_config()
 ├── initialize_session_state()
 ├── make_api_request() (async HTTP client)

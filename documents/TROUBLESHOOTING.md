@@ -1,4 +1,4 @@
-# 🔧 AgenticOrNot Troubleshooting Guide
+# 🔧 Automated AI Assessment (AAA) Troubleshooting Guide
 
 ## Common Issues
 

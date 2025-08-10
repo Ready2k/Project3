@@ -1,0 +1,35 @@
+{
+  "pattern_id": "PAT-006",
+  "name": "Agriculture Barcode/QR Scanning",
+  "description": "Automated scanning and processing system using barcode/QR code recognition with mobile device integration and real-time data processing",
+  "feasibility": "Automatable",
+  "pattern_type": [
+    "scanning_automation",
+    "ml_processing"
+  ],
+  "input_requirements": [
+    "Clear process definition and requirements",
+    "Access to target systems and APIs",
+    "Mobile device with camera capability",
+    "Barcode/QR code standards and formats",
+    "Inventory database schema and access"
+  ],
+  "tech_stack": [
+    "Python",
+    "FastAPI",
+    "OpenCV",
+    "pyzbar",
+    "mobile app framework"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.95,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": []
+  },
+  "domain": "agriculture",
+  "complexity": "Low",
+  "estimated_effort": "1-2 weeks",
+  "created_from_session": "9b23686e-5d92-48ba-8796-c7db9af69167",
+  "auto_generated": true
+}

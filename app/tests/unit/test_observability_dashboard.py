@@ -11,7 +11,7 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 try:
-    from streamlit_app import AgenticOrNotUI
+    from streamlit_app import AutomatedAIAssessmentUI
     import streamlit as st
     STREAMLIT_AVAILABLE = True
 except ImportError:
@@ -27,7 +27,7 @@ class TestObservabilityDashboard:
     @pytest.fixture
     def ui_app(self):
         """Create UI app instance for testing."""
-        return AgenticOrNotUI()
+        return AutomatedAIAssessmentUI()
     
     @pytest.fixture
     def mock_provider_stats(self):
@@ -339,11 +339,15 @@ class TestObservabilityDashboard:
     def test_render_observability_dashboard_structure(self, ui_app):
         """Test the overall structure of the observability dashboard."""
         
-        with patch('streamlit.header') as mock_header, \
+        with patch('streamlit.session_state') as mock_session_state, \
+             patch('streamlit.header') as mock_header, \
              patch('streamlit.tabs') as mock_tabs, \
              patch.object(ui_app, 'render_provider_metrics') as mock_provider, \
              patch.object(ui_app, 'render_pattern_analytics') as mock_pattern, \
              patch.object(ui_app, 'render_usage_patterns') as mock_usage:
+            
+            # Mock session state to have a session_id
+            mock_session_state.session_id = "test-session-123"
             
             # Mock tabs
             mock_tab1, mock_tab2, mock_tab3 = MagicMock(), MagicMock(), MagicMock()
@@ -483,7 +487,7 @@ class TestObservabilityIntegration:
     def test_observability_tab_integration(self):
         """Test that observability tab is properly integrated into main UI."""
         
-        ui_app = AgenticOrNotUI()
+        ui_app = AutomatedAIAssessmentUI()
         
         with patch('streamlit.title'), \
              patch('streamlit.markdown'), \

@@ -2,31 +2,57 @@ version: '3.8'
 
 services:
   api:
-    build: .
+    build: 
+      context: .
+      args:
+        SKIP_TESTS: "true"  # Skip tests in production build
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/app/data
+      - ./data:/app/data:ro  # Read-only pattern data
       - ./exports:/app/exports
       - ./cache:/app/cache
+      - ./.env:/app/.env:ro  # Environment variables
     environment:
       - PYTHONPATH=/app
-    command: uvicorn app.api:app --host 0.0.0.0 --port 8000 --reload
+      - REDIS_URL=redis://redis:6379/0
+    command: uvicorn app.api:app --host 0.0.0.0 --port 8000
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     
   ui:
-    build: .
+    build: 
+      context: .
+      args:
+        SKIP_TESTS: "true"  # Skip tests in production build
     ports:
       - "8501:8501"
     volumes:
-      - ./data:/app/data
-      - ./exports:/app/exports
+      - ./data:/app/data:ro  # Read-only pattern data
+      - ./exports:/app/exports:ro  # Read-only exports
+      - ./.env:/app/.env:ro  # Environment variables
     environment:
       - PYTHONPATH=/app
-    command: streamlit run app/main.py --server.port 8501 --server.address 0.0.0.0
+      - API_BASE_URL=http://api:8000
+    command: streamlit run streamlit_app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
   
   redis:
     image: redis:7-alpine
@@ -34,6 +60,20 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   redis_data:
+    driver: local
+
+# Optional: Profile for running without Redis (uses diskcache)
+# Usage: docker-compose --profile no-redis up api ui
+profiles:
+  - no-redis
