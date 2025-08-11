@@ -1,0 +1,31 @@
+{
+  "pattern_id": "PAT-015",
+  "name": "Process Automation",
+  "description": "General purpose automation system with configurable processing and integration capabilities",
+  "feasibility": "Automatable",
+  "pattern_type": [
+    "general_automation",
+    "ml_processing"
+  ],
+  "input_requirements": [
+    "Clear process definition and requirements",
+    "Access to target systems and APIs"
+  ],
+  "tech_stack": [
+    "Python",
+    "FastAPI",
+    "SQLAlchemy",
+    "httpx"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.75,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": []
+  },
+  "domain": "None",
+  "complexity": "Low",
+  "estimated_effort": "1-2 weeks",
+  "created_from_session": "870eda2d-b158-47bf-bd6a-a850471cc3aa",
+  "auto_generated": true
+}

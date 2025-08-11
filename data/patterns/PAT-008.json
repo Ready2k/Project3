@@ -1,0 +1,47 @@
+{
+  "pattern_id": "PAT-008",
+  "name": "None Barcode/QR Scanning",
+  "description": "Automated scanning and processing system using barcode/QR code recognition with mobile device integration and real-time data processing with real-time processing capabilities and integration with database, api, email",
+  "feasibility": "Automatable",
+  "pattern_type": [
+    "scanning_automation",
+    "api_integration",
+    "data_processing",
+    "mobile_integration",
+    "ml_processing"
+  ],
+  "input_requirements": [
+    "Clear process definition and requirements",
+    "Access to target systems and APIs",
+    "Mobile device with camera capability",
+    "Barcode/QR code standards and formats",
+    "Inventory database schema and access",
+    "Database schema and connection details",
+    "Mobile platform specifications and deployment requirements"
+  ],
+  "tech_stack": [
+    "Python",
+    "FastAPI",
+    "OpenCV",
+    "pyzbar",
+    "mobile app framework",
+    "SQLAlchemy",
+    "WebSocket",
+    "Redis"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.95,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": [
+      "notification",
+      "api",
+      "mobile"
+    ]
+  },
+  "domain": "None",
+  "complexity": "High",
+  "estimated_effort": "6-12 weeks",
+  "created_from_session": "b7c4504a-f365-4ea7-9dad-cf866c6f35c0",
+  "auto_generated": true
+}
