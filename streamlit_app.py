@@ -1076,7 +1076,7 @@ class AutomatedAIAssessmentUI:
         # Add overall architecture explanation
         st.subheader("🏗️ How It All Works Together")
         
-        architecture_explanation = asyncio.run(self._generate_llm_architecture_explanation(rec['tech_stack']))
+        architecture_explanation = asyncio.run(self._generate_llm_architecture_explanation(tech_stack))
         st.write(architecture_explanation)
     
     async def _generate_llm_architecture_explanation(self, tech_stack: List[str]) -> str:
