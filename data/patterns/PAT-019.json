@@ -1,0 +1,38 @@
+{
+  "pattern_id": "PAT-019",
+  "name": "Process Automation",
+  "description": "General purpose automation system with configurable processing and integration capabilities",
+  "feasibility": "Automatable",
+  "pattern_type": [
+    "general_automation",
+    "ml_processing"
+  ],
+  "input_requirements": [
+    "Clear process definition and requirements",
+    "Access to target systems and APIs"
+  ],
+  "tech_stack": [],
+  "related_patterns": [],
+  "confidence_score": 0.75,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": []
+  },
+  "domain": "None",
+  "complexity": "Low",
+  "estimated_effort": "1-2 weeks",
+  "created_from_session": "5062a7f2-359c-43b8-b200-279a14ee8d4e",
+  "auto_generated": true,
+  "llm_insights": [
+    "Past blog posts and brand guidelines provide a strong dataset for training AI in tone of voice.",
+    "The digital nature of the process facilitates integration with AI tools for content generation.",
+    "High decision complexity in maintaining brand personality through nuanced edits."
+  ],
+  "llm_challenges": [
+    "Capturing the nuanced tone and style adjustments made by human editors.",
+    "Ensuring AI-generated content aligns with brand personality and accuracy."
+  ],
+  "llm_recommended_approach": "Use AI to draft initial blog posts and have human editors make final adjustments. Develop an iterative training loop where editors' adjustments are fed back into the AI model to improve its understanding of tone nuances.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "5062a7f2-359c-43b8-b200-279a14ee8d4e"
+}

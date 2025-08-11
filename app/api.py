@@ -8,6 +8,9 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+
+
+
 from pydantic import BaseModel, field_validator
 
 from app.config import Settings, load_settings
@@ -25,6 +28,8 @@ from app.state.store import SessionState, Phase, DiskCacheStore
 from app.utils.logger import app_logger
 from app.security import SecurityMiddleware, RateLimitMiddleware, InputValidator, SecurityValidator, SecurityHeaders
 from app.security.middleware import setup_cors_middleware
+
+
 
 
 # Global validators
@@ -76,6 +81,7 @@ app = FastAPI(
     redoc_url="/redoc",  # Explicitly set redoc URL
     openapi_url="/openapi.json"  # Explicitly set OpenAPI URL
 )
+
 
 # Add security middleware (order matters!)
 # 1. Trusted Host middleware (first)
@@ -655,6 +661,17 @@ async def get_status(session_id: str, response: Response):
 async def get_qa_questions(session_id: str, response: Response):
     """Get Q&A questions for a session."""
     try:
+        from datetime import datetime, timedelta
+        
+        app_logger.info(f"API: Getting Q&A questions for session {session_id}")
+        app_logger.info(f"API: Question request timestamp: {datetime.now()}")
+        
+        # Debug: Check if we have cache
+        if hasattr(get_qa_questions, '_api_question_cache'):
+            app_logger.info(f"API: Cache has {len(get_qa_questions._api_question_cache)} entries")
+        else:
+            app_logger.info("API: No cache exists yet")
+        
         # Get session to retrieve provider configuration
         store = get_session_store()
         session = await store.get_session(session_id)
@@ -663,6 +680,7 @@ async def get_qa_questions(session_id: str, response: Response):
             raise HTTPException(status_code=404, detail="Session not found")
         
         if session.phase != Phase.QNA:
+            app_logger.info(f"Session {session_id} not in QNA phase (current: {session.phase}), returning empty questions")
             return {"questions": []}
         
         # Create provider config from session
@@ -673,17 +691,35 @@ async def get_qa_questions(session_id: str, response: Response):
         else:
             app_logger.warning("No provider config found in session for questions")
         
+        # Check if questions were recently generated for this session
+        # Use a simple global cache at API level too
+        if not hasattr(get_qa_questions, '_api_question_cache'):
+            get_qa_questions._api_question_cache = {}
+        
+        api_cache_key = f"{session_id}_questions"
+        if api_cache_key in get_qa_questions._api_question_cache:
+            cached_result, cache_time = get_qa_questions._api_question_cache[api_cache_key]
+            # Use cached result if it's less than 2 minutes old
+            if datetime.now() - cache_time < timedelta(minutes=2):
+                app_logger.info(f"Using API-level cached questions for session {session_id}")
+                return cached_result
+        
         question_loop = get_question_loop(provider_config, session_id)
         questions = await question_loop.generate_questions(session_id, max_questions=5)
         
-        # Add security headers
-        SecurityHeaders.add_security_headers(response)
-        
-        return {
+        # Cache the API response
+        result = {
             "questions": [q.to_dict() for q in questions],
             "session_id": session_id,
             "phase": session.phase.value
         }
+        get_qa_questions._api_question_cache[api_cache_key] = (result, datetime.now())
+        app_logger.info(f"Cached questions for session {session_id}, cache now has {len(get_qa_questions._api_question_cache)} entries")
+        
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        
+        return result
         
     except Exception as e:
         app_logger.error(f"Error getting Q&A questions for {session_id}: {e}")
@@ -694,6 +730,8 @@ async def get_qa_questions(session_id: str, response: Response):
 async def process_qa(session_id: str, request: QARequest, response: Response):
     """Process Q&A answers."""
     try:
+        from datetime import datetime
+        
         # Get session to retrieve provider configuration
         store = get_session_store()
         session = await store.get_session(session_id)
@@ -712,8 +750,14 @@ async def process_qa(session_id: str, request: QARequest, response: Response):
         question_loop = get_question_loop(provider_config, session_id)
         result = await question_loop.process_answers(session_id, request.answers)
         
-        # If Q&A is complete, advance to MATCHING phase
+        # If Q&A is complete, advance to MATCHING phase and clear caches
         if result.complete:
+            # Clear question caches when Q&A is complete
+            if hasattr(get_qa_questions, '_api_question_cache'):
+                api_cache_key = f"{session_id}_questions"
+                if api_cache_key in get_qa_questions._api_question_cache:
+                    del get_qa_questions._api_question_cache[api_cache_key]
+            
             session = await store.get_session(session_id)  # Refresh session
             if session and session.phase == Phase.QNA:
                 session.phase = Phase.MATCHING

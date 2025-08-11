@@ -1,0 +1,43 @@
+{
+  "pattern_id": "PAT-017",
+  "name": "Process Automation",
+  "description": "General purpose automation system with configurable processing and integration capabilities",
+  "feasibility": "Automatable",
+  "pattern_type": [
+    "general_automation",
+    "ml_processing"
+  ],
+  "input_requirements": [
+    "Clear process definition and requirements",
+    "Access to target systems and APIs"
+  ],
+  "tech_stack": [
+    "Python",
+    "FastAPI",
+    "SQLAlchemy",
+    "httpx"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.75,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": []
+  },
+  "domain": "None",
+  "complexity": "Low",
+  "estimated_effort": "1-2 weeks",
+  "created_from_session": "88e9bfed-7e5f-49b1-bb20-39cde558d4d9",
+  "auto_generated": true,
+  "llm_insights": [
+    "AI can assist in recognizing patterns in the dog's barking based on structured user input.",
+    "A hybrid approach can improve consistency by alerting the owner when reinforcement or engagement might be needed.",
+    "The sporadic nature of the dog's barking events makes it challenging to fully automate without new data sources."
+  ],
+  "llm_challenges": [
+    "Lack of data for real-time decision-making.",
+    "Unpredictability of external stimuli causing barking."
+  ],
+  "llm_recommended_approach": "Implement a semi-automated solution that prompts users for data input when the barking occurs. This data could then be analyzed to find common triggers, offering suggestions on when to apply reinforcement techniques.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "88e9bfed-7e5f-49b1-bb20-39cde558d4d9"
+}
