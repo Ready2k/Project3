@@ -1091,11 +1091,16 @@ class AutomatedAIAssessmentUI:
             session_id = st.session_state.get('session_id', 'unknown')
             
             # Create LLM provider
-            provider_config = st.session_state.get('provider_config')
+            provider_config_dict = st.session_state.get('provider_config')
             llm_provider = None
             
-            if provider_config:
+            if provider_config_dict:
                 try:
+                    # Import ProviderConfig here to avoid circular imports
+                    from app.api import ProviderConfig
+                    
+                    # Convert dict to ProviderConfig model
+                    provider_config = ProviderConfig(**provider_config_dict)
                     llm_provider = create_llm_provider(provider_config, session_id)
                 except Exception as e:
                     st.warning(f"Could not create LLM provider for architecture explanation: {e}")
