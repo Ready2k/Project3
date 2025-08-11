@@ -178,7 +178,8 @@ Provide a clear, practical explanation in 2-3 paragraphs. Be specific to this us
             explanation_parts.append(f"The infrastructure leverages {infra_tech} for scalable deployment and monitoring.")
         
         # Add flow description based on requirements
-        domain = requirements.get('domain', '').lower()
+        domain = requirements.get('domain') or ''
+        domain = domain.lower() if domain else ''
         if 'data' in domain:
             explanation_parts.append("The typical workflow involves data ingestion, processing, validation, and storage, with monitoring throughout the pipeline.")
         elif 'api' in domain:
