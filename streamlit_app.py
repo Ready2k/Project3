@@ -20,35 +20,43 @@ except ImportError:
 
 # Mermaid diagram functions (LLM-generated for specific requirements)
 async def make_llm_request(prompt: str, provider_config: Dict) -> str:
-    """Make a request to the LLM for diagram generation."""
-    if not OPENAI_AVAILABLE:
-        raise Exception("OpenAI library not available. Please install: pip install openai")
-    
-    if provider_config.get('provider') == 'openai' and provider_config.get('api_key'):
-        try:
-            client = openai.AsyncOpenAI(api_key=provider_config['api_key'])
-            response = await client.chat.completions.create(
-                model=provider_config.get('model', 'gpt-4o'),
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=1000,
-                temperature=0.3
-            )
-            content = response.choices[0].message.content
-            if not content:
-                raise Exception("Empty response from OpenAI")
-            
-            # Clean the response - remove markdown code blocks if present
-            content = content.strip()
-            if content.startswith('```mermaid'):
-                content = content.replace('```mermaid', '').replace('```', '').strip()
-            elif content.startswith('```'):
-                content = content.replace('```', '').strip()
-            
-            return content
-        except Exception as e:
-            raise Exception(f"OpenAI request failed: {str(e)}")
-    else:
-        raise Exception("Only OpenAI provider supported for diagram generation")
+    """Make a request to the LLM for diagram generation using audited provider."""
+    try:
+        # Import here to avoid circular imports
+        from app.api import create_llm_provider, ProviderConfig
+        
+        # Create provider config object
+        config = ProviderConfig(
+            provider=provider_config.get('provider', 'openai'),
+            model=provider_config.get('model', 'gpt-4o'),
+            api_key=provider_config.get('api_key', ''),
+            temperature=0.3,
+            max_tokens=1000
+        )
+        
+        # Get session ID for audit logging
+        session_id = st.session_state.get('session_id', 'mermaid-generation')
+        
+        # Create audited LLM provider
+        llm_provider = create_llm_provider(config, session_id)
+        
+        # Make the request through the audited provider
+        response = await llm_provider.generate(prompt)
+        
+        if not response:
+            raise Exception("Empty response from LLM")
+        
+        # Clean the response - remove markdown code blocks if present
+        content = response.strip()
+        if content.startswith('```mermaid'):
+            content = content.replace('```mermaid', '').replace('```', '').strip()
+        elif content.startswith('```'):
+            content = content.replace('```', '').strip()
+        
+        return content
+        
+    except Exception as e:
+        raise Exception(f"LLM request failed: {str(e)}")
 
 def _sanitize(label: str) -> str:
     """Sanitize labels for Mermaid diagrams."""
@@ -728,7 +736,31 @@ class AutomatedAIAssessmentUI:
         
         # Load questions from API if not already loaded
         if not st.session_state.qa_questions:
+            # Check if we already have questions cached for this session
+            questions_cache_key = f"questions_{st.session_state.session_id}"
+            if questions_cache_key in st.session_state:
+                st.session_state.qa_questions = st.session_state[questions_cache_key]
+                st.success(f"✅ Loaded {len(st.session_state.qa_questions)} cached questions")
+                return
+            
+            # Prevent multiple concurrent calls with timestamp check
+            generating_timestamp = st.session_state.get('generating_questions_timestamp', 0)
+            import time
+            current_time = time.time()
+            
+            if st.session_state.get('generating_questions', False):
+                # If it's been more than 30 seconds, assume the previous call failed
+                if current_time - generating_timestamp > 30:
+                    st.session_state.generating_questions = False
+                    st.warning("Previous question generation timed out, retrying...")
+                else:
+                    st.info("Questions are being generated, please wait...")
+                    return
+                
             try:
+                st.session_state.generating_questions = True
+                st.session_state.generating_questions_timestamp = current_time
+                st.write(f"**Debug:** Generating questions for session {st.session_state.session_id}")
                 with st.spinner("🤖 AI is generating personalized questions for your requirement..."):
                     response = asyncio.run(self.make_api_request(
                         "GET",
@@ -737,6 +769,8 @@ class AutomatedAIAssessmentUI:
                     questions = response.get('questions', [])
                     if questions:
                         st.session_state.qa_questions = questions
+                        # Cache the questions to prevent regeneration
+                        st.session_state[questions_cache_key] = questions
                         st.success(f"✅ Generated {len(questions)} questions")
                     else:
                         st.info("No additional questions needed - proceeding to analysis...")
@@ -757,6 +791,8 @@ class AutomatedAIAssessmentUI:
                     }
                 ]
                 st.warning("Using fallback questions due to error")
+            finally:
+                st.session_state.generating_questions = False
         
         # Show questions if we have them
         if st.session_state.qa_questions:
@@ -780,6 +816,10 @@ class AutomatedAIAssessmentUI:
                     if answered_count == 0:
                         st.warning("Please answer at least one question before submitting.")
                     else:
+                        # Clear questions cache when submitting answers
+                        questions_cache_key = f"questions_{st.session_state.session_id}"
+                        if questions_cache_key in st.session_state:
+                            del st.session_state[questions_cache_key]
                         self.submit_qa_answers(answers)
     
     def submit_qa_answers(self, answers: Dict[str, str]):
@@ -886,6 +926,14 @@ class AutomatedAIAssessmentUI:
             # Generate solution explanation
             solution_explanation = self._generate_solution_explanation(best_rec, rec)
             st.write(solution_explanation)
+            
+            # Debug: Show what LLM analysis we have
+            session_requirements = st.session_state.get('requirements', {})
+            if session_requirements.get('llm_analysis_automation_feasibility'):
+                with st.expander("🔍 Debug: LLM Analysis", expanded=False):
+                    st.write("**LLM Feasibility:**", session_requirements.get('llm_analysis_automation_feasibility'))
+                    st.write("**LLM Reasoning:**", session_requirements.get('llm_analysis_feasibility_reasoning'))
+                    st.write("**LLM Confidence:**", session_requirements.get('llm_analysis_confidence_level'))
         
         # Tech stack with explanations
         if rec.get('tech_stack'):
@@ -921,37 +969,41 @@ class AutomatedAIAssessmentUI:
         self.render_export_buttons()
     
     def _generate_solution_explanation(self, best_recommendation: Dict, overall_rec: Dict) -> str:
-        """Generate a user-friendly solution explanation."""
+        """Generate a user-friendly solution explanation using actual recommendation data."""
+        # Use the detailed reasoning from the recommendation service if available
+        reasoning = best_recommendation.get('reasoning', '')
+        if reasoning:
+            # The reasoning already contains comprehensive analysis, use it directly
+            return reasoning
+        
+        # Fallback to pattern-based explanation if no reasoning available
         feasibility = overall_rec.get('feasibility', 'Unknown')
         confidence = best_recommendation.get('confidence', 0)
         pattern_id = best_recommendation.get('pattern_id', 'Unknown')
         
-        explanations = {
-            "Yes": "This solution would work by creating an automated system that handles the entire workflow without human intervention. ",
-            "Automatable": "This solution would work by creating an automated system that handles the entire workflow without human intervention. ",
-            "Partial": "This solution would work by automating the routine parts of the workflow while keeping humans in the loop for decision-making and oversight. ",
-            "Partially Automatable": "This solution would work by automating the routine parts of the workflow while keeping humans in the loop for decision-making and oversight. ",
-            "No": "While full automation isn't recommended, this analysis suggests areas where manual processes could be improved with better tooling. ",
-            "Not Automatable": "While full automation isn't recommended, this analysis suggests areas where manual processes could be improved with better tooling. "
-        }
+        # Create more specific explanation based on pattern and feasibility
+        pattern_name = best_recommendation.get('pattern_name', 'automation pattern')
         
-        base_explanation = explanations.get(feasibility, "This solution would involve a custom approach based on your specific requirements. ")
-        
-        # Add confidence-based details
-        if confidence > 0.8:
-            confidence_text = "We have high confidence in this approach based on similar successful implementations."
-        elif confidence > 0.6:
-            confidence_text = "This approach has been validated in similar scenarios, though some customization may be needed."
-        else:
-            confidence_text = "This approach would require careful planning and possibly a proof-of-concept phase."
-        
-        # Add implementation approach
         if feasibility in ["Yes", "Automatable"]:
-            implementation = " The system would integrate with your existing tools, process data automatically, and provide real-time monitoring and alerts."
+            base_explanation = f"Based on the '{pattern_name}' pattern, this solution can be fully automated. "
+            if confidence > 0.8:
+                confidence_text = "We have high confidence in this approach based on similar successful implementations. "
+            elif confidence > 0.6:
+                confidence_text = "This approach has been validated in similar scenarios, though some customization may be needed. "
+            else:
+                confidence_text = "This approach would require careful planning and possibly a proof-of-concept phase. "
+            
+            implementation = "The system would integrate with your existing tools, process data automatically, and provide real-time monitoring and alerts."
+            
         elif feasibility in ["Partial", "Partially Automatable"]:
-            implementation = " The automated components would handle data processing and routine tasks, while presenting key decisions to human operators through a user-friendly interface."
-        else:
-            implementation = " The focus would be on providing better tools and dashboards to make manual processes more efficient and less error-prone."
+            base_explanation = f"Using the '{pattern_name}' pattern, this solution can be partially automated. "
+            confidence_text = "The automated components would handle routine tasks while keeping humans in the loop for critical decisions. "
+            implementation = "This hybrid approach balances efficiency with necessary human oversight and control."
+            
+        else:  # No or Not Automatable
+            base_explanation = f"While the '{pattern_name}' pattern provides some guidance, full automation isn't recommended for this use case. "
+            confidence_text = "However, there are opportunities to improve manual processes with better tooling and workflows. "
+            implementation = "The focus would be on providing better tools and dashboards to make manual processes more efficient."
         
         return base_explanation + confidence_text + implementation
     
@@ -1024,44 +1076,51 @@ class AutomatedAIAssessmentUI:
         # Add overall architecture explanation
         st.subheader("🏗️ How It All Works Together")
         
-        architecture_explanation = self._generate_architecture_explanation(categorized_tech, uncategorized)
+        architecture_explanation = asyncio.run(self._generate_llm_architecture_explanation(rec['tech_stack']))
         st.write(architecture_explanation)
     
-    def _generate_architecture_explanation(self, categorized_tech: Dict, uncategorized: List[str]) -> str:
-        """Generate explanation of how the tech stack components work together."""
-        explanation_parts = []
+    async def _generate_llm_architecture_explanation(self, tech_stack: List[str]) -> str:
+        """Generate LLM-driven explanation of how the tech stack components work together."""
+        try:
+            # Import here to avoid circular imports
+            from app.services.architecture_explainer import ArchitectureExplainer
+            from app.api import create_llm_provider
+            
+            # Get current session requirements for context
+            requirements = st.session_state.get('requirements', {})
+            session_id = st.session_state.get('session_id', 'unknown')
+            
+            # Create LLM provider
+            provider_config = st.session_state.get('provider_config')
+            llm_provider = None
+            
+            if provider_config:
+                try:
+                    llm_provider = create_llm_provider(provider_config, session_id)
+                except Exception as e:
+                    st.warning(f"Could not create LLM provider for architecture explanation: {e}")
+            
+            # Create architecture explainer
+            explainer = ArchitectureExplainer(llm_provider)
+            
+            # Generate explanation
+            explanation = await explainer.explain_architecture(tech_stack, requirements, session_id)
+            return explanation
+            
+        except Exception as e:
+            st.error(f"Failed to generate architecture explanation: {e}")
+            return self._generate_fallback_architecture_explanation(tech_stack)
+    
+    def _generate_fallback_architecture_explanation(self, tech_stack: List[str]) -> str:
+        """Generate fallback architecture explanation when LLM fails."""
+        if not tech_stack:
+            return "No technology stack specified for this recommendation."
         
-        # Data flow explanation
-        if "Backend/API" in categorized_tech:
-            explanation_parts.append("The **backend services** serve as the core processing engine, handling business logic and orchestrating workflows.")
-        
-        if "Database" in categorized_tech:
-            explanation_parts.append("**Data storage** components ensure reliable persistence and fast retrieval of information.")
-        
-        if "Message Queue" in categorized_tech:
-            explanation_parts.append("**Message queues** enable asynchronous processing, allowing the system to handle high volumes and provide resilience.")
-        
-        if "Integration" in categorized_tech:
-            explanation_parts.append("**Integration layers** connect with your existing systems and external APIs to exchange data seamlessly.")
-        
-        if "Security" in categorized_tech:
-            explanation_parts.append("**Security components** protect data in transit and at rest, ensuring compliance and trust.")
-        
-        if "Monitoring" in categorized_tech:
-            explanation_parts.append("**Monitoring tools** provide visibility into system performance and help detect issues before they impact users.")
-        
-        if "Cloud/Infrastructure" in categorized_tech:
-            explanation_parts.append("**Cloud infrastructure** provides scalable hosting and deployment capabilities.")
-        
-        if "Frontend" in categorized_tech:
-            explanation_parts.append("**User interfaces** allow operators to monitor the system and handle exceptions.")
-        
-        # Add flow description
-        flow_description = (" The typical flow starts with data ingestion through APIs or integrations, "
-                          "processing by backend services, storage in databases, and notification through "
-                          "monitoring systems. Message queues ensure reliable processing even during high load periods.")
-        
-        return " ".join(explanation_parts) + flow_description
+        return (f"This technology stack combines {', '.join(tech_stack[:3])} "
+                f"{'and others ' if len(tech_stack) > 3 else ''}"
+                f"to create a comprehensive automation solution. "
+                f"The components work together to handle data processing, "
+                f"system integration, and monitoring requirements.")
     
     def render_export_buttons(self):
         """Render export functionality."""
@@ -1197,7 +1256,7 @@ class AutomatedAIAssessmentUI:
             return
         
         # Dashboard tabs
-        metrics_tab, patterns_tab, usage_tab = st.tabs(["🔧 Provider Metrics", "🎯 Pattern Analytics", "📊 Usage Patterns"])
+        metrics_tab, patterns_tab, usage_tab, messages_tab = st.tabs(["🔧 Provider Metrics", "🎯 Pattern Analytics", "📊 Usage Patterns", "💬 LLM Messages"])
         
         with metrics_tab:
             self.render_provider_metrics()
@@ -1207,6 +1266,9 @@ class AutomatedAIAssessmentUI:
         
         with usage_tab:
             self.render_usage_patterns()
+        
+        with messages_tab:
+            self.render_llm_messages()
     
     def render_provider_metrics(self):
         """Render LLM provider performance metrics."""
@@ -1557,6 +1619,160 @@ class AutomatedAIAssessmentUI:
             
         except Exception as e:
             st.error(f"❌ Error loading usage patterns: {str(e)}")
+    
+    def render_llm_messages(self):
+        """Render LLM messages (prompts and responses) for debugging and observability."""
+        st.subheader("💬 LLM Messages & Responses")
+        
+        try:
+            # Get LLM messages from audit system
+            messages = asyncio.run(self.get_llm_messages())
+            
+            if not messages:
+                st.info("No LLM messages available yet. Run some analyses to see LLM interactions.")
+                return
+            
+            # Filter options
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                # Session filter
+                session_ids = list(set([msg['session_id'] for msg in messages]))
+                selected_session = st.selectbox(
+                    "Filter by Session",
+                    ["All Sessions"] + session_ids,
+                    key="llm_session_filter"
+                )
+            
+            with col2:
+                # Provider filter
+                providers = list(set([f"{msg['provider']}/{msg['model']}" for msg in messages]))
+                selected_provider = st.selectbox(
+                    "Filter by Provider",
+                    ["All Providers"] + providers,
+                    key="llm_provider_filter"
+                )
+            
+            with col3:
+                # Purpose filter
+                purposes = list(set([msg.get('purpose', 'unknown') for msg in messages]))
+                selected_purpose = st.selectbox(
+                    "Filter by Purpose",
+                    ["All Purposes"] + sorted(purposes),
+                    key="llm_purpose_filter"
+                )
+            
+            # Additional row for message limit
+            col4, _, _ = st.columns(3)
+            with col4:
+                message_limit = st.selectbox(
+                    "Messages to Show",
+                    [10, 25, 50, 100],
+                    index=1,
+                    key="llm_message_limit"
+                )
+            
+            # Apply filters
+            filtered_messages = messages
+            
+            if selected_session != "All Sessions":
+                filtered_messages = [msg for msg in filtered_messages if msg['session_id'] == selected_session]
+            
+            if selected_provider != "All Providers":
+                provider, model = selected_provider.split('/', 1)
+                filtered_messages = [msg for msg in filtered_messages if msg['provider'] == provider and msg['model'] == model]
+            
+            if selected_purpose != "All Purposes":
+                filtered_messages = [msg for msg in filtered_messages if msg.get('purpose', 'unknown') == selected_purpose]
+            
+            # Limit results
+            filtered_messages = filtered_messages[:message_limit]
+            
+            if not filtered_messages:
+                st.info("No messages match the selected filters.")
+                return
+            
+            # Display messages
+            st.subheader(f"📋 Messages ({len(filtered_messages)} shown)")
+            
+            for i, msg in enumerate(filtered_messages):
+                # Build the title string without nested f-strings
+                tokens_text = f", {msg['tokens']} tokens" if msg['tokens'] else ""
+                purpose_text = f" - {msg.get('purpose', 'unknown')}"
+                title = f"🔹 {msg['provider']}/{msg['model']}{purpose_text} - {msg['timestamp']} ({msg['latency_ms']}ms{tokens_text})"
+                
+                with st.expander(title, expanded=False):
+                    # Message metadata
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.text(f"Session: {msg['session_id']}")
+                    
+                    with col2:
+                        st.text(f"Purpose: {msg.get('purpose', 'unknown')}")
+                    
+                    with col3:
+                        st.text(f"Latency: {msg['latency_ms']}ms")
+                    
+                    with col4:
+                        if msg['tokens']:
+                            st.text(f"Tokens: {msg['tokens']}")
+                        else:
+                            st.text("Tokens: N/A")
+                    
+                    # Prompt
+                    if msg['prompt']:
+                        st.subheader("📝 Prompt")
+                        st.code(msg['prompt'], language="text")
+                    else:
+                        st.info("No prompt recorded")
+                    
+                    # Response
+                    if msg['response']:
+                        st.subheader("🤖 Response")
+                        st.code(msg['response'], language="text")
+                    else:
+                        st.info("No response recorded")
+                    
+                    st.divider()
+            
+            # Summary statistics
+            st.subheader("📊 Message Statistics")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Total Messages", len(filtered_messages))
+            
+            with col2:
+                avg_latency = sum(msg['latency_ms'] for msg in filtered_messages) / len(filtered_messages)
+                st.metric("Avg Latency", f"{avg_latency:.1f}ms")
+            
+            with col3:
+                total_tokens = sum(msg['tokens'] or 0 for msg in filtered_messages)
+                st.metric("Total Tokens", total_tokens)
+            
+            with col4:
+                unique_sessions = len(set(msg['session_id'] for msg in filtered_messages))
+                st.metric("Unique Sessions", unique_sessions)
+            
+        except Exception as e:
+            st.error(f"❌ Error loading LLM messages: {str(e)}")
+    
+    async def get_llm_messages(self) -> List[Dict[str, Any]]:
+        """Fetch LLM messages from audit system."""
+        try:
+            from app.utils.audit import get_audit_logger
+            
+            audit_logger = get_audit_logger()
+            return audit_logger.get_llm_messages(
+                session_id=st.session_state.session_id if hasattr(st.session_state, 'session_id') else None,
+                limit=100
+            )
+            
+        except Exception as e:
+            st.error(f"Error fetching LLM messages: {str(e)}")
+            return []
     
     async def get_provider_statistics(self) -> Dict[str, Any]:
         """Fetch provider statistics from audit system."""

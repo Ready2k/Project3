@@ -7,6 +7,7 @@ from pathlib import Path
 from app.pattern.matcher import MatchResult
 from app.state.store import Recommendation
 from app.services.pattern_creator import PatternCreator
+from app.services.tech_stack_generator import TechStackGenerator
 from app.llm.base import LLMProvider
 from app.utils.logger import app_logger
 
@@ -23,10 +24,11 @@ class RecommendationService:
         Args:
             confidence_threshold: Minimum confidence for positive recommendations
             pattern_library_path: Path to pattern library for creating new patterns
-            llm_provider: LLM provider for pattern creation
+            llm_provider: LLM provider for pattern creation and tech stack generation
         """
         self.confidence_threshold = confidence_threshold
         self.pattern_creator = None
+        self.tech_stack_generator = TechStackGenerator(llm_provider)
         
         if pattern_library_path:
             self.pattern_creator = PatternCreator(pattern_library_path, llm_provider)
@@ -87,11 +89,15 @@ class RecommendationService:
             # Calculate adjusted confidence score
             confidence = self._calculate_confidence(match, requirements, feasibility)
             
-            # Generate tech stack suggestions
-            tech_stack = self._suggest_tech_stack(match, requirements)
+            # Generate intelligent tech stack suggestions
+            tech_stack = await self._generate_intelligent_tech_stack(matches, requirements, match)
             
-            # Generate comprehensive reasoning
+            # Generate comprehensive reasoning (now pattern-specific)
             reasoning = self._generate_reasoning(match, requirements, feasibility, confidence)
+            
+            # Enhance pattern with LLM insights if it's a good match
+            if match.blended_score > 0.8 and requirements.get("llm_analysis_feasibility_reasoning"):
+                await self._enhance_pattern_with_llm_insights(match, requirements, session_id)
             
             recommendation = Recommendation(
                 pattern_id=match.pattern_id,
@@ -110,7 +116,7 @@ class RecommendationService:
         return recommendations
     
     def _determine_feasibility(self, match: MatchResult, requirements: Dict[str, Any]) -> str:
-        """Determine feasibility based on pattern match and requirements complexity.
+        """Determine feasibility based on LLM analysis first, then pattern match and requirements complexity.
         
         Args:
             match: Pattern matching result
@@ -119,7 +125,23 @@ class RecommendationService:
         Returns:
             Feasibility assessment: "Yes", "Partial", or "No"
         """
-        # Start with pattern's base feasibility
+        # Prioritize LLM analysis if available
+        llm_feasibility = requirements.get("llm_analysis_automation_feasibility")
+        if llm_feasibility:
+            app_logger.info(f"Using LLM feasibility assessment: {llm_feasibility}")
+            # Map LLM response to our format
+            if llm_feasibility == "Automatable":
+                return "Yes"
+            elif llm_feasibility == "Partially Automatable":
+                return "Partial"
+            elif llm_feasibility == "Not Automatable":
+                return "No"
+            else:
+                # Handle exact matches
+                return llm_feasibility
+        
+        # Fallback to pattern-based analysis
+        app_logger.info(f"No LLM feasibility found, using pattern-based analysis")
         base_feasibility = match.feasibility
         
         # Analyze complexity factors
@@ -212,6 +234,21 @@ class RecommendationService:
         description = requirements.get("description", "")
         if description:
             desc_lower = description.lower()
+            
+            # Check for physical/impossible tasks first
+            physical_keywords = [
+                "paint", "painting", "build", "construction", "repair", "fix", "install",
+                "clean", "cleaning", "move", "transport", "deliver", "physical", "manual",
+                "hardware", "mechanical", "electrical wiring", "plumbing", "carpentry",
+                "landscaping", "gardening", "cooking", "driving", "walking", "running"
+            ]
+            
+            physical_count = sum(1 for keyword in physical_keywords if keyword in desc_lower)
+            if physical_count > 0:
+                # Physical tasks get maximum complexity to make them "Not Automatable"
+                factors["physical_impossibility"] = 10
+            
+            # Regular complexity keywords
             complexity_keywords = [
                 "complex", "multiple", "various", "different", "several", 
                 "integrate", "synchronize", "coordinate", "orchestrate",
@@ -273,6 +310,19 @@ class RecommendationService:
         else:
             factors["sla"] = 0
         
+        # Physical task risk - check description for physical activities
+        description = requirements.get("description", "").lower()
+        physical_keywords = [
+            "paint", "painting", "build", "construction", "repair", "fix", "install",
+            "clean", "cleaning", "move", "transport", "deliver", "physical", "manual",
+            "hardware", "mechanical", "electrical wiring", "plumbing", "carpentry",
+            "landscaping", "gardening", "cooking", "driving", "walking", "running"
+        ]
+        
+        physical_count = sum(1 for keyword in physical_keywords if keyword in description)
+        if physical_count > 0:
+            factors["physical_task_risk"] = 10  # Maximum risk for physical tasks
+        
         return factors
     
     def _calculate_confidence(self, 
@@ -289,7 +339,14 @@ class RecommendationService:
         Returns:
             Adjusted confidence score (0.0 to 1.0)
         """
-        # Start with pattern match confidence
+        # Prioritize LLM confidence if available
+        llm_confidence = requirements.get("llm_analysis_confidence_level")
+        if llm_confidence and isinstance(llm_confidence, (int, float)):
+            app_logger.info(f"Using LLM confidence: {llm_confidence}")
+            return min(max(llm_confidence, 0.0), 1.0)  # Ensure it's between 0 and 1
+        
+        # Fallback to pattern-based confidence calculation
+        app_logger.info("Using pattern-based confidence calculation")
         base_confidence = match.blended_score
         
         # Adjust based on feasibility determination
@@ -350,65 +407,47 @@ class RecommendationService:
         
         return present_fields / len(key_fields)
     
-    def _suggest_tech_stack(self, match: MatchResult, requirements: Dict[str, Any]) -> List[str]:
-        """Suggest technology stack based on pattern and requirements.
+    async def _generate_intelligent_tech_stack(self, 
+                                              matches: List[MatchResult], 
+                                              requirements: Dict[str, Any],
+                                              current_match: MatchResult) -> List[str]:
+        """Generate intelligent tech stack using the new TechStackGenerator.
         
         Args:
-            match: Pattern matching result
+            matches: All pattern matches for context
             requirements: User requirements
+            current_match: The specific match being processed
             
         Returns:
             List of recommended technologies
         """
-        # Start with pattern's base tech stack
-        base_tech_stack = match.tech_stack.copy()
-        
-        # Add technologies based on requirements
-        additional_tech = []
-        
-        # Add based on integrations
-        integrations = requirements.get("integrations", [])
-        for integration in integrations:
-            if "database" in integration.lower():
-                if "PostgreSQL" not in base_tech_stack and "SQLAlchemy" not in base_tech_stack:
-                    additional_tech.append("SQLAlchemy")
-            elif "api" in integration.lower() or "rest" in integration.lower():
-                if "httpx" not in base_tech_stack and "requests" not in base_tech_stack:
-                    additional_tech.append("httpx")
-            elif "queue" in integration.lower() or "message" in integration.lower():
-                if "Celery" not in base_tech_stack and "RabbitMQ" not in base_tech_stack:
-                    additional_tech.append("Celery")
-        
-        # Add based on volume requirements
-        volume = requirements.get("volume", {})
-        daily_volume = volume.get("daily", 0)
-        if daily_volume > 10000:
-            if "Redis" not in base_tech_stack:
-                additional_tech.append("Redis")
-            if "Docker" not in base_tech_stack:
-                additional_tech.append("Docker")
-        
-        # Add based on compliance requirements
-        compliance = requirements.get("compliance", [])
-        if isinstance(compliance, str):
-            compliance = [compliance]
-        
-        if any(comp in ["GDPR", "HIPAA"] for comp in compliance):
-            if "cryptography" not in base_tech_stack:
-                additional_tech.append("cryptography")
-        
-        # Combine and deduplicate
-        combined_tech_stack = base_tech_stack + additional_tech
-        
-        # Remove duplicates while preserving order
-        seen = set()
-        result = []
-        for tech in combined_tech_stack:
-            if tech not in seen:
-                seen.add(tech)
-                result.append(tech)
-        
-        return result
+        try:
+            # Extract constraints from requirements and patterns
+            constraints = {
+                "banned_tools": requirements.get("banned_tools", []),
+                "required_integrations": requirements.get("integrations", [])
+            }
+            
+            # Add pattern-specific constraints
+            if hasattr(current_match, 'constraints') and current_match.constraints:
+                constraints["banned_tools"].extend(current_match.constraints.get("banned_tools", []))
+                constraints["required_integrations"].extend(current_match.constraints.get("required_integrations", []))
+            
+            # Generate intelligent tech stack
+            tech_stack = await self.tech_stack_generator.generate_tech_stack(
+                matches, requirements, constraints
+            )
+            
+            app_logger.info(f"Generated intelligent tech stack for {current_match.pattern_id}: {tech_stack}")
+            return tech_stack
+            
+        except Exception as e:
+            app_logger.error(f"Failed to generate intelligent tech stack: {e}")
+            
+            # Fallback to pattern's base tech stack
+            fallback_stack = current_match.tech_stack.copy() if current_match.tech_stack else []
+            app_logger.info(f"Using fallback tech stack: {fallback_stack}")
+            return fallback_stack
     
     def _generate_reasoning(self, 
                           match: MatchResult, 
@@ -426,15 +465,46 @@ class RecommendationService:
         Returns:
             Detailed reasoning string
         """
+        # Enhance pattern reasoning with LLM insights if available
+        llm_reasoning = requirements.get("llm_analysis_feasibility_reasoning")
+        llm_insights = requirements.get("llm_analysis_key_insights", [])
+        llm_challenges = requirements.get("llm_analysis_automation_challenges", [])
+        
+        if llm_reasoning and match.blended_score > 0.7:
+            # For good pattern matches, blend LLM insights with pattern-specific reasoning
+            app_logger.info(f"Enhancing pattern reasoning for {match.pattern_name} with LLM insights")
+            
+            pattern_specific = f"Based on the '{match.pattern_name}' pattern with {match.blended_score:.0%} match confidence"
+            
+            # Add LLM insights as enhancements
+            enhanced_reasoning = [pattern_specific, llm_reasoning]
+            
+            if llm_insights:
+                enhanced_reasoning.append(f"Key insights: {', '.join(llm_insights[:2])}")
+            
+            if llm_challenges:
+                enhanced_reasoning.append(f"Main challenges: {', '.join(llm_challenges[:2])}")
+            
+            return ". ".join(enhanced_reasoning)
+        
+        elif llm_reasoning:
+            # For poor pattern matches, use LLM reasoning but note the pattern mismatch
+            app_logger.info(f"Using LLM reasoning due to poor pattern match ({match.blended_score:.0%})")
+            return f"Pattern match with '{match.pattern_name}' is moderate ({match.blended_score:.0%}). {llm_reasoning}"
+        
+        # Fallback to pattern-based reasoning with unique insights per pattern
+        app_logger.info(f"Using pattern-based reasoning for {match.pattern_name}")
         reasoning_parts = []
         
-        # Pattern match quality
+        # Pattern match quality with pattern-specific context
+        pattern_context = self._get_pattern_specific_context(match, requirements)
+        
         if match.blended_score > 0.8:
-            reasoning_parts.append(f"Excellent pattern match ({match.blended_score:.0%}) with '{match.pattern_name}'")
+            reasoning_parts.append(f"Excellent pattern match ({match.blended_score:.0%}) with '{match.pattern_name}'. {pattern_context}")
         elif match.blended_score > 0.6:
-            reasoning_parts.append(f"Good pattern match ({match.blended_score:.0%}) with '{match.pattern_name}'")
+            reasoning_parts.append(f"Good pattern match ({match.blended_score:.0%}) with '{match.pattern_name}'. {pattern_context}")
         else:
-            reasoning_parts.append(f"Moderate pattern match ({match.blended_score:.0%}) with '{match.pattern_name}'")
+            reasoning_parts.append(f"Moderate pattern match ({match.blended_score:.0%}) with '{match.pattern_name}'. {pattern_context}")
         
         # Feasibility reasoning
         if feasibility == "Yes":
@@ -556,3 +626,100 @@ class RecommendationService:
         # Don't create new pattern if we have good existing matches
         app_logger.info(f"Found adequate existing matches (best: {best_match_score:.3f}) - will use existing patterns")
         return False
+    
+    async def _enhance_pattern_with_llm_insights(self, 
+                                               match: MatchResult, 
+                                               requirements: Dict[str, Any], 
+                                               session_id: str) -> None:
+        """Enhance an existing pattern with LLM insights if it's a good match.
+        
+        Args:
+            match: Pattern matching result
+            requirements: User requirements with LLM analysis
+            session_id: Session ID for tracking
+        """
+        try:
+            llm_insights = requirements.get("llm_analysis_key_insights", [])
+            llm_challenges = requirements.get("llm_analysis_automation_challenges", [])
+            llm_approach = requirements.get("llm_analysis_recommended_approach", "")
+            
+            if not (llm_insights or llm_challenges or llm_approach):
+                return
+            
+            app_logger.info(f"Enhancing pattern {match.pattern_id} with LLM insights")
+            
+            # Load the existing pattern
+            if not self.pattern_creator:
+                return
+            
+            pattern_file = self.pattern_creator.pattern_library_path / f"{match.pattern_id}.json"
+            if not pattern_file.exists():
+                return
+            
+            import json
+            with open(pattern_file, 'r') as f:
+                pattern_data = json.load(f)
+            
+            # Add LLM insights to pattern (without overwriting existing data)
+            if llm_insights and "llm_insights" not in pattern_data:
+                pattern_data["llm_insights"] = llm_insights[:3]  # Top 3 insights
+            
+            if llm_challenges and "llm_challenges" not in pattern_data:
+                pattern_data["llm_challenges"] = llm_challenges[:3]  # Top 3 challenges
+            
+            if llm_approach and "llm_recommended_approach" not in pattern_data:
+                pattern_data["llm_recommended_approach"] = llm_approach
+            
+            # Add enhancement metadata
+            pattern_data["enhanced_by_llm"] = True
+            pattern_data["enhanced_from_session"] = session_id
+            
+            # Save the enhanced pattern
+            with open(pattern_file, 'w') as f:
+                json.dump(pattern_data, f, indent=2)
+            
+            app_logger.info(f"Enhanced pattern {match.pattern_id} with LLM insights")
+            
+        except Exception as e:
+            app_logger.error(f"Failed to enhance pattern {match.pattern_id}: {e}")
+    
+    def _get_pattern_specific_context(self, match: MatchResult, requirements: Dict[str, Any]) -> str:
+        """Get pattern-specific context to make reasoning unique per pattern.
+        
+        Args:
+            match: Pattern matching result
+            requirements: User requirements
+            
+        Returns:
+            Pattern-specific context string
+        """
+        # Create unique context based on pattern characteristics
+        context_parts = []
+        
+        # Add pattern domain context
+        if hasattr(match, 'domain') and match.domain:
+            context_parts.append(f"This {match.domain} pattern")
+        
+        # Add pattern-specific insights based on pattern name/type
+        pattern_name_lower = match.pattern_name.lower()
+        
+        if "physical" in pattern_name_lower:
+            context_parts.append("addresses physical automation challenges")
+        elif "api" in pattern_name_lower or "integration" in pattern_name_lower:
+            context_parts.append("focuses on system integration capabilities")
+        elif "monitoring" in pattern_name_lower:
+            context_parts.append("emphasizes monitoring and alerting features")
+        elif "workflow" in pattern_name_lower:
+            context_parts.append("handles complex workflow orchestration")
+        else:
+            context_parts.append("provides general automation guidance")
+        
+        # Add confidence-based context
+        if match.confidence > 0.8:
+            context_parts.append("with high implementation confidence")
+        elif match.confidence > 0.6:
+            context_parts.append("with moderate implementation confidence")
+        else:
+            context_parts.append("requiring careful implementation planning")
+        
+        return " ".join(context_parts) if context_parts else "provides automation guidance"
