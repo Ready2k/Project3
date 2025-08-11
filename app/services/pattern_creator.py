@@ -6,6 +6,7 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from app.llm.base import LLMProvider
+from app.services.tech_stack_generator import TechStackGenerator
 from app.utils.logger import app_logger
 
 
@@ -21,6 +22,7 @@ class PatternCreator:
         """
         self.pattern_library_path = pattern_library_path
         self.llm_provider = llm_provider
+        self.tech_stack_generator = TechStackGenerator(llm_provider)
     
     async def create_pattern_from_requirements(self, 
                                              requirements: Dict[str, Any],
@@ -40,8 +42,22 @@ class PatternCreator:
         pattern_id = self._generate_pattern_id()
         
         # Extract key information from requirements
-        description = requirements.get("description", "")
+        description = requirements.get("description", "").lower()
         domain = requirements.get("domain", "general")
+        
+        # Check for physical tasks that shouldn't have patterns created
+        physical_keywords = [
+            "paint", "painting", "build", "construction", "repair", "fix", "install",
+            "clean", "cleaning", "move", "transport", "deliver", "physical", "manual",
+            "hardware", "mechanical", "electrical wiring", "plumbing", "carpentry",
+            "landscaping", "gardening", "cooking", "driving", "walking", "running"
+        ]
+        
+        physical_count = sum(1 for keyword in physical_keywords if keyword in description)
+        if physical_count > 0:
+            app_logger.info(f"Detected physical task in description, creating 'Not Automatable' pattern")
+            # Create a pattern that explicitly marks this as not automatable
+            return await self._create_physical_task_pattern(pattern_id, requirements, session_id)
         
         # Analyze requirements to determine pattern characteristics
         pattern_analysis = await self._analyze_requirements(requirements)
@@ -52,8 +68,8 @@ class PatternCreator:
         # Determine feasibility
         feasibility = self._determine_feasibility(requirements, pattern_analysis)
         
-        # Generate tech stack
-        tech_stack = self._generate_tech_stack(requirements, pattern_analysis)
+        # Generate intelligent tech stack
+        tech_stack = await self._generate_intelligent_tech_stack(requirements, pattern_analysis)
         
         # Generate pattern types
         pattern_types = self._generate_pattern_types(requirements, pattern_analysis)
@@ -319,8 +335,8 @@ class PatternCreator:
         
         base_name = type_names.get(automation_type, "Process Automation")
         
-        # Add domain context if specific
-        if domain and domain != "general":
+        # Add domain context if specific and valid
+        if domain and domain not in ["general", "None", "none", ""]:
             domain_formatted = domain.replace("_", " ").title()
             return f"{domain_formatted} {base_name}"
         
@@ -385,65 +401,77 @@ class PatternCreator:
         else:
             return "Automatable"  # Default to automatable for new patterns
     
-    def _generate_tech_stack(self, requirements: Dict[str, Any], analysis: Dict[str, Any]) -> List[str]:
-        """Generate appropriate tech stack for the pattern."""
+    async def _generate_intelligent_tech_stack(self, requirements: Dict[str, Any], analysis: Dict[str, Any]) -> List[str]:
+        """Generate intelligent tech stack using the TechStackGenerator.
+        
+        Args:
+            requirements: User requirements
+            analysis: Pattern analysis results
+            
+        Returns:
+            List of recommended technologies
+        """
+        try:
+            # Create a mock match result for context (since we're creating a new pattern)
+            from app.pattern.matcher import MatchResult
+            
+            mock_match = MatchResult(
+                pattern_id="NEW-PATTERN",
+                pattern_name="New Pattern",
+                feasibility=analysis.get("feasibility", "Automatable"),
+                tech_stack=[],  # Empty since we're generating it
+                confidence=0.8,
+                tag_score=0.8,
+                vector_score=0.8,
+                blended_score=0.8,
+                rationale="New pattern being created"
+            )
+            
+            # Extract constraints
+            constraints = {
+                "banned_tools": requirements.get("banned_tools", []),
+                "required_integrations": requirements.get("integrations", [])
+            }
+            
+            # Generate intelligent tech stack
+            tech_stack = await self.tech_stack_generator.generate_tech_stack(
+                [mock_match], requirements, constraints
+            )
+            
+            app_logger.info(f"Generated intelligent tech stack for new pattern: {tech_stack}")
+            return tech_stack
+            
+        except Exception as e:
+            app_logger.error(f"Failed to generate intelligent tech stack for new pattern: {e}")
+            
+            # Fallback to basic tech stack
+            return self._generate_fallback_tech_stack(requirements, analysis)
+    
+    def _generate_fallback_tech_stack(self, requirements: Dict[str, Any], analysis: Dict[str, Any]) -> List[str]:
+        """Generate basic fallback tech stack when intelligent generation fails.
+        
+        Args:
+            requirements: User requirements
+            analysis: Pattern analysis results
+            
+        Returns:
+            Basic tech stack
+        """
         automation_type = analysis.get("automation_type", "general_automation")
-        integrations = analysis.get("integration_points", [])
-        data_flow = analysis.get("data_flow", "on_demand")
-        scalability = analysis.get("scalability_needs", "minimal_scale")
         
-        # Base tech stack
-        tech_stack = ["Python", "FastAPI"]
-        
-        # Add based on automation type
+        # Basic tech stack based on automation type
         type_tech = {
-            "scanning_automation": ["OpenCV", "pyzbar", "mobile app framework"],
-            "translation_automation": ["Google Translate API", "Azure Translator", "WebSocket"],
-            "document_processing": ["PyPDF2", "python-docx", "Tesseract", "spaCy"],
-            "api_integration": ["httpx", "Pydantic", "asyncio"],
-            "monitoring_automation": ["Prometheus", "Grafana", "APScheduler"],
-            "scheduled_automation": ["Celery", "APScheduler", "Cron"],
-            "workflow_automation": ["Celery", "Redis", "SQLAlchemy"],
-            "general_automation": ["SQLAlchemy", "httpx"]
+            "scanning_automation": ["Python", "OpenCV", "mobile app framework"],
+            "translation_automation": ["Python", "Google Translate API", "WebSocket"],
+            "document_processing": ["Python", "PyPDF2", "Tesseract"],
+            "api_integration": ["Python", "FastAPI", "httpx"],
+            "monitoring_automation": ["Python", "Prometheus", "APScheduler"],
+            "scheduled_automation": ["Python", "Celery", "APScheduler"],
+            "workflow_automation": ["Python", "Celery", "SQLAlchemy"],
+            "general_automation": ["Python", "FastAPI", "SQLAlchemy"]
         }
         
-        tech_stack.extend(type_tech.get(automation_type, []))
-        
-        # Add based on integrations
-        if "database" in integrations:
-            tech_stack.append("SQLAlchemy")
-        if "messaging" in integrations:
-            tech_stack.append("Celery")
-        if "cloud" in integrations:
-            tech_stack.append("boto3")
-        if "mobile" in integrations:
-            tech_stack.append("mobile app framework")
-        if "web" in integrations:
-            tech_stack.append("React")
-        
-        # Add based on data flow
-        if data_flow == "real_time":
-            tech_stack.extend(["WebSocket", "Redis"])
-        elif data_flow == "streaming":
-            tech_stack.extend(["Apache Kafka", "asyncio"])
-        elif data_flow == "batch":
-            tech_stack.extend(["Celery", "PostgreSQL"])
-        
-        # Add based on scalability
-        if scalability in ["medium_scale", "high_scale"]:
-            tech_stack.extend(["Docker", "Kubernetes", "Redis"])
-        if scalability == "high_scale":
-            tech_stack.extend(["Elasticsearch", "Prometheus"])
-        
-        # Remove duplicates while preserving order
-        seen = set()
-        result = []
-        for tech in tech_stack:
-            if tech not in seen:
-                seen.add(tech)
-                result.append(tech)
-        
-        return result
+        return type_tech.get(automation_type, ["Python", "FastAPI"])
     
     def _generate_pattern_types(self, requirements: Dict[str, Any], analysis: Dict[str, Any]) -> List[str]:
         """Generate pattern type tags."""
@@ -618,6 +646,42 @@ class PatternCreator:
             integrations.append("notification")
         
         return list(set(integrations))  # Remove duplicates
+    
+    async def _create_physical_task_pattern(self, pattern_id: str, requirements: Dict[str, Any], session_id: str) -> Dict[str, Any]:
+        """Create a pattern for physical tasks that are not automatable."""
+        description = requirements.get("description", "")
+        
+        # Create a pattern that clearly indicates this is not automatable
+        physical_pattern = {
+            "pattern_id": pattern_id,
+            "name": "Physical Task - Not Automatable",
+            "description": f"Physical task requiring manual intervention: {description}",
+            "feasibility": "Not Automatable",
+            "pattern_type": ["physical_task", "manual_process"],
+            "input_requirements": [
+                "Physical presence required",
+                "Manual tools and equipment",
+                "Human skills and judgment"
+            ],
+            "tech_stack": [],  # No tech stack for physical tasks
+            "related_patterns": [],
+            "confidence_score": 0.95,  # High confidence that it's not automatable
+            "constraints": {
+                "banned_tools": [],
+                "required_integrations": []
+            },
+            "domain": "physical_world",
+            "complexity": "High",  # Physical tasks are inherently complex for automation
+            "estimated_effort": "Not applicable - requires physical intervention",
+            "created_from_session": session_id,
+            "auto_generated": True
+        }
+        
+        # Save the pattern
+        await self._save_pattern(physical_pattern)
+        
+        app_logger.info(f"Created physical task pattern {pattern_id} for non-automatable task")
+        return physical_pattern
     
     async def _save_pattern(self, pattern: Dict[str, Any]) -> None:
         """Save the new pattern to the pattern library."""

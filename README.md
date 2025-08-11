@@ -8,9 +8,12 @@ Interactive GUI + API system that judges if user stories/requirements are automa
 - 🔍 **Intelligent Pattern Matching**: Tag filtering + vector similarity with FAISS
 - ❓ **AI-Generated Q&A System**: LLM creates contextual clarifying questions based on your specific requirement
 - 📊 **Feasibility Assessment**: Automatable, Partially Automatable, or Not Automatable with confidence scores
+- 🛠️ **LLM-Driven Tech Stack Generation**: Intelligent technology recommendations based on requirements, constraints, and available patterns
+- 🏗️ **AI-Generated Architecture Explanations**: LLM explains how technology components work together for your specific use case
 - 📈 **AI-Generated Architecture Diagrams**: Context, Container, and Sequence diagrams using Mermaid
 - 📤 **Export Results**: JSON and Markdown formats with comprehensive analysis
 - 🎯 **Constraint-Aware**: Filters banned tools and applies business constraints
+- 🔍 **LLM Message Audit Trail**: Complete visibility into LLM prompts and responses for transparency
 - 🧪 **100% Test Coverage**: TDD approach with deterministic fakes
 - 🐳 **Docker Ready**: Complete containerization with docker-compose
 - 🔄 **Real-time Progress Tracking**: Live status updates during analysis phases
@@ -166,6 +169,57 @@ curl -X POST "http://localhost:8000/recommend" \
   }'
 ```
 
+## Intelligent Tech Stack Generation
+
+The system uses LLM-driven analysis to generate contextual, justified technology recommendations instead of generic rule-based suggestions.
+
+### How It Works
+
+1. **Context Analysis**: LLM analyzes your specific requirements, domain, volume, compliance needs, and constraints
+2. **Pattern-Aware**: Considers technologies from similar successful patterns as starting points
+3. **Constraint-Aware**: Respects banned tools and required integrations from your organization
+4. **Intelligent Selection**: LLM selects technologies that directly address your needs with reasoning
+
+### Example
+
+**Input Requirements:**
+```json
+{
+  "description": "Automate customer support ticket processing with AI analysis",
+  "domain": "customer_support",
+  "volume": {"daily": 1000},
+  "integrations": ["database", "email", "slack"],
+  "compliance": ["GDPR"]
+}
+```
+
+**LLM-Generated Tech Stack:**
+- **Python**: Core language for automation and AI integration
+- **FastAPI**: High-performance API endpoints for ticket ingestion
+- **SQLAlchemy**: Database operations for ticket and customer data
+- **Redis**: Caching and message broker for asynchronous processing
+- **Docker**: Consistent deployment across environments
+- **Prometheus**: System monitoring for 1000+ daily tickets
+
+**Architecture Explanation (LLM-Generated):**
+> "This customer support automation system uses a modern Python-based architecture designed for scalability and reliability. The core is built around FastAPI, which provides high-performance API endpoints for ticket ingestion and processing. SQLAlchemy handles database operations, ensuring reliable storage and retrieval of ticket data, customer information, and processing history. Redis serves as both a caching layer for frequently accessed data and a message broker for asynchronous task processing..."
+
+### LLM Message Transparency
+
+All tech stack generation prompts and responses are logged and visible in the **Observability Tab > LLM Messages**:
+
+- **Full Prompts**: See exactly what context was provided to the LLM
+- **Structured Responses**: View the LLM's reasoning and technology choices
+- **Purpose Filtering**: Filter messages by "tech_stack_generation" or "architecture_explanation"
+- **Audit Trail**: Complete transparency into AI decision-making
+
+### Benefits Over Rule-Based Systems
+
+- **Contextual**: Technologies chosen based on actual requirements, not generic rules
+- **Justified**: LLM provides reasoning for each technology choice
+- **Adaptive**: Learns from patterns while adapting to new requirements
+- **Transparent**: Full visibility into the decision-making process
+
 ## Configuration
 
 ### Environment Variables
@@ -290,8 +344,11 @@ mypy app/ --ignore-missing-imports
 - **Pattern Library**: JSON-based reusable solution patterns
 - **FAISS Index**: Vector similarity search for pattern matching
 - **Q&A System**: Template-based question generation
+- **Tech Stack Generator**: LLM-driven intelligent technology recommendations
+- **Architecture Explainer**: LLM-generated explanations of how components work together
 - **State Management**: Session persistence with diskcache/Redis
 - **Export System**: JSON and Markdown result export
+- **Audit System**: Complete LLM message logging and observability
 
 ### Request Flow
 
