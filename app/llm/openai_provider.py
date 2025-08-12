@@ -23,6 +23,13 @@ class OpenAIProvider(LLMProvider):
                 messages=[{"role": "user", "content": prompt}],
                 **kwargs
             )
+            
+            # Store token usage for audit logging
+            if hasattr(response, 'usage') and response.usage:
+                self.last_tokens_used = response.usage.total_tokens
+            else:
+                self.last_tokens_used = None
+                
             return response.choices[0].message.content
         except Exception as e:
             raise RuntimeError(f"OpenAI generation failed: {e}")

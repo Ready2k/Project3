@@ -70,12 +70,15 @@ class AuditedLLMProvider:
         """Generate text with audit logging."""
         start_time = time.time()
         
+        # Extract purpose for audit logging (don't pass to provider)
+        purpose = kwargs.pop('purpose', 'general')
+        
         try:
             result = await self.provider.generate(prompt, **kwargs)
             latency_ms = int((time.time() - start_time) * 1000)
             
-            # Extract token count if available
-            tokens = kwargs.get('max_tokens')  # Fallback to requested tokens
+            # Extract actual token count if available
+            tokens = getattr(self.provider, 'last_tokens_used', None) or kwargs.get('max_tokens')
             
             provider_info = self.provider.get_model_info()
             
@@ -84,7 +87,10 @@ class AuditedLLMProvider:
                 provider=provider_info.get('provider', 'unknown'),
                 model=provider_info.get('model', 'unknown'),
                 latency_ms=latency_ms,
-                tokens=tokens
+                tokens=tokens,
+                prompt=prompt,
+                response=result,
+                purpose=purpose
             )
             
             return result
@@ -99,7 +105,10 @@ class AuditedLLMProvider:
                 provider=provider_info.get('provider', 'unknown'),
                 model=provider_info.get('model', 'unknown'),
                 latency_ms=latency_ms,
-                tokens=None
+                tokens=None,
+                prompt=prompt,
+                response="",  # Empty response for failed calls
+                purpose=purpose
             )
             
             raise e

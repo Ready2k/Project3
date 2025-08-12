@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 
 
@@ -98,6 +100,9 @@ app.add_middleware(RateLimitMiddleware, calls_per_minute=60, calls_per_hour=1000
 
 # 4. General security middleware (last)
 app.add_middleware(SecurityMiddleware, max_request_size=10 * 1024 * 1024)  # 10MB limit
+
+# Mount static files for exports
+app.mount("/exports", StaticFiles(directory="exports"), name="exports")
 
 # Global dependencies
 settings: Optional[Settings] = None
@@ -277,7 +282,7 @@ def get_export_service() -> ExportService:
     global export_service
     if export_service is None:
         settings = get_settings()
-        export_service = ExportService(settings.export_path)
+        export_service = ExportService(settings.export_path, base_url="/exports/")
     return export_service
 
 

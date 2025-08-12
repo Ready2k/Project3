@@ -244,7 +244,7 @@ Respond with a JSON object containing:
             
             # Note: We'll log after the call to get latency
             
-            response = await self.llm_provider.generate(prompt)
+            response = await self.llm_provider.generate(prompt, purpose="tech_stack_generation")
             
             # Calculate latency
             end_time = datetime.now()

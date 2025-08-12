@@ -5,7 +5,6 @@ from typing import Dict, List, Any, Optional
 
 from app.llm.base import LLMProvider
 from app.utils.logger import app_logger
-from app.utils.audit import log_llm_call
 
 
 class ArchitectureExplainer:
@@ -22,29 +21,140 @@ class ArchitectureExplainer:
     async def explain_architecture(self, 
                                  tech_stack: List[str],
                                  requirements: Dict[str, Any],
-                                 session_id: str = "unknown") -> str:
-        """Generate LLM-driven explanation of how the tech stack works together.
+                                 session_id: str = "unknown") -> tuple[List[str], str]:
+        """Generate LLM-driven tech stack and explanation based on requirements.
         
         Args:
-            tech_stack: List of technologies in the stack
+            tech_stack: Initial tech stack (may be enhanced by LLM)
             requirements: User requirements for context
             session_id: Session ID for tracking
             
         Returns:
-            Architecture explanation string
+            Tuple of (enhanced_tech_stack, architecture_explanation)
         """
-        if not self.llm_provider or not tech_stack:
-            return self._generate_fallback_explanation(tech_stack, requirements)
+        if not self.llm_provider:
+            return tech_stack, self._generate_fallback_explanation(tech_stack, requirements)
         
         try:
-            explanation = await self._generate_llm_explanation(tech_stack, requirements, session_id)
+            # First, generate an appropriate tech stack based on requirements
+            enhanced_tech_stack = await self._generate_tech_stack_for_requirements(requirements, session_id)
+            
+            # Then explain how it works together
+            explanation = await self._generate_llm_explanation(enhanced_tech_stack, requirements, session_id)
             if explanation:
-                return explanation
+                return enhanced_tech_stack, explanation
         except Exception as e:
             app_logger.error(f"Failed to generate LLM architecture explanation: {e}")
         
         # Fallback to rule-based explanation
-        return self._generate_fallback_explanation(tech_stack, requirements)
+        return tech_stack, self._generate_fallback_explanation(tech_stack, requirements)
+    
+    async def _generate_tech_stack_for_requirements(self,
+                                                  requirements: Dict[str, Any],
+                                                  session_id: str) -> List[str]:
+        """Generate appropriate tech stack based on specific requirements.
+        
+        Args:
+            requirements: User requirements
+            session_id: Session ID for tracking
+            
+        Returns:
+            List of recommended technologies
+        """
+        # Create a focused prompt for tech stack generation
+        prompt = f"""You are a senior software architect. Based on the specific requirements below, recommend a focused, practical technology stack.
+
+**Requirements:**
+- Description: {requirements.get('description', 'Not specified')}
+- Domain: {requirements.get('domain', 'Not specified')}
+- Volume/Scale: {requirements.get('volume', 'Not specified')}
+- Integrations needed: {requirements.get('integrations', [])}
+- Data sensitivity: {requirements.get('data_sensitivity', 'Not specified')}
+- Compliance requirements: {requirements.get('compliance', [])}
+
+**Instructions:**
+1. Analyze the specific requirements carefully
+2. Recommend 6-10 technologies that directly address these needs
+3. Focus on practical, proven technologies
+4. Consider the domain, scale, and integration requirements
+5. Include: programming language, framework, database, key libraries/tools
+
+Respond with ONLY a valid JSON object (no markdown, no extra text):
+{{
+    "tech_stack": ["Technology1", "Technology2", "Technology3", ...],
+    "reasoning": "Brief explanation of why these technologies were chosen for these specific requirements"
+}}
+
+IMPORTANT: Return only the JSON object, no other text or formatting."""
+
+        try:
+            response = await self.llm_provider.generate(prompt, purpose="tech_stack_generation")
+            
+            # Parse JSON response (handle markdown formatting)
+            import json
+            import re
+            
+            try:
+                # Clean the response - remove markdown code blocks if present
+                cleaned_response = response.strip()
+                if cleaned_response.startswith('```json'):
+                    cleaned_response = cleaned_response.replace('```json', '').replace('```', '').strip()
+                elif cleaned_response.startswith('```'):
+                    cleaned_response = cleaned_response.replace('```', '').strip()
+                
+                # Try to extract JSON from the response
+                json_match = re.search(r'\{.*\}', cleaned_response, re.DOTALL)
+                if json_match:
+                    json_str = json_match.group(0)
+                    result = json.loads(json_str)
+                    tech_stack = result.get("tech_stack", [])
+                    app_logger.info(f"Generated tech stack ({len(tech_stack)} items): {tech_stack}")
+                    return tech_stack
+                else:
+                    raise json.JSONDecodeError("No JSON object found", cleaned_response, 0)
+                    
+            except json.JSONDecodeError as e:
+                app_logger.warning(f"Failed to parse tech stack JSON: {e}, extracting from text")
+                # Fallback: extract technologies from text
+                return self._extract_tech_from_text(response)
+                
+        except Exception as e:
+            app_logger.error(f"Failed to generate tech stack: {e}")
+            # Return a basic tech stack based on domain
+            return self._get_domain_based_tech_stack(requirements)
+    
+    def _extract_tech_from_text(self, text: str) -> List[str]:
+        """Extract technology names from text response."""
+        # Simple extraction - look for common tech patterns
+        import re
+        tech_patterns = [
+            r'\b(Python|JavaScript|Java|Go|Rust|TypeScript|C#)\b',
+            r'\b(FastAPI|Django|Flask|Express|React|Vue|Angular|Spring)\b',
+            r'\b(PostgreSQL|MySQL|MongoDB|Redis|SQLite|Elasticsearch)\b',
+            r'\b(Docker|Kubernetes|AWS|Azure|GCP|Nginx|Apache)\b',
+            r'\b(Celery|RabbitMQ|Kafka|WebSocket|GraphQL|REST)\b'
+        ]
+        
+        technologies = []
+        for pattern in tech_patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            technologies.extend(matches)
+        
+        # Remove duplicates and limit to 8
+        return list(dict.fromkeys(technologies))[:8]
+    
+    def _get_domain_based_tech_stack(self, requirements: Dict[str, Any]) -> List[str]:
+        """Get basic tech stack based on domain."""
+        domain = requirements.get('domain', '').lower()
+        
+        if 'data' in domain or 'analytics' in domain:
+            return ["Python", "FastAPI", "PostgreSQL", "Pandas", "Redis", "Docker"]
+        elif 'web' in domain or 'api' in domain:
+            return ["Python", "FastAPI", "PostgreSQL", "Redis", "Docker", "Nginx"]
+        elif 'mobile' in domain:
+            return ["Python", "FastAPI", "PostgreSQL", "WebSocket", "Redis", "Mobile SDK"]
+        else:
+            return ["Python", "FastAPI", "PostgreSQL", "Redis", "Docker", "Monitoring"]
     
     async def _generate_llm_explanation(self, 
                                       tech_stack: List[str],
@@ -60,9 +170,17 @@ class ArchitectureExplainer:
         Returns:
             LLM-generated explanation or None if failed
         """
-        # Prepare context for LLM
-        prompt = {
-            "system": """You are a senior software architect with expertise in system design and technology integration. 
+        # Prepare context for LLM as a single string prompt
+        # Build the prompt with proper string formatting
+        tech_stack_str = ', '.join(tech_stack)
+        description = requirements.get('description', 'Not specified')
+        domain = requirements.get('domain', 'Not specified')
+        volume = requirements.get('volume', {})
+        integrations = requirements.get('integrations', [])
+        data_sensitivity = requirements.get('data_sensitivity', 'Not specified')
+        compliance = requirements.get('compliance', [])
+        
+        prompt = f"""You are a senior software architect with expertise in system design and technology integration. 
 Your task is to explain how a technology stack works together to solve a specific automation requirement.
 
 Focus on:
@@ -72,52 +190,34 @@ Focus on:
 4. How the components interact and communicate
 
 Keep the explanation clear, practical, and focused on the specific use case.
-Avoid generic descriptions - be specific about how these technologies address the actual requirements.""",
-            
-            "user": f"""
-**Requirements:**
-- Description: {requirements.get('description', 'Not specified')}
-- Domain: {requirements.get('domain', 'Not specified')}
-- Volume: {requirements.get('volume', {})}
-- Integrations: {requirements.get('integrations', [])}
-- Data sensitivity: {requirements.get('data_sensitivity', 'Not specified')}
-- Compliance: {requirements.get('compliance', [])}
+Avoid generic descriptions - be specific about how these technologies address the actual requirements.
 
-**Technology Stack:**
-{', '.join(tech_stack)}
+**Requirements:**
+- Description: {description}
+- Domain: {domain}
+- Volume: {volume}
+- Integrations: {integrations}
+- Data sensitivity: {data_sensitivity}
+- Compliance: {compliance}
+
+**Technology Stack (use ALL of these technologies in your explanation):**
+{tech_stack_str}
 
 **Instructions:**
-Explain how these technologies work together to address the specific requirements above. 
+Explain how these EXACT technologies work together to address the specific requirements above. 
+You MUST mention and explain the role of each technology listed above.
+
 Focus on:
 1. The overall system architecture and data flow
-2. How each technology contributes to solving the problem
-3. Why this combination is well-suited for the requirements
+2. How EACH technology in the stack contributes to solving the problem
+3. Why this specific combination is well-suited for the requirements
 4. How the components communicate and integrate
 
-Provide a clear, practical explanation in 2-3 paragraphs. Be specific to this use case, not generic.
-"""
-        }
+Provide a clear, practical explanation in 2-3 paragraphs. Be specific to this use case and mention all technologies by name."""
         
         try:
-            # Track timing for audit
-            from datetime import datetime
-            start_time = datetime.now()
-            
-            response = await self.llm_provider.generate(prompt)
-            
-            # Calculate latency
-            end_time = datetime.now()
-            latency_ms = int((end_time - start_time).total_seconds() * 1000)
-            
-            # Log the LLM call with response
-            await log_llm_call(
-                session_id=session_id,
-                provider=self.llm_provider.__class__.__name__,
-                model=getattr(self.llm_provider, 'model', 'unknown'),
-                latency_ms=latency_ms,
-                prompt=str(prompt),
-                response=str(response)
-            )
+            app_logger.info(f"Generating explanation for tech stack ({len(tech_stack)} items): {tech_stack}")
+            response = await self.llm_provider.generate(prompt, purpose="tech_stack_explanation")
             
             # Clean up the response
             if isinstance(response, str):

@@ -19,7 +19,7 @@ except ImportError:
     OPENAI_AVAILABLE = False
 
 # Mermaid diagram functions (LLM-generated for specific requirements)
-async def make_llm_request(prompt: str, provider_config: Dict) -> str:
+async def make_llm_request(prompt: str, provider_config: Dict, purpose: str = "diagram_generation") -> str:
     """Make a request to the LLM for diagram generation using audited provider."""
     try:
         # Import here to avoid circular imports
@@ -41,7 +41,7 @@ async def make_llm_request(prompt: str, provider_config: Dict) -> str:
         llm_provider = create_llm_provider(config, session_id)
         
         # Make the request through the audited provider
-        response = await llm_provider.generate(prompt)
+        response = await llm_provider.generate(prompt, purpose=purpose)
         
         if not response:
             raise Exception("Empty response from LLM")
@@ -939,8 +939,13 @@ class AutomatedAIAssessmentUI:
         if rec.get('tech_stack'):
             st.subheader("🛠️ Recommended Tech Stack")
             
-            # Show tech stack with explanations
-            self._render_tech_stack_explanation(rec['tech_stack'])
+            # Generate and show LLM-enhanced tech stack with explanations
+            enhanced_tech_stack, architecture_explanation = asyncio.run(self._generate_llm_tech_stack_and_explanation(rec['tech_stack']))
+            self._render_tech_stack_explanation(enhanced_tech_stack)
+            
+            # Show architecture explanation
+            st.subheader("🏗️ How It All Works Together")
+            st.write(architecture_explanation)
         
         # Detailed reasoning
         if rec.get('reasoning'):
@@ -1073,11 +1078,7 @@ class AutomatedAIAssessmentUI:
                     with cols[i % 4]:
                         st.info(tech)
         
-        # Add overall architecture explanation
-        st.subheader("🏗️ How It All Works Together")
-        
-        architecture_explanation = asyncio.run(self._generate_llm_architecture_explanation(tech_stack))
-        st.write(architecture_explanation)
+        # Architecture explanation is now handled in the main recommendation display
     
     async def _generate_llm_architecture_explanation(self, tech_stack: List[str]) -> str:
         """Generate LLM-driven explanation of how the tech stack components work together."""
@@ -1108,8 +1109,8 @@ class AutomatedAIAssessmentUI:
             # Create architecture explainer
             explainer = ArchitectureExplainer(llm_provider)
             
-            # Generate explanation
-            explanation = await explainer.explain_architecture(tech_stack, requirements, session_id)
+            # Generate explanation (now returns tuple)
+            enhanced_tech_stack, explanation = await explainer.explain_architecture(tech_stack, requirements, session_id)
             return explanation
             
         except Exception as e:
@@ -1126,6 +1127,55 @@ class AutomatedAIAssessmentUI:
                 f"to create a comprehensive automation solution. "
                 f"The components work together to handle data processing, "
                 f"system integration, and monitoring requirements.")
+    
+    async def _generate_llm_tech_stack_and_explanation(self, original_tech_stack: List[str]) -> tuple[List[str], str]:
+        """Generate LLM-driven tech stack and explanation based on requirements."""
+        # Check if we already have cached results for this session
+        session_id = st.session_state.get('session_id', 'unknown')
+        cache_key = f"llm_tech_stack_{session_id}"
+        
+        if cache_key in st.session_state:
+            from app.utils.logger import app_logger
+            app_logger.info("Using cached LLM tech stack and explanation")
+            return st.session_state[cache_key]
+        
+        try:
+            # Import here to avoid circular imports
+            from app.services.architecture_explainer import ArchitectureExplainer
+            from app.api import create_llm_provider
+            
+            # Get session requirements for context
+            requirements = st.session_state.get('requirements', {})
+            session_id = st.session_state.get('session_id', 'unknown')
+            
+            # Create LLM provider if available
+            llm_provider = None
+            provider_config_dict = st.session_state.get('provider_config')
+            if provider_config_dict and provider_config_dict.get('api_key'):
+                try:
+                    from app.api import ProviderConfig
+                    
+                    # Convert dict to ProviderConfig model
+                    provider_config = ProviderConfig(**provider_config_dict)
+                    llm_provider = create_llm_provider(provider_config, session_id)
+                except Exception as e:
+                    st.warning(f"Could not create LLM provider for tech stack generation: {e}")
+            
+            # Create architecture explainer
+            explainer = ArchitectureExplainer(llm_provider)
+            
+            # Generate both tech stack and explanation
+            enhanced_tech_stack, explanation = await explainer.explain_architecture(original_tech_stack, requirements, session_id)
+            
+            # Cache the results
+            result = (enhanced_tech_stack, explanation)
+            st.session_state[cache_key] = result
+            
+            return result
+            
+        except Exception as e:
+            st.error(f"Failed to generate tech stack and explanation: {e}")
+            return original_tech_stack, self._generate_fallback_architecture_explanation(original_tech_stack)
     
     def render_export_buttons(self):
         """Render export functionality."""
@@ -1157,9 +1207,37 @@ class AutomatedAIAssessmentUI:
                 st.success(f"✅ Export successful!")
                 st.info(f"**File:** {response['file_path']}")
                 
-                # Show download link
+                # Show download button
                 if response.get('download_url'):
-                    st.markdown(f"[📥 Download File]({response['download_url']})")
+                    # Read the file content for download
+                    try:
+                        import requests
+                        # Construct full URL for the API request
+                        api_base = "http://localhost:8000"
+                        download_url = response['download_url']
+                        if not download_url.startswith('http'):
+                            download_url = f"{api_base}{download_url}"
+                        
+                        file_response = requests.get(download_url)
+                        if file_response.status_code == 200:
+                            file_content = file_response.content
+                            filename = response['file_path'].split('/')[-1]
+                            
+                            st.download_button(
+                                label="📥 Download File",
+                                data=file_content,
+                                file_name=filename,
+                                mime="application/octet-stream"
+                            )
+                        else:
+                            st.markdown(f"[📥 Download File]({download_url})")
+                    except Exception as e:
+                        st.warning(f"Could not create download button: {e}")
+                        # Fallback to direct link
+                        download_url = response['download_url']
+                        if not download_url.startswith('http'):
+                            download_url = f"http://localhost:8000{download_url}"
+                        st.markdown(f"[📥 Download File]({download_url})")
         
         except Exception as e:
             st.error(f"❌ Export failed: {str(e)}")
@@ -1238,18 +1316,189 @@ class AutomatedAIAssessmentUI:
                 st.code(mermaid_code, language="mermaid")
     
     def render_mermaid(self, mermaid_code: str):
-        """Render a Mermaid diagram using HTML component."""
-        mermaid_html = f"""
-        <div class="mermaid">
-            {mermaid_code}
-        </div>
-        <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-        <script>
-            mermaid.initialize({{startOnLoad: true}});
-        </script>
-        """
+        """Render a Mermaid diagram with expandable view using Streamlit native components."""
+        # Create unique ID for this diagram
+        import hashlib
+        diagram_id = hashlib.md5(mermaid_code.encode()).hexdigest()[:8]
         
-        html(mermaid_html, height=400)
+        # Store diagram in session state for expanded view
+        if f"diagram_{diagram_id}" not in st.session_state:
+            st.session_state[f"diagram_{diagram_id}"] = mermaid_code
+        
+        # Add expand toggle above the diagram
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col2:
+            if st.button("🔍 Large View", key=f"expand_{diagram_id}"):
+                st.session_state[f"show_large_{diagram_id}"] = not st.session_state.get(f"show_large_{diagram_id}", False)
+        
+        with col3:
+            if st.button("📋 Show Code", key=f"code_{diagram_id}"):
+                st.session_state[f"show_code_{diagram_id}"] = not st.session_state.get(f"show_code_{diagram_id}", False)
+        
+        # Check if we should show large view
+        show_large = st.session_state.get(f"show_large_{diagram_id}", False)
+        
+        if show_large:
+            # Large view - use full width and height
+            st.write("**🔍 Large View Mode** - Click 'Large View' again to return to normal size")
+            
+            large_html = f"""
+            <style>
+                .large-mermaid-container-{diagram_id} {{
+                    width: 100%;
+                    min-height: 1100px;
+                    background: white;
+                    border: 2px solid #4CAF50;
+                    border-radius: 12px;
+                    padding: 30px;
+                    margin: 20px 0;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                }}
+                .large-mermaid-{diagram_id} {{
+                    width: 100% !important;
+                    min-height: 1000px !important;
+                    font-size: 18px !important;
+                }}
+                .large-mermaid-{diagram_id} svg {{
+                    width: 100% !important;
+                    height: auto !important;
+                    min-height: 1000px !important;
+                    max-width: none !important;
+                }}
+                .large-mermaid-{diagram_id} .node rect,
+                .large-mermaid-{diagram_id} .node circle,
+                .large-mermaid-{diagram_id} .node ellipse {{
+                    stroke-width: 3px !important;
+                }}
+                .large-mermaid-{diagram_id} .edgePath path {{
+                    stroke-width: 3px !important;
+                }}
+                .large-mermaid-{diagram_id} text {{
+                    font-size: 16px !important;
+                    font-weight: 600 !important;
+                }}
+                .large-mermaid-{diagram_id} .actor {{
+                    stroke-width: 3px !important;
+                }}
+                .large-mermaid-{diagram_id} .messageLine0,
+                .large-mermaid-{diagram_id} .messageLine1 {{
+                    stroke-width: 2px !important;
+                }}
+            </style>
+            
+            <div class="large-mermaid-container-{diagram_id}">
+                <div class="mermaid large-mermaid-{diagram_id}" id="large-{diagram_id}">
+                    {mermaid_code}
+                </div>
+            </div>
+            
+            <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+            <script>
+                mermaid.initialize({{
+                    startOnLoad: false,
+                    theme: 'default',
+                    themeVariables: {{
+                        fontSize: '16px',
+                        fontFamily: 'Arial, sans-serif',
+                        primaryColor: '#4CAF50',
+                        primaryTextColor: '#333',
+                        primaryBorderColor: '#4CAF50',
+                        lineColor: '#666',
+                        secondaryColor: '#f8f9fa',
+                        tertiaryColor: '#ffffff'
+                    }},
+                    flowchart: {{
+                        useMaxWidth: false,
+                        htmlLabels: true,
+                        curve: 'basis',
+                        padding: 30,
+                        nodeSpacing: 100,
+                        rankSpacing: 100
+                    }},
+                    sequence: {{
+                        useMaxWidth: false,
+                        wrap: false,
+                        width: 1000,
+                        height: 600,
+                        boxMargin: 30,
+                        boxTextMargin: 15,
+                        noteMargin: 30,
+                        messageMargin: 60,
+                        actorMargin: 80
+                    }}
+                }});
+                
+                setTimeout(() => {{
+                    const element = document.getElementById('large-{diagram_id}');
+                    if (element) {{
+                        mermaid.init(undefined, element);
+                    }}
+                }}, 200);
+            </script>
+            """
+            
+            html(large_html, height=1200)
+            
+        else:
+            # Regular sized diagram
+            mermaid_html = f"""
+            <style>
+                .mermaid-container-{diagram_id} {{
+                    border: 2px solid #e0e0e0;
+                    border-radius: 8px;
+                    padding: 15px;
+                    background: white;
+                    margin: 10px 0;
+                }}
+                .mermaid-{diagram_id} {{
+                    font-size: 14px;
+                }}
+            </style>
+            
+            <div class="mermaid-container-{diagram_id}">
+                <div class="mermaid mermaid-{diagram_id}">
+                    {mermaid_code}
+                </div>
+            </div>
+            
+            <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+            <script>
+                mermaid.initialize({{
+                    startOnLoad: true,
+                    theme: 'default',
+                    themeVariables: {{
+                        fontSize: '14px',
+                        fontFamily: 'Arial, sans-serif'
+                    }},
+                    flowchart: {{
+                        useMaxWidth: true,
+                        htmlLabels: true
+                    }},
+                    sequence: {{
+                        useMaxWidth: true,
+                        wrap: true
+                    }}
+                }});
+            </script>
+            """
+            
+            html(mermaid_html, height=400)
+        
+        # Show code if requested
+        if st.session_state.get(f"show_code_{diagram_id}", False):
+            st.write("**📋 Mermaid Code:**")
+            st.code(mermaid_code, language="mermaid")
+            
+            # Download button
+            st.download_button(
+                label="💾 Download Diagram Code",
+                data=mermaid_code,
+                file_name=f"diagram_{diagram_id}.mmd",
+                mime="text/plain",
+                key=f"download_{diagram_id}"
+            )
+    
+
     
     def render_observability_dashboard(self):
         """Render the observability dashboard with metrics and analytics."""

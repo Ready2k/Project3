@@ -1,23 +1,54 @@
 {
   "pattern_id": "PAT-002",
-  "name": "API Integration Workflow",
-  "description": "Automated integration between multiple APIs with data transformation, error handling, and retry mechanisms",
-  "feasibility": "Automatable",
-  "pattern_type": ["api_integration", "workflow_automation"],
-  "input_requirements": [
-    "Source and target API specifications",
-    "Data mapping requirements",
-    "Authentication methods",
-    "Error handling preferences"
+  "name": "Invoice Intake, OCR, and ERP Posting",
+  "description": "Ingest digital and scanned invoices, extract key fields, validate against POs/budgets, and post to ERP with exception handling and human review for edge cases.",
+  "feasibility": "Mostly Automatable",
+  "pattern_type": [
+    "document_processing",
+    "ocr",
+    "data_validation",
+    "system_integration"
   ],
-  "tech_stack": ["Python", "FastAPI", "httpx", "Pydantic", "Celery"],
-  "related_patterns": ["PAT-001", "PAT-003"],
-  "confidence_score": 0.95,
+  "input_requirements": [
+    "email_or_dms_access",
+    "sample_invoices_with_ground_truth",
+    "erp_api_access",
+    "validation_rules_po_budget"
+  ],
+  "tech_stack": [
+    "Tesseract or AWS Textract",
+    "spaCy",
+    "jsonschema",
+    "FastAPI",
+    "Celery",
+    "PostgreSQL"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.9,
   "constraints": {
-    "banned_tools": [],
-    "required_integrations": ["authentication", "logging"]
+    "banned_tools": [
+      "Unvetted third-party OCR with data retention"
+    ],
+    "required_integrations": [
+      "Email/IMAP or Microsoft Graph",
+      "ERP API (e.g., NetSuite/SAP)",
+      "Object storage for originals"
+    ]
   },
-  "domain": "system_integration",
+  "domain": "finance_ap",
   "complexity": "Medium",
-  "estimated_effort": "3-6 weeks"
+  "estimated_effort": "3-6 weeks",
+  "created_from_session": "seed-2025-08-12",
+  "auto_generated": false,
+  "llm_insights": [
+    "Line-item extraction improves matching accuracy vs header-only.",
+    "Schema validation catches systematic vendor formatting errors."
+  ],
+  "llm_challenges": [
+    "Low-quality scans and vendor layout variance.",
+    "PO/GRN mismatches requiring escalation."
+  ],
+  "llm_recommended_approach": "Use OCR with light OpenCV pre-processing when needed; apply rule+ML extraction; validate via jsonschema and PO/budget checks; queue exceptions to AP reviewers.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "seed-2025-08-12"
 }

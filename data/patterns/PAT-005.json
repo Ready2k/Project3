@@ -1,34 +1,53 @@
 {
   "pattern_id": "PAT-005",
-  "name": "Communication Real-time Translation",
-  "description": "Real-time language translation system with bidirectional communication support and user preference integration and integration with communication, amazon_connect",
-  "feasibility": "Partially Automatable",
+  "name": "Email Order Extraction & Fulfillment Orchestration",
+  "description": "Parse incoming order emails, normalize data, validate inventory/payment, and create orders in the fulfillment system with exception queues.",
+  "feasibility": "Mostly Automatable",
   "pattern_type": [
-    "translation_automation"
+    "email_ingestion",
+    "nlp_extraction",
+    "validation",
+    "system_integration"
   ],
   "input_requirements": [
-    "Clear process definition and requirements",
-    "Access to target systems and APIs",
-    "Source and target language specifications",
-    "Translation service API credentials",
-    "User preference management system"
+    "shared_mailbox_or_graph_access",
+    "order_schema_definition",
+    "fulfillment_api_credentials"
   ],
   "tech_stack": [
-    "Python",
+    "Microsoft Graph/IMAP",
+    "spaCy + rule-based extractors",
+    "jsonschema",
     "FastAPI",
-    "Google Translate API",
-    "Azure Translator",
-    "WebSocket"
+    "Redis (queues)",
+    "PostgreSQL"
   ],
   "related_patterns": [],
-  "confidence_score": 0.95,
+  "confidence_score": 0.88,
   "constraints": {
-    "banned_tools": [],
-    "required_integrations": []
+    "banned_tools": [
+      "Free-form parsing without schema validation"
+    ],
+    "required_integrations": [
+      "OMS/WMS/Shop platform API",
+      "Payment status service",
+      "Inventory service"
+    ]
   },
-  "domain": "communication",
+  "domain": "commerce_ops",
   "complexity": "Medium",
   "estimated_effort": "3-6 weeks",
-  "created_from_session": "cb1a3520-87c8-4bc9-8a6f-ad90102f647b",
-  "auto_generated": true
+  "created_from_session": "seed-2025-08-12",
+  "auto_generated": false,
+  "llm_insights": [
+    "Historical emails improve entity patterns and vendor templates.",
+    "Strict schema validation reduces downstream fallout."
+  ],
+  "llm_challenges": [
+    "Vendor-specific phrasing variability.",
+    "Partial orders and backorders."
+  ],
+  "llm_recommended_approach": "Pull from mailbox, extract fields with hybrid rules+NLP, validate via jsonschema, upsert into OMS; route low-confidence to human queue.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "seed-2025-08-12"
 }

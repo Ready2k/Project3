@@ -59,36 +59,43 @@ class PatternCreator:
             # Create a pattern that explicitly marks this as not automatable
             return await self._create_physical_task_pattern(pattern_id, requirements, session_id)
         
-        # Analyze requirements to determine pattern characteristics
+        # Analyze requirements to determine pattern characteristics using LLM
         pattern_analysis = await self._analyze_requirements(requirements)
         
-        # Generate pattern name
-        pattern_name = self._generate_pattern_name(requirements, pattern_analysis)
+        # Extract values from LLM analysis or use fallbacks
+        pattern_name = pattern_analysis.get("pattern_name") or self._generate_pattern_name(requirements, pattern_analysis)
+        feasibility = pattern_analysis.get("feasibility") or self._determine_feasibility(requirements, pattern_analysis)
+        pattern_types = pattern_analysis.get("pattern_types") or self._generate_pattern_types(requirements, pattern_analysis)
+        input_requirements = pattern_analysis.get("input_requirements") or self._generate_input_requirements(requirements, pattern_analysis)
+        confidence_score = pattern_analysis.get("confidence_score") or self._calculate_pattern_confidence(requirements, pattern_analysis)
+        complexity = pattern_analysis.get("complexity") or self._estimate_complexity(requirements, pattern_analysis)
+        estimated_effort = pattern_analysis.get("estimated_effort") or self._estimate_effort(complexity, pattern_analysis)
+        tech_stack = pattern_analysis.get("tech_stack") or await self._generate_intelligent_tech_stack(requirements, pattern_analysis)
         
-        # Determine feasibility
-        feasibility = self._determine_feasibility(requirements, pattern_analysis)
+        # Extract domain from analysis, with fallback
+        analyzed_domain = pattern_analysis.get("domain")
+        if analyzed_domain and analyzed_domain not in ["None", "none", "general", ""]:
+            domain = analyzed_domain
         
-        # Generate intelligent tech stack
-        tech_stack = await self._generate_intelligent_tech_stack(requirements, pattern_analysis)
+        # Get pattern description from LLM analysis
+        pattern_description = pattern_analysis.get("pattern_description") or self._generate_pattern_description(requirements, pattern_analysis)
         
-        # Generate pattern types
-        pattern_types = self._generate_pattern_types(requirements, pattern_analysis)
+        # Extract enhanced constraint information from LLM analysis
+        banned_tools_suggestions = pattern_analysis.get("banned_tools_suggestions", [])
+        required_integrations_suggestions = pattern_analysis.get("required_integrations_suggestions", [])
+        compliance_considerations = pattern_analysis.get("compliance_considerations", [])
         
-        # Generate input requirements
-        input_requirements = self._generate_input_requirements(requirements, pattern_analysis)
+        # Combine LLM suggestions with extracted requirements
+        all_required_integrations = list(set(
+            self._extract_required_integrations(requirements) + 
+            required_integrations_suggestions
+        ))
         
-        # Calculate confidence score
-        confidence_score = self._calculate_pattern_confidence(requirements, pattern_analysis)
-        
-        # Estimate complexity and effort
-        complexity = self._estimate_complexity(requirements, pattern_analysis)
-        estimated_effort = self._estimate_effort(complexity, pattern_analysis)
-        
-        # Create pattern dictionary
+        # Create pattern dictionary with LLM-generated content
         new_pattern = {
             "pattern_id": pattern_id,
             "name": pattern_name,
-            "description": self._generate_pattern_description(requirements, pattern_analysis),
+            "description": pattern_description,
             "feasibility": feasibility,
             "pattern_type": pattern_types,
             "input_requirements": input_requirements,
@@ -96,14 +103,30 @@ class PatternCreator:
             "related_patterns": [],  # Will be populated later if needed
             "confidence_score": confidence_score,
             "constraints": {
-                "banned_tools": [],
-                "required_integrations": self._extract_required_integrations(requirements)
+                "banned_tools": banned_tools_suggestions,
+                "required_integrations": all_required_integrations,
+                "compliance_requirements": compliance_considerations
             },
             "domain": domain,
             "complexity": complexity,
             "estimated_effort": estimated_effort,
+            "effort_breakdown": pattern_analysis.get("effort_breakdown", estimated_effort),
             "created_from_session": session_id,
-            "auto_generated": True
+            "auto_generated": True,
+            # Add LLM-enhanced fields with better separation
+            "llm_insights": pattern_analysis.get("key_challenges", []),
+            "llm_challenges": pattern_analysis.get("key_challenges", []),
+            "llm_recommended_approach": pattern_analysis.get("recommended_approach", ""),
+            "enhanced_by_llm": True,
+            "enhanced_from_session": session_id,
+            # Add metadata for better pattern matching
+            "automation_metadata": {
+                "data_flow": pattern_analysis.get("data_flow", "on_demand"),
+                "user_interaction": pattern_analysis.get("user_interaction", "semi_automated"),
+                "processing_type": pattern_analysis.get("processing_type", "basic_processing"),
+                "scalability_needs": pattern_analysis.get("scalability_needs", "low_scale"),
+                "security_requirements": pattern_analysis.get("security_requirements", [])
+            }
         }
         
         # Save pattern to library
@@ -129,7 +152,7 @@ class PatternCreator:
         return f"PAT-{max_num + 1:03d}"
     
     async def _analyze_requirements(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
-        """Analyze requirements to extract pattern characteristics.
+        """Analyze requirements to extract pattern characteristics using LLM.
         
         Args:
             requirements: User requirements
@@ -137,9 +160,16 @@ class PatternCreator:
         Returns:
             Analysis results dictionary
         """
+        # Use LLM for comprehensive analysis if available
+        if self.llm_provider:
+            try:
+                return await self._llm_analyze_requirements(requirements)
+            except Exception as e:
+                app_logger.warning(f"LLM analysis failed: {e}")
+        
+        # Fallback to rule-based analysis
         description = requirements.get("description", "")
         
-        # Analyze description for key concepts
         analysis = {
             "automation_type": self._detect_automation_type(description, requirements),
             "data_flow": self._detect_data_flow(description, requirements),
@@ -149,14 +179,6 @@ class PatternCreator:
             "scalability_needs": self._detect_scalability_needs(description, requirements),
             "security_requirements": self._detect_security_requirements(description, requirements)
         }
-        
-        # Use LLM for deeper analysis if available
-        if self.llm_provider:
-            try:
-                llm_analysis = await self._llm_analyze_requirements(requirements)
-                analysis.update(llm_analysis)
-            except Exception as e:
-                app_logger.warning(f"LLM analysis failed: {e}")
         
         return analysis
     
@@ -287,34 +309,91 @@ class PatternCreator:
         return security_reqs
     
     async def _llm_analyze_requirements(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
-        """Use LLM to analyze requirements for deeper insights."""
+        """Use LLM to comprehensively analyze requirements and generate pattern details."""
         description = requirements.get("description", "")
+        domain = requirements.get("domain", "")
+        volume = requirements.get("volume", {})
+        integrations = requirements.get("integrations", [])
         
-        prompt = f"""
-        Analyze the following automation requirement and provide insights:
-        
-        Requirement: {description}
-        
-        Please analyze and provide:
-        1. Primary automation goal
-        2. Key technical challenges
-        3. Recommended approach
-        4. Potential risks or limitations
-        
-        Respond in JSON format with keys: goal, challenges, approach, risks
-        """
-        
+        prompt = f"""You are a senior automation architect. Analyze the following requirement and generate a comprehensive automation pattern.
+
+**Requirement Details:**
+- Description: {description}
+- Domain: {domain}
+- Volume: {volume}
+- Required Integrations: {integrations}
+
+**Instructions:**
+Generate a complete automation pattern analysis. Be specific to this exact requirement - avoid generic responses.
+
+**CRITICAL CONSISTENCY RULES:**
+1. If you mention "human oversight", "manual review", or "human-in-loop" in your approach, set feasibility to "Partially Automatable"
+2. If the domain involves sensitive data (legal, healthcare, finance), consider privacy constraints
+3. Effort estimates should reflect MVP vs full implementation complexity
+4. Pattern types should include broader categories for better matching (e.g., "nlp_processing", "api_integration")
+
+Respond with ONLY a valid JSON object:
+{{
+    "pattern_name": "Specific descriptive name for this automation pattern",
+    "pattern_description": "Detailed description of what this pattern automates and how",
+    "feasibility": "Automatable|Partially Automatable|Not Automatable",
+    "pattern_types": ["specific", "pattern", "types", "broader_categories"],
+    "domain": "specific_domain_name",
+    "complexity": "Low|Medium|High",
+    "automation_type": "specific_automation_category",
+    "data_flow": "real_time|batch|streaming|on_demand",
+    "user_interaction": "fully_automated|human_in_loop|user_initiated|semi_automated",
+    "processing_type": "ml_processing|data_transformation|validation|aggregation|basic_processing",
+    "scalability_needs": "minimal_scale|low_scale|medium_scale|high_scale",
+    "security_requirements": ["encryption", "authentication", "audit_logging", "compliance"],
+    "integration_points": ["database", "api", "cloud", "mobile", "messaging"],
+    "input_requirements": ["specific", "requirements", "for", "this", "automation"],
+    "tech_stack": ["Technology1", "Technology2", "Technology3", "..."],
+    "estimated_effort": "1-2 weeks|3-6 weeks|6-12 weeks|3+ months",
+    "effort_breakdown": "MVP: X weeks, Full implementation: Y weeks",
+    "key_challenges": ["challenge1", "challenge2"],
+    "recommended_approach": "Detailed approach for implementing this specific automation",
+    "confidence_score": 0.85,
+    "banned_tools_suggestions": ["tools", "to", "avoid", "for", "privacy"],
+    "required_integrations_suggestions": ["common", "system", "integrations"],
+    "compliance_considerations": ["gdpr", "hipaa", "sox", "etc"]
+}}
+
+IMPORTANT: 
+- Be specific to the actual requirement, not generic
+- Choose appropriate technologies for this exact use case
+- Ensure feasibility matches your recommended approach (if you mention human oversight, use "Partially Automatable")
+- Include broader pattern types for better future matching
+- Consider domain-specific compliance and privacy requirements
+- Provide realistic effort estimates with MVP vs full breakdown"""
+
         try:
-            response = await self.llm_provider.generate_text(prompt)
-            # Try to extract JSON from response
+            response = await self.llm_provider.generate(prompt, purpose="pattern_analysis")
+            
+            # Parse JSON response with better error handling
             import re
-            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            import json
+            
+            # Clean the response
+            cleaned_response = response.strip()
+            if cleaned_response.startswith('```json'):
+                cleaned_response = cleaned_response.replace('```json', '').replace('```', '').strip()
+            elif cleaned_response.startswith('```'):
+                cleaned_response = cleaned_response.replace('```', '').strip()
+            
+            # Try to extract JSON
+            json_match = re.search(r'\{.*\}', cleaned_response, re.DOTALL)
             if json_match:
-                return json.loads(json_match.group())
+                json_str = json_match.group(0)
+                analysis = json.loads(json_str)
+                app_logger.info(f"LLM generated comprehensive pattern analysis: {analysis.get('pattern_name', 'Unknown')}")
+                return analysis
+            else:
+                raise ValueError("No JSON object found in LLM response")
+                
         except Exception as e:
-            app_logger.debug(f"LLM analysis parsing failed: {e}")
-        
-        return {}
+            app_logger.error(f"LLM pattern analysis failed: {e}")
+            raise e
     
     def _generate_pattern_name(self, requirements: Dict[str, Any], analysis: Dict[str, Any]) -> str:
         """Generate a descriptive pattern name."""

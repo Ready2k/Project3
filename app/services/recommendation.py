@@ -123,7 +123,7 @@ class RecommendationService:
             requirements: User requirements
             
         Returns:
-            Feasibility assessment: "Yes", "Partial", or "No"
+            Feasibility assessment: "Automatable", "Partially Automatable", or "Not Automatable"
         """
         # Prioritize LLM analysis if available
         llm_feasibility = requirements.get("llm_analysis_automation_feasibility")
@@ -131,11 +131,11 @@ class RecommendationService:
             app_logger.info(f"Using LLM feasibility assessment: {llm_feasibility}")
             # Map LLM response to our format
             if llm_feasibility == "Automatable":
-                return "Yes"
+                return "Automatable"
             elif llm_feasibility == "Partially Automatable":
-                return "Partial"
+                return "Partially Automatable"
             elif llm_feasibility == "Not Automatable":
-                return "No"
+                return "Not Automatable"
             else:
                 # Handle exact matches
                 return llm_feasibility
@@ -162,23 +162,23 @@ class RecommendationService:
         # More lenient decision logic for better user experience
         if base_feasibility in ["Automatable", "Yes"]:
             if complexity_score >= 5 or risk_score >= 4:
-                return "No"
+                return "Not Automatable"
             elif complexity_score >= 3 or risk_score >= 3 or match_quality < 0.4:
-                return "Partial"
+                return "Partially Automatable"
             else:
-                return "Yes"
+                return "Automatable"
         elif base_feasibility in ["Partially Automatable", "Partial"]:
             if complexity_score >= 4 or risk_score >= 3:
-                return "No"
+                return "Not Automatable"
             elif match_quality < 0.3:
-                return "No"
+                return "Not Automatable"
             else:
-                return "Partial"
+                return "Partially Automatable"
         else:  # Not Automatable or No
             if match_quality > 0.7 and complexity_score <= 2 and risk_score <= 1:
-                return "Partial"
+                return "Partially Automatable"
             else:
-                return "No"
+                return "Not Automatable"
     
     def _analyze_complexity_factors(self, requirements: Dict[str, Any]) -> Dict[str, int]:
         """Analyze complexity factors in requirements.
@@ -351,9 +351,9 @@ class RecommendationService:
         
         # Adjust based on feasibility determination
         feasibility_multiplier = {
-            "Yes": 1.0,
-            "Partial": 0.7,
-            "No": 0.3
+            "Automatable": 1.0,
+            "Partially Automatable": 0.7,
+            "Not Automatable": 0.3
         }
         
         # Adjust based on pattern's inherent confidence
@@ -519,7 +519,7 @@ class RecommendationService:
             if sum(risk_factors.values()) <= 1:
                 reasoning_parts.append("and minimal risk factors")
                 
-        elif feasibility == "Partial":
+        elif feasibility == "Partially Automatable":
             reasoning_parts.append("Partial automation is feasible")
             
             # Identify specific challenges
