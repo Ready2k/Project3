@@ -808,11 +808,15 @@ class AutomatedAIAssessmentUI:
         # Show questions if we have them
         if st.session_state.qa_questions:
             answers = {}
-            for q in st.session_state.qa_questions:
+            for idx, q in enumerate(st.session_state.qa_questions):
+                # Create unique key using index and question hash to prevent Streamlit key conflicts
+                # This handles cases where multiple questions might have the same field ID
+                unique_key = f"qa_{idx}_{hash(q['question'])}"
+                
                 if q["type"] == "text":
-                    answers[q["id"]] = st.text_input(q["question"], key=f"qa_{q['id']}")
+                    answers[q["id"]] = st.text_input(q["question"], key=unique_key)
                 elif q["type"] == "select":
-                    answers[q["id"]] = st.selectbox(q["question"], q["options"], key=f"qa_{q['id']}")
+                    answers[q["id"]] = st.selectbox(q["question"], q["options"], key=unique_key)
             
             # Check if all questions are answered
             answered_count = sum(1 for answer in answers.values() if answer and answer.strip())
