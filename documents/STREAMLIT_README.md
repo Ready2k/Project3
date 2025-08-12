@@ -141,7 +141,7 @@ The Streamlit UI communicates with the FastAPI backend through HTTP requests:
 - **Q&A System**: Interactive clarification questions
 - **Results Display**: Feasibility and recommendation presentation
 - **Export System**: JSON and Markdown export functionality
-- **Mermaid Diagrams**: System architecture visualization *(WIP - being refined)*
+- **Mermaid Diagrams**: System architecture visualization with enhanced viewing options
 
 ### Session Management
 

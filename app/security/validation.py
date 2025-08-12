@@ -203,8 +203,8 @@ class InputValidator:
         if not email_pattern.match(email):
             return False, "Invalid email format"
         
-        # Validate API token (should be alphanumeric)
-        if not re.match(r'^[a-zA-Z0-9]+$', api_token) or len(api_token) < 10:
+        # Validate API token (base64-like format with minimum length)
+        if not re.match(r'^[a-zA-Z0-9+/=_-]+$', api_token) or len(api_token) < 10:
             return False, "Invalid API token format"
         
         return True, "Valid"

@@ -544,17 +544,20 @@ class AutomatedAIAssessmentUI:
                 st.error("❌ Please fill in all Jira configuration fields")
             else:
                 with st.spinner("Testing Jira connection..."):
-                    test_result = self.call_api("/jira/test", {
-                        "base_url": jira_base_url,
-                        "email": jira_email,
-                        "api_token": jira_api_token
-                    })
-                    
-                    if test_result and test_result.get("ok"):
-                        st.success("✅ Jira connection successful!")
-                    else:
-                        error_msg = test_result.get("message", "Unknown error") if test_result else "Connection failed"
-                        st.error(f"❌ Connection failed: {error_msg}")
+                    try:
+                        test_result = asyncio.run(self.make_api_request("POST", "/jira/test", {
+                            "base_url": jira_base_url,
+                            "email": jira_email,
+                            "api_token": jira_api_token
+                        }))
+                        
+                        if test_result and test_result.get("ok"):
+                            st.success("✅ Jira connection successful!")
+                        else:
+                            error_msg = test_result.get("message", "Unknown error") if test_result else "Connection failed"
+                            st.error(f"❌ Connection failed: {error_msg}")
+                    except Exception as e:
+                        st.error(f"❌ Connection failed: {str(e)}")
         
         # Handle fetch ticket
         if fetch_ticket:
@@ -562,49 +565,52 @@ class AutomatedAIAssessmentUI:
                 st.error("❌ Please fill in all fields including ticket key")
             else:
                 with st.spinner(f"Fetching ticket {jira_ticket_key}..."):
-                    fetch_result = self.call_api("/jira/fetch", {
-                        "ticket_key": jira_ticket_key,
-                        "base_url": jira_base_url,
-                        "email": jira_email,
-                        "api_token": jira_api_token
-                    })
-                    
-                    if fetch_result:
-                        ticket_data = fetch_result.get("ticket_data", {})
-                        requirements = fetch_result.get("requirements", {})
+                    try:
+                        fetch_result = asyncio.run(self.make_api_request("POST", "/jira/fetch", {
+                            "ticket_key": jira_ticket_key,
+                            "base_url": jira_base_url,
+                            "email": jira_email,
+                            "api_token": jira_api_token
+                        }))
                         
-                        st.success(f"✅ Successfully fetched ticket: {ticket_data.get('key', 'Unknown')}")
-                        
-                        # Display ticket preview
-                        with st.expander("📋 Ticket Preview", expanded=True):
-                            col1, col2 = st.columns(2)
+                        if fetch_result:
+                            ticket_data = fetch_result.get("ticket_data", {})
+                            requirements = fetch_result.get("requirements", {})
                             
-                            with col1:
-                                st.write(f"**Key:** {ticket_data.get('key', 'N/A')}")
-                                st.write(f"**Summary:** {ticket_data.get('summary', 'N/A')}")
-                                st.write(f"**Status:** {ticket_data.get('status', 'N/A')}")
-                                st.write(f"**Priority:** {ticket_data.get('priority', 'N/A')}")
+                            st.success(f"✅ Successfully fetched ticket: {ticket_data.get('key', 'Unknown')}")
                             
-                            with col2:
-                                st.write(f"**Type:** {ticket_data.get('issue_type', 'N/A')}")
-                                st.write(f"**Assignee:** {ticket_data.get('assignee', 'N/A')}")
-                                st.write(f"**Reporter:** {ticket_data.get('reporter', 'N/A')}")
+                            # Display ticket preview
+                            with st.expander("📋 Ticket Preview", expanded=True):
+                                col1, col2 = st.columns(2)
                                 
-                                if ticket_data.get('labels'):
-                                    st.write(f"**Labels:** {', '.join(ticket_data['labels'])}")
-                            
-                            if ticket_data.get('description'):
-                                st.write("**Description:**")
-                                st.write(ticket_data['description'][:500] + "..." if len(ticket_data.get('description', '')) > 500 else ticket_data.get('description', ''))
-                            
-                            # Show inferred requirements
-                            st.write("**Inferred Requirements:**")
-                            if requirements.get('domain'):
-                                st.write(f"- **Domain:** {requirements['domain']}")
-                            if requirements.get('pattern_types'):
-                                st.write(f"- **Pattern Types:** {', '.join(requirements['pattern_types'])}")
-                    else:
-                        st.error("❌ Failed to fetch ticket. Please check your credentials and ticket key.")
+                                with col1:
+                                    st.write(f"**Key:** {ticket_data.get('key', 'N/A')}")
+                                    st.write(f"**Summary:** {ticket_data.get('summary', 'N/A')}")
+                                    st.write(f"**Status:** {ticket_data.get('status', 'N/A')}")
+                                    st.write(f"**Priority:** {ticket_data.get('priority', 'N/A')}")
+                                
+                                with col2:
+                                    st.write(f"**Type:** {ticket_data.get('issue_type', 'N/A')}")
+                                    st.write(f"**Assignee:** {ticket_data.get('assignee', 'N/A')}")
+                                    st.write(f"**Reporter:** {ticket_data.get('reporter', 'N/A')}")
+                                    
+                                    if ticket_data.get('labels'):
+                                        st.write(f"**Labels:** {', '.join(ticket_data['labels'])}")
+                                
+                                if ticket_data.get('description'):
+                                    st.write("**Description:**")
+                                    st.write(ticket_data['description'][:500] + "..." if len(ticket_data.get('description', '')) > 500 else ticket_data.get('description', ''))
+                                
+                                # Show inferred requirements
+                                st.write("**Inferred Requirements:**")
+                                if requirements.get('domain'):
+                                    st.write(f"- **Domain:** {requirements['domain']}")
+                                if requirements.get('pattern_types'):
+                                    st.write(f"- **Pattern Types:** {', '.join(requirements['pattern_types'])}")
+                        else:
+                            st.error("❌ Failed to fetch ticket. Please check your credentials and ticket key.")
+                    except Exception as e:
+                        st.error(f"❌ Failed to fetch ticket: {str(e)}")
         
         # Handle submit analysis
         if submit_jira:
@@ -695,9 +701,14 @@ class AutomatedAIAssessmentUI:
             phase = response['phase']
             progress = response['progress']
             missing_fields = response.get('missing_fields', [])
+            requirements = response.get('requirements', {})
             
             st.session_state.current_phase = phase
             st.session_state.progress = progress
+            
+            # Update requirements with actual data from backend if available
+            if requirements and requirements.get('description'):
+                st.session_state.requirements = requirements
             
             # Progress bar
             st.progress(progress / 100, text=f"Phase: {phase} ({progress}%)")
@@ -1316,22 +1327,25 @@ class AutomatedAIAssessmentUI:
                 st.code(mermaid_code, language="mermaid")
     
     def render_mermaid(self, mermaid_code: str):
-        """Render a Mermaid diagram with expandable view using Streamlit native components."""
-        # Create unique ID for this diagram
+        """Render a Mermaid diagram with better viewing options."""
         import hashlib
         diagram_id = hashlib.md5(mermaid_code.encode()).hexdigest()[:8]
         
-        # Store diagram in session state for expanded view
+        # Store diagram in session state
         if f"diagram_{diagram_id}" not in st.session_state:
             st.session_state[f"diagram_{diagram_id}"] = mermaid_code
         
-        # Add expand toggle above the diagram
-        col1, col2, col3 = st.columns([2, 1, 1])
+        # Control buttons
+        col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
         with col2:
             if st.button("🔍 Large View", key=f"expand_{diagram_id}"):
                 st.session_state[f"show_large_{diagram_id}"] = not st.session_state.get(f"show_large_{diagram_id}", False)
         
         with col3:
+            if st.button("🌐 Open in Browser", key=f"browser_{diagram_id}"):
+                self.open_diagram_in_browser(mermaid_code, diagram_id)
+        
+        with col4:
             if st.button("📋 Show Code", key=f"code_{diagram_id}"):
                 st.session_state[f"show_code_{diagram_id}"] = not st.session_state.get(f"show_code_{diagram_id}", False)
         
@@ -1339,164 +1353,265 @@ class AutomatedAIAssessmentUI:
         show_large = st.session_state.get(f"show_large_{diagram_id}", False)
         
         if show_large:
-            # Large view - use full width and height
             st.write("**🔍 Large View Mode** - Click 'Large View' again to return to normal size")
             
-            large_html = f"""
-            <style>
-                .large-mermaid-container-{diagram_id} {{
-                    width: 100%;
-                    min-height: 1100px;
-                    background: white;
-                    border: 2px solid #4CAF50;
-                    border-radius: 12px;
-                    padding: 30px;
-                    margin: 20px 0;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                }}
-                .large-mermaid-{diagram_id} {{
-                    width: 100% !important;
-                    min-height: 1000px !important;
-                    font-size: 18px !important;
-                }}
-                .large-mermaid-{diagram_id} svg {{
-                    width: 100% !important;
-                    height: auto !important;
-                    min-height: 1000px !important;
-                    max-width: none !important;
-                }}
-                .large-mermaid-{diagram_id} .node rect,
-                .large-mermaid-{diagram_id} .node circle,
-                .large-mermaid-{diagram_id} .node ellipse {{
-                    stroke-width: 3px !important;
-                }}
-                .large-mermaid-{diagram_id} .edgePath path {{
-                    stroke-width: 3px !important;
-                }}
-                .large-mermaid-{diagram_id} text {{
-                    font-size: 16px !important;
-                    font-weight: 600 !important;
-                }}
-                .large-mermaid-{diagram_id} .actor {{
-                    stroke-width: 3px !important;
-                }}
-                .large-mermaid-{diagram_id} .messageLine0,
-                .large-mermaid-{diagram_id} .messageLine1 {{
-                    stroke-width: 2px !important;
-                }}
-            </style>
-            
-            <div class="large-mermaid-container-{diagram_id}">
-                <div class="mermaid large-mermaid-{diagram_id}" id="large-{diagram_id}">
-                    {mermaid_code}
+            # Use streamlit-mermaid if available, otherwise fallback to HTML
+            try:
+                import streamlit_mermaid as stmd
+                stmd.st_mermaid(mermaid_code, height="800px")
+            except ImportError:
+                # Fallback to improved HTML rendering
+                large_html = f"""
+                <div style="width: 100%; height: 800px; border: 2px solid #4CAF50; border-radius: 12px; padding: 20px; background: white; overflow: auto;">
+                    <div class="mermaid" style="width: 100%; height: 100%; font-size: 16px;">
+                        {mermaid_code}
+                    </div>
                 </div>
-            </div>
-            
-            <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-            <script>
-                mermaid.initialize({{
-                    startOnLoad: false,
-                    theme: 'default',
-                    themeVariables: {{
-                        fontSize: '16px',
-                        fontFamily: 'Arial, sans-serif',
-                        primaryColor: '#4CAF50',
-                        primaryTextColor: '#333',
-                        primaryBorderColor: '#4CAF50',
-                        lineColor: '#666',
-                        secondaryColor: '#f8f9fa',
-                        tertiaryColor: '#ffffff'
-                    }},
-                    flowchart: {{
-                        useMaxWidth: false,
-                        htmlLabels: true,
-                        curve: 'basis',
-                        padding: 30,
-                        nodeSpacing: 100,
-                        rankSpacing: 100
-                    }},
-                    sequence: {{
-                        useMaxWidth: false,
-                        wrap: false,
-                        width: 1000,
-                        height: 600,
-                        boxMargin: 30,
-                        boxTextMargin: 15,
-                        noteMargin: 30,
-                        messageMargin: 60,
-                        actorMargin: 80
-                    }}
-                }});
                 
-                setTimeout(() => {{
-                    const element = document.getElementById('large-{diagram_id}');
-                    if (element) {{
-                        mermaid.init(undefined, element);
-                    }}
-                }}, 200);
-            </script>
-            """
-            
-            html(large_html, height=1200)
-            
+                <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+                <script>
+                    mermaid.initialize({{
+                        startOnLoad: true,
+                        theme: 'default',
+                        themeVariables: {{
+                            fontSize: '16px',
+                            fontFamily: 'Arial, sans-serif',
+                            primaryColor: '#4CAF50',
+                            primaryTextColor: '#333',
+                            primaryBorderColor: '#4CAF50'
+                        }},
+                        flowchart: {{
+                            useMaxWidth: false,
+                            htmlLabels: true,
+                            nodeSpacing: 80,
+                            rankSpacing: 80
+                        }},
+                        sequence: {{
+                            useMaxWidth: false,
+                            boxMargin: 20,
+                            actorMargin: 60
+                        }}
+                    }});
+                </script>
+                """
+                html(large_html, height=850)
         else:
-            # Regular sized diagram
-            mermaid_html = f"""
-            <style>
-                .mermaid-container-{diagram_id} {{
-                    border: 2px solid #e0e0e0;
-                    border-radius: 8px;
-                    padding: 15px;
-                    background: white;
-                    margin: 10px 0;
-                }}
-                .mermaid-{diagram_id} {{
-                    font-size: 14px;
-                }}
-            </style>
-            
-            <div class="mermaid-container-{diagram_id}">
-                <div class="mermaid mermaid-{diagram_id}">
-                    {mermaid_code}
+            # Regular view with better sizing
+            try:
+                import streamlit_mermaid as stmd
+                stmd.st_mermaid(mermaid_code, height="400px")
+            except ImportError:
+                # Fallback to HTML
+                regular_html = f"""
+                <div style="width: 100%; height: 400px; border: 2px solid #e0e0e0; border-radius: 8px; padding: 15px; background: white; overflow: auto;">
+                    <div class="mermaid" style="width: 100%; height: 100%; font-size: 14px;">
+                        {mermaid_code}
+                    </div>
                 </div>
-            </div>
-            
-            <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-            <script>
-                mermaid.initialize({{
-                    startOnLoad: true,
-                    theme: 'default',
-                    themeVariables: {{
-                        fontSize: '14px',
-                        fontFamily: 'Arial, sans-serif'
-                    }},
-                    flowchart: {{
-                        useMaxWidth: true,
-                        htmlLabels: true
-                    }},
-                    sequence: {{
-                        useMaxWidth: true,
-                        wrap: true
-                    }}
-                }});
-            </script>
-            """
-            
-            html(mermaid_html, height=400)
+                
+                <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+                <script>
+                    mermaid.initialize({{
+                        startOnLoad: true,
+                        theme: 'default',
+                        flowchart: {{ useMaxWidth: true }},
+                        sequence: {{ useMaxWidth: true }}
+                    }});
+                </script>
+                """
+                html(regular_html, height=450)
         
-        # Show code if requested
+        # Show code and download options
         if st.session_state.get(f"show_code_{diagram_id}", False):
             st.write("**📋 Mermaid Code:**")
             st.code(mermaid_code, language="mermaid")
             
-            # Download button
-            st.download_button(
-                label="💾 Download Diagram Code",
-                data=mermaid_code,
-                file_name=f"diagram_{diagram_id}.mmd",
-                mime="text/plain",
-                key=f"download_{diagram_id}"
-            )
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.download_button(
+                    label="💾 Download Code (.mmd)",
+                    data=mermaid_code,
+                    file_name=f"diagram_{diagram_id}.mmd",
+                    mime="text/plain",
+                    key=f"download_mmd_{diagram_id}"
+                )
+            
+            with col2:
+                # Create HTML file for standalone viewing
+                html_content = self.create_standalone_html(mermaid_code, diagram_id)
+                st.download_button(
+                    label="🌐 Download HTML",
+                    data=html_content,
+                    file_name=f"diagram_{diagram_id}.html",
+                    mime="text/html",
+                    key=f"download_html_{diagram_id}"
+                )
+            
+            with col3:
+                # Link to Mermaid Live Editor
+                import urllib.parse
+                encoded_code = urllib.parse.quote(mermaid_code)
+                mermaid_live_url = f"https://mermaid.live/edit#{encoded_code}"
+                st.markdown(f"[🔗 Open in Mermaid Live]({mermaid_live_url})", unsafe_allow_html=True)
+    
+    def open_diagram_in_browser(self, mermaid_code: str, diagram_id: str):
+        """Create and save a standalone HTML file for the diagram."""
+        html_content = self.create_standalone_html(mermaid_code, diagram_id)
+        
+        # Save to exports directory
+        import os
+        os.makedirs("exports", exist_ok=True)
+        file_path = f"exports/diagram_{diagram_id}.html"
+        
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
+        st.success(f"✅ Diagram saved to `{file_path}` - Open this file in your browser for full-size viewing!")
+        
+        # Show the file path as copyable text
+        st.code(f"open {file_path}", language="bash")
+    
+    def create_standalone_html(self, mermaid_code: str, diagram_id: str) -> str:
+        """Create a standalone HTML file for viewing the diagram."""
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture Diagram - {diagram_id}</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }}
+        .container {{
+            max-width: 100%;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: auto;
+        }}
+        .mermaid {{
+            width: 100%;
+            min-height: 600px;
+            font-size: 16px;
+        }}
+        .header {{
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }}
+        .controls {{
+            text-align: center;
+            margin-bottom: 20px;
+        }}
+        .btn {{
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 10px;
+            font-size: 14px;
+        }}
+        .btn:hover {{
+            background: #45a049;
+        }}
+        .code-section {{
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }}
+        .code-section pre {{
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏗️ Architecture Diagram</h1>
+            <p>Generated by Automated AI Assessment (AAA)</p>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="toggleCode()">📋 Toggle Code</button>
+            <button class="btn" onclick="downloadSVG()">💾 Download SVG</button>
+            <button class="btn" onclick="window.print()">🖨️ Print</button>
+        </div>
+        
+        <div class="mermaid" id="diagram">
+{mermaid_code}
+        </div>
+        
+        <div class="code-section" id="codeSection">
+            <h3>Mermaid Code:</h3>
+            <pre><code>{mermaid_code}</code></pre>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({{
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {{
+                fontSize: '16px',
+                fontFamily: 'Arial, sans-serif',
+                primaryColor: '#4CAF50',
+                primaryTextColor: '#333',
+                primaryBorderColor: '#4CAF50',
+                lineColor: '#666',
+                secondaryColor: '#f8f9fa',
+                tertiaryColor: '#ffffff'
+            }},
+            flowchart: {{
+                useMaxWidth: false,
+                htmlLabels: true,
+                curve: 'basis',
+                nodeSpacing: 100,
+                rankSpacing: 100
+            }},
+            sequence: {{
+                useMaxWidth: false,
+                boxMargin: 30,
+                actorMargin: 80,
+                messageMargin: 60
+            }}
+        }});
+        
+        function toggleCode() {{
+            const codeSection = document.getElementById('codeSection');
+            codeSection.style.display = codeSection.style.display === 'none' ? 'block' : 'none';
+        }}
+        
+        function downloadSVG() {{
+            const svg = document.querySelector('#diagram svg');
+            if (svg) {{
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const svgBlob = new Blob([svgData], {{type: 'image/svg+xml;charset=utf-8'}});
+                const svgUrl = URL.createObjectURL(svgBlob);
+                const downloadLink = document.createElement('a');
+                downloadLink.href = svgUrl;
+                downloadLink.download = 'diagram_{diagram_id}.svg';
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+            }}
+        }}
+    </script>
+</body>
+</html>"""
     
 
     
