@@ -11,6 +11,14 @@ import httpx
 import streamlit as st
 from streamlit.components.v1 import html
 
+# Import logger for error handling
+try:
+    from app.utils.logger import app_logger
+except ImportError:
+    # Fallback logger if app.utils.logger is not available
+    import logging
+    app_logger = logging.getLogger(__name__)
+
 # Optional import for OpenAI (for diagram generation)
 try:
     import openai
@@ -2173,6 +2181,411 @@ class AutomatedAIAssessmentUI:
             st.error(f"Error fetching pattern statistics: {str(e)}")
             return {}
     
+    def render_pattern_library_management(self):
+        """Render the pattern library management interface."""
+        st.header("📚 Pattern Library Management")
+        
+        # Load patterns using the pattern loader
+        try:
+            from app.pattern.loader import PatternLoader
+            pattern_loader = PatternLoader("data/patterns")
+            patterns = pattern_loader.load_patterns()
+        except Exception as e:
+            st.error(f"❌ Error loading patterns: {str(e)}")
+            return
+        
+        # Management tabs
+        view_tab, edit_tab, create_tab = st.tabs(["👀 View Patterns", "✏️ Edit Pattern", "➕ Create Pattern"])
+        
+        with view_tab:
+            self.render_pattern_viewer(patterns)
+        
+        with edit_tab:
+            self.render_pattern_editor(patterns, pattern_loader)
+        
+        with create_tab:
+            self.render_pattern_creator(pattern_loader)
+    
+    def render_pattern_viewer(self, patterns: list):
+        """Render the pattern viewer interface."""
+        st.subheader("👀 Pattern Library Overview")
+        
+        if not patterns:
+            st.info("📝 No patterns found in the library.")
+            return
+        
+        # Summary statistics
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Patterns", len(patterns))
+        with col2:
+            automatable = len([p for p in patterns if p.get('feasibility') == 'Automatable'])
+            st.metric("Automatable", automatable)
+        with col3:
+            partial = len([p for p in patterns if p.get('feasibility') == 'Partially Automatable'])
+            st.metric("Partially Automatable", partial)
+        with col4:
+            not_auto = len([p for p in patterns if p.get('feasibility') == 'Not Automatable'])
+            st.metric("Not Automatable", not_auto)
+        
+        # Filter options
+        st.subheader("🔍 Filter Patterns")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            domains = list(set(p.get('domain', 'unknown') for p in patterns))
+            selected_domain = st.selectbox("Domain", ["All"] + sorted(domains))
+        
+        with col2:
+            feasibilities = list(set(p.get('feasibility', 'unknown') for p in patterns))
+            selected_feasibility = st.selectbox("Feasibility", ["All"] + sorted(feasibilities))
+        
+        with col3:
+            complexities = list(set(p.get('complexity', 'unknown') for p in patterns))
+            selected_complexity = st.selectbox("Complexity", ["All"] + sorted(complexities))
+        
+        # Filter patterns
+        filtered_patterns = patterns
+        if selected_domain != "All":
+            filtered_patterns = [p for p in filtered_patterns if p.get('domain') == selected_domain]
+        if selected_feasibility != "All":
+            filtered_patterns = [p for p in filtered_patterns if p.get('feasibility') == selected_feasibility]
+        if selected_complexity != "All":
+            filtered_patterns = [p for p in filtered_patterns if p.get('complexity') == selected_complexity]
+        
+        st.write(f"📊 Showing {len(filtered_patterns)} of {len(patterns)} patterns")
+        
+        # Display patterns
+        for idx, pattern in enumerate(filtered_patterns):
+            with st.expander(f"🔍 {pattern.get('pattern_id', 'Unknown')} - {pattern.get('name', 'Unnamed Pattern')}"):
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.write("**Description:**")
+                    st.write(pattern.get('description', 'No description available'))
+                    
+                    st.write("**Tech Stack:**")
+                    tech_stack = pattern.get('tech_stack', [])
+                    if tech_stack:
+                        for tech in tech_stack:
+                            st.write(f"• {tech}")
+                    else:
+                        st.write("No tech stack specified")
+                
+                with col2:
+                    st.write("**Details:**")
+                    st.write(f"**Domain:** {pattern.get('domain', 'Unknown')}")
+                    st.write(f"**Feasibility:** {pattern.get('feasibility', 'Unknown')}")
+                    st.write(f"**Complexity:** {pattern.get('complexity', 'Unknown')}")
+                    st.write(f"**Effort:** {pattern.get('estimated_effort', 'Unknown')}")
+                    st.write(f"**Confidence:** {pattern.get('confidence_score', 'Unknown')}")
+                
+                # Show pattern types as tags
+                pattern_types = pattern.get('pattern_type', [])
+                if pattern_types:
+                    st.write("**Pattern Types:**")
+                    cols = st.columns(min(len(pattern_types), 4))
+                    for i, ptype in enumerate(pattern_types):
+                        with cols[i % 4]:
+                            st.code(ptype, language=None)
+    
+    def render_pattern_editor(self, patterns: list, pattern_loader):
+        """Render the pattern editor interface."""
+        st.subheader("✏️ Edit Existing Pattern")
+        
+        if not patterns:
+            st.info("📝 No patterns available to edit.")
+            return
+        
+        # Pattern selection
+        pattern_options = {f"{p.get('pattern_id', 'Unknown')} - {p.get('name', 'Unnamed')}": p for p in patterns}
+        selected_pattern_key = st.selectbox("Select Pattern to Edit", list(pattern_options.keys()))
+        
+        if not selected_pattern_key:
+            return
+        
+        selected_pattern = pattern_options[selected_pattern_key]
+        pattern_id = selected_pattern.get('pattern_id', '')
+        
+        # Create unique keys for form elements
+        form_key = f"edit_pattern_{hash(pattern_id)}"
+        
+        with st.form(key=form_key):
+            st.write(f"**Editing Pattern: {pattern_id}**")
+            
+            # Basic information
+            col1, col2 = st.columns(2)
+            with col1:
+                name = st.text_input("Pattern Name", value=selected_pattern.get('name', ''))
+                domain = st.text_input("Domain", value=selected_pattern.get('domain', ''))
+                feasibility = st.selectbox("Feasibility", 
+                                         ["Automatable", "Partially Automatable", "Not Automatable"],
+                                         index=["Automatable", "Partially Automatable", "Not Automatable"].index(
+                                             selected_pattern.get('feasibility', 'Automatable')))
+            
+            with col2:
+                complexity = st.selectbox("Complexity", ["Low", "Medium", "High"],
+                                        index=["Low", "Medium", "High"].index(selected_pattern.get('complexity', 'Medium')))
+                estimated_effort = st.text_input("Estimated Effort", value=selected_pattern.get('estimated_effort', ''))
+                confidence_score = st.number_input("Confidence Score", min_value=0.0, max_value=1.0, 
+                                                 value=float(selected_pattern.get('confidence_score', 0.5)), step=0.01)
+            
+            # Description
+            description = st.text_area("Description", value=selected_pattern.get('description', ''), height=100)
+            
+            # Tech stack
+            tech_stack_text = st.text_area("Tech Stack (one per line)", 
+                                         value='\n'.join(selected_pattern.get('tech_stack', [])), height=100)
+            
+            # Pattern types
+            pattern_types_text = st.text_area("Pattern Types (one per line)", 
+                                            value='\n'.join(selected_pattern.get('pattern_type', [])), height=80)
+            
+            # Form buttons
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                save_button = st.form_submit_button("💾 Save Changes", type="primary")
+            with col2:
+                delete_button = st.form_submit_button("🗑️ Delete Pattern", type="secondary")
+            with col3:
+                cancel_button = st.form_submit_button("❌ Cancel")
+            
+            if save_button:
+                self.save_pattern_changes(selected_pattern, {
+                    'name': name,
+                    'domain': domain,
+                    'feasibility': feasibility,
+                    'complexity': complexity,
+                    'estimated_effort': estimated_effort,
+                    'confidence_score': confidence_score,
+                    'description': description,
+                    'tech_stack': [t.strip() for t in tech_stack_text.split('\n') if t.strip()],
+                    'pattern_type': [t.strip() for t in pattern_types_text.split('\n') if t.strip()]
+                }, pattern_loader)
+            
+            elif delete_button:
+                self.delete_pattern(pattern_id, pattern_loader)
+    
+    def render_pattern_creator(self, pattern_loader):
+        """Render the pattern creator interface."""
+        st.subheader("➕ Create New Pattern")
+        
+        # Generate next pattern ID
+        try:
+            patterns = pattern_loader.load_patterns()
+            existing_ids = [p.get('pattern_id', '') for p in patterns]
+            # Extract numbers from existing IDs and find the next one
+            numbers = []
+            for pid in existing_ids:
+                if pid.startswith('PAT-'):
+                    try:
+                        numbers.append(int(pid.split('-')[1]))
+                    except (IndexError, ValueError):
+                        continue
+            next_number = max(numbers) + 1 if numbers else 1
+            next_pattern_id = f"PAT-{next_number:03d}"
+        except Exception:
+            next_pattern_id = "PAT-001"
+        
+        with st.form(key="create_pattern_form"):
+            st.write(f"**Creating New Pattern: {next_pattern_id}**")
+            
+            # Basic information
+            col1, col2 = st.columns(2)
+            with col1:
+                name = st.text_input("Pattern Name", placeholder="Enter pattern name")
+                domain = st.text_input("Domain", placeholder="e.g., legal_compliance, finance")
+                feasibility = st.selectbox("Feasibility", ["Automatable", "Partially Automatable", "Not Automatable"])
+            
+            with col2:
+                complexity = st.selectbox("Complexity", ["Low", "Medium", "High"])
+                estimated_effort = st.text_input("Estimated Effort", placeholder="e.g., 2-4 weeks")
+                confidence_score = st.number_input("Confidence Score", min_value=0.0, max_value=1.0, value=0.5, step=0.01)
+            
+            # Description
+            description = st.text_area("Description", placeholder="Describe what this pattern does and when to use it", height=100)
+            
+            # Tech stack
+            tech_stack_text = st.text_area("Tech Stack (one per line)", 
+                                         placeholder="FastAPI\nPostgreSQL\nDocker", height=100)
+            
+            # Pattern types
+            pattern_types_text = st.text_area("Pattern Types (one per line)", 
+                                            placeholder="api_integration\ndata_processing\nautomation", height=80)
+            
+            # Input requirements
+            input_requirements_text = st.text_area("Input Requirements (one per line)", 
+                                                  placeholder="digital_documents\napi_access\nuser_permissions", height=80)
+            
+            # Create button
+            create_button = st.form_submit_button("🚀 Create Pattern", type="primary")
+            
+            if create_button:
+                if not name or not description:
+                    st.error("❌ Pattern name and description are required!")
+                else:
+                    self.create_new_pattern({
+                        'pattern_id': next_pattern_id,
+                        'name': name,
+                        'domain': domain,
+                        'feasibility': feasibility,
+                        'complexity': complexity,
+                        'estimated_effort': estimated_effort,
+                        'confidence_score': confidence_score,
+                        'description': description,
+                        'tech_stack': [t.strip() for t in tech_stack_text.split('\n') if t.strip()],
+                        'pattern_type': [t.strip() for t in pattern_types_text.split('\n') if t.strip()],
+                        'input_requirements': [t.strip() for t in input_requirements_text.split('\n') if t.strip()]
+                    }, pattern_loader)
+    
+    def save_pattern_changes(self, original_pattern: dict, changes: dict, pattern_loader):
+        """Save changes to an existing pattern with validation."""
+        try:
+            # Validate required fields
+            if not changes.get('name') or not changes.get('description'):
+                st.error("❌ Pattern name and description are required!")
+                return
+            
+            # Update the pattern with changes
+            updated_pattern = original_pattern.copy()
+            updated_pattern.update(changes)
+            
+            # Add metadata
+            from datetime import datetime
+            updated_pattern['last_modified'] = datetime.now().isoformat()
+            updated_pattern['modified_by'] = 'pattern_library_ui'
+            
+            # Validate pattern using schema
+            try:
+                pattern_loader._validate_pattern(updated_pattern)
+            except Exception as validation_error:
+                st.error(f"❌ Pattern validation failed: {str(validation_error)}")
+                return
+            
+            # Create backup before saving
+            pattern_id = updated_pattern.get('pattern_id')
+            file_path = f"data/patterns/{pattern_id}.json"
+            backup_path = f"data/patterns/.backup_{pattern_id}_{int(datetime.now().timestamp())}.json"
+            
+            import json
+            import os
+            import shutil
+            
+            # Create backup if original exists
+            if os.path.exists(file_path):
+                shutil.copy2(file_path, backup_path)
+            
+            # Save updated pattern
+            with open(file_path, 'w') as f:
+                json.dump(updated_pattern, f, indent=2)
+            
+            # Refresh cache
+            pattern_loader.refresh_cache()
+            
+            st.success(f"✅ Pattern {pattern_id} saved successfully!")
+            st.info(f"💾 Backup created: {backup_path}")
+            st.rerun()
+            
+        except Exception as e:
+            st.error(f"❌ Error saving pattern: {str(e)}")
+            app_logger.error(f"Pattern save error: {e}")
+    
+    def delete_pattern(self, pattern_id: str, pattern_loader):
+        """Delete a pattern from the library with confirmation and backup."""
+        try:
+            import os
+            import shutil
+            from datetime import datetime
+            
+            file_path = f"data/patterns/{pattern_id}.json"
+            
+            if not os.path.exists(file_path):
+                st.error(f"❌ Pattern file not found: {file_path}")
+                return
+            
+            # Show confirmation dialog
+            st.warning(f"⚠️ Are you sure you want to delete pattern {pattern_id}?")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button(f"🗑️ Yes, Delete {pattern_id}", key=f"confirm_delete_{pattern_id}"):
+                    # Create backup before deletion
+                    backup_path = f"data/patterns/.deleted_{pattern_id}_{int(datetime.now().timestamp())}.json"
+                    shutil.copy2(file_path, backup_path)
+                    
+                    # Delete the file
+                    os.remove(file_path)
+                    pattern_loader.refresh_cache()
+                    
+                    st.success(f"✅ Pattern {pattern_id} deleted successfully!")
+                    st.info(f"💾 Backup created: {backup_path}")
+                    st.rerun()
+            
+            with col2:
+                if st.button("❌ Cancel", key=f"cancel_delete_{pattern_id}"):
+                    st.info("Deletion cancelled.")
+                    st.rerun()
+                
+        except Exception as e:
+            st.error(f"❌ Error deleting pattern: {str(e)}")
+            app_logger.error(f"Pattern deletion error: {e}")
+    
+    def create_new_pattern(self, pattern_data: dict, pattern_loader):
+        """Create a new pattern in the library with validation."""
+        try:
+            from datetime import datetime
+            import json
+            import os
+            
+            pattern_id = pattern_data.get('pattern_id')
+            file_path = f"data/patterns/{pattern_id}.json"
+            
+            # Check if pattern already exists
+            if os.path.exists(file_path):
+                st.error(f"❌ Pattern {pattern_id} already exists!")
+                return
+            
+            # Add required metadata
+            pattern_data.update({
+                'created_at': datetime.now().isoformat(),
+                'created_by': 'pattern_library_ui',
+                'auto_generated': False,
+                'related_patterns': [],
+                'constraints': {
+                    'banned_tools': [],
+                    'required_integrations': []
+                },
+                'llm_insights': [],
+                'llm_challenges': [],
+                'llm_recommended_approach': '',
+                'enhanced_by_llm': False
+            })
+            
+            # Validate pattern using schema
+            try:
+                pattern_loader._validate_pattern(pattern_data)
+            except Exception as validation_error:
+                st.error(f"❌ Pattern validation failed: {str(validation_error)}")
+                return
+            
+            # Ensure data/patterns directory exists
+            os.makedirs("data/patterns", exist_ok=True)
+            
+            # Save to file
+            with open(file_path, 'w') as f:
+                json.dump(pattern_data, f, indent=2)
+            
+            # Refresh cache
+            pattern_loader.refresh_cache()
+            
+            st.success(f"✅ Pattern {pattern_id} created successfully!")
+            st.info(f"📁 Saved to: {file_path}")
+            st.rerun()
+            
+        except Exception as e:
+            st.error(f"❌ Error creating pattern: {str(e)}")
+            app_logger.error(f"Pattern creation error: {e}")
+    
     def run(self):
         """Main application entry point."""
         st.title("🤖 Automated AI Assessment (AAA)")
@@ -2182,7 +2595,7 @@ class AutomatedAIAssessmentUI:
         self.render_provider_panel()
         
         # Main content area
-        tab1, tab2, tab3, tab4 = st.tabs(["📝 Analysis", "📊 Diagrams", "📈 Observability", "ℹ️ About"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 Analysis", "📊 Diagrams", "📈 Observability", "📚 Pattern Library", "ℹ️ About"])
         
         with tab1:
             # Input methods
@@ -2211,6 +2624,9 @@ class AutomatedAIAssessmentUI:
             self.render_observability_dashboard()
         
         with tab4:
+            self.render_pattern_library_management()
+        
+        with tab5:
             st.markdown("""
             ## About Automated AI Assessment (AAA)
             

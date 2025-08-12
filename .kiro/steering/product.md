@@ -6,26 +6,31 @@ Automated AI Assessment (AAA) is an interactive GUI + API system that judges if 
 
 - **Multi-Provider LLM Support**: OpenAI, Anthropic/Bedrock, Claude Direct, Internal HTTP
 - **Intelligent Pattern Matching**: Tag filtering + vector similarity with FAISS
-- **Interactive Q&A System**: Clarifying questions to gather missing requirements
+- **Interactive Q&A System**: LLM-generated clarifying questions with robust caching
 - **Feasibility Assessment**: Automatable, Partially Automatable, or Not Automatable
-- **Export Results**: JSON and Markdown formats
+- **AI-Generated Architecture Diagrams**: Context, Container, and Sequence diagrams with enhanced viewing
+- **LLM-Driven Tech Stack Generation**: Intelligent technology recommendations
+- **Export Results**: JSON, Markdown, and interactive HTML formats
 - **Constraint-Aware**: Filters banned tools and applies business constraints
 
 ## Architecture Components
 
-- **FastAPI Backend**: REST API with async endpoints
-- **Streamlit Frontend**: Interactive web interface
+- **FastAPI Backend**: REST API with async endpoints and robust caching
+- **Streamlit Frontend**: Interactive web interface with enhanced diagram viewing
 - **Pattern Library**: JSON-based reusable solution patterns
 - **FAISS Index**: Vector similarity search for pattern matching
-- **Q&A System**: Template-based question generation
+- **Q&A System**: LLM-powered question generation with duplicate prevention
 - **State Management**: Session persistence with diskcache/Redis
-- **Export System**: JSON and Markdown result export
+- **Export System**: JSON, Markdown, and interactive HTML export
+- **Diagram System**: Mermaid-based architecture visualization with browser export
 - **Audit System**: Comprehensive logging and observability
 
 ## Request Flow
 
-1. **Ingest** → Create session, parse requirements
-2. **Q&A Loop** → Collect missing information
+1. **Ingest** → Create session, parse requirements (supports Jira integration)
+2. **Q&A Loop** → LLM-generated clarifying questions with caching
 3. **Pattern Matching** → Tag filtering + vector similarity
-4. **Recommendations** → Generate feasibility assessment
-5. **Export** → Download results in preferred format
+4. **Tech Stack Generation** → LLM-driven technology recommendations
+5. **Architecture Analysis** → LLM-generated explanations and diagrams
+6. **Recommendations** → Generate feasibility assessment
+7. **Export** → Download results in JSON, Markdown, or interactive HTML

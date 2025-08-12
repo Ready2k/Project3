@@ -3,13 +3,14 @@
 ## Core Technologies
 
 - **Python 3.10+**: Primary language
-- **FastAPI**: Async REST API framework
-- **Streamlit**: Interactive web UI framework
+- **FastAPI**: Async REST API framework with robust caching
+- **Streamlit**: Interactive web UI framework with enhanced components
+- **Streamlit-Mermaid**: Native Mermaid diagram rendering
 - **Pydantic**: Data validation and settings management
 - **FAISS**: Vector similarity search (faiss-cpu)
 - **Sentence Transformers**: Text embeddings
 - **SQLAlchemy**: Database ORM
-- **Diskcache/Redis**: Session state management
+- **Diskcache/Redis**: Session state management with multi-layer caching
 
 ## LLM Providers
 

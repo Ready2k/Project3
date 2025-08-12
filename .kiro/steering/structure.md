@@ -24,13 +24,14 @@
 
 ### Domain Packages
 - `embeddings/` - Text embedding and FAISS indexing
-- `exporters/` - Result export in JSON/Markdown formats
+- `exporters/` - Result export in JSON/Markdown/HTML formats
 - `llm/` - LLM provider implementations and abstractions
 - `pattern/` - Pattern loading, matching, and schema
-- `qa/` - Question generation and Q&A loop logic
-- `services/` - Business logic and recommendation services
-- `state/` - Session state management
+- `qa/` - LLM-powered question generation with robust caching
+- `services/` - Business logic, recommendations, and Jira integration
+- `state/` - Session state management with multi-layer caching
 - `utils/` - Utilities (logging, audit, PII redaction)
+- `security/` - Input validation and security measures
 
 ### Testing Structure (`app/tests/`)
 - `unit/` - Unit tests for individual components
