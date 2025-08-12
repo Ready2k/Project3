@@ -252,6 +252,26 @@ Only return the JSON array, no other text."""
                 question_type="text"
             )]
     
+    def _cleanup_old_cache_entries(self):
+        """Clean up old cache entries to prevent memory leaks."""
+        if not hasattr(QuestionLoop, '_global_question_cache'):
+            return
+        
+        from datetime import datetime, timedelta
+        current_time = datetime.now()
+        expired_keys = []
+        
+        for key, (_, cache_time) in QuestionLoop._global_question_cache.items():
+            # Remove entries older than 1 hour
+            if current_time - cache_time > timedelta(hours=1):
+                expired_keys.append(key)
+        
+        for key in expired_keys:
+            del QuestionLoop._global_question_cache[key]
+        
+        if expired_keys:
+            app_logger.info(f"Cleaned up {len(expired_keys)} expired cache entries")
+    
     async def generate_questions(self, 
                                session_id: str, 
                                max_questions: int = 5) -> List[Question]:
@@ -276,21 +296,38 @@ Only return the JSON array, no other text."""
             return []
         
         # Check if we have recently generated questions for this session
-        # Use a global cache to prevent duplicate generation across instances
+        # Use a more robust caching mechanism
         from datetime import datetime, timedelta
         
-        cache_key = f"{session_id}_{hash(session.requirements.get('description', ''))}"
+        # Create a stable cache key based on session and requirements
+        requirements_hash = hash(str(sorted(session.requirements.items())))
+        cache_key = f"{session_id}_{requirements_hash}"
         
-        # Check global cache
-        if hasattr(QuestionLoop, '_global_question_cache'):
-            if cache_key in QuestionLoop._global_question_cache:
-                cached_questions, cache_time = QuestionLoop._global_question_cache[cache_key]
-                # Use cached questions if they're less than 5 minutes old
-                if datetime.now() - cache_time < timedelta(minutes=5):
-                    app_logger.info(f"Using cached questions for session {session_id}")
-                    return cached_questions
-        else:
+        # Initialize global cache if it doesn't exist
+        if not hasattr(QuestionLoop, '_global_question_cache'):
             QuestionLoop._global_question_cache = {}
+        
+        # Check if we have valid cached questions
+        if cache_key in QuestionLoop._global_question_cache:
+            cached_questions, cache_time = QuestionLoop._global_question_cache[cache_key]
+            # Use cached questions if they're less than 10 minutes old
+            if datetime.now() - cache_time < timedelta(minutes=10):
+                app_logger.info(f"Using cached questions for session {session_id} (cached {len(cached_questions)} questions)")
+                return cached_questions
+            else:
+                # Remove expired cache entry
+                del QuestionLoop._global_question_cache[cache_key]
+                app_logger.info(f"Expired cache entry removed for session {session_id}")
+        
+        # Check if we've already generated questions recently for this exact session
+        # This prevents rapid-fire duplicate calls
+        recent_cache_key = f"{session_id}_recent"
+        if recent_cache_key in QuestionLoop._global_question_cache:
+            _, recent_time = QuestionLoop._global_question_cache[recent_cache_key]
+            # If we generated questions less than 30 seconds ago, return empty list
+            if datetime.now() - recent_time < timedelta(seconds=30):
+                app_logger.info(f"Preventing duplicate question generation for session {session_id} (too recent)")
+                return []
         
         # Generate questions directly using LLM instead of templates
         prompt = f"""You are an expert automation consultant. Analyze this requirement and generate clarifying questions.
@@ -316,7 +353,13 @@ CRITICAL: Respond with ONLY a valid JSON array, no other text:
         try:
             # Generate questions using LLM
             app_logger.info(f"Generating LLM questions for session {session_id}")
+            app_logger.info(f"Requirements description: {session.requirements.get('description', 'No description')[:100]}...")
             app_logger.info(f"Question generation prompt hash: {hash(prompt)}")  # Debug: track unique prompts
+            
+            # Mark that we're about to generate questions
+            recent_cache_key = f"{session_id}_recent"
+            QuestionLoop._global_question_cache[recent_cache_key] = ([], datetime.now())
+            
             response = await self.llm_provider.generate(prompt, purpose="question_generation")
             
             app_logger.info(f"LLM response for questions: {response[:200]}...")  # Log first 200 chars
@@ -364,10 +407,19 @@ CRITICAL: Respond with ONLY a valid JSON array, no other text:
             
             # Cache the generated questions in global cache
             from datetime import datetime
-            if not hasattr(QuestionLoop, '_global_question_cache'):
-                QuestionLoop._global_question_cache = {}
-            QuestionLoop._global_question_cache[cache_key] = (questions, datetime.now())
+            current_time = datetime.now()
             
+            # Clean up old cache entries (keep cache size manageable)
+            self._cleanup_old_cache_entries()
+            
+            # Cache the questions with the stable key
+            QuestionLoop._global_question_cache[cache_key] = (questions, current_time)
+            
+            # Also set the recent generation marker to prevent immediate duplicates
+            recent_cache_key = f"{session_id}_recent"
+            QuestionLoop._global_question_cache[recent_cache_key] = ([], current_time)
+            
+            app_logger.info(f"Cached {len(questions)} questions for session {session_id}")
             return questions
             
         except Exception as e:

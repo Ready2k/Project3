@@ -18,6 +18,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Specific to user requirements and chosen technology stack
   - 2x more detailed than previous rule-based explanations
 - **Enhanced LLM Message Observability**: Improved transparency and debugging capabilities
+
+### Improved
+- **Enhanced Diagram Viewing Experience**: Major improvements to Mermaid diagram rendering
+  - Added "Open in Browser" button for full-size standalone viewing
+  - Standalone HTML files with interactive controls (zoom, pan, print)
+  - SVG download functionality for high-quality exports
+  - Direct links to Mermaid Live Editor for code editing
+  - Better fallback rendering with improved CSS styling
+  - Added streamlit-mermaid package for native Streamlit integration
+  - Downloadable HTML files with embedded Mermaid viewer
+
+### Fixed
+- **Question Generation Duplication**: Resolved duplicate LLM calls during Q&A phase
+  - Implemented robust multi-layer caching system
+  - Added rapid-fire request protection (30s at QuestionLoop, 10s at API level)
+  - Improved cache key generation for stability and consistency
+  - Added automatic cache cleanup to prevent memory leaks
+  - Enhanced logging for better debugging and monitoring
+  - Reduced unnecessary LLM API costs from eliminated duplicate calls
   - Purpose filtering for different types of LLM calls (tech_stack_generation, architecture_explanation)
   - Complete prompt and response logging with timing and metadata
   - Better categorization and display of LLM interactions

@@ -345,6 +345,7 @@ class StatusResponse(BaseModel):
     phase: str
     progress: int
     missing_fields: List[str]
+    requirements: Optional[Dict[str, Any]] = None
 
 
 class QARequest(BaseModel):
@@ -646,7 +647,8 @@ async def get_status(session_id: str, response: Response):
         status_response = StatusResponse(
             phase=session.phase.value,
             progress=session.progress,
-            missing_fields=session.missing_fields
+            missing_fields=session.missing_fields,
+            requirements=session.requirements
         )
         app_logger.info(f"Status response for {session_id}: {status_response.dict()}")
         
@@ -697,17 +699,34 @@ async def get_qa_questions(session_id: str, response: Response):
             app_logger.warning("No provider config found in session for questions")
         
         # Check if questions were recently generated for this session
-        # Use a simple global cache at API level too
+        # Use a more robust API-level cache
         if not hasattr(get_qa_questions, '_api_question_cache'):
             get_qa_questions._api_question_cache = {}
         
-        api_cache_key = f"{session_id}_questions"
+        # Create a stable cache key that includes session requirements
+        requirements_hash = hash(str(sorted(session.requirements.items())))
+        api_cache_key = f"{session_id}_{requirements_hash}_questions"
+        
         if api_cache_key in get_qa_questions._api_question_cache:
             cached_result, cache_time = get_qa_questions._api_question_cache[api_cache_key]
-            # Use cached result if it's less than 2 minutes old
-            if datetime.now() - cache_time < timedelta(minutes=2):
+            # Use cached result if it's less than 5 minutes old
+            if datetime.now() - cache_time < timedelta(minutes=5):
                 app_logger.info(f"Using API-level cached questions for session {session_id}")
                 return cached_result
+            else:
+                # Remove expired cache entry
+                del get_qa_questions._api_question_cache[api_cache_key]
+        
+        # Check for rapid-fire requests (prevent duplicate calls within 10 seconds)
+        rapid_fire_key = f"{session_id}_rapid_fire"
+        if rapid_fire_key in get_qa_questions._api_question_cache:
+            _, last_request_time = get_qa_questions._api_question_cache[rapid_fire_key]
+            if datetime.now() - last_request_time < timedelta(seconds=10):
+                app_logger.info(f"Preventing rapid-fire question request for session {session_id}")
+                return {"questions": []}
+        
+        # Mark this request time to prevent rapid-fire
+        get_qa_questions._api_question_cache[rapid_fire_key] = (None, datetime.now())
         
         question_loop = get_question_loop(provider_config, session_id)
         questions = await question_loop.generate_questions(session_id, max_questions=5)
@@ -718,8 +737,13 @@ async def get_qa_questions(session_id: str, response: Response):
             "session_id": session_id,
             "phase": session.phase.value
         }
-        get_qa_questions._api_question_cache[api_cache_key] = (result, datetime.now())
-        app_logger.info(f"Cached questions for session {session_id}, cache now has {len(get_qa_questions._api_question_cache)} entries")
+        
+        # Only cache if we actually have questions
+        if questions:
+            get_qa_questions._api_question_cache[api_cache_key] = (result, datetime.now())
+            app_logger.info(f"Cached {len(questions)} questions for session {session_id}")
+        else:
+            app_logger.info(f"No questions to cache for session {session_id}")
         
         # Add security headers
         SecurityHeaders.add_security_headers(response)
@@ -1049,8 +1073,8 @@ async def test_jira_connection(request: JiraTestRequest):
         return JiraTestResponse(ok=False, message=f"Unexpected error: {str(e)}")
 
 
-@app.post("/jira/fetch")
-async def fetch_jira_ticket(request: dict, response: Response):
+@app.post("/jira/fetch", response_model=JiraFetchResponse)
+async def fetch_jira_ticket(request: JiraFetchRequest, response: Response):
     """Fetch Jira ticket and map to requirements format."""
     try:
         from app.config import JiraConfig
@@ -1136,35 +1160,6 @@ async def test_provider(request: dict, response: Response):
         SecurityHeaders.add_security_headers(response)
         return result
 
-
-@app.post("/jira/test")
-async def test_jira_connection(request: dict, response: Response):
-    """Test Jira connection with provided credentials."""
-    try:
-        from app.config import JiraConfig
-        jira_config = JiraConfig(
-            base_url=request.get("base_url"),
-            email=request.get("email"),
-            api_token=request.get("api_token")
-        )
-        
-        jira_service = JiraService(jira_config)
-        success, error_msg = await jira_service.test_connection()
-        
-        result = {
-            "ok": success,
-            "message": "Jira connection successful" if success else error_msg
-        }
-        
-        # Add security headers
-        SecurityHeaders.add_security_headers(response)
-        return result
-        
-    except Exception as e:
-        app_logger.error(f"Error testing Jira connection: {e}")
-        result = {"ok": False, "message": f"Unexpected error: {str(e)}"}
-        SecurityHeaders.add_security_headers(response)
-        return result
 
 
 @app.get("/health")

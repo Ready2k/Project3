@@ -1,5 +1,5 @@
 {
-  "pattern_id": "PAT-028",
+  "pattern_id": "PAT-007",
   "name": "Multilingual Support Ticket Processing",
   "description": "This pattern automates the process of translating customer support tickets received in multiple languages, categorizing them by issue type using AI-based NLP models, and dynamically routing them to the appropriate support team to ensure efficient handling.",
   "feasibility": "Automatable",

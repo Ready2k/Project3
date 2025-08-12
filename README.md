@@ -10,7 +10,7 @@ Interactive GUI + API system that judges if user stories/requirements are automa
 - 📊 **Feasibility Assessment**: Automatable, Partially Automatable, or Not Automatable with confidence scores
 - 🛠️ **LLM-Driven Tech Stack Generation**: Intelligent technology recommendations based on requirements, constraints, and available patterns
 - 🏗️ **AI-Generated Architecture Explanations**: LLM explains how technology components work together for your specific use case
-- 📈 **AI-Generated Architecture Diagrams**: Context, Container, and Sequence diagrams using Mermaid *(WIP - diagrams functionality is still being refined)*
+- 📈 **AI-Generated Architecture Diagrams**: Context, Container, and Sequence diagrams using Mermaid with enhanced viewing options
 - 📤 **Export Results**: JSON and Markdown formats with comprehensive analysis
 - 🎯 **Constraint-Aware**: Filters banned tools and applies business constraints
 - 🔍 **LLM Message Audit Trail**: Complete visibility into LLM prompts and responses for transparency
@@ -117,8 +117,8 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
    - Review detailed reasoning and tech stack recommendations
    - Export results in JSON or Markdown format
 
-5. **Generate Diagrams** (Diagrams Tab): *(WIP - functionality being refined)*
-   - Create AI-generated architecture diagrams
+5. **Generate Diagrams** (Diagrams Tab):
+   - Create AI-generated architecture diagrams with enhanced viewing
    - Context Diagram: System boundaries and external integrations
    - Container Diagram: Internal components and data flow
    - Sequence Diagram: Step-by-step process flow with decision points
