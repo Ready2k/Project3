@@ -177,8 +177,15 @@ class QuestionLoop:
         # Each Q&A answer increases confidence
         qa_boost = min(len(answered_fields) * 0.15, 0.3)  # Max 0.3 boost from Q&A
         
-        final_confidence = min(base_confidence + qa_boost, 1.0)
-        return final_confidence
+        # If we have LLM analysis, use its confidence level
+        llm_confidence = requirements.get("llm_analysis_confidence_level")
+        if llm_confidence and isinstance(llm_confidence, (int, float)):
+            # Blend LLM confidence with our calculated confidence
+            final_confidence = (base_confidence + qa_boost) * 0.4 + llm_confidence * 0.6
+        else:
+            final_confidence = base_confidence + qa_boost
+        
+        return min(final_confidence, 1.0)
     
     async def _generate_question_from_template(self, 
                                              template: Dict[str, Any], 
@@ -217,7 +224,7 @@ Only return the JSON array, no other text."""
 
         try:
             # Generate questions using LLM
-            response = await self.llm_provider.generate(prompt)
+            response = await self.llm_provider.generate(prompt, purpose="question_generation")
             
             # Parse the JSON response
             import json
@@ -268,6 +275,23 @@ Only return the JSON array, no other text."""
             app_logger.info(f"Max questions ({max_questions}) already reached for session {session_id}")
             return []
         
+        # Check if we have recently generated questions for this session
+        # Use a global cache to prevent duplicate generation across instances
+        from datetime import datetime, timedelta
+        
+        cache_key = f"{session_id}_{hash(session.requirements.get('description', ''))}"
+        
+        # Check global cache
+        if hasattr(QuestionLoop, '_global_question_cache'):
+            if cache_key in QuestionLoop._global_question_cache:
+                cached_questions, cache_time = QuestionLoop._global_question_cache[cache_key]
+                # Use cached questions if they're less than 5 minutes old
+                if datetime.now() - cache_time < timedelta(minutes=5):
+                    app_logger.info(f"Using cached questions for session {session_id}")
+                    return cached_questions
+        else:
+            QuestionLoop._global_question_cache = {}
+        
         # Generate questions directly using LLM instead of templates
         prompt = f"""You are an expert automation consultant. Analyze this requirement and generate clarifying questions.
 
@@ -292,7 +316,8 @@ CRITICAL: Respond with ONLY a valid JSON array, no other text:
         try:
             # Generate questions using LLM
             app_logger.info(f"Generating LLM questions for session {session_id}")
-            response = await self.llm_provider.generate(prompt)
+            app_logger.info(f"Question generation prompt hash: {hash(prompt)}")  # Debug: track unique prompts
+            response = await self.llm_provider.generate(prompt, purpose="question_generation")
             
             app_logger.info(f"LLM response for questions: {response[:200]}...")  # Log first 200 chars
             
@@ -336,6 +361,13 @@ CRITICAL: Respond with ONLY a valid JSON array, no other text:
                 questions.append(question)
             
             app_logger.info(f"Generated {len(questions)} LLM questions for session {session_id}")
+            
+            # Cache the generated questions in global cache
+            from datetime import datetime
+            if not hasattr(QuestionLoop, '_global_question_cache'):
+                QuestionLoop._global_question_cache = {}
+            QuestionLoop._global_question_cache[cache_key] = (questions, datetime.now())
+            
             return questions
             
         except Exception as e:
@@ -368,6 +400,88 @@ CRITICAL: Respond with ONLY a valid JSON array, no other text:
         merged.update(answers)
         return merged
     
+    async def _analyze_answers_with_llm(self, 
+                                      session_id: str, 
+                                      requirements: Dict[str, Any], 
+                                      answers: Dict[str, str]) -> Dict[str, Any]:
+        """Analyze user answers using LLM to extract insights and assess automation feasibility.
+        
+        Args:
+            session_id: Session identifier
+            requirements: Current requirements
+            answers: User answers to analyze
+            
+        Returns:
+            Dictionary with LLM analysis insights
+        """
+        if not self.llm_provider:
+            app_logger.warning(f"No LLM provider available for answer analysis in session {session_id}")
+            return {}
+        
+        # Format the answers for LLM analysis
+        answers_text = "\n".join([f"Q: {field}\nA: {answer}" for field, answer in answers.items()])
+        
+        prompt = f"""You are an expert automation consultant analyzing user responses to determine automation feasibility.
+
+ORIGINAL REQUIREMENT: {requirements.get('description', 'No description provided')}
+
+USER ANSWERS:
+{answers_text}
+
+Based on these answers, analyze the automation feasibility and provide insights in JSON format:
+
+{{
+  "automation_feasibility": "Automatable|Partially Automatable|Not Automatable",
+  "feasibility_reasoning": "Detailed explanation of why this assessment was made",
+  "key_insights": ["insight1", "insight2", "insight3"],
+  "automation_challenges": ["challenge1", "challenge2"],
+  "recommended_approach": "Specific recommendation based on the answers",
+  "confidence_level": 0.85,
+  "next_steps": ["step1", "step2"]
+}}
+
+Focus on:
+- Physical vs digital nature of the process
+- Available data sources and integration points
+- Complexity of decision-making required
+- Current workflow and automation readiness
+- Risk factors and compliance considerations
+
+Respond with ONLY valid JSON, no other text."""
+
+        try:
+            app_logger.info(f"Analyzing answers with LLM for session {session_id}")
+            response = await self.llm_provider.generate(prompt, purpose="answer_analysis")
+            
+            app_logger.info(f"LLM answer analysis response: {response[:200]}...")
+            
+            # Parse JSON response
+            import json
+            import re
+            
+            # Clean the response - sometimes LLM adds extra text
+            response = response.strip()
+            
+            # Try to extract JSON if it's wrapped in other text
+            if not response.startswith('{'):
+                json_match = re.search(r'\{.*\}', response, re.DOTALL)
+                if json_match:
+                    response = json_match.group()
+            
+            analysis = json.loads(response)
+            
+            # Add prefix to avoid conflicts with user answers
+            prefixed_analysis = {}
+            for key, value in analysis.items():
+                prefixed_analysis[f"llm_analysis_{key}"] = value
+            
+            app_logger.info(f"Successfully analyzed answers for session {session_id}")
+            return prefixed_analysis
+            
+        except Exception as e:
+            app_logger.error(f"Error analyzing answers with LLM for session {session_id}: {e}")
+            return {}
+    
     async def process_answers(self, 
                             session_id: str, 
                             answers: Dict[str, str]) -> QAResult:
@@ -385,9 +499,17 @@ CRITICAL: Respond with ONLY a valid JSON array, no other text:
             raise ValueError(f"Session not found: {session_id}")
         
         app_logger.info(f"Processing {len(answers)} answers for session {session_id}")
+        app_logger.info(f"Answers received: {answers}")
+        
+        # Send answers to LLM for analysis and evaluation
+        llm_analysis = await self._analyze_answers_with_llm(session_id, session.requirements, answers)
         
         # Merge answers into requirements
         updated_requirements = self._merge_answers(session.requirements, answers)
+        
+        # Merge LLM analysis insights into requirements
+        if llm_analysis:
+            updated_requirements.update(llm_analysis)
         
         # Check completeness and confidence
         missing_fields = self._identify_missing_fields(updated_requirements)
@@ -396,6 +518,12 @@ CRITICAL: Respond with ONLY a valid JSON array, no other text:
         app_logger.info(f"Updated requirements: {list(updated_requirements.keys())}")
         app_logger.info(f"Missing fields: {missing_fields}")
         app_logger.info(f"Confidence: {confidence:.2f}")
+        
+        # Log LLM analysis if available
+        if llm_analysis:
+            feasibility = llm_analysis.get("llm_analysis_automation_feasibility", "Unknown")
+            llm_confidence = llm_analysis.get("llm_analysis_confidence_level", "Unknown")
+            app_logger.info(f"LLM Analysis: Feasibility={feasibility}, Confidence={llm_confidence}")
         
         # Create Q&A exchange record
         qa_exchange = QAExchange(
@@ -412,13 +540,20 @@ CRITICAL: Respond with ONLY a valid JSON array, no other text:
         await self.session_store.update_session(session_id, session)
         
         # Determine if Q&A is complete
-        complete = len(missing_fields) == 0 or confidence > 0.8
+        # Consider LLM analysis in completeness determination
+        llm_has_clear_assessment = updated_requirements.get("llm_analysis_automation_feasibility") is not None
+        
+        complete = (len(missing_fields) == 0 or 
+                   confidence > 0.8 or 
+                   (llm_has_clear_assessment and confidence > 0.6))
         
         # Generate next questions if not complete
         next_questions = []
         if not complete:
+            app_logger.info(f"Q&A not complete for session {session_id}, generating more questions")
             next_questions = await self.generate_questions(session_id)
             if not next_questions:
+                app_logger.info(f"No more questions generated for session {session_id}, marking complete")
                 complete = True  # No more questions to ask
         
         result = QAResult(

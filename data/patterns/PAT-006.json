@@ -1,35 +1,56 @@
 {
   "pattern_id": "PAT-006",
-  "name": "Agriculture Barcode/QR Scanning",
-  "description": "Automated scanning and processing system using barcode/QR code recognition with mobile device integration and real-time data processing",
+  "name": "PII Redaction & Data Loss Prevention Pipeline",
+  "description": "Automatic detection and redaction/pseudonymization of PII before data leaves the secure boundary or is processed by external services.",
   "feasibility": "Automatable",
   "pattern_type": [
-    "scanning_automation",
-    "ml_processing"
+    "pii_detection",
+    "redaction",
+    "policy_enforcement"
   ],
   "input_requirements": [
-    "Clear process definition and requirements",
-    "Access to target systems and APIs",
-    "Mobile device with camera capability",
-    "Barcode/QR code standards and formats",
-    "Inventory database schema and access"
+    "defined_pii_policy",
+    "supported_data_modalities_text_only_initial",
+    "key_management_for_tokenization"
   ],
   "tech_stack": [
-    "Python",
+    "Microsoft Presidio",
+    "spaCy",
     "FastAPI",
-    "OpenCV",
-    "pyzbar",
-    "mobile app framework"
+    "OPA (Open Policy Agent)",
+    "Hashing/HSM-backed tokenization",
+    "Kafka or RabbitMQ"
   ],
-  "related_patterns": [],
-  "confidence_score": 0.95,
+  "related_patterns": [
+    "PAT-101",
+    "PAT-103"
+  ],
+  "confidence_score": 0.92,
   "constraints": {
-    "banned_tools": [],
-    "required_integrations": []
+    "banned_tools": [
+      "Sending raw data to third-party APIs pre-redaction",
+      "Storing reversible tokens without HSM/KeyVault"
+    ],
+    "required_integrations": [
+      "Key management system",
+      "Logging/audit store",
+      "Downstream processors declare DLP conformance"
+    ]
   },
-  "domain": "agriculture",
-  "complexity": "Low",
-  "estimated_effort": "1-2 weeks",
-  "created_from_session": "9b23686e-5d92-48ba-8796-c7db9af69167",
-  "auto_generated": true
+  "domain": "security_compliance",
+  "complexity": "Medium",
+  "estimated_effort": "2-4 weeks",
+  "created_from_session": "seed-2025-08-12",
+  "auto_generated": false,
+  "llm_insights": [
+    "Policy-as-code enables consistent enforcement across services.",
+    "Tokenization preserves analytics utility without exposing PII."
+  ],
+  "llm_challenges": [
+    "Entity boundary errors in noisy text.",
+    "Coordinating redaction across microservices."
+  ],
+  "llm_recommended_approach": "Insert a gateway service that enforces redaction via Presidio and OPA before any external call; monitor with audit logs and sampling.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "seed-2025-08-12"
 }

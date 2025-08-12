@@ -1,23 +1,53 @@
 {
   "pattern_id": "PAT-003",
-  "name": "Document Processing Pipeline",
-  "description": "Automated processing of documents including OCR, text extraction, classification, and data validation",
+  "name": "Multilingual Support Ticket Processing",
+  "description": "Translate incoming tickets, categorize by issue type, and auto-route to teams with SLAs, retaining human escalation for ambiguous cases.",
   "feasibility": "Partially Automatable",
-  "pattern_type": ["document_processing", "ml_pipeline"],
-  "input_requirements": [
-    "Document types and formats",
-    "Extraction requirements",
-    "Quality thresholds",
-    "Human review criteria"
+  "pattern_type": [
+    "translation",
+    "categorization",
+    "routing",
+    "nlp_processing"
   ],
-  "tech_stack": ["Python", "Tesseract", "spaCy", "PyPDF2", "OpenCV"],
-  "related_patterns": ["PAT-001", "PAT-002"],
-  "confidence_score": 0.75,
+  "input_requirements": [
+    "helpdesk_api_access",
+    "historical_tickets_with_labels",
+    "routing_rules",
+    "sla_definitions"
+  ],
+  "tech_stack": [
+    "AWS Translate or on-prem NMT",
+    "scikit-learn or HuggingFace text-classification",
+    "FastAPI",
+    "Apache Kafka or RabbitMQ",
+    "PostgreSQL"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.9,
   "constraints": {
-    "banned_tools": ["proprietary_ocr"],
-    "required_integrations": ["human_review", "quality_control"]
+    "banned_tools": [
+      "Sending raw PII to third-party translation without DLP"
+    ],
+    "required_integrations": [
+      "Zendesk/Freshdesk/SF Service Cloud API",
+      "Identity provider for agent assignment",
+      "Observability/metrics sink"
+    ]
   },
-  "domain": "document_management",
-  "complexity": "High",
-  "estimated_effort": "6-12 weeks"
+  "domain": "customer_support",
+  "complexity": "Medium",
+  "estimated_effort": "4-8 weeks",
+  "created_from_session": "seed-2025-08-12",
+  "auto_generated": false,
+  "llm_insights": [
+    "Label drift occurs during promos/holidays; retraining cadence matters.",
+    "Routing accuracy improves with per-team taxonomy."
+  ],
+  "llm_challenges": [
+    "Long-tail languages and domain-specific jargon.",
+    "Balancing auto-resolve vs safe escalation."
+  ],
+  "llm_recommended_approach": "Detect language, redact PII, translate, classify using historical data, and route via queue; capture feedback loops from agents to continuously improve.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "seed-2025-08-12"
 }

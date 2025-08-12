@@ -1,24 +1,53 @@
 {
   "pattern_id": "PAT-004",
-  "name": "Inventory Management Automation",
-  "description": "Automated inventory tracking and reordering system using barcode scanning, threshold monitoring, and supplier API integration",
-  "feasibility": "Automatable",
-  "pattern_type": ["inventory_management", "barcode_scanning", "api_integration"],
-  "input_requirements": [
-    "Barcode scanning capability",
-    "Inventory database schema",
-    "Reorder threshold rules",
-    "Supplier API specifications",
-    "Mobile device integration"
+  "name": "Brand-Tone Co‑Writing for Marketing Content",
+  "description": "Assist marketers with drafts that match brand tone by grounding generation on past content and brand guidelines; requires editor approval before publishing.",
+  "feasibility": "Partially Automatable",
+  "pattern_type": [
+    "content_generation",
+    "style_transfer",
+    "retrieval_augmented_generation",
+    "human_in_loop"
   ],
-  "tech_stack": ["Python", "FastAPI", "SQLAlchemy", "barcode scanning libraries", "mobile app framework"],
-  "related_patterns": ["PAT-002"],
-  "confidence_score": 0.9,
+  "input_requirements": [
+    "brand_guidelines",
+    "corpus_of_past_posts",
+    "cms_api_access"
+  ],
+  "tech_stack": [
+    "OpenAI/Claude (with DLP) or local LLM",
+    "sentence-transformers",
+    "FAISS",
+    "FastAPI",
+    "jsonschema"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.86,
   "constraints": {
-    "banned_tools": [],
-    "required_integrations": ["inventory_database", "supplier_apis", "mobile_devices"]
+    "banned_tools": [
+      "Direct publishing without human review",
+      "Training on proprietary corpus without consent"
+    ],
+    "required_integrations": [
+      "CMS API (e.g., WordPress/Contentful)",
+      "Style guide repository",
+      "Approval workflow"
+    ]
   },
-  "domain": "inventory",
+  "domain": "marketing",
   "complexity": "Medium",
-  "estimated_effort": "4-8 weeks"
+  "estimated_effort": "2-5 weeks",
+  "created_from_session": "seed-2025-08-12",
+  "auto_generated": false,
+  "llm_insights": [
+    "RAG with style exemplars improves tone consistency.",
+    "Editor feedback loops reduce hallucinations and brand risk."
+  ],
+  "llm_challenges": [
+    "Subtle brand persona nuances.",
+    "Preventing leakage of proprietary messaging."
+  ],
+  "llm_recommended_approach": "Build a tone memory via embeddings; use RAG prompts; validate output against jsonschema for structure; require editor sign-off.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "seed-2025-08-12"
 }

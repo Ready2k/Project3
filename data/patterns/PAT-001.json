@@ -1,23 +1,57 @@
 {
   "pattern_id": "PAT-001",
-  "name": "Web Scraping Automation",
-  "description": "Automated data extraction from websites using web scraping techniques with proper rate limiting and error handling",
-  "feasibility": "Automatable",
-  "pattern_type": ["data_extraction", "web_automation"],
-  "input_requirements": [
-    "Target website URLs",
-    "Data fields to extract",
-    "Update frequency requirements",
-    "Rate limiting constraints"
+  "name": "Secure Legal Contract Summarization (On-Prem)",
+  "description": "Summarize sensitive legal contracts while preserving confidentiality by running on-prem or private VPC NLP. Includes automated PII redaction, clause extraction, and human-in-the-loop legal review.",
+  "feasibility": "Partially Automatable",
+  "pattern_type": [
+    "summarization",
+    "pii_redaction",
+    "nlp_extraction",
+    "human_in_loop"
   ],
-  "tech_stack": ["Python", "BeautifulSoup", "Scrapy", "Selenium", "Requests"],
-  "related_patterns": ["PAT-002", "PAT-003"],
-  "confidence_score": 0.9,
+  "input_requirements": [
+    "digital_pdfs_or_text",
+    "access_controlled_document_store",
+    "redaction_policy",
+    "reviewer_workflow_defined"
+  ],
+  "tech_stack": [
+    "HuggingFace Transformers (local)",
+    "spaCy",
+    "Microsoft Presidio",
+    "sentence-transformers",
+    "FAISS",
+    "FastAPI",
+    "PostgreSQL"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.88,
   "constraints": {
-    "banned_tools": [],
-    "required_integrations": ["database", "monitoring"]
+    "banned_tools": [
+      "External LLM APIs without DPA",
+      "Public cloud file storage for source documents",
+      "Model training on client data without opt-in"
+    ],
+    "required_integrations": [
+      "Document Management System (DMS) API",
+      "SSO/IdP for role-based access",
+      "Audit logging sink"
+    ]
   },
-  "domain": "data_processing",
-  "complexity": "Medium",
-  "estimated_effort": "2-4 weeks"
+  "domain": "legal_compliance",
+  "complexity": "High",
+  "estimated_effort": "4-8 weeks",
+  "created_from_session": "seed-2025-08-12",
+  "auto_generated": false,
+  "llm_insights": [
+    "Summaries should cite clause locations to aid legal review.",
+    "Embedding search accelerates retrieval of similar clauses."
+  ],
+  "llm_challenges": [
+    "Maintaining attorney-client confidentiality end-to-end.",
+    "Capturing dependencies across cross-referenced clauses."
+  ],
+  "llm_recommended_approach": "Run local summarization and NER models; apply PII redaction before inference; use embeddings+FAISS for clause retrieval; require human approval before release.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "seed-2025-08-12"
 }

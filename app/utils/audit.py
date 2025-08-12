@@ -24,6 +24,7 @@ class AuditRun:
     tokens: Optional[int] = None
     prompt: Optional[str] = None
     response: Optional[str] = None
+    purpose: Optional[str] = None
     created_at: Optional[datetime] = None
     id: Optional[int] = None
     
@@ -70,6 +71,7 @@ class AuditLogger:
                     tokens INTEGER,
                     prompt TEXT,
                     response TEXT,
+                    purpose TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -112,6 +114,11 @@ class AuditLogger:
             if 'response' not in columns:
                 conn.execute("ALTER TABLE runs ADD COLUMN response TEXT")
                 logger.info("Added 'response' column to runs table")
+            
+            # Add purpose column if it doesn't exist
+            if 'purpose' not in columns:
+                conn.execute("ALTER TABLE runs ADD COLUMN purpose TEXT")
+                logger.info("Added 'purpose' column to runs table")
                 
         except Exception as e:
             logger.error(f"Database migration failed: {e}")
@@ -134,18 +141,23 @@ class AuditLogger:
                           latency_ms: int,
                           tokens: Optional[int] = None,
                           prompt: Optional[str] = None,
-                          response: Optional[str] = None) -> None:
-        """Log an LLM provider call with optional prompt and response."""
+                          response: Optional[str] = None,
+                          purpose: Optional[str] = None) -> None:
+        """Log an LLM provider call with optional prompt, response, and purpose."""
         try:
             # Redact PII from prompt and response if enabled
             redacted_prompt = None
             redacted_response = None
             
             if prompt is not None:
-                redacted_prompt = self.redactor.redact(prompt) if self.redact_pii and self.redactor else prompt
+                # Convert prompt to string if it's not already
+                prompt_str = str(prompt) if not isinstance(prompt, str) else prompt
+                redacted_prompt = self.redactor.redact(prompt_str) if self.redact_pii and self.redactor else prompt_str
             
             if response is not None:
-                redacted_response = self.redactor.redact(response) if self.redact_pii and self.redactor else response
+                # Convert response to string if it's not already
+                response_str = str(response) if not isinstance(response, str) else response
+                redacted_response = self.redactor.redact(response_str) if self.redact_pii and self.redactor else response_str
             
             audit_run = AuditRun(
                 session_id=self._redact_session_id(session_id),
@@ -154,13 +166,14 @@ class AuditLogger:
                 latency_ms=latency_ms,
                 tokens=tokens,
                 prompt=redacted_prompt,
-                response=redacted_response
+                response=redacted_response,
+                purpose=purpose
             )
             
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute("""
-                    INSERT INTO runs (session_id, provider, model, latency_ms, tokens, prompt, response, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO runs (session_id, provider, model, latency_ms, tokens, prompt, response, purpose, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     audit_run.session_id,
                     audit_run.provider,
@@ -169,6 +182,7 @@ class AuditLogger:
                     audit_run.tokens,
                     audit_run.prompt,
                     audit_run.response,
+                    audit_run.purpose,
                     audit_run.created_at
                 ))
                 conn.commit()
@@ -244,6 +258,7 @@ class AuditLogger:
                 tokens=row['tokens'],
                 prompt=row.get('prompt'),
                 response=row.get('response'),
+                purpose=row.get('purpose'),
                 created_at=datetime.fromisoformat(row['created_at']) if row['created_at'] else None
             )
             for row in rows
@@ -352,7 +367,7 @@ class AuditLogger:
         """Get LLM messages (prompts and responses) for observability dashboard."""
         query = """
             SELECT id, session_id, provider, model, latency_ms, tokens, 
-                   prompt, response, created_at
+                   prompt, response, purpose, created_at
             FROM runs 
             WHERE 1=1
         """
@@ -381,6 +396,7 @@ class AuditLogger:
                 'tokens': row['tokens'],
                 'prompt': row['prompt'] if row['prompt'] else None,
                 'response': row['response'] if row['response'] else None,
+                'purpose': row['purpose'] if row['purpose'] else 'unknown',
                 'created_at': row['created_at'],
                 'timestamp': datetime.fromisoformat(row['created_at']).strftime('%Y-%m-%d %H:%M:%S') if row['created_at'] else 'Unknown'
             })
@@ -418,10 +434,10 @@ def get_audit_logger(db_path: str = "audit.db", redact_pii: bool = True) -> Audi
     return _audit_logger
 
 
-async def log_llm_call(session_id: str, provider: str, model: str, latency_ms: int, tokens: Optional[int] = None, prompt: Optional[str] = None, response: Optional[str] = None) -> None:
+async def log_llm_call(session_id: str, provider: str, model: str, latency_ms: int, tokens: Optional[int] = None, prompt: Optional[str] = None, response: Optional[str] = None, purpose: Optional[str] = None) -> None:
     """Convenience function to log LLM calls."""
     audit_logger = get_audit_logger()
-    await audit_logger.log_llm_call(session_id, provider, model, latency_ms, tokens, prompt, response)
+    await audit_logger.log_llm_call(session_id, provider, model, latency_ms, tokens, prompt, response, purpose)
 
 
 async def log_pattern_match(session_id: str, pattern_id: str, score: float, accepted: Optional[bool] = None) -> None:
