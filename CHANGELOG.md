@@ -37,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added automatic cache cleanup to prevent memory leaks
   - Enhanced logging for better debugging and monitoring
   - Reduced unnecessary LLM API costs from eliminated duplicate calls
+- **Streamlit Key Conflicts**: Fixed duplicate key errors in Q&A form
+  - Made question input keys unique using index and question hash
+  - Prevents conflicts when multiple questions have the same field ID
   - Purpose filtering for different types of LLM calls (tech_stack_generation, architecture_explanation)
   - Complete prompt and response logging with timing and metadata
   - Better categorization and display of LLM interactions
