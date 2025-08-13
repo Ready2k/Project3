@@ -2265,7 +2265,6 @@ class AutomatedAIAssessmentUI:
                             conn.commit()
                         
                         st.success(f"✅ Removed {deleted_count} test/mock provider records")
-                        st.rerun()
                         
                     except Exception as e:
                         st.error(f"❌ Error cleaning test data: {str(e)}")
@@ -2280,7 +2279,6 @@ class AutomatedAIAssessmentUI:
                     try:
                         deleted_count = audit_logger.cleanup_old_records(days=days_to_keep)
                         st.success(f"✅ Removed {deleted_count} old records (older than {days_to_keep} days)")
-                        st.rerun()
                         
                     except Exception as e:
                         st.error(f"❌ Error cleaning old records: {str(e)}")
@@ -2372,8 +2370,6 @@ class AutomatedAIAssessmentUI:
         try:
             from app.pattern.loader import PatternLoader
             pattern_loader = PatternLoader("data/patterns")
-            # Force cache refresh to ensure we have the latest patterns
-            pattern_loader.refresh_cache()
             patterns = pattern_loader.load_patterns()
         except Exception as e:
             st.error(f"❌ Error loading patterns: {str(e)}")
@@ -2619,9 +2615,7 @@ class AutomatedAIAssessmentUI:
         pattern_file_path = f"data/patterns/{pattern_id}.json"
         if not os.path.exists(pattern_file_path):
             st.error(f"❌ Pattern {pattern_id} no longer exists. It may have been deleted.")
-            st.info("🔄 Refreshing pattern list...")
-            pattern_loader.refresh_cache()
-            st.rerun()
+            st.info("🔄 Please use the 'Refresh List' button to update the pattern list.")
             return
         
         # Handle delete confirmation outside of form
@@ -2639,9 +2633,8 @@ class AutomatedAIAssessmentUI:
                         # Clear the confirmation state
                         st.session_state[f"confirm_delete_{pattern_id}"] = False
                         st.balloons()  # Visual feedback
-                        # Add a small delay to let user see the success message
-                        time.sleep(1)
-                        st.rerun()
+                        # Don't auto-rerun, let user manually refresh if needed
+                        st.info("🔄 Use the 'Refresh List' button to update the pattern list.")
                     else:
                         st.error("Failed to delete pattern. Please try again.")
             
@@ -2650,7 +2643,6 @@ class AutomatedAIAssessmentUI:
                     # Clear the confirmation state
                     st.session_state[f"confirm_delete_{pattern_id}"] = False
                     st.info("Deletion cancelled.")
-                    st.rerun()
             
             return  # Don't show the form while in delete confirmation mode
         
@@ -2715,7 +2707,6 @@ class AutomatedAIAssessmentUI:
             elif delete_button:
                 # Set delete confirmation state instead of calling delete_pattern directly
                 st.session_state[f"confirm_delete_{pattern_id}"] = True
-                st.rerun()
     
     def render_pattern_creator(self, pattern_loader):
         """Render the pattern creator interface."""
@@ -2865,7 +2856,6 @@ class AutomatedAIAssessmentUI:
             
             st.success(f"✅ Pattern {pattern_id} saved successfully!")
             st.info(f"💾 Backup created: {backup_path}")
-            st.rerun()
             
         except Exception as e:
             st.error(f"❌ Error saving pattern: {str(e)}")
@@ -2955,7 +2945,7 @@ class AutomatedAIAssessmentUI:
             
             st.success(f"✅ Pattern {pattern_id} created successfully!")
             st.info(f"📁 Saved to: {file_path}")
-            st.rerun()
+            st.info("🔄 Use the 'Refresh List' button to see the new pattern in the edit list.")
             
         except Exception as e:
             st.error(f"❌ Error creating pattern: {str(e)}")
