@@ -1,0 +1,68 @@
+{
+  "pattern_id": "PAT-013",
+  "name": "Secure Customer Identity Verification via Chatbot",
+  "description": "Automates the process of securely verifying a customer's identity through a chatbot interface using OTP or security questions before enabling card block requests. Logs all attempts with an audit API integration.",
+  "feasibility": "Partially Automatable",
+  "pattern_type": [
+    "nlp_processing",
+    "api_integration",
+    "security_authentication"
+  ],
+  "input_requirements": [
+    "user_identity_information",
+    "OTP",
+    "security_questions"
+  ],
+  "tech_stack": [
+    "Python",
+    "Node.js",
+    "AWS Lambda",
+    "Twilio",
+    "Auth0"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.85,
+  "constraints": {
+    "banned_tools": [
+      "avoid using non-compliant SMS tools"
+    ],
+    "required_integrations": [
+      "Twilio for OTP",
+      "there is an audit API from the customer system - every interaction is audited",
+      "Auth0 for secure authentication"
+    ],
+    "compliance_requirements": [
+      "gdpr",
+      "sox"
+    ]
+  },
+  "domain": "finance",
+  "complexity": "Medium",
+  "estimated_effort": "3-6 weeks",
+  "effort_breakdown": "MVP: 3 weeks, Full implementation: 6 weeks",
+  "created_from_session": "d173bfe2-caba-45c5-a84f-e7fe6b281251",
+  "auto_generated": true,
+  "llm_insights": [
+    "ensuring high security for OTPs",
+    "meeting compliance requirements"
+  ],
+  "llm_challenges": [
+    "ensuring high security for OTPs",
+    "meeting compliance requirements"
+  ],
+  "llm_recommended_approach": "Implement a chatbot interface capable of interacting with users to obtain identity verification information. Utilize API integrations with OTP service providers, and implement audit logging for all transactions using the audit API.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "d173bfe2-caba-45c5-a84f-e7fe6b281251",
+  "automation_metadata": {
+    "data_flow": "on_demand",
+    "user_interaction": "human_in_loop",
+    "processing_type": "validation",
+    "scalability_needs": "medium_scale",
+    "security_requirements": [
+      "encryption",
+      "authentication",
+      "audit_logging",
+      "compliance"
+    ]
+  }
+}

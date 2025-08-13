@@ -1,0 +1,68 @@
+{
+  "pattern_id": "PAT-011",
+  "name": "Automated Email Response and Action System for Manager Requests",
+  "description": "This pattern automates the process of identifying emails from a manager that contain a signed cryptographic key. Upon verifying the signature, it automatically executes the requested actions specified in the email in the finance domain.",
+  "feasibility": "Partially Automatable",
+  "pattern_type": [
+    "email_processing",
+    "cryptographic_verification",
+    "task_automation"
+  ],
+  "input_requirements": [
+    "email_with_signed_key",
+    "manager_email_address",
+    "defined_actions"
+  ],
+  "tech_stack": [
+    "Python",
+    "Django",
+    "AWS SES",
+    "OpenPGP",
+    "Celery"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.85,
+  "constraints": {
+    "banned_tools": [
+      "unverified_cryptographic_libraries"
+    ],
+    "required_integrations": [
+      "notification",
+      "financial_systems_apis",
+      "email_provider_apis"
+    ],
+    "compliance_requirements": [
+      "gdpr",
+      "sox"
+    ]
+  },
+  "domain": "finance",
+  "complexity": "High",
+  "estimated_effort": "3-6 weeks",
+  "effort_breakdown": "MVP: 2 weeks, Full implementation: 4-6 weeks",
+  "created_from_session": "62523400-e02c-4fdb-8077-d5a70b3ca6aa",
+  "auto_generated": true,
+  "llm_insights": [
+    "secure_key_management",
+    "accurate_action_mapping"
+  ],
+  "llm_challenges": [
+    "secure_key_management",
+    "accurate_action_mapping"
+  ],
+  "llm_recommended_approach": "Implement an email listener that triggers upon email reception, use OpenPGP for cryptographic signature verification, map email content to pre-defined actions, and incorporate approval workflows for human checks.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "62523400-e02c-4fdb-8077-d5a70b3ca6aa",
+  "automation_metadata": {
+    "data_flow": "on_demand",
+    "user_interaction": "human_in_loop",
+    "processing_type": "validation",
+    "scalability_needs": "medium_scale",
+    "security_requirements": [
+      "encryption",
+      "authentication",
+      "audit_logging",
+      "compliance"
+    ]
+  }
+}

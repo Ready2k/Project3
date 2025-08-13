@@ -1,0 +1,69 @@
+{
+  "pattern_id": "PAT-015",
+  "name": "Secure Customer Identity Verification via Chatbot",
+  "description": "This pattern automates the process of verifying customer identity through a chatbot interface. It uses OTP or security questions for authentication, logs attempts for auditing, and passes to a human operator if verification cannot be automated.",
+  "feasibility": "Partially Automatable",
+  "pattern_type": [
+    "user_authentication",
+    "nlp_processing",
+    "api_integration",
+    "audit_logging"
+  ],
+  "input_requirements": [
+    "OTP",
+    "security_questions",
+    "user_credentials"
+  ],
+  "tech_stack": [
+    "Node.js",
+    "AWS Lambda",
+    "Twilio",
+    "MongoDB"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.9,
+  "constraints": {
+    "banned_tools": [
+      "insecure_messaging_services"
+    ],
+    "required_integrations": [
+      "pass to a human",
+      "authentication_service",
+      "customer_database",
+      "authentication_logging"
+    ],
+    "compliance_requirements": [
+      "gdpr",
+      "pci_dss"
+    ]
+  },
+  "domain": "finance",
+  "complexity": "Medium",
+  "estimated_effort": "3-6 weeks",
+  "effort_breakdown": "MVP: 3 weeks, Full implementation: 6 weeks",
+  "created_from_session": "1b91bd2e-5da1-4c00-89c1-43a217cf9d05",
+  "auto_generated": true,
+  "llm_insights": [
+    "secure_otp_delivery",
+    "accurate_logging"
+  ],
+  "llm_challenges": [
+    "secure_otp_delivery",
+    "accurate_logging"
+  ],
+  "llm_recommended_approach": "Implement OTP delivery and security question handling through secure APIs; log all verification attempts; integrate a fail-safe to route the request to human operators if verification fails.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "1b91bd2e-5da1-4c00-89c1-43a217cf9d05",
+  "automation_metadata": {
+    "data_flow": "on_demand",
+    "user_interaction": "human_in_loop",
+    "processing_type": "validation",
+    "scalability_needs": "medium_scale",
+    "security_requirements": [
+      "encryption",
+      "authentication",
+      "audit_logging",
+      "compliance"
+    ]
+  }
+}

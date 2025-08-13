@@ -1,0 +1,82 @@
+{
+  "pattern_id": "PAT-014",
+  "name": "Secure Customer Identity Verification via Chatbot",
+  "description": "This pattern automates the process of verifying customer identity via a chatbot. The chatbot prompts users for an OTP or security questions, verifies the input, logs each attempt for audit purposes, and only allows verified users to request a card block.",
+  "feasibility": "Partially Automatable",
+  "pattern_type": [
+    "identity_verification",
+    "nlp_processing",
+    "api_integration",
+    "audit_logging"
+  ],
+  "input_requirements": [
+    "otp_input",
+    "security_questions_input",
+    "user_details"
+  ],
+  "tech_stack": [
+    "Node.js",
+    "Python",
+    "AWS Lambda",
+    "Twilio",
+    "MongoDB"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.85,
+  "constraints": {
+    "banned_tools": [
+      "tools",
+      "that",
+      "do",
+      "not",
+      "comply",
+      "with",
+      "privacy"
+    ],
+    "required_integrations": [
+      "sms",
+      "database",
+      "authentication",
+      "yes fully audited, this system needs to be audited too",
+      "commands",
+      "for",
+      "gateway",
+      "API"
+    ],
+    "compliance_requirements": [
+      "gdpr",
+      "sox"
+    ]
+  },
+  "domain": "finance",
+  "complexity": "Medium",
+  "estimated_effort": "3-6 weeks",
+  "effort_breakdown": "MVP: 2 weeks, Full implementation: 4 weeks",
+  "created_from_session": "d6fdd3ef-7365-4ed5-86d0-26ef437a6670",
+  "auto_generated": true,
+  "llm_insights": [
+    "ensuring secure transmission of OTP",
+    "accurate identity matching",
+    "compliance with financial regulations"
+  ],
+  "llm_challenges": [
+    "ensuring secure transmission of OTP",
+    "accurate identity matching",
+    "compliance with financial regulations"
+  ],
+  "llm_recommended_approach": "Leverage an NLP-capable chatbot framework to interact with users. Integrate with a messaging API like Twilio to send OTPs securely. Use a back-end service for validation against stored security answers and logging using a NoSQL database like MongoDB for scalability.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "d6fdd3ef-7365-4ed5-86d0-26ef437a6670",
+  "automation_metadata": {
+    "data_flow": "real_time",
+    "user_interaction": "fully_automated",
+    "processing_type": "validation",
+    "scalability_needs": "medium_scale",
+    "security_requirements": [
+      "encryption",
+      "authentication",
+      "audit_logging",
+      "compliance"
+    ]
+  }
+}

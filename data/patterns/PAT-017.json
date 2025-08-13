@@ -1,0 +1,68 @@
+{
+  "pattern_id": "PAT-017",
+  "name": "Real-time Card Request Status Updates via Chatbot",
+  "description": "This automation pattern retrieves real-time status updates from a card management system using its APIs and provides the updates to customers through a chatbot interface.",
+  "feasibility": "Automatable",
+  "pattern_type": [
+    "api_integration",
+    "real_time_notifications",
+    "chatbot_interaction"
+  ],
+  "input_requirements": [
+    "OAuth authentication",
+    "API access to card management system",
+    "Chatbot interface"
+  ],
+  "tech_stack": [
+    "Node.js",
+    "OAuth2.0",
+    "AWS Lambda",
+    "Dialogflow",
+    "RESTful APIs"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.95,
+  "constraints": {
+    "banned_tools": [
+      "Avoid using tools that do not comply with financial data handling regulations"
+    ],
+    "required_integrations": [
+      "card_management_system",
+      "chatbot_platform",
+      "OAuth is in place"
+    ],
+    "compliance_requirements": [
+      "gdpr",
+      "sox"
+    ]
+  },
+  "domain": "finance",
+  "complexity": "Medium",
+  "estimated_effort": "3-6 weeks",
+  "effort_breakdown": "MVP: 3 weeks, Full implementation: 6 weeks",
+  "created_from_session": "bcdf94d2-93f3-4fee-ad78-0ca85236b579",
+  "auto_generated": true,
+  "llm_insights": [
+    "API rate limits",
+    "Ensuring real-time data accuracy"
+  ],
+  "llm_challenges": [
+    "API rate limits",
+    "Ensuring real-time data accuracy"
+  ],
+  "llm_recommended_approach": "Use OAuth to authenticate and securely connect to the card management system's API. Leverage cloud functions to handle real-time data retrieval and push updates to a chatbot platform like Dialogflow. Ensure real-time communication by efficiently handling API responses and user queries.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "bcdf94d2-93f3-4fee-ad78-0ca85236b579",
+  "automation_metadata": {
+    "data_flow": "real_time",
+    "user_interaction": "fully_automated",
+    "processing_type": "data_transformation",
+    "scalability_needs": "medium_scale",
+    "security_requirements": [
+      "encryption",
+      "authentication",
+      "audit_logging",
+      "compliance"
+    ]
+  }
+}

@@ -315,7 +315,15 @@ class PatternCreator:
         volume = requirements.get("volume", {})
         integrations = requirements.get("integrations", [])
         
-        prompt = f"""You are a senior automation architect. Analyze the following requirement and generate a comprehensive automation pattern.
+        prompt = f"""You are a senior software-based AI agents and Agentic AI architect. Analyze the following requirement and generate a comprehensive automation pattern.
+You analyze the requirements to determine whether they can be architect to work with agentic systems
+that reason, plan, and act within digital environments (not physical/industrial automation).
+
+SCOPE GATE (read carefully):
+- If the requirement primarily involves physical-world manipulation (e.g., washing a car, cleaning a room, warehouse picking, walking a dog) 
+  and does NOT present a fully digital control surface (APIs, RPA on software UIs, webhooks, queues) that the agent can operate end-to-end,
+  then respond with EXACTLY an empty JSON array: []
+- Only if there is a clear, software-only execution path should you proceed.
 
 **Requirement Details:**
 - Description: {description}
