@@ -198,6 +198,149 @@ IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```m
   
   system --> error"""
 
+async def build_tech_stack_wiring_diagram(requirement: str, recommendations: List[Dict]) -> str:
+    """Build a technical wiring diagram showing how tech stack components connect and interact."""
+    
+    # Extract tech stack from recommendations
+    tech_stack = []
+    if recommendations:
+        for rec in recommendations:
+            if isinstance(rec, dict) and 'tech_stack' in rec:
+                tech_stack.extend(rec['tech_stack'])
+            elif hasattr(rec, 'tech_stack'):
+                tech_stack.extend(rec.tech_stack)
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_tech_stack = []
+    for tech in tech_stack:
+        if tech not in seen:
+            seen.add(tech)
+            unique_tech_stack.append(tech)
+    
+    tech_stack_str = ', '.join(unique_tech_stack) if unique_tech_stack else 'Python, FastAPI, PostgreSQL, Redis'
+
+    prompt = f"""Generate a Mermaid technical wiring diagram showing how technology components connect and interact for this automation requirement:
+
+REQUIREMENT: {requirement}
+
+TECHNOLOGY STACK: {tech_stack_str}
+
+Create a technical wiring diagram that shows:
+1. Data flow between components (arrows with labels)
+2. API connections and protocols (HTTP, REST, WebSocket, etc.)
+3. Database connections and data storage
+4. External integrations and third-party services
+5. Message queues and async processing flows
+6. Authentication and security layers
+7. Monitoring and logging connections
+
+Use Mermaid flowchart syntax with:
+- Rectangles for services: service[Service Name]
+- Cylinders for databases: db[(Database)]
+- Diamonds for decision points: decision{{Decision}}
+- Circles for external systems: external((External API))
+- Hexagons for queues: queue{{{{Message Queue}}}}
+
+Show technical details like:
+- HTTP/REST connections: A -->|REST API| B
+- Database queries: API -->|SQL Query| DB
+- Message passing: Service -->|Publish| Queue
+- Authentication: User -->|OAuth2| Auth
+- Monitoring: All -->|Metrics| Monitor
+
+Example format:
+flowchart TB
+    user[User Interface]
+    api[FastAPI Server]
+    db[(PostgreSQL)]
+    redis[(Redis Cache)]
+    queue{{{{Message Queue}}}}
+    external((External API))
+    monitor[Monitoring]
+    
+    user -->|HTTP Request| api
+    api -->|SQL Query| db
+    api -->|Cache Check| redis
+    api -->|Async Task| queue
+    queue -->|Process| worker[Background Worker]
+    worker -->|API Call| external
+    api -->|Metrics| monitor
+    db -->|Logs| monitor
+
+Focus on the EXACT technologies listed above and show realistic technical connections.
+IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)."""
+
+    try:
+        provider_config = st.session_state.get('provider_config', {})
+        if provider_config.get('provider') == 'fake':
+            # Create a more sophisticated fake diagram based on actual tech stack
+            tech_list = unique_tech_stack if unique_tech_stack else ['Python', 'FastAPI', 'PostgreSQL', 'Redis']
+            
+            # Identify component types
+            languages = [t for t in tech_list if t.lower() in ['python', 'javascript', 'java', 'node.js']]
+            frameworks = [t for t in tech_list if t.lower() in ['fastapi', 'django', 'flask', 'express', 'react']]
+            databases = [t for t in tech_list if t.lower() in ['postgresql', 'mysql', 'mongodb', 'redis', 'sqlite']]
+            services = [t for t in tech_list if t.lower() in ['twilio', 'oauth2', 'docker', 'aws', 'kubernetes']]
+            
+            diagram_parts = ["flowchart TB"]
+            
+            # Add main components
+            if frameworks:
+                diagram_parts.append(f"    api[{frameworks[0]} API]")
+            else:
+                diagram_parts.append("    api[API Server]")
+                
+            if databases:
+                for i, db in enumerate(databases):
+                    if 'redis' in db.lower():
+                        diagram_parts.append(f"    cache[{db} Cache]")
+                    else:
+                        diagram_parts.append(f"    db{i}[({db})]")
+            
+            diagram_parts.append("    user[User Interface]")
+            
+            # Add external services
+            for service in services:
+                if service.lower() not in ['docker', 'kubernetes']:
+                    diagram_parts.append(f"    {service.lower().replace(' ', '_')}(({service}))")
+            
+            # Add connections
+            diagram_parts.append("")
+            diagram_parts.append("    user -->|HTTP Request| api")
+            
+            if databases:
+                for i, db in enumerate(databases):
+                    if 'redis' in db.lower():
+                        diagram_parts.append("    api -->|Cache Check| cache")
+                    else:
+                        diagram_parts.append(f"    api -->|SQL Query| db{i}")
+            
+            for service in services:
+                if service.lower() not in ['docker', 'kubernetes']:
+                    service_key = service.lower().replace(' ', '_')
+                    if 'oauth' in service.lower():
+                        diagram_parts.append(f"    user -->|Authentication| {service_key}")
+                    elif 'twilio' in service.lower():
+                        diagram_parts.append(f"    api -->|SMS/Voice| {service_key}")
+                    else:
+                        diagram_parts.append(f"    api -->|API Call| {service_key}")
+            
+            return '\n'.join(diagram_parts)
+        
+        response = await make_llm_request(prompt, provider_config, purpose="tech_stack_wiring_diagram")
+        return response.strip()
+    except Exception as e:
+        return f"""flowchart TB
+    error[Tech Stack Wiring Diagram]
+    note[Generation failed: {str(e)}]
+    
+    error --> note
+    
+    subgraph "Planned Tech Stack"
+        """ + tech_stack_str.replace(', ', '\n        ') + """
+    end"""
+
 async def build_sequence_diagram(requirement: str, recommendations: List[Dict]) -> str:
     """Build a sequence diagram using LLM based on the specific requirement."""
     prompt = f"""Generate a Mermaid sequence diagram for this automation requirement:
@@ -1344,8 +1487,18 @@ class AutomatedAIAssessmentUI:
         
         diagram_type = st.selectbox(
             "Select diagram type:",
-            ["Context Diagram", "Container Diagram", "Sequence Diagram"]
+            ["Context Diagram", "Container Diagram", "Sequence Diagram", "Tech Stack Wiring Diagram"]
         )
+        
+        # Show description for selected diagram type
+        diagram_descriptions = {
+            "Context Diagram": "🌐 **System Context**: Shows the system boundaries, users, and external systems it integrates with.",
+            "Container Diagram": "📦 **System Containers**: Shows the internal components, services, and how they interact within the system.",
+            "Sequence Diagram": "🔄 **Process Flow**: Shows the step-by-step sequence of interactions and decision points in the automation.",
+            "Tech Stack Wiring Diagram": "🔌 **Technical Wiring**: Shows how all the recommended technologies connect, communicate, and pass data between each other. Like a blueprint for developers showing API calls, database connections, authentication flows, and service integrations."
+        }
+        
+        st.info(diagram_descriptions[diagram_type])
         
         # Get current session data
         requirements = st.session_state.get('requirements', {})
@@ -1383,8 +1536,10 @@ class AutomatedAIAssessmentUI:
                         mermaid_code = asyncio.run(build_context_diagram(requirement_text, recommendations))
                     elif diagram_type == "Container Diagram":
                         mermaid_code = asyncio.run(build_container_diagram(requirement_text, recommendations))
-                    else:  # Sequence Diagram
+                    elif diagram_type == "Sequence Diagram":
                         mermaid_code = asyncio.run(build_sequence_diagram(requirement_text, recommendations))
+                    else:  # Tech Stack Wiring Diagram
+                        mermaid_code = asyncio.run(build_tech_stack_wiring_diagram(requirement_text, recommendations))
                     
                     # Store the generated diagram
                     st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
@@ -1401,6 +1556,19 @@ class AutomatedAIAssessmentUI:
             mermaid_code = st.session_state[diagram_key]
             # Display Mermaid diagram
             self.render_mermaid(mermaid_code)
+            
+            # Add helpful context for the Tech Stack Wiring Diagram
+            if diagram_type == "Tech Stack Wiring Diagram":
+                st.info("""
+                **How to read this diagram:**
+                - **Rectangles** = Services/Applications (FastAPI, etc.)
+                - **Cylinders** = Databases/Storage (PostgreSQL, Redis)
+                - **Circles** = External Services (Twilio, OAuth2)
+                - **Arrows** = Data flow and connections (HTTP, SQL, API calls)
+                - **Labels** = Communication protocols and data types
+                
+                This shows the technical "wiring" of your system - how each technology component connects to others.
+                """)
             
             # Show code
             with st.expander("View Mermaid Code"):
