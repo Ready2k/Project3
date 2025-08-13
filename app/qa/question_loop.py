@@ -200,10 +200,13 @@ You analyze software requirements to determine whether they can be implemented b
 that reason, plan, and act within digital environments (not physical/industrial automation).
 
 SCOPE GATE (read carefully):
-- If the requirement primarily involves physical-world manipulation (e.g., washing a car, cleaning a room, warehouse picking, walking a dog) 
+- If the requirement primarily involves physical-world manipulation (e.g., washing a car, cleaning a room, warehouse picking, walking a dog, feeding pets, watering plants) 
   and does NOT present a fully digital control surface (APIs, RPA on software UIs, webhooks, queues) that the agent can operate end-to-end,
   then respond with EXACTLY an empty JSON array: []
 - Only if there is a clear, software-only execution path should you proceed to generate questions.
+
+PHYSICAL EXAMPLES THAT MUST RETURN []: "Feed my pet", "Water plants", "Clean house", "Walk dog"
+DIGITAL EXAMPLES THAT CAN PROCEED: "Send feeding reminders", "Track feeding schedule", "Order pet food online"
 
 REQUIREMENT: {requirements.get('description', 'No description provided')}
 
