@@ -2457,6 +2457,9 @@ class AutomatedAIAssessmentUI:
             filtered_patterns = [p for p in filtered_patterns 
                                 if selected_pattern_type in p.get('pattern_type', [])]
         
+        # Sort patterns by pattern_id for consistent ordering (PAT-001, PAT-002, etc.)
+        filtered_patterns = sorted(filtered_patterns, key=lambda p: p.get('pattern_id', 'ZZZ'))
+        
         # Show filtering results and pattern type overview
         col1, col2 = st.columns([1, 1])
         with col1:
@@ -2606,8 +2609,9 @@ class AutomatedAIAssessmentUI:
             st.info("📝 No patterns available to edit.")
             return
         
-        # Pattern selection
-        pattern_options = {f"{p.get('pattern_id', 'Unknown')} - {p.get('name', 'Unnamed')}": p for p in patterns}
+        # Pattern selection - sort patterns by pattern_id first
+        sorted_patterns = sorted(patterns, key=lambda p: p.get('pattern_id', 'ZZZ'))
+        pattern_options = {f"{p.get('pattern_id', 'Unknown')} - {p.get('name', 'Unnamed')}": p for p in sorted_patterns}
         
         if not pattern_options:
             st.info("📝 No patterns available to edit.")
