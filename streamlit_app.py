@@ -2372,6 +2372,8 @@ class AutomatedAIAssessmentUI:
         try:
             from app.pattern.loader import PatternLoader
             pattern_loader = PatternLoader("data/patterns")
+            # Force cache refresh to ensure we have the latest patterns
+            pattern_loader.refresh_cache()
             patterns = pattern_loader.load_patterns()
         except Exception as e:
             st.error(f"❌ Error loading patterns: {str(e)}")
@@ -2583,7 +2585,13 @@ class AutomatedAIAssessmentUI:
     
     def render_pattern_editor(self, patterns: list, pattern_loader):
         """Render the pattern editor interface."""
-        st.subheader("✏️ Edit Existing Pattern")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.subheader("✏️ Edit Existing Pattern")
+        with col2:
+            if st.button("🔄 Refresh List", help="Refresh the pattern list"):
+                pattern_loader.refresh_cache()
+                st.rerun()
         
         # No need for complex success message handling since we show them immediately
         
@@ -2593,6 +2601,11 @@ class AutomatedAIAssessmentUI:
         
         # Pattern selection
         pattern_options = {f"{p.get('pattern_id', 'Unknown')} - {p.get('name', 'Unnamed')}": p for p in patterns}
+        
+        if not pattern_options:
+            st.info("📝 No patterns available to edit.")
+            return
+        
         selected_pattern_key = st.selectbox("Select Pattern to Edit", list(pattern_options.keys()))
         
         if not selected_pattern_key:
@@ -2600,6 +2613,16 @@ class AutomatedAIAssessmentUI:
         
         selected_pattern = pattern_options[selected_pattern_key]
         pattern_id = selected_pattern.get('pattern_id', '')
+        
+        # Double-check that the pattern file still exists
+        import os
+        pattern_file_path = f"data/patterns/{pattern_id}.json"
+        if not os.path.exists(pattern_file_path):
+            st.error(f"❌ Pattern {pattern_id} no longer exists. It may have been deleted.")
+            st.info("🔄 Refreshing pattern list...")
+            pattern_loader.refresh_cache()
+            st.rerun()
+            return
         
         # Handle delete confirmation outside of form
         if st.session_state.get(f"confirm_delete_{pattern_id}", False):
@@ -2858,8 +2881,10 @@ class AutomatedAIAssessmentUI:
             file_path = f"data/patterns/{pattern_id}.json"
             
             if not os.path.exists(file_path):
-                st.error(f"❌ Pattern file not found: {file_path}")
-                return False
+                st.warning(f"⚠️ Pattern {pattern_id} has already been deleted or moved.")
+                st.info("🔄 Refreshing pattern list...")
+                pattern_loader.refresh_cache()
+                return True  # Consider this a "success" since the pattern is gone
             
             # Create backup before deletion
             backup_path = f"data/patterns/.deleted_{pattern_id}_{int(datetime.now().timestamp())}.json"
