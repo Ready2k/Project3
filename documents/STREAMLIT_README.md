@@ -43,7 +43,23 @@ This is the Streamlit web interface for the Automated AI Assessment (AAA) applic
 - **Container Diagrams**: Internal components and data flow specific to your solution
 - **Sequence Diagrams**: Step-by-step process flow with decision points and alternatives
 - **C4 Architecture Patterns**: Proper architectural modeling using industry standards
-- **Mermaid Integration**: Interactive diagram rendering with code viewing
+- **Enhanced Viewing**: Browser export, interactive controls, SVG download
+- **Mermaid Integration**: Interactive diagram rendering with code viewing and editing
+
+### 📚 Pattern Library Management
+- **View Patterns**: Browse all solution patterns with filtering and search
+- **Edit Patterns**: Modify existing patterns with validation and backup
+- **Create Patterns**: Add new patterns with guided forms and auto-generated IDs
+- **Delete Patterns**: Remove patterns with confirmation and backup preservation
+- **Pattern Statistics**: Real-time overview of pattern distribution and usage
+- **Pattern Type Filtering**: Filter by automation approach tags
+
+### 📈 Enhanced Observability
+- **Provider Metrics**: LLM performance tracking with time-based filtering
+- **Usage Analytics**: Pattern matching statistics and success rates
+- **LLM Message Tracking**: Complete audit trail of AI interactions
+- **Admin Tools**: Database cleanup, export functionality, test data management
+- **Real-time Monitoring**: Current session and historical data analysis
 
 ## Usage
 

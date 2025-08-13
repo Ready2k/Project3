@@ -3012,25 +3012,66 @@ class AutomatedAIAssessmentUI:
             
             This application helps you assess whether your business requirements can be automated using agentic AI systems.
             
-            ### Features:
-            - 📝 Multiple input methods (text, file upload, Jira integration)
-            - 🤖 Pluggable LLM providers (OpenAI, Bedrock, Claude, Internal)
-            - 🎯 Pattern matching against solution library
-            - ❓ Interactive Q&A for clarification
-            - 📊 Feasibility assessment with confidence scores
-            - 📤 Export results in JSON and Markdown formats
-            - 📈 System architecture diagrams
+            ### 🚀 Core Features:
+            - 📝 **Multiple Input Methods**: Text, file upload, Jira integration
+            - 🤖 **Multi-Provider LLM Support**: OpenAI, Anthropic/Bedrock, Claude Direct, Internal HTTP
+            - 🎯 **Intelligent Pattern Matching**: Tag filtering + vector similarity with FAISS
+            - ❓ **LLM-Powered Q&A System**: AI-generated clarifying questions with caching
+            - 🛠️ **LLM-Driven Tech Stack Generation**: Contextual technology recommendations
+            - 🏗️ **AI-Generated Architecture Explanations**: How components work together
+            - 📊 **Feasibility Assessment**: Automatable, Partially Automatable, or Not Automatable
+            - 📈 **AI-Generated Architecture Diagrams**: Context, Container, and Sequence diagrams
+            - 📤 **Multi-Format Export**: JSON, Markdown, and interactive HTML
+            - 🎯 **Constraint-Aware**: Filters banned tools and applies business constraints
             
-            ### How it works:
-            1. **Input**: Submit your requirements through text, file, or Jira
-            2. **Analysis**: The system processes and validates your input
-            3. **Clarification**: Answer questions to improve accuracy
-            4. **Matching**: Requirements are matched against pattern library
-            5. **Recommendations**: Get feasibility assessment and tech stack suggestions
-            6. **Export**: Download results for documentation
+            ### 🆕 Advanced Features:
+            - 📚 **Pattern Library Management**: Complete CRUD interface for solution patterns
+            - 📈 **Enhanced Observability Dashboard**: Provider metrics, usage analytics, LLM message tracking
+            - 🔍 **Enhanced Diagram Viewing**: Browser export, interactive controls, SVG download
+            - 🏷️ **Pattern Type Filtering**: Filter by automation approach tags
+            - 🧹 **Admin Tools**: Database cleanup, export functionality, test data management
             
-            ### Provider Configuration:
+            ### 🔄 How it works:
+            1. **Input**: Submit requirements via text, file upload, or Jira integration
+            2. **LLM Analysis**: AI processes and validates your input with pattern awareness
+            3. **Q&A Loop**: Answer AI-generated clarifying questions for better accuracy
+            4. **Pattern Matching**: Requirements matched against 16+ solution patterns using vector similarity
+            5. **Tech Stack Generation**: LLM recommends technologies based on requirements and constraints
+            6. **Architecture Analysis**: AI generates explanations and visual diagrams
+            7. **Feasibility Assessment**: Get detailed automation assessment with confidence scores
+            8. **Export & Visualize**: Download results in multiple formats or view interactive diagrams
+            
+            ### 🛠️ Provider Configuration:
             Use the sidebar to configure your preferred LLM provider and test connectivity.
+            
+            ### 📊 Observability:
+            Monitor system performance, LLM usage, and pattern analytics in the Observability tab.
+            
+            ### 📚 Pattern Management:
+            View, edit, create, and delete solution patterns in the Pattern Library tab.
+            
+            ### 🎯 Built for Enterprise:
+            - **Audit Logging**: Comprehensive tracking of all LLM interactions
+            - **PII Redaction**: Automatic removal of sensitive information
+            - **Constraint Handling**: Respects banned tools and required integrations
+            - **Multi-Provider Fallback**: Robust LLM provider switching
+            - **Session Management**: Persistent state across interactions
+            
+            ### 📈 Recent Enhancements:
+            - **Enhanced Diagram Viewing**: Standalone HTML export with interactive controls
+            - **Pattern Library CRUD**: Complete management interface for solution patterns
+            - **Improved Observability**: Time-based filtering, admin tools, cleanup functionality
+            - **LLM-Driven Analysis**: Replaced rule-based systems with intelligent AI analysis
+            - **Better Caching**: Multi-layer caching with duplicate prevention
+            - **UI Improvements**: Better error handling, visual feedback, and user guidance
+            
+            ### 🏗️ Architecture:
+            - **FastAPI Backend**: Async REST API with robust caching
+            - **Streamlit Frontend**: Interactive web interface with enhanced components
+            - **FAISS Vector Search**: Semantic pattern matching
+            - **SQLite Audit System**: Comprehensive logging and analytics
+            - **Multi-Provider LLM**: Flexible AI provider integration
+            - **Pattern-Based Matching**: Reusable solution templates
             """)
 
 
