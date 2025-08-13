@@ -693,12 +693,83 @@ class AutomatedAIAssessmentUI:
                 ["workflow", "data-processing", "integration", "notification", "approval"]
             )
         
+        # Add constraints section
+        st.subheader("🚫 Technology Constraints")
+        
+        col3, col4 = st.columns(2)
+        
+        with col3:
+            restricted_technologies = st.text_area(
+                "Restricted/Banned Technologies:",
+                height=100,
+                placeholder="Enter technologies that cannot be used, one per line:\nAzure\nOracle Database\nSalesforce\nWindows Server",
+                help="List any technologies, platforms, or tools that are banned or unavailable in your organization"
+            )
+        
+        with col4:
+            required_integrations = st.text_area(
+                "Required Integrations:",
+                height=100,
+                placeholder="Enter required systems to integrate with:\nActive Directory\nSAP\nExisting PostgreSQL\nAWS Lambda",
+                help="List any existing systems or technologies that must be integrated with"
+            )
+        
+        # Additional constraints
+        with st.expander("🔒 Additional Constraints (Optional)"):
+            col5, col6 = st.columns(2)
+            
+            with col5:
+                compliance_requirements = st.multiselect(
+                    "Compliance Requirements:",
+                    ["GDPR", "HIPAA", "SOX", "PCI-DSS", "CCPA", "ISO-27001", "FedRAMP"],
+                    help="Select applicable compliance standards"
+                )
+                
+                data_sensitivity = st.selectbox(
+                    "Data Sensitivity Level:",
+                    ["", "Public", "Internal", "Confidential", "Restricted"],
+                    help="Classification level of data being processed"
+                )
+            
+            with col6:
+                budget_constraints = st.selectbox(
+                    "Budget Constraints:",
+                    ["", "Low (Open source preferred)", "Medium (Some commercial tools OK)", "High (Enterprise solutions OK)"],
+                    help="Budget level for technology solutions"
+                )
+                
+                deployment_preference = st.selectbox(
+                    "Deployment Preference:",
+                    ["", "Cloud-only", "On-premises only", "Hybrid", "No preference"],
+                    help="Preferred deployment model"
+                )
+        
         if st.button("🚀 Analyze Requirements", disabled=st.session_state.processing):
             if requirements_text.strip():
+                # Parse restricted technologies and required integrations
+                banned_tools = [tech.strip() for tech in restricted_technologies.split('\n') if tech.strip()] if restricted_technologies else []
+                required_ints = [tech.strip() for tech in required_integrations.split('\n') if tech.strip()] if required_integrations else []
+                
+                # Build constraints object
+                constraints = {}
+                if banned_tools:
+                    constraints["banned_tools"] = banned_tools
+                if required_ints:
+                    constraints["required_integrations"] = required_ints
+                if compliance_requirements:
+                    constraints["compliance_requirements"] = compliance_requirements
+                if data_sensitivity:
+                    constraints["data_sensitivity"] = data_sensitivity
+                if budget_constraints:
+                    constraints["budget_constraints"] = budget_constraints
+                if deployment_preference:
+                    constraints["deployment_preference"] = deployment_preference
+                
                 self.submit_requirements("text", {
                     "text": requirements_text,
                     "domain": domain if domain else None,
-                    "pattern_types": pattern_types
+                    "pattern_types": pattern_types,
+                    "constraints": constraints if constraints else None
                 })
             else:
                 st.error("Please enter some requirements text.")
@@ -714,12 +785,46 @@ class AutomatedAIAssessmentUI:
         if uploaded_file is not None:
             st.info(f"File: {uploaded_file.name} ({uploaded_file.size} bytes)")
             
+            # Add constraints section for file upload too
+            with st.expander("🚫 Technology Constraints (Optional)"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    restricted_technologies = st.text_area(
+                        "Restricted/Banned Technologies:",
+                        height=80,
+                        placeholder="Azure\nOracle Database\nSalesforce",
+                        help="Technologies that cannot be used",
+                        key="file_restricted_tech"
+                    )
+                
+                with col2:
+                    required_integrations = st.text_area(
+                        "Required Integrations:",
+                        height=80,
+                        placeholder="Active Directory\nExisting PostgreSQL\nAWS Lambda",
+                        help="Systems that must be integrated with",
+                        key="file_required_int"
+                    )
+            
             if st.button("🚀 Analyze File", disabled=st.session_state.processing):
                 try:
                     content = uploaded_file.read().decode('utf-8')
+                    
+                    # Parse constraints
+                    banned_tools = [tech.strip() for tech in restricted_technologies.split('\n') if tech.strip()] if restricted_technologies else []
+                    required_ints = [tech.strip() for tech in required_integrations.split('\n') if tech.strip()] if required_integrations else []
+                    
+                    constraints = {}
+                    if banned_tools:
+                        constraints["banned_tools"] = banned_tools
+                    if required_ints:
+                        constraints["required_integrations"] = required_ints
+                    
                     self.submit_requirements("file", {
                         "content": content,
-                        "filename": uploaded_file.name
+                        "filename": uploaded_file.name,
+                        "constraints": constraints if constraints else None
                     })
                 except Exception as e:
                     st.error(f"Error reading file: {str(e)}")
@@ -889,12 +994,14 @@ class AutomatedAIAssessmentUI:
                     st.session_state.requirements = {
                         "description": payload.get("text", ""),
                         "domain": payload.get("domain"),
-                        "pattern_types": payload.get("pattern_types", [])
+                        "pattern_types": payload.get("pattern_types", []),
+                        "constraints": payload.get("constraints", {})
                     }
                 elif source == "file":
                     st.session_state.requirements = {
                         "description": payload.get("content", ""),
-                        "filename": payload.get("filename")
+                        "filename": payload.get("filename"),
+                        "constraints": payload.get("constraints", {})
                     }
                 elif source == "jira":
                     # For Jira, the payload contains credentials and ticket_key
@@ -1162,9 +1269,32 @@ class AutomatedAIAssessmentUI:
                 if req.get('filename'):
                     st.write(f"**Source File:** {req['filename']}")
                 
+                # Show constraints if any were specified
+                constraints = req.get('constraints', {})
+                if constraints:
+                    st.write("**🚫 Applied Constraints:**")
+                    
+                    if constraints.get('banned_tools'):
+                        st.write(f"  • **Banned Technologies:** {', '.join(constraints['banned_tools'])}")
+                    
+                    if constraints.get('required_integrations'):
+                        st.write(f"  • **Required Integrations:** {', '.join(constraints['required_integrations'])}")
+                    
+                    if constraints.get('compliance_requirements'):
+                        st.write(f"  • **Compliance:** {', '.join(constraints['compliance_requirements'])}")
+                    
+                    if constraints.get('data_sensitivity'):
+                        st.write(f"  • **Data Sensitivity:** {constraints['data_sensitivity']}")
+                    
+                    if constraints.get('budget_constraints'):
+                        st.write(f"  • **Budget:** {constraints['budget_constraints']}")
+                    
+                    if constraints.get('deployment_preference'):
+                        st.write(f"  • **Deployment:** {constraints['deployment_preference']}")
+                
                 # Show any additional requirement fields
                 for key, value in req.items():
-                    if key not in ['description', 'domain', 'pattern_types', 'jira_key', 'filename', 'source'] and value:
+                    if key not in ['description', 'domain', 'pattern_types', 'jira_key', 'filename', 'source', 'constraints'] and value:
                         st.write(f"**{key.replace('_', ' ').title()}:** {value}")
             
             st.markdown("---")
