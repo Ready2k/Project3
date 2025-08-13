@@ -1,0 +1,68 @@
+{
+  "pattern_id": "PAT-016",
+  "name": "Real-Time Card Status Update Automation via Chatbot",
+  "description": "This automation pattern provides a real-time status update for card requests to customers via a chatbot interface. It involves pulling status information from a card management system and displaying it through a chatbot using an API session.",
+  "feasibility": "Automatable",
+  "pattern_type": [
+    "api_integration",
+    "real_time_updates",
+    "chatbot_integration",
+    "notification_system"
+  ],
+  "input_requirements": [
+    "access to card management system API",
+    "chatbot session API"
+  ],
+  "tech_stack": [
+    "REST API",
+    "Node.js",
+    "AWS Lambda",
+    "Chatbot Framework like Dialogflow or Microsoft Bot Framework"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.92,
+  "constraints": {
+    "banned_tools": [
+      "avoid using insecure or non-compliant chatbot platforms for financial data"
+    ],
+    "required_integrations": [
+      "possible integration with CRM systems for enriched customer interactions",
+      "chatbot has an [REMOVED_SUSPICIOUS_CONTENT]session API"
+    ],
+    "compliance_requirements": [
+      "gdpr",
+      "pci_dss"
+    ]
+  },
+  "domain": "finance",
+  "complexity": "Medium",
+  "estimated_effort": "3-6 weeks",
+  "effort_breakdown": "MVP: 3 weeks, Full implementation: 6 weeks",
+  "created_from_session": "7307b4d8-76c4-47d3-a84e-2828673394d5",
+  "auto_generated": true,
+  "llm_insights": [
+    "Ensuring real-time data sync",
+    "API rate limits",
+    "Securing sensitive data"
+  ],
+  "llm_challenges": [
+    "Ensuring real-time data sync",
+    "API rate limits",
+    "Securing sensitive data"
+  ],
+  "llm_recommended_approach": "Implement a microservice that queries the card management system's API for card status updates. The service should push updates to a chatbot interface in real time using webhooks or APIs. Ensure all data is encrypted and authenticated to maintain security and compliance.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "7307b4d8-76c4-47d3-a84e-2828673394d5",
+  "automation_metadata": {
+    "data_flow": "real_time",
+    "user_interaction": "fully_automated",
+    "processing_type": "basic_processing",
+    "scalability_needs": "medium_scale",
+    "security_requirements": [
+      "encryption",
+      "authentication",
+      "audit_logging",
+      "compliance"
+    ]
+  }
+}

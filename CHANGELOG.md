@@ -19,11 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 2x more detailed than previous rule-based explanations
 - **Enhanced LLM Message Observability**: Improved transparency and debugging capabilities
 - **Pattern Library Management**: Complete CRUD interface for managing solution patterns
-  - View all patterns with filtering by domain, feasibility, and complexity
+  - Comprehensive documentation explaining pattern components and usage
+  - View all patterns with filtering by domain, feasibility, complexity, and pattern types
+  - Enhanced pattern display with feasibility indicators and visual organization
+  - Pattern type filtering and overview showing usage statistics
   - Edit existing patterns with validation and backup creation
-  - Create new patterns with automatic ID generation
+  - Create new patterns with automatic ID generation and guided forms
   - Delete patterns with confirmation and backup preservation
   - Real-time pattern statistics and overview dashboard
+  - Helpful guidance for pattern types with common examples
 
 ### Improved
 - **Enhanced Diagram Viewing Experience**: Major improvements to Mermaid diagram rendering

@@ -62,7 +62,7 @@ class ArchitectureExplainer:
             List of recommended technologies
         """
         # Create a focused prompt for tech stack generation
-        prompt = f"""You are a senior software architect. Based on the specific requirements below, recommend a focused, practical technology stack.
+        prompt = f"""You are a senior software architect focusing around AI and Agentic systems. Based on the specific requirements below, recommend a focused, practical technology stack.
 
 **Requirements:**
 - Description: {requirements.get('description', 'Not specified')}
@@ -74,9 +74,9 @@ class ArchitectureExplainer:
 
 **Instructions:**
 1. Analyze the specific requirements carefully
-2. Recommend 6-10 technologies that directly address these needs
-3. Focus on practical, proven technologies
-4. Consider the domain, scale, and integration requirements
+2. Recommend upto 10 technologies that directly address these needs, you must include all technologies to make it work.
+3. Focus on practical, proven technologies BUT you can include new emerging technologies if they are a better fit
+4. Consider the domain, scale, performance and integration requirements
 5. Include: programming language, framework, database, key libraries/tools
 
 Respond with ONLY a valid JSON object (no markdown, no extra text):

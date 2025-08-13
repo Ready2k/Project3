@@ -2,7 +2,7 @@
   "pattern_id": "PAT-005",
   "name": "Email Order Extraction & Fulfillment Orchestration",
   "description": "Parse incoming order emails, normalize data, validate inventory/payment, and create orders in the fulfillment system with exception queues.",
-  "feasibility": "Mostly Automatable",
+  "feasibility": "Partially Automatable",
   "pattern_type": [
     "email_ingestion",
     "nlp_extraction",

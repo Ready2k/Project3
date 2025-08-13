@@ -2185,6 +2185,43 @@ class AutomatedAIAssessmentUI:
         """Render the pattern library management interface."""
         st.header("📚 Pattern Library Management")
         
+        # Add helpful documentation
+        with st.expander("ℹ️ What is the Pattern Library?", expanded=False):
+            st.markdown("""
+            The **Pattern Library** is a collection of reusable solution templates that help assess automation feasibility. 
+            Each pattern represents a proven approach to automating specific types of business processes.
+            
+            ### 🏷️ **Pattern Components Explained:**
+            
+            - **Pattern ID**: Unique identifier (e.g., PAT-001, PAT-002)
+            - **Name**: Descriptive title of the automation pattern
+            - **Description**: Detailed explanation of what the pattern automates
+            - **Domain**: Business area (e.g., legal_compliance, finance, customer_service)
+            - **Feasibility**: Automation potential (Automatable, Partially Automatable, Not Automatable)
+            - **Pattern Types**: Tags/categories describing the automation approach (e.g., api_integration, nlp_processing, human_in_loop)
+            - **Tech Stack**: Technologies typically used to implement this pattern
+            - **Complexity**: Implementation difficulty (Low, Medium, High)
+            - **Estimated Effort**: Time required to implement (e.g., 2-4 weeks)
+            - **Confidence Score**: How reliable this pattern is (0.0 to 1.0)
+            
+            ### 🎯 **How Patterns Are Used:**
+            When you submit a requirement, the system:
+            1. Matches your requirement against these patterns
+            2. Suggests the most relevant automation approaches
+            3. Provides technology recommendations based on proven solutions
+            4. Estimates feasibility based on similar past implementations
+            
+            ### 💡 **Pattern Types (Tags):**
+            Pattern types are like tags that categorize the automation approach:
+            - `api_integration` - Connects to external systems via APIs
+            - `nlp_processing` - Uses natural language processing
+            - `human_in_loop` - Requires human oversight or approval
+            - `data_extraction` - Extracts information from documents
+            - `workflow_automation` - Automates business processes
+            - `pii_redaction` - Handles sensitive data protection
+            - `summarization` - Creates summaries of content
+            """)
+        
         # Load patterns using the pattern loader
         try:
             from app.pattern.loader import PatternLoader
@@ -2230,19 +2267,28 @@ class AutomatedAIAssessmentUI:
         
         # Filter options
         st.subheader("🔍 Filter Patterns")
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             domains = list(set(p.get('domain', 'unknown') for p in patterns))
-            selected_domain = st.selectbox("Domain", ["All"] + sorted(domains))
+            selected_domain = st.selectbox("🏢 Domain", ["All"] + sorted(domains))
         
         with col2:
             feasibilities = list(set(p.get('feasibility', 'unknown') for p in patterns))
-            selected_feasibility = st.selectbox("Feasibility", ["All"] + sorted(feasibilities))
+            selected_feasibility = st.selectbox("⚡ Feasibility", ["All"] + sorted(feasibilities))
         
         with col3:
             complexities = list(set(p.get('complexity', 'unknown') for p in patterns))
-            selected_complexity = st.selectbox("Complexity", ["All"] + sorted(complexities))
+            selected_complexity = st.selectbox("🎯 Complexity", ["All"] + sorted(complexities))
+        
+        with col4:
+            # Get all unique pattern types (tags)
+            all_pattern_types = set()
+            for p in patterns:
+                pattern_types = p.get('pattern_type', [])
+                if isinstance(pattern_types, list):
+                    all_pattern_types.update(pattern_types)
+            selected_pattern_type = st.selectbox("🏷️ Pattern Type", ["All"] + sorted(all_pattern_types))
         
         # Filter patterns
         filtered_patterns = patterns
@@ -2252,42 +2298,142 @@ class AutomatedAIAssessmentUI:
             filtered_patterns = [p for p in filtered_patterns if p.get('feasibility') == selected_feasibility]
         if selected_complexity != "All":
             filtered_patterns = [p for p in filtered_patterns if p.get('complexity') == selected_complexity]
+        if selected_pattern_type != "All":
+            filtered_patterns = [p for p in filtered_patterns 
+                                if selected_pattern_type in p.get('pattern_type', [])]
         
-        st.write(f"📊 Showing {len(filtered_patterns)} of {len(patterns)} patterns")
+        # Show filtering results and pattern type overview
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            st.write(f"📊 Showing **{len(filtered_patterns)}** of **{len(patterns)}** patterns")
+        
+        with col2:
+            if st.button("🏷️ Show Pattern Types Overview"):
+                st.session_state.show_pattern_types_overview = not st.session_state.get('show_pattern_types_overview', False)
+        
+        # Pattern types overview
+        if st.session_state.get('show_pattern_types_overview', False):
+            with st.expander("🏷️ Pattern Types in Library", expanded=True):
+                # Count pattern types across all patterns
+                pattern_type_counts = {}
+                for pattern in patterns:
+                    for ptype in pattern.get('pattern_type', []):
+                        pattern_type_counts[ptype] = pattern_type_counts.get(ptype, 0) + 1
+                
+                if pattern_type_counts:
+                    st.write("**Available Pattern Types (Tags) and Usage:**")
+                    
+                    # Sort by usage count
+                    sorted_types = sorted(pattern_type_counts.items(), key=lambda x: x[1], reverse=True)
+                    
+                    # Display in columns
+                    cols = st.columns(3)
+                    for i, (ptype, count) in enumerate(sorted_types):
+                        with cols[i % 3]:
+                            st.metric(ptype.replace('_', ' ').title(), f"{count} patterns")
+                else:
+                    st.info("No pattern types found in the library.")
         
         # Display patterns
         for idx, pattern in enumerate(filtered_patterns):
-            with st.expander(f"🔍 {pattern.get('pattern_id', 'Unknown')} - {pattern.get('name', 'Unnamed Pattern')}"):
+            # Create a more informative header with feasibility indicator
+            feasibility = pattern.get('feasibility', 'Unknown')
+            feasibility_emoji = {
+                'Automatable': '🟢',
+                'Partially Automatable': '🟡', 
+                'Not Automatable': '🔴'
+            }.get(feasibility, '⚪')
+            
+            pattern_header = f"{feasibility_emoji} {pattern.get('pattern_id', 'Unknown')} - {pattern.get('name', 'Unnamed Pattern')}"
+            
+            with st.expander(pattern_header):
+                # Pattern types as prominent tags at the top
+                pattern_types = pattern.get('pattern_type', [])
+                if pattern_types:
+                    st.write("**🏷️ Pattern Types (Tags):**")
+                    # Display pattern types as colored badges
+                    cols = st.columns(min(len(pattern_types), 5))
+                    for i, ptype in enumerate(pattern_types):
+                        with cols[i % 5]:
+                            st.code(ptype, language=None)
+                    st.divider()
+                
                 col1, col2 = st.columns([2, 1])
                 
                 with col1:
-                    st.write("**Description:**")
+                    st.write("**📝 Description:**")
                     st.write(pattern.get('description', 'No description available'))
                     
-                    st.write("**Tech Stack:**")
+                    st.write("**🛠️ Tech Stack:**")
                     tech_stack = pattern.get('tech_stack', [])
                     if tech_stack:
-                        for tech in tech_stack:
-                            st.write(f"• {tech}")
+                        # Display tech stack in a more organized way
+                        tech_cols = st.columns(min(len(tech_stack), 3))
+                        for i, tech in enumerate(tech_stack):
+                            with tech_cols[i % 3]:
+                                st.write(f"• {tech}")
                     else:
-                        st.write("No tech stack specified")
+                        st.write("_No tech stack specified_")
+                    
+                    # Show input requirements if available
+                    input_reqs = pattern.get('input_requirements', [])
+                    if input_reqs:
+                        st.write("**📋 Input Requirements:**")
+                        for req in input_reqs:
+                            st.write(f"• {req}")
                 
                 with col2:
-                    st.write("**Details:**")
-                    st.write(f"**Domain:** {pattern.get('domain', 'Unknown')}")
-                    st.write(f"**Feasibility:** {pattern.get('feasibility', 'Unknown')}")
-                    st.write(f"**Complexity:** {pattern.get('complexity', 'Unknown')}")
-                    st.write(f"**Effort:** {pattern.get('estimated_effort', 'Unknown')}")
-                    st.write(f"**Confidence:** {pattern.get('confidence_score', 'Unknown')}")
+                    st.write("**📊 Pattern Details:**")
+                    
+                    # Use metrics for key information
+                    domain = pattern.get('domain', 'Unknown')
+                    complexity = pattern.get('complexity', 'Unknown')
+                    effort = pattern.get('estimated_effort', 'Unknown')
+                    confidence = pattern.get('confidence_score', 'Unknown')
+                    
+                    st.metric("Domain", domain)
+                    st.metric("Feasibility", feasibility)
+                    st.metric("Complexity", complexity)
+                    st.metric("Estimated Effort", effort)
+                    
+                    if isinstance(confidence, (int, float)):
+                        st.metric("Confidence Score", f"{confidence:.2f}")
+                    else:
+                        st.metric("Confidence Score", str(confidence))
+                    
+                    # Show creation info if available
+                    if pattern.get('created_at'):
+                        st.write("**📅 Created:**")
+                        st.write(pattern.get('created_at', 'Unknown')[:10])  # Just the date part
+                    
+                    if pattern.get('enhanced_by_llm'):
+                        st.write("**🤖 Enhanced by LLM:** ✅")
                 
-                # Show pattern types as tags
-                pattern_types = pattern.get('pattern_type', [])
-                if pattern_types:
-                    st.write("**Pattern Types:**")
-                    cols = st.columns(min(len(pattern_types), 4))
-                    for i, ptype in enumerate(pattern_types):
-                        with cols[i % 4]:
-                            st.code(ptype, language=None)
+                # Show LLM insights if available
+                llm_insights = pattern.get('llm_insights', [])
+                llm_challenges = pattern.get('llm_challenges', [])
+                
+                if llm_insights or llm_challenges:
+                    st.divider()
+                    insight_col1, insight_col2 = st.columns(2)
+                    
+                    with insight_col1:
+                        if llm_insights:
+                            st.write("**💡 LLM Insights:**")
+                            for insight in llm_insights:
+                                st.write(f"• {insight}")
+                    
+                    with insight_col2:
+                        if llm_challenges:
+                            st.write("**⚠️ LLM Challenges:**")
+                            for challenge in llm_challenges:
+                                st.write(f"• {challenge}")
+                
+                # Show recommended approach if available
+                recommended_approach = pattern.get('llm_recommended_approach', '')
+                if recommended_approach:
+                    st.write("**🎯 Recommended Approach:**")
+                    st.write(recommended_approach)
     
     def render_pattern_editor(self, patterns: list, pattern_loader):
         """Render the pattern editor interface."""
@@ -2337,7 +2483,9 @@ class AutomatedAIAssessmentUI:
             tech_stack_text = st.text_area("Tech Stack (one per line)", 
                                          value='\n'.join(selected_pattern.get('tech_stack', [])), height=100)
             
-            # Pattern types
+            # Pattern types with guidance
+            st.write("**🏷️ Pattern Types (Tags)**")
+            st.caption("Tags that describe the automation approach (see Create tab for examples)")
             pattern_types_text = st.text_area("Pattern Types (one per line)", 
                                             value='\n'.join(selected_pattern.get('pattern_type', [])), height=80)
             
@@ -2409,9 +2557,39 @@ class AutomatedAIAssessmentUI:
             tech_stack_text = st.text_area("Tech Stack (one per line)", 
                                          placeholder="FastAPI\nPostgreSQL\nDocker", height=100)
             
-            # Pattern types
+            # Pattern types with helpful guidance
+            st.write("**🏷️ Pattern Types (Tags)**")
+            st.caption("Add tags that describe the automation approach. Common types include:")
+            
+            # Show common pattern types as examples
+            with st.expander("💡 Common Pattern Types", expanded=False):
+                st.write("""
+                **Integration & APIs:**
+                - `api_integration` - Connects to external systems
+                - `webhook_processing` - Handles incoming webhooks
+                - `database_sync` - Synchronizes data between systems
+                
+                **Data Processing:**
+                - `data_extraction` - Extracts information from documents
+                - `nlp_processing` - Natural language processing
+                - `ocr_processing` - Optical character recognition
+                - `pii_redaction` - Removes sensitive information
+                
+                **Workflow & Automation:**
+                - `workflow_automation` - Automates business processes
+                - `human_in_loop` - Requires human oversight
+                - `approval_workflow` - Handles approval processes
+                - `notification_system` - Sends alerts and notifications
+                
+                **Content & Communication:**
+                - `summarization` - Creates content summaries
+                - `translation` - Language translation
+                - `content_generation` - Creates new content
+                - `email_processing` - Handles email automation
+                """)
+            
             pattern_types_text = st.text_area("Pattern Types (one per line)", 
-                                            placeholder="api_integration\ndata_processing\nautomation", height=80)
+                                            placeholder="api_integration\nnlp_processing\nhuman_in_loop", height=80)
             
             # Input requirements
             input_requirements_text = st.text_area("Input Requirements (one per line)", 

@@ -2,7 +2,7 @@
   "pattern_id": "PAT-002",
   "name": "Invoice Intake, OCR, and ERP Posting",
   "description": "Ingest digital and scanned invoices, extract key fields, validate against POs/budgets, and post to ERP with exception handling and human review for edge cases.",
-  "feasibility": "Mostly Automatable",
+  "feasibility": "Partially Automatable",
   "pattern_type": [
     "document_processing",
     "ocr",

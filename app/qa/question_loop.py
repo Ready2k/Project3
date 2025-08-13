@@ -195,33 +195,49 @@ class QuestionLoop:
         template_domain = template.get("domain", "general")
         
         # Create a prompt for the LLM to generate contextual questions
-        prompt = f"""You are an expert automation consultant analyzing whether a requirement can be automated with AI agents.
+        prompt = f"""You are an expert consultant in software-based AI agents and Agentic AI solutions.
+You analyze software requirements to determine whether they can be implemented by agentic systems
+that reason, plan, and act within digital environments (not physical/industrial automation).
+
+SCOPE GATE (read carefully):
+- If the requirement primarily involves physical-world manipulation (e.g., washing a car, cleaning a room, warehouse picking, walking a dog) 
+  and does NOT present a fully digital control surface (APIs, RPA on software UIs, webhooks, queues) that the agent can operate end-to-end,
+  then respond with EXACTLY an empty JSON array: []
+- Only if there is a clear, software-only execution path should you proceed to generate questions.
 
 REQUIREMENT: {requirements.get('description', 'No description provided')}
 
-ANALYSIS FOCUS: {template_name} ({template_domain} domain)
-
-Your role is to ask 2-3 specific clarifying questions that will help determine if this requirement can be automated by AI agents. Focus on:
-
-1. **Physical vs Digital**: Is this about physical objects or digital processes?
-2. **Data Availability**: What data sources exist to make automated decisions?
-3. **Decision Complexity**: How complex are the decisions involved?
-4. **Integration Points**: What systems would need to connect?
-
-Generate questions that are:
-- Specific to this requirement
-- Help distinguish between "Automatable", "Partially Automatable", or "Not Automatable"
-- Focus on technical feasibility, not business value
-
 Format your response as a JSON array of questions:
+
+If you proceed (i.e., scope is digital or digitally controllable), generate EXACTLY 2 to 4 clarifying questions to assess agentic feasibility.
+
+Coverage targets:
+1) Physical vs Digital: confirm digital-only scope and any physical steps
+2) Data Availability: sources, access methods, latency/freshness, permissions
+3) Decision Complexity: rules vs ambiguity, human-in-the-loop, SLAs
+4) Integration Points: systems/APIs, events, webhooks, auth, error handling
+
+Rules:
+- Questions must be specific to this requirement
+- Questions should help decide: "Automatable by agents", "Partially automatable", or "Not automatable"
+- Focus on technical feasibility and operational constraints, not business value
+- Respond with ONLY a valid JSON array
+- If physical-only with no digital control surface, respond with [] (nothing else)
+- If proceeding, each array item must be an object with:
+    - "text": the exact question
+    - "field": a short identifier (e.g., "process_scope", "data_sources", "decision_complexity", "integrations")
+
+Example (format only):
 [
   {{"text": "Question 1?", "field": "field_name_1"}},
   {{"text": "Question 2?", "field": "field_name_2"}},
   {{"text": "Question 3?", "field": "field_name_3"}}
 ]
 
-Only return the JSON array, no other text."""
+Only return the JSON array, no other text.
 
+
+"""
         try:
             # Generate questions using LLM
             response = await self.llm_provider.generate(prompt, purpose="question_generation")
@@ -330,25 +346,43 @@ Only return the JSON array, no other text."""
                 return []
         
         # Generate questions directly using LLM instead of templates
-        prompt = f"""You are an expert automation consultant. Analyze this requirement and generate clarifying questions.
+        prompt = f"""You are an expert consultant in software-based AI agents and Agentic AI solutions.
+You analyze software requirements to determine whether they can be implemented by agentic systems
+that reason, plan, and act within digital environments (not physical/industrial automation).
+
+SCOPE GATE (read carefully):
+- If the requirement primarily involves physical-world manipulation (e.g., washing a car, cleaning a room, warehouse picking, walking a dog) 
+  and does NOT present a fully digital control surface (APIs, RPA on software UIs, webhooks, queues) that the agent can operate end-to-end,
+  then respond with EXACTLY an empty JSON array: []
+- Only if there is a clear, software-only execution path should you proceed to generate questions.
 
 REQUIREMENT: {session.requirements.get('description', 'No description provided')}
 
-Generate 3-4 specific questions to determine if this can be automated by AI agents.
+If you proceed (i.e., scope is digital or digitally controllable), generate EXACTLY 2 to 4 clarifying questions to assess agentic feasibility.
 
-Focus on:
-- Physical vs digital processes
-- Available data sources
-- Decision complexity
-- Current workflow
+Coverage targets:
+1) Physical vs Digital: confirm digital-only scope and any physical steps
+2) Data Availability: sources, access methods, latency/freshness, permissions
+3) Decision Complexity: rules vs ambiguity, human-in-the-loop, SLAs
+4) Integration Points: systems/APIs, events, webhooks, auth, error handling
 
-CRITICAL: Respond with ONLY a valid JSON array, no other text:
+Rules:
+- Questions must be specific to this requirement
+- Questions should help decide: "Automatable by agents", "Partially automatable", or "Not automatable"
+- Focus on technical feasibility and operational constraints, not business value
+- Respond with ONLY a valid JSON array
+- If physical-only with no digital control surface, respond with [] (nothing else)
+- If proceeding, each array item must be an object with:
+    - "text": the exact question
+    - "field": a short identifier (e.g., "process_scope", "data_sources", "decision_complexity", "integrations")
 
+Example (format only):
 [
   {{"text": "Question 1?", "field": "field1"}},
   {{"text": "Question 2?", "field": "field2"}},
   {{"text": "Question 3?", "field": "field3"}}
-]"""
+]
+"""
 
         try:
             # Generate questions using LLM
@@ -473,7 +507,15 @@ CRITICAL: Respond with ONLY a valid JSON array, no other text:
         # Format the answers for LLM analysis
         answers_text = "\n".join([f"Q: {field}\nA: {answer}" for field, answer in answers.items()])
         
-        prompt = f"""You are an expert automation consultant analyzing user responses to determine automation feasibility.
+        prompt = f"""You are an expert consultant in software-based AI agents and Agentic AI solutions.
+You analyze software requirements to determine whether they can be implemented by agentic systems
+that reason, plan, and act within digital environments (not physical/industrial automation).
+
+SCOPE GATE (read carefully):
+- If the requirement primarily involves physical-world manipulation (e.g., washing a car, cleaning a room, warehouse picking) 
+  and does NOT present a fully digital control surface (APIs, RPA on software UIs, webhooks, queues) that the agent can operate end-to-end,
+  then respond with EXACTLY an empty JSON array: []
+- Only if there is a clear, software-only execution path should you proceed to generate questions.
 
 ORIGINAL REQUIREMENT: {requirements.get('description', 'No description provided')}
 
