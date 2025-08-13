@@ -72,6 +72,65 @@ def _sanitize(label: str) -> str:
     allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_.:")
     return ''.join(ch if ch in allowed else '_' for ch in (label or '')) or 'unknown'
 
+def _clean_mermaid_code(mermaid_code: str) -> str:
+    """Clean and format Mermaid code to ensure proper syntax."""
+    if not mermaid_code:
+        return "flowchart TB\n    error[No diagram generated]"
+    
+    # Remove any markdown code blocks
+    code = mermaid_code.strip()
+    if code.startswith('```mermaid'):
+        code = code.replace('```mermaid', '').replace('```', '').strip()
+    elif code.startswith('```'):
+        code = code.replace('```', '').strip()
+    
+    # If the code looks malformed (no line breaks), return a simple fallback
+    if '\n' not in code and len(code) > 100:
+        # This is likely malformed code without line breaks
+        return """flowchart TB
+    error[Diagram Generation Error]
+    note[The generated diagram had formatting issues]
+    
+    error --> note
+    
+    note2[Please try generating again or use a different LLM provider]
+    note --> note2"""
+    
+    # Split into lines and clean each line
+    lines = []
+    for line in code.split('\n'):
+        line = line.strip()
+        if line:
+            lines.append(line)
+    
+    # Ensure proper formatting
+    if not lines:
+        return "flowchart TB\n    error[No diagram generated]"
+    
+    # Check if it starts with a flowchart declaration
+    first_line = lines[0].lower()
+    if not (first_line.startswith('flowchart') or first_line.startswith('graph') or first_line.startswith('sequencediagram')):
+        lines.insert(0, 'flowchart TB')
+    
+    # Add proper indentation for non-declaration lines
+    formatted_lines = []
+    for i, line in enumerate(lines):
+        if (i == 0 or 
+            line.startswith('subgraph') or 
+            line.startswith('end') or
+            line.startswith('participant') or
+            line.lower().startswith('flowchart') or
+            line.lower().startswith('sequencediagram')):
+            formatted_lines.append(line)
+        else:
+            # Add indentation if not already present
+            if not line.startswith('    '):
+                formatted_lines.append('    ' + line)
+            else:
+                formatted_lines.append(line)
+    
+    return '\n'.join(formatted_lines)
+
 async def build_context_diagram(requirement: str, recommendations: List[Dict]) -> str:
     """Build a context diagram using LLM based on the specific requirement."""
     prompt = f"""Generate a Mermaid context diagram (C4 Level 1) for this automation requirement:
@@ -121,7 +180,7 @@ IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```m
   system --> api"""
         
         response = await make_llm_request(prompt, provider_config)
-        return response.strip()
+        return _clean_mermaid_code(response.strip())
     except Exception as e:
         return f"""flowchart LR
   user([User])
@@ -190,7 +249,7 @@ IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```m
   logic --> external"""
         
         response = await make_llm_request(prompt, provider_config)
-        return response.strip()
+        return _clean_mermaid_code(response.strip())
     except Exception as e:
         return f"""flowchart TB
   system[System]
@@ -269,7 +328,24 @@ flowchart TB
     db -->|Logs| monitor
 
 Focus on the EXACT technologies listed above and show realistic technical connections.
-IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)."""
+
+CRITICAL FORMATTING REQUIREMENTS:
+1. Start with "flowchart TB" on its own line
+2. Put each node definition on a separate line with 4-space indentation
+3. Put each connection on a separate line with 4-space indentation
+4. Use proper Mermaid syntax with spaces around arrows
+5. Example of correct formatting:
+
+flowchart TB
+    user[User Interface]
+    api[FastAPI Server]
+    db[(PostgreSQL)]
+    
+    user -->|HTTP Request| api
+    api -->|SQL Query| db
+
+IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks).
+Ensure each line is properly separated and indented."""
 
     try:
         provider_config = st.session_state.get('provider_config', {})
@@ -329,7 +405,8 @@ IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```m
             return '\n'.join(diagram_parts)
         
         response = await make_llm_request(prompt, provider_config, purpose="tech_stack_wiring_diagram")
-        return response.strip()
+        # Clean and format the Mermaid code
+        return _clean_mermaid_code(response.strip())
     except Exception as e:
         return f"""flowchart TB
     error[Tech Stack Wiring Diagram]
@@ -399,7 +476,7 @@ IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```m
   S-->>U: Result"""
         
         response = await make_llm_request(prompt, provider_config)
-        return response.strip()
+        return _clean_mermaid_code(response.strip())
     except Exception as e:
         return f"""sequenceDiagram
   participant U as User
@@ -1568,6 +1645,28 @@ class AutomatedAIAssessmentUI:
                 - **Labels** = Communication protocols and data types
                 
                 This shows the technical "wiring" of your system - how each technology component connects to others.
+                """)
+            
+            # Check if diagram generation failed and show helpful message
+            if "Diagram Generation Error" in mermaid_code:
+                st.warning("""
+                **Diagram Generation Issue Detected**
+                
+                The LLM generated a diagram with formatting issues. This can happen with certain providers or complex tech stacks.
+                
+                **Suggestions:**
+                - Try generating the diagram again (click the Generate button)
+                - Switch to a different LLM provider (OpenAI usually works best for diagrams)
+                - Use the fake provider for a basic diagram structure
+                """)
+            elif "generation failed" in mermaid_code.lower():
+                st.error("""
+                **Diagram Generation Failed**
+                
+                There was an error generating the diagram. Please check:
+                - Your LLM provider is properly configured
+                - You have a valid API key
+                - Try switching providers or generating again
                 """)
             
             # Show code
