@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import sqlite3
 import time
 from datetime import datetime
 from pathlib import Path
@@ -1637,7 +1638,7 @@ class AutomatedAIAssessmentUI:
             return
         
         # Dashboard tabs
-        metrics_tab, patterns_tab, usage_tab, messages_tab = st.tabs(["🔧 Provider Metrics", "🎯 Pattern Analytics", "📊 Usage Patterns", "💬 LLM Messages"])
+        metrics_tab, patterns_tab, usage_tab, messages_tab, admin_tab = st.tabs(["🔧 Provider Metrics", "🎯 Pattern Analytics", "📊 Usage Patterns", "💬 LLM Messages", "🧹 Admin"])
         
         with metrics_tab:
             self.render_provider_metrics()
@@ -1650,17 +1651,35 @@ class AutomatedAIAssessmentUI:
         
         with messages_tab:
             self.render_llm_messages()
+        
+        with admin_tab:
+            self.render_observability_admin()
     
     def render_provider_metrics(self):
         """Render LLM provider performance metrics."""
         st.subheader("🔧 LLM Provider Performance")
         
+        # Add filtering options
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            time_filter = st.selectbox("Time Period", 
+                                     ["All Time", "Last 24 Hours", "Last 7 Days", "Last 30 Days"],
+                                     index=1)  # Default to last 24 hours
+        with col2:
+            show_test_providers = st.checkbox("Include Test/Mock Providers", value=False)
+        with col3:
+            current_session_only = st.checkbox("Current Session Only", value=False)
+        
         try:
-            # Fetch provider statistics from audit data
-            provider_stats = asyncio.run(self.get_provider_statistics())
+            # Fetch provider statistics with filters
+            provider_stats = asyncio.run(self.get_provider_statistics(
+                time_filter=time_filter,
+                include_test_providers=show_test_providers,
+                current_session_only=current_session_only
+            ))
             
             if not provider_stats or not provider_stats.get('provider_stats'):
-                st.info("No provider metrics available yet. Run some analyses to see performance data.")
+                st.info("💡 No provider metrics available for the selected filters. Try expanding the time period or including test providers.")
                 return
             
             stats = provider_stats['provider_stats']
@@ -2155,14 +2174,25 @@ class AutomatedAIAssessmentUI:
             st.error(f"Error fetching LLM messages: {str(e)}")
             return []
     
-    async def get_provider_statistics(self) -> Dict[str, Any]:
-        """Fetch provider statistics from audit system."""
+    async def get_provider_statistics(self, 
+                                    time_filter: str = "All Time",
+                                    include_test_providers: bool = False,
+                                    current_session_only: bool = False) -> Dict[str, Any]:
+        """Fetch provider statistics from audit system with filtering options."""
         try:
             # Import audit system
             from app.utils.audit import get_audit_logger
             
             audit_logger = get_audit_logger()
-            return audit_logger.get_provider_stats()
+            
+            # Get current session ID if filtering by current session
+            session_id = st.session_state.get('session_id') if current_session_only else None
+            
+            return audit_logger.get_provider_stats(
+                time_filter=time_filter,
+                include_test_providers=include_test_providers,
+                session_id=session_id
+            )
             
         except Exception as e:
             st.error(f"Error fetching provider statistics: {str(e)}")
@@ -2180,6 +2210,122 @@ class AutomatedAIAssessmentUI:
         except Exception as e:
             st.error(f"Error fetching pattern statistics: {str(e)}")
             return {}
+    
+    def render_observability_admin(self):
+        """Render observability administration tools."""
+        st.subheader("🧹 Observability Administration")
+        
+        st.write("**Database Management**")
+        
+        # Show database statistics
+        try:
+            from app.utils.audit import get_audit_logger
+            audit_logger = get_audit_logger()
+            
+            # Get total counts
+            with sqlite3.connect(audit_logger.db_path) as conn:
+                cursor = conn.execute("SELECT COUNT(*) FROM runs")
+                total_runs = cursor.fetchone()[0]
+                
+                cursor = conn.execute("SELECT COUNT(*) FROM matches")
+                total_matches = cursor.fetchone()[0]
+                
+                # Get test provider counts
+                cursor = conn.execute("""
+                    SELECT COUNT(*) FROM runs 
+                    WHERE provider IN ('fake', 'MockLLM', 'error-provider', 'AuditedLLMProvider')
+                """)
+                test_runs = cursor.fetchone()[0]
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total LLM Calls", total_runs)
+            with col2:
+                st.metric("Pattern Matches", total_matches)
+            with col3:
+                st.metric("Test/Mock Calls", test_runs)
+            
+            # Cleanup options
+            st.write("**🧹 Cleanup Options**")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.write("**Remove Test/Mock Provider Data**")
+                st.caption("Remove calls from fake, MockLLM, error-provider, and AuditedLLMProvider")
+                
+                if st.button("🗑️ Clean Test Data", type="secondary"):
+                    try:
+                        with sqlite3.connect(audit_logger.db_path) as conn:
+                            cursor = conn.execute("""
+                                DELETE FROM runs 
+                                WHERE provider IN ('fake', 'MockLLM', 'error-provider', 'AuditedLLMProvider')
+                            """)
+                            deleted_count = cursor.rowcount
+                            conn.commit()
+                        
+                        st.success(f"✅ Removed {deleted_count} test/mock provider records")
+                        st.rerun()
+                        
+                    except Exception as e:
+                        st.error(f"❌ Error cleaning test data: {str(e)}")
+            
+            with col2:
+                st.write("**Remove Old Records**")
+                st.caption("Remove audit records older than specified days")
+                
+                days_to_keep = st.number_input("Days to keep", min_value=1, max_value=365, value=30)
+                
+                if st.button("🗑️ Clean Old Records", type="secondary"):
+                    try:
+                        deleted_count = audit_logger.cleanup_old_records(days=days_to_keep)
+                        st.success(f"✅ Removed {deleted_count} old records (older than {days_to_keep} days)")
+                        st.rerun()
+                        
+                    except Exception as e:
+                        st.error(f"❌ Error cleaning old records: {str(e)}")
+            
+            # Export options
+            st.write("**📤 Export Options**")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("📊 Export Provider Stats", type="secondary"):
+                    try:
+                        stats = audit_logger.get_provider_stats(include_test_providers=True)
+                        import json
+                        stats_json = json.dumps(stats, indent=2, default=str)
+                        
+                        st.download_button(
+                            label="💾 Download Provider Stats JSON",
+                            data=stats_json,
+                            file_name=f"provider_stats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                            mime="application/json"
+                        )
+                        
+                    except Exception as e:
+                        st.error(f"❌ Error exporting stats: {str(e)}")
+            
+            with col2:
+                if st.button("💬 Export LLM Messages", type="secondary"):
+                    try:
+                        messages = audit_logger.get_llm_messages(limit=1000)
+                        import json
+                        messages_json = json.dumps(messages, indent=2, default=str)
+                        
+                        st.download_button(
+                            label="💾 Download Messages JSON",
+                            data=messages_json,
+                            file_name=f"llm_messages_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                            mime="application/json"
+                        )
+                        
+                    except Exception as e:
+                        st.error(f"❌ Error exporting messages: {str(e)}")
+            
+        except Exception as e:
+            st.error(f"❌ Error loading admin data: {str(e)}")
     
     def render_pattern_library_management(self):
         """Render the pattern library management interface."""

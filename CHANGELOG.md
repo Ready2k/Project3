@@ -38,6 +38,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Better fallback rendering with improved CSS styling
   - Added streamlit-mermaid package for native Streamlit integration
   - Downloadable HTML files with embedded Mermaid viewer
+- **Enhanced Observability Dashboard**: Improved filtering and data management
+  - Time-based filtering (Last 24 Hours, Last 7 Days, Last 30 Days)
+  - Filter out test/mock providers by default for cleaner metrics
+  - Current session filtering for focused analysis
+  - Admin panel with database cleanup and export tools
+  - Remove test data and old records with one-click cleanup
+  - Export provider statistics and LLM messages for analysis
 
 ### Fixed
 - **Question Generation Duplication**: Resolved duplicate LLM calls during Q&A phase

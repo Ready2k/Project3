@@ -300,22 +300,59 @@ class AuditLogger:
             for row in rows
         ]
     
-    def get_provider_stats(self) -> Dict[str, Any]:
-        """Get aggregated statistics by provider."""
+    def get_provider_stats(self, 
+                          time_filter: str = "All Time",
+                          include_test_providers: bool = False,
+                          session_id: Optional[str] = None) -> Dict[str, Any]:
+        """Get aggregated statistics by provider with filtering options."""
+        
+        # Build the WHERE clause based on filters
+        where_conditions = []
+        params = []
+        
+        # Time filtering
+        if time_filter != "All Time":
+            if time_filter == "Last 24 Hours":
+                where_conditions.append("created_at >= datetime('now', '-1 day')")
+            elif time_filter == "Last 7 Days":
+                where_conditions.append("created_at >= datetime('now', '-7 days')")
+            elif time_filter == "Last 30 Days":
+                where_conditions.append("created_at >= datetime('now', '-30 days')")
+        
+        # Filter out test/mock providers unless explicitly requested
+        if not include_test_providers:
+            test_providers = ['fake', 'MockLLM', 'error-provider', 'AuditedLLMProvider']
+            placeholders = ','.join(['?' for _ in test_providers])
+            where_conditions.append(f"provider NOT IN ({placeholders})")
+            params.extend(test_providers)
+        
+        # Session filtering
+        if session_id:
+            where_conditions.append("session_id = ?")
+            params.append(self._redact_session_id(session_id))
+        
+        # Build the complete query
+        where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+        
+        query = f"""
+            SELECT 
+                provider,
+                model,
+                COUNT(*) as call_count,
+                AVG(latency_ms) as avg_latency,
+                MIN(latency_ms) as min_latency,
+                MAX(latency_ms) as max_latency,
+                SUM(tokens) as total_tokens,
+                MIN(created_at) as first_call,
+                MAX(created_at) as last_call
+            FROM runs 
+            WHERE {where_clause}
+            GROUP BY provider, model
+            ORDER BY call_count DESC
+        """
+        
         with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("""
-                SELECT 
-                    provider,
-                    model,
-                    COUNT(*) as call_count,
-                    AVG(latency_ms) as avg_latency,
-                    MIN(latency_ms) as min_latency,
-                    MAX(latency_ms) as max_latency,
-                    SUM(tokens) as total_tokens
-                FROM runs 
-                GROUP BY provider, model
-                ORDER BY call_count DESC
-            """)
+            cursor = conn.execute(query, params)
             
             stats = []
             for row in cursor.fetchall():
@@ -326,7 +363,9 @@ class AuditLogger:
                     'avg_latency': round(row[3], 2) if row[3] else 0,
                     'min_latency': row[4],
                     'max_latency': row[5],
-                    'total_tokens': row[6] or 0
+                    'total_tokens': row[6] or 0,
+                    'first_call': row[7],
+                    'last_call': row[8]
                 })
             
             return {'provider_stats': stats}
