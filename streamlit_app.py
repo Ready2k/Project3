@@ -2585,6 +2585,8 @@ class AutomatedAIAssessmentUI:
         """Render the pattern editor interface."""
         st.subheader("✏️ Edit Existing Pattern")
         
+        # No need for complex success message handling since we show them immediately
+        
         if not patterns:
             st.info("📝 No patterns available to edit.")
             return
@@ -2606,10 +2608,19 @@ class AutomatedAIAssessmentUI:
             
             with col1:
                 if st.button(f"🗑️ Yes, Delete {pattern_id}", key=f"confirm_delete_yes_{pattern_id}"):
-                    self.delete_pattern_confirmed(pattern_id, pattern_loader)
-                    # Clear the confirmation state
-                    st.session_state[f"confirm_delete_{pattern_id}"] = False
-                    st.rerun()
+                    # Perform the deletion
+                    with st.spinner("Deleting pattern..."):
+                        success = self.delete_pattern_confirmed(pattern_id, pattern_loader)
+                    
+                    if success:
+                        # Clear the confirmation state
+                        st.session_state[f"confirm_delete_{pattern_id}"] = False
+                        st.balloons()  # Visual feedback
+                        # Add a small delay to let user see the success message
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("Failed to delete pattern. Please try again.")
             
             with col2:
                 if st.button("❌ Cancel", key=f"confirm_delete_cancel_{pattern_id}"):
@@ -2837,7 +2848,7 @@ class AutomatedAIAssessmentUI:
             st.error(f"❌ Error saving pattern: {str(e)}")
             app_logger.error(f"Pattern save error: {e}")
     
-    def delete_pattern_confirmed(self, pattern_id: str, pattern_loader):
+    def delete_pattern_confirmed(self, pattern_id: str, pattern_loader) -> bool:
         """Actually delete a pattern from the library (called after confirmation)."""
         try:
             import os
@@ -2848,7 +2859,7 @@ class AutomatedAIAssessmentUI:
             
             if not os.path.exists(file_path):
                 st.error(f"❌ Pattern file not found: {file_path}")
-                return
+                return False
             
             # Create backup before deletion
             backup_path = f"data/patterns/.deleted_{pattern_id}_{int(datetime.now().timestamp())}.json"
@@ -2858,12 +2869,16 @@ class AutomatedAIAssessmentUI:
             os.remove(file_path)
             pattern_loader.refresh_cache()
             
+            # Show success message immediately
             st.success(f"✅ Pattern {pattern_id} deleted successfully!")
             st.info(f"💾 Backup created: {backup_path}")
+            
+            return True
                 
         except Exception as e:
             st.error(f"❌ Error deleting pattern: {str(e)}")
             app_logger.error(f"Pattern deletion error: {e}")
+            return False
     
     def create_new_pattern(self, pattern_data: dict, pattern_loader):
         """Create a new pattern in the library with validation."""
