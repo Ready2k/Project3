@@ -2370,6 +2370,10 @@ class AutomatedAIAssessmentUI:
         try:
             from app.pattern.loader import PatternLoader
             pattern_loader = PatternLoader("data/patterns")
+            
+            # Auto-refresh cache when Pattern Library tab is opened to ensure we see current patterns
+            # This prevents showing deleted patterns that are cached
+            pattern_loader.refresh_cache()
             patterns = pattern_loader.load_patterns()
         except Exception as e:
             st.error(f"❌ Error loading patterns: {str(e)}")
@@ -2389,7 +2393,14 @@ class AutomatedAIAssessmentUI:
     
     def render_pattern_viewer(self, patterns: list):
         """Render the pattern viewer interface."""
-        st.subheader("👀 Pattern Library Overview")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.subheader("👀 Pattern Library Overview")
+        with col2:
+            if st.button("🔄 Refresh Patterns", help="Refresh the pattern list to show current patterns"):
+                # Force refresh by clearing cache and reloading
+                st.cache_data.clear()
+                st.rerun()
         
         if not patterns:
             st.info("📝 No patterns found in the library.")
