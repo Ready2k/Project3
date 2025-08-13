@@ -1275,10 +1275,16 @@ class AutomatedAIAssessmentUI:
                     st.write("**🚫 Applied Constraints:**")
                     
                     if constraints.get('banned_tools'):
-                        st.write(f"  • **Banned Technologies:** {', '.join(constraints['banned_tools'])}")
+                        # Unescape HTML entities for display
+                        import html
+                        banned_tech_display = [html.unescape(tech) for tech in constraints['banned_tools']]
+                        st.write(f"  • **Banned Technologies:** {', '.join(banned_tech_display)}")
                     
                     if constraints.get('required_integrations'):
-                        st.write(f"  • **Required Integrations:** {', '.join(constraints['required_integrations'])}")
+                        # Unescape HTML entities for display
+                        import html
+                        required_int_display = [html.unescape(integration) for integration in constraints['required_integrations']]
+                        st.write(f"  • **Required Integrations:** {', '.join(required_int_display)}")
                     
                     if constraints.get('compliance_requirements'):
                         st.write(f"  • **Compliance:** {', '.join(constraints['compliance_requirements'])}")
