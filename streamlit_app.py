@@ -814,6 +814,12 @@ class AutomatedAIAssessmentUI:
             finally:
                 st.session_state.generating_questions = False
         
+        # Debug toggle
+        if st.checkbox("🐛 Debug Q&A", key="debug_qa_toggle"):
+            st.session_state.debug_qa = True
+        else:
+            st.session_state.debug_qa = False
+        
         # Show questions if we have them
         if st.session_state.qa_questions:
             answers = {}
@@ -823,13 +829,34 @@ class AutomatedAIAssessmentUI:
                 unique_key = f"qa_{idx}_{hash(q['question'])}"
                 
                 if q["type"] == "text":
-                    answers[q["id"]] = st.text_input(q["question"], key=unique_key)
+                    # Use text_area for longer responses and to avoid password manager interference
+                    question_text = q["question"]
+                    # Add context to prevent password manager confusion
+                    if "api" in question_text.lower() or "password" in question_text.lower():
+                        help_text = "This is not a password field - please describe your requirements"
+                    else:
+                        help_text = "Please provide details to help improve the recommendation accuracy"
+                    
+                    answers[q["id"]] = st.text_area(
+                        question_text, 
+                        key=unique_key,
+                        height=100,
+                        help=help_text,
+                        placeholder="Enter your response here..."
+                    )
                 elif q["type"] == "select":
                     answers[q["id"]] = st.selectbox(q["question"], q["options"], key=unique_key)
             
             # Check if all questions are answered
             answered_count = sum(1 for answer in answers.values() if answer and answer.strip())
             total_questions = len(st.session_state.qa_questions)
+            
+            # Debug information
+            if st.session_state.get('debug_qa', False):
+                st.write("**Debug - Answer Status:**")
+                for q_id, answer in answers.items():
+                    status = "✅" if answer and answer.strip() else "❌"
+                    st.write(f"{status} {q_id}: '{answer}'")
             
             st.write(f"📝 Answered: {answered_count}/{total_questions} questions")
             
@@ -969,13 +996,13 @@ class AutomatedAIAssessmentUI:
             
             # Show architecture explanation
             st.subheader("🏗️ How It All Works Together")
-            st.write(architecture_explanation)
+            self._render_formatted_text(architecture_explanation)
         
         # Detailed reasoning
         if rec.get('reasoning'):
             st.subheader("💭 Technical Analysis")
             with st.expander("View detailed technical reasoning", expanded=False):
-                st.write(rec['reasoning'])
+                self._render_formatted_text(rec['reasoning'])
         
         # Individual recommendations
         if rec.get('recommendations'):
@@ -1041,16 +1068,44 @@ class AutomatedAIAssessmentUI:
         if not tech_stack:
             return
         
-        # Categorize technologies
+        # Import tech stack generator for better categorization
+        try:
+            from app.services.tech_stack_generator import TechStackGenerator
+            generator = TechStackGenerator()
+            categorized_tech = generator.categorize_tech_stack_with_descriptions(tech_stack)
+            
+            # Display categorized tech stack with descriptions
+            for category_name, category_info in categorized_tech.items():
+                techs = category_info["technologies"]
+                description = category_info["description"]
+                
+                with st.expander(f"{category_name} ({len(techs)})", expanded=True):
+                    # Show category description
+                    st.write(f"*{description}*")
+                    st.write("")  # Add spacing
+                    
+                    # Display technologies in columns with descriptions
+                    cols = st.columns(min(len(techs), 3))
+                    for i, tech in enumerate(techs):
+                        with cols[i % 3]:
+                            tech_description = generator.get_technology_description(tech)
+                            st.info(f"**{tech}**\n\n{tech_description}")
+            
+        except ImportError:
+            # Fallback to simple categorization if import fails
+            self._render_simple_tech_stack(tech_stack)
+    
+    def _render_simple_tech_stack(self, tech_stack: List[str]):
+        """Simple fallback tech stack rendering."""
+        # Basic categorization
         categories = {
             "Backend/API": ["Python", "FastAPI", "Flask", "Django", "Node.js", "Express"],
             "Database": ["PostgreSQL", "MySQL", "MongoDB", "SQLAlchemy", "Redis"],
             "Message Queue": ["Celery", "RabbitMQ", "Apache Kafka", "AWS SQS"],
             "Cloud/Infrastructure": ["Docker", "Kubernetes", "AWS", "Azure", "GCP"],
-            "Monitoring": ["Prometheus", "Grafana", "ELK Stack", "DataDog"],
-            "Security": ["cryptography", "OAuth2", "JWT", "SSL/TLS"],
-            "Integration": ["httpx", "requests", "Webhook", "REST API"],
-            "Frontend": ["React", "Vue.js", "Streamlit", "HTML/CSS/JS"]
+            "Communication": ["Twilio", "OAuth 2.0", "JWT", "Webhook", "REST API"],
+            "Testing": ["Pytest", "Jest", "Selenium", "Postman"],
+            "Data Processing": ["Pandas", "NumPy", "Jupyter", "Matplotlib"]
         }
         
         # Group technologies by category
@@ -1073,36 +1128,48 @@ class AutomatedAIAssessmentUI:
         
         # Display categorized tech stack
         for category, techs in categorized_tech.items():
-            with st.expander(f"{category} ({len(techs)} technologies)", expanded=True):
+            with st.expander(f"{category} ({len(techs)})", expanded=True):
                 cols = st.columns(min(len(techs), 3))
                 for i, tech in enumerate(techs):
                     with cols[i % 3]:
                         st.info(f"**{tech}**")
-                
-                # Add category explanation
-                explanations = {
-                    "Backend/API": "Handles business logic, data processing, and provides APIs for integration.",
-                    "Database": "Stores and manages data with reliability and performance optimization.",
-                    "Message Queue": "Enables asynchronous processing and reliable communication between components.",
-                    "Cloud/Infrastructure": "Provides scalable hosting, deployment, and infrastructure management.",
-                    "Monitoring": "Tracks system performance, errors, and provides operational insights.",
-                    "Security": "Ensures data protection, authentication, and secure communications.",
-                    "Integration": "Connects with external systems and APIs for data exchange.",
-                    "Frontend": "Provides user interfaces for monitoring and manual interventions."
-                }
-                
-                if category in explanations:
-                    st.write(f"*{explanations[category]}*")
         
-        # Show uncategorized technologies
+        # Show uncategorized technologies with better formatting
         if uncategorized:
-            with st.expander(f"Additional Technologies ({len(uncategorized)})", expanded=True):
-                cols = st.columns(min(len(uncategorized), 4))
+            with st.expander(f"Other Technologies ({len(uncategorized)})", expanded=True):
+                st.write("*Additional specialized tools and technologies*")
+                st.write("")  # Add spacing
+                
+                cols = st.columns(min(len(uncategorized), 3))
                 for i, tech in enumerate(uncategorized):
-                    with cols[i % 4]:
-                        st.info(tech)
+                    with cols[i % 3]:
+                        st.info(f"**{tech}**\n\nSpecialized technology component")
+    
+    def _render_formatted_text(self, text: str):
+        """Render text with proper formatting and paragraph breaks."""
+        if not text:
+            return
         
-        # Architecture explanation is now handled in the main recommendation display
+        # Split text into paragraphs and format
+        paragraphs = text.split('\n\n')
+        
+        for paragraph in paragraphs:
+            paragraph = paragraph.strip()
+            if not paragraph:
+                continue
+                
+            # Check if this looks like a section header (starts with keywords)
+            if any(paragraph.lower().startswith(keyword) for keyword in 
+                   ['main challenges:', 'key challenges:', 'challenges:', 'implementation:', 
+                    'architecture:', 'data flow:', 'integration:', 'security:', 'monitoring:']):
+                # Format as a subheader
+                st.write(f"**{paragraph}**")
+            else:
+                # Regular paragraph
+                st.write(paragraph)
+            
+            # Add some spacing between paragraphs
+            st.write("")
     
     async def _generate_llm_architecture_explanation(self, tech_stack: List[str]) -> str:
         """Generate LLM-driven explanation of how the tech stack components work together."""

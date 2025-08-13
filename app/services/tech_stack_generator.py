@@ -69,20 +69,35 @@ class TechStackGenerator:
         tech_lower = tech.lower()
         
         # Languages
-        if tech_lower in ["python", "javascript", "java", "go", "rust", "typescript", "c#", "php"]:
+        if tech_lower in ["python", "javascript", "java", "go", "rust", "typescript", "c#", "php", "node.js"]:
             technologies["languages"].add(tech)
-        # Frameworks
-        elif tech_lower in ["fastapi", "django", "flask", "express", "react", "vue", "angular", "spring"]:
+        # Frameworks & Web
+        elif tech_lower in ["fastapi", "django", "flask", "express", "react", "vue", "angular", "spring", "streamlit"]:
             technologies["frameworks"].add(tech)
-        # Databases
-        elif tech_lower in ["postgresql", "mysql", "mongodb", "redis", "elasticsearch", "sqlite"]:
+        # Databases & Storage
+        elif tech_lower in ["postgresql", "mysql", "mongodb", "redis", "elasticsearch", "sqlite", "sqlalchemy"]:
             technologies["databases"].add(tech)
-        # Cloud Services
-        elif tech_lower in ["aws", "azure", "gcp", "docker", "kubernetes", "lambda"]:
+        # Cloud & Infrastructure
+        elif tech_lower in ["aws", "azure", "gcp", "docker", "kubernetes", "lambda", "heroku", "vercel"]:
             technologies["services"].add(tech)
-        # Tools and Libraries
+        # Communication & Integration
+        elif any(keyword in tech_lower for keyword in ["api", "webhook", "oauth", "jwt", "twilio", "smtp", "http"]):
+            technologies["libraries"].add(tech)
+        # Testing & Development
+        elif tech_lower in ["pytest", "jest", "mocha", "selenium", "cypress", "postman"]:
+            technologies["tools"].add(tech)
+        # Data Processing & ML
+        elif tech_lower in ["pandas", "numpy", "scikit-learn", "tensorflow", "pytorch", "jupyter"]:
+            technologies["libraries"].add(tech)
+        # Monitoring & Logging
+        elif tech_lower in ["prometheus", "grafana", "elk", "datadog", "sentry", "loguru"]:
+            technologies["tools"].add(tech)
+        # Message Queues & Processing
+        elif tech_lower in ["celery", "rabbitmq", "kafka", "sqs", "redis"]:
+            technologies["services"].add(tech)
+        # Default fallback
         else:
-            if any(keyword in tech_lower for keyword in ["lib", "sdk", "api"]):
+            if any(keyword in tech_lower for keyword in ["lib", "sdk"]):
                 technologies["libraries"].add(tech)
             else:
                 technologies["tools"].add(tech)
@@ -414,3 +429,117 @@ Respond with a JSON object containing:
                 seen.add(tech)
         
         return validated_tech_stack[:10]  # Limit to 10 technologies
+    
+    def categorize_tech_stack_with_descriptions(self, tech_stack: List[str]) -> Dict[str, Dict[str, Any]]:
+        """Categorize tech stack with descriptions and explanations.
+        
+        Args:
+            tech_stack: List of technologies
+            
+        Returns:
+            Dictionary with categorized technologies and descriptions
+        """
+        categories = {
+            "Programming Languages": {
+                "description": "Core programming languages used for development",
+                "technologies": [],
+                "keywords": ["python", "javascript", "java", "go", "rust", "typescript", "c#", "php", "node.js"]
+            },
+            "Web Frameworks & APIs": {
+                "description": "Frameworks for building web applications and APIs",
+                "technologies": [],
+                "keywords": ["fastapi", "django", "flask", "express", "react", "vue", "angular", "spring", "streamlit"]
+            },
+            "Databases & Storage": {
+                "description": "Data storage and database management systems",
+                "technologies": [],
+                "keywords": ["postgresql", "mysql", "mongodb", "redis", "elasticsearch", "sqlite", "sqlalchemy"]
+            },
+            "Cloud & Infrastructure": {
+                "description": "Cloud services and infrastructure management",
+                "technologies": [],
+                "keywords": ["aws", "azure", "gcp", "docker", "kubernetes", "lambda", "heroku", "vercel"]
+            },
+            "Communication & Integration": {
+                "description": "APIs, messaging, and third-party integrations",
+                "technologies": [],
+                "keywords": ["api", "webhook", "oauth", "jwt", "twilio", "smtp", "http", "rest", "graphql"]
+            },
+            "Testing & Development Tools": {
+                "description": "Testing frameworks and development utilities",
+                "technologies": [],
+                "keywords": ["pytest", "jest", "mocha", "selenium", "cypress", "postman", "git", "github"]
+            },
+            "Data Processing & Analytics": {
+                "description": "Data processing, machine learning, and analytics tools",
+                "technologies": [],
+                "keywords": ["pandas", "numpy", "scikit-learn", "tensorflow", "pytorch", "jupyter", "matplotlib"]
+            },
+            "Monitoring & Operations": {
+                "description": "System monitoring, logging, and operational tools",
+                "technologies": [],
+                "keywords": ["prometheus", "grafana", "elk", "datadog", "sentry", "loguru", "nginx"]
+            },
+            "Message Queues & Processing": {
+                "description": "Asynchronous processing and message handling",
+                "technologies": [],
+                "keywords": ["celery", "rabbitmq", "kafka", "sqs", "redis", "worker", "queue"]
+            }
+        }
+        
+        # Categorize each technology
+        uncategorized = []
+        
+        for tech in tech_stack:
+            tech_lower = tech.lower()
+            found_category = False
+            
+            for category_name, category_info in categories.items():
+                if any(keyword in tech_lower for keyword in category_info["keywords"]):
+                    category_info["technologies"].append(tech)
+                    found_category = True
+                    break
+            
+            if not found_category:
+                uncategorized.append(tech)
+        
+        # Add uncategorized technologies
+        if uncategorized:
+            categories["Other Technologies"] = {
+                "description": "Additional specialized tools and technologies",
+                "technologies": uncategorized,
+                "keywords": []
+            }
+        
+        # Remove empty categories
+        return {k: v for k, v in categories.items() if v["technologies"]}
+    
+    def get_technology_description(self, tech: str) -> str:
+        """Get a brief description of what a technology does.
+        
+        Args:
+            tech: Technology name
+            
+        Returns:
+            Brief description of the technology
+        """
+        descriptions = {
+            "python": "High-level programming language for automation and data processing",
+            "fastapi": "Modern, fast web framework for building APIs with Python",
+            "postgresql": "Advanced open-source relational database system",
+            "redis": "In-memory data structure store for caching and messaging",
+            "docker": "Containerization platform for application deployment",
+            "celery": "Distributed task queue for asynchronous processing",
+            "twilio": "Cloud communications platform for SMS, voice, and messaging",
+            "oauth 2.0": "Industry-standard protocol for authorization",
+            "pytest": "Testing framework for Python applications",
+            "jupyter": "Interactive computing environment for data analysis",
+            "aws": "Amazon Web Services cloud computing platform",
+            "kubernetes": "Container orchestration platform for scalable deployments",
+            "mongodb": "NoSQL document database for flexible data storage",
+            "react": "JavaScript library for building user interfaces",
+            "nginx": "Web server and reverse proxy for high-performance applications"
+        }
+        
+        tech_lower = tech.lower()
+        return descriptions.get(tech_lower, f"Technology component: {tech}")

@@ -52,7 +52,7 @@ class RecommendationService:
         recommendations = []
         
         # Check if we need to create a new pattern
-        should_create_pattern = self._should_create_new_pattern(matches, requirements)
+        should_create_pattern = await self._should_create_new_pattern(matches, requirements, session_id)
         
         if should_create_pattern and self.pattern_creator:
             app_logger.info("No suitable existing patterns found, creating new pattern")
@@ -574,15 +574,16 @@ class RecommendationService:
         
         return ". ".join(reasoning_parts) + "."
     
-    def _should_create_new_pattern(self, matches: List[MatchResult], requirements: Dict[str, Any]) -> bool:
-        """Determine if a new pattern should be created.
+    async def _should_create_new_pattern(self, matches: List[MatchResult], requirements: Dict[str, Any], session_id: str = "unknown") -> bool:
+        """Determine if a new pattern should be created or if an existing one should be enhanced.
         
         Args:
             matches: Existing pattern matches
             requirements: User requirements
+            session_id: Session ID for tracking
             
         Returns:
-            True if a new pattern should be created
+            True if a new pattern should be created, False if existing pattern should be enhanced or used
         """
         # Create new pattern if no matches at all
         if not matches:
@@ -594,6 +595,14 @@ class RecommendationService:
         if best_match_score < 0.4:
             app_logger.info(f"Best match score {best_match_score:.3f} is too low - will create new pattern")
             return True
+        
+        # NEW: Check for conceptual similarity with existing patterns
+        # If we find a conceptually similar pattern, enhance it instead of creating a new one
+        best_match = matches[0]
+        if await self._is_conceptually_similar(best_match, requirements):
+            app_logger.info(f"Found conceptually similar pattern {best_match.pattern_id} - will enhance instead of creating new")
+            await self._enhance_existing_pattern(best_match, requirements, session_id)
+            return False
         
         # Create new pattern if the requirement is very specific and unique
         description = requirements.get("description", "").lower()
@@ -618,7 +627,6 @@ class RecommendationService:
         if domain and matches:
             # If we have a specific domain but the best match is from a different domain
             # and the score isn't great, create a new pattern
-            best_match = matches[0]
             if best_match.blended_score < 0.7 and domain not in ["general", "automation"]:
                 app_logger.info(f"Domain-specific requirement ({domain}) with mediocre match - will create new pattern")
                 return True
@@ -626,6 +634,283 @@ class RecommendationService:
         # Don't create new pattern if we have good existing matches
         app_logger.info(f"Found adequate existing matches (best: {best_match_score:.3f}) - will use existing patterns")
         return False
+    
+    async def _is_conceptually_similar(self, match: MatchResult, requirements: Dict[str, Any]) -> bool:
+        """Check if a pattern is conceptually similar to the requirements.
+        
+        This checks for patterns that solve the same core business problem but may have
+        different technical implementations or minor variations.
+        
+        Args:
+            match: Best matching pattern
+            requirements: User requirements
+            
+        Returns:
+            True if the pattern is conceptually similar and should be enhanced
+        """
+        # Load the full pattern data to analyze
+        try:
+            from app.pattern.loader import PatternLoader
+            from pathlib import Path
+            pattern_loader = PatternLoader(Path("data/patterns"))
+            patterns = pattern_loader.load_patterns()
+            
+            pattern_data = None
+            for pattern in patterns:
+                if pattern.get("pattern_id") == match.pattern_id:
+                    pattern_data = pattern
+                    break
+            
+            if not pattern_data:
+                return False
+            
+            # Check for conceptual similarity indicators
+            similarity_score = 0
+            total_checks = 0
+            
+            # 1. Same core business process (high weight)
+            req_desc = requirements.get("description", "").lower()
+            pattern_desc = pattern_data.get("description", "").lower()
+            
+            # Core business process keywords
+            business_keywords = [
+                "identity verification", "card blocking", "chatbot", "otp", "security questions",
+                "fraud detection", "authentication", "authorization", "user verification",
+                "account security", "two-factor", "multi-factor"
+            ]
+            
+            req_business_matches = sum(1 for keyword in business_keywords if keyword in req_desc)
+            pattern_business_matches = sum(1 for keyword in business_keywords if keyword in pattern_desc)
+            
+            if req_business_matches > 0 and pattern_business_matches > 0:
+                # Calculate overlap ratio
+                overlap = min(req_business_matches, pattern_business_matches)
+                total_matches = max(req_business_matches, pattern_business_matches)
+                business_similarity = overlap / total_matches
+                similarity_score += business_similarity * 0.4  # 40% weight
+            total_checks += 0.4
+            
+            # 2. Same domain (medium weight)
+            req_domain = requirements.get("domain", "")
+            pattern_domain = pattern_data.get("domain", "")
+            if req_domain and pattern_domain and req_domain == pattern_domain:
+                similarity_score += 0.2  # 20% weight
+            total_checks += 0.2
+            
+            # 3. Similar pattern types (medium weight)
+            req_pattern_types = set(requirements.get("pattern_types", []))
+            pattern_types = set(pattern_data.get("pattern_type", []))
+            if req_pattern_types and pattern_types:
+                type_overlap = len(req_pattern_types.intersection(pattern_types))
+                type_total = len(req_pattern_types.union(pattern_types))
+                if type_total > 0:
+                    type_similarity = type_overlap / type_total
+                    similarity_score += type_similarity * 0.2  # 20% weight
+            total_checks += 0.2
+            
+            # 4. Similar feasibility and complexity (low weight)
+            req_feasibility = requirements.get("feasibility", "")
+            pattern_feasibility = pattern_data.get("feasibility", "")
+            if req_feasibility and pattern_feasibility and req_feasibility == pattern_feasibility:
+                similarity_score += 0.1  # 10% weight
+            total_checks += 0.1
+            
+            # 5. Similar compliance requirements (low weight)
+            req_compliance = set(requirements.get("compliance", []))
+            pattern_compliance = set(pattern_data.get("constraints", {}).get("compliance_requirements", []))
+            if req_compliance and pattern_compliance:
+                compliance_overlap = len(req_compliance.intersection(pattern_compliance))
+                compliance_total = len(req_compliance.union(pattern_compliance))
+                if compliance_total > 0:
+                    compliance_similarity = compliance_overlap / compliance_total
+                    similarity_score += compliance_similarity * 0.1  # 10% weight
+            total_checks += 0.1
+            
+            # Calculate final similarity score
+            if total_checks > 0:
+                final_similarity = similarity_score / total_checks
+            else:
+                final_similarity = 0
+            
+            # Consider it conceptually similar if similarity > 70%
+            is_similar = final_similarity > 0.7
+            
+            app_logger.info(f"Conceptual similarity check for {match.pattern_id}: {final_similarity:.3f} ({'similar' if is_similar else 'different'})")
+            
+            return is_similar
+            
+        except Exception as e:
+            app_logger.error(f"Error checking conceptual similarity: {e}")
+            return False
+    
+    async def _enhance_existing_pattern(self, match: MatchResult, requirements: Dict[str, Any], session_id: str):
+        """Enhance an existing pattern with new requirements data.
+        
+        Args:
+            match: Pattern to enhance
+            requirements: New requirements to incorporate
+            session_id: Session ID for tracking
+        """
+        try:
+            from app.pattern.loader import PatternLoader
+            import json
+            from pathlib import Path
+            from datetime import datetime
+            
+            pattern_loader = PatternLoader(Path("data/patterns"))
+            patterns = pattern_loader.load_patterns()
+            
+            # Find the pattern to enhance
+            pattern_data = None
+            for pattern in patterns:
+                if pattern.get("pattern_id") == match.pattern_id:
+                    pattern_data = pattern.copy()
+                    break
+            
+            if not pattern_data:
+                app_logger.error(f"Could not find pattern {match.pattern_id} to enhance")
+                return
+            
+            app_logger.info(f"Enhancing pattern {match.pattern_id} with new requirements")
+            
+            # Track enhancement
+            if "enhanced_sessions" not in pattern_data:
+                pattern_data["enhanced_sessions"] = []
+            pattern_data["enhanced_sessions"].append(session_id)
+            pattern_data["last_enhanced"] = datetime.now().isoformat()
+            
+            # Merge tech stack (avoid duplicates)
+            existing_tech = set(pattern_data.get("tech_stack", []))
+            new_tech = set()
+            
+            # Extract tech from requirements if available
+            if "tech_stack" in requirements:
+                new_tech.update(requirements["tech_stack"])
+            
+            # Use LLM to suggest additional tech based on requirements
+            if self.pattern_creator and self.pattern_creator.llm_provider:
+                try:
+                    suggested_tech = await self._suggest_additional_tech(pattern_data, requirements)
+                    new_tech.update(suggested_tech)
+                except Exception as e:
+                    app_logger.warning(f"Could not get LLM tech suggestions: {e}")
+            
+            # Merge tech stacks
+            if new_tech:
+                merged_tech = list(existing_tech.union(new_tech))
+                pattern_data["tech_stack"] = merged_tech
+                app_logger.info(f"Enhanced tech stack: added {list(new_tech - existing_tech)}")
+            
+            # Merge pattern types
+            existing_types = set(pattern_data.get("pattern_type", []))
+            new_types = set(requirements.get("pattern_types", []))
+            if new_types:
+                merged_types = list(existing_types.union(new_types))
+                pattern_data["pattern_type"] = merged_types
+                if new_types - existing_types:
+                    app_logger.info(f"Enhanced pattern types: added {list(new_types - existing_types)}")
+            
+            # Merge integrations
+            existing_integrations = set(pattern_data.get("constraints", {}).get("required_integrations", []))
+            new_integrations = set(requirements.get("integrations", []))
+            if new_integrations:
+                if "constraints" not in pattern_data:
+                    pattern_data["constraints"] = {}
+                merged_integrations = list(existing_integrations.union(new_integrations))
+                pattern_data["constraints"]["required_integrations"] = merged_integrations
+                if new_integrations - existing_integrations:
+                    app_logger.info(f"Enhanced integrations: added {list(new_integrations - existing_integrations)}")
+            
+            # Merge compliance requirements
+            existing_compliance = set(pattern_data.get("constraints", {}).get("compliance_requirements", []))
+            new_compliance = set(requirements.get("compliance", []))
+            if new_compliance:
+                if "constraints" not in pattern_data:
+                    pattern_data["constraints"] = {}
+                merged_compliance = list(existing_compliance.union(new_compliance))
+                pattern_data["constraints"]["compliance_requirements"] = merged_compliance
+                if new_compliance - existing_compliance:
+                    app_logger.info(f"Enhanced compliance: added {list(new_compliance - existing_compliance)}")
+            
+            # Update automation metadata if more specific info is available
+            if "automation_metadata" in requirements:
+                if "automation_metadata" not in pattern_data:
+                    pattern_data["automation_metadata"] = {}
+                
+                req_metadata = requirements["automation_metadata"]
+                pattern_metadata = pattern_data["automation_metadata"]
+                
+                # Update with more specific values
+                for key, value in req_metadata.items():
+                    if key not in pattern_metadata or value != "unknown":
+                        pattern_metadata[key] = value
+            
+            # Save the enhanced pattern
+            pattern_file = Path("data/patterns") / f"{match.pattern_id}.json"
+            with open(pattern_file, 'w') as f:
+                json.dump(pattern_data, f, indent=2)
+            
+            app_logger.info(f"Successfully enhanced pattern {match.pattern_id}")
+            
+        except Exception as e:
+            app_logger.error(f"Failed to enhance pattern {match.pattern_id}: {e}")
+    
+    async def _suggest_additional_tech(self, pattern_data: Dict[str, Any], requirements: Dict[str, Any]) -> List[str]:
+        """Use LLM to suggest additional technologies for pattern enhancement.
+        
+        Args:
+            pattern_data: Existing pattern data
+            requirements: New requirements
+            
+        Returns:
+            List of suggested additional technologies
+        """
+        if not self.pattern_creator or not self.pattern_creator.llm_provider:
+            return []
+        
+        existing_tech = pattern_data.get("tech_stack", [])
+        req_description = requirements.get("description", "")
+        
+        prompt = f"""You are a senior software architect. An existing automation pattern is being enhanced with new requirements.
+
+EXISTING PATTERN:
+- Name: {pattern_data.get('name', 'Unknown')}
+- Current Tech Stack: {', '.join(existing_tech)}
+- Description: {pattern_data.get('description', 'No description')}
+
+NEW REQUIREMENTS:
+{req_description}
+
+Based on the new requirements, suggest 0-3 additional technologies that would enhance this pattern.
+Only suggest technologies that are:
+1. Not already in the current tech stack
+2. Directly relevant to the new requirements
+3. Commonly used and well-established
+
+Respond with a JSON array of technology names only, e.g. ["OAuth2", "DynamoDB"]
+If no additional technologies are needed, return an empty array [].
+"""
+        
+        try:
+            response = await self.pattern_creator.llm_provider.generate(prompt, purpose="pattern_enhancement")
+            
+            # Parse JSON response
+            if isinstance(response, str):
+                import re
+                json_match = re.search(r'\[.*\]', response, re.DOTALL)
+                if json_match:
+                    import json
+                    suggested_tech = json.loads(json_match.group())
+                    if isinstance(suggested_tech, list):
+                        # Filter out existing tech
+                        new_tech = [tech for tech in suggested_tech if tech not in existing_tech]
+                        return new_tech[:3]  # Limit to 3 suggestions
+            
+            return []
+            
+        except Exception as e:
+            app_logger.warning(f"Failed to get LLM tech suggestions: {e}")
+            return []
     
     async def _enhance_pattern_with_llm_insights(self, 
                                                match: MatchResult, 
