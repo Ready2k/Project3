@@ -126,12 +126,39 @@ This document outlines recent improvements made to the AAA system and best pract
   - Monitoring and logging integrations
 - **Smart Component Mapping**: Automatically categorizes technologies and creates realistic connections
 - **User Guidance**: Added legend explaining diagram symbols and connection types
+- **Robust Error Handling**: Improved Mermaid code generation with formatting validation and fallbacks
 
 **Best Practices**:
 - Provide visual blueprints for technical implementation
 - Show realistic connections based on actual technology capabilities
 - Use appropriate symbols for different component types
 - Include helpful legends and explanations for technical diagrams
+- Add comprehensive error handling for LLM-generated content
+
+### 7. Comprehensive Technology Constraints System (August 2025)
+
+**Problem**: Missing enterprise-critical functionality for technology restrictions:
+- No way to specify banned/restricted technologies ("Azure cannot be used, only AWS")
+- Missing compliance requirements input (GDPR, HIPAA, SOX)
+- No support for required integrations with existing systems
+- Lack of budget and deployment preference constraints
+
+**Solution**:
+- **Restricted Technologies Input**: Text area for banned tools (one per line)
+- **Required Integrations**: Specify existing systems that must be integrated
+- **Compliance Requirements**: Multi-select for GDPR, HIPAA, SOX, PCI-DSS, CCPA, ISO-27001, FedRAMP
+- **Data Sensitivity Classification**: Public, Internal, Confidential, Restricted levels
+- **Budget Constraints**: Open source preferred vs Enterprise solutions
+- **Deployment Preferences**: Cloud-only, On-premises, Hybrid options
+- **Results Integration**: Display applied constraints in recommendations
+- **Backend Integration**: Constraints passed to LLM prompts and tech stack filtering
+
+**Best Practices**:
+- Always capture organizational technology restrictions upfront
+- Support compliance-aware recommendations for regulated industries
+- Integrate constraints throughout the entire recommendation pipeline
+- Provide clear visibility of what restrictions were applied
+- Design for enterprise environments with strict technology policies
 
 ## Development Best Practices
 

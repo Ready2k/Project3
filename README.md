@@ -10,9 +10,9 @@ Interactive GUI + API system that judges if user stories/requirements are automa
 - 📊 **Feasibility Assessment**: Automatable, Partially Automatable, or Not Automatable with confidence scores
 - 🛠️ **LLM-Driven Tech Stack Generation**: Intelligent technology recommendations based on requirements, constraints, and available patterns
 - 🏗️ **AI-Generated Architecture Explanations**: LLM explains how technology components work together for your specific use case
-- 📈 **AI-Generated Architecture Diagrams**: Context, Container, and Sequence diagrams using Mermaid with enhanced viewing options
+- 📈 **AI-Generated Architecture Diagrams**: Context, Container, Sequence, and Tech Stack Wiring diagrams using Mermaid with enhanced viewing options
 - 📤 **Export Results**: JSON and Markdown formats with comprehensive analysis
-- 🎯 **Constraint-Aware**: Filters banned tools and applies business constraints
+- 🎯 **Enterprise Constraints**: Comprehensive technology restrictions, compliance requirements, and integration constraints
 - 🔍 **LLM Message Audit Trail**: Complete visibility into LLM prompts and responses for transparency
 - 🧪 **100% Test Coverage**: TDD approach with deterministic fakes
 - 🐳 **Docker Ready**: Complete containerization with docker-compose
@@ -104,6 +104,7 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
    - Choose input method: Text, File Upload, or Jira
    - Enter your automation requirement description
    - Optionally specify domain and pattern types
+   - **Set Technology Constraints**: Banned technologies, required integrations, compliance requirements
    - Click "🚀 Analyze Requirements"
 
 3. **Answer AI Questions** (Automatic):
@@ -122,6 +123,7 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
    - Context Diagram: System boundaries and external integrations
    - Container Diagram: Internal components and data flow
    - Sequence Diagram: Step-by-step process flow with decision points
+   - Tech Stack Wiring Diagram: Technical component connections and data flows
 
 6. **Monitor Performance** (Observability Tab):
    - View API call statistics and response times
@@ -219,6 +221,50 @@ All tech stack generation prompts and responses are logged and visible in the **
 - **Justified**: LLM provides reasoning for each technology choice
 - **Adaptive**: Learns from patterns while adapting to new requirements
 - **Transparent**: Full visibility into the decision-making process
+
+## Enterprise Technology Constraints
+
+The system supports comprehensive technology constraints for enterprise environments:
+
+### **Constraint Types**
+
+- **🚫 Banned Technologies**: "Azure cannot be used as we can only use AWS"
+- **🔗 Required Integrations**: Must work with existing Active Directory, SAP, PostgreSQL
+- **📋 Compliance Requirements**: GDPR, HIPAA, SOX, PCI-DSS, CCPA, ISO-27001, FedRAMP
+- **🔒 Data Sensitivity**: Public, Internal, Confidential, Restricted classifications
+- **💰 Budget Constraints**: Open source preferred vs Enterprise solutions OK
+- **☁️ Deployment Preferences**: Cloud-only, On-premises, Hybrid
+
+### **How Constraints Work**
+
+1. **Input Phase**: Specify constraints during requirement submission
+2. **LLM Context**: Constraints included in AI prompts for context-aware recommendations
+3. **Tech Stack Filtering**: Banned technologies automatically excluded from recommendations
+4. **Pattern Matching**: Compliance requirements considered in pattern selection
+5. **Results Display**: Applied constraints shown in final recommendations
+
+### **Example Usage**
+
+```yaml
+# Example constraints for a financial services company
+banned_tools:
+  - "Azure"           # Only AWS allowed
+  - "MongoDB"         # Only SQL databases
+  - "Salesforce"      # No external CRM
+
+required_integrations:
+  - "Active Directory"
+  - "Existing PostgreSQL"
+  - "SAP ERP"
+
+compliance_requirements:
+  - "SOX"
+  - "PCI-DSS"
+  - "GDPR"
+
+data_sensitivity: "Confidential"
+deployment_preference: "On-premises only"
+```
 
 ## Configuration
 
