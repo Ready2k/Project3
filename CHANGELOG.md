@@ -15,12 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debug mode for Q&A troubleshooting
 - Session tracking for pattern enhancements with audit trail
 - Improved text formatting with automatic paragraph breaks and section headers
+- **Tech Stack Wiring Diagram**: New diagram type showing technical component connections
+- **Comprehensive Technology Constraints**: Banned technologies, compliance requirements, budget constraints
+- **Robust Mermaid Error Handling**: Improved diagram generation with fallbacks and user guidance
 
 ### Changed
 - Q&A input fields changed from `text_input` to `text_area` to prevent password manager interference
 - Tech stack display now shows categorized technologies with explanations instead of basic lists
 - Pattern creation logic now checks for conceptual similarity before creating new patterns
 - Enhanced pattern matching with weighted scoring system (business process 40%, domain 20%, pattern types 20%, feasibility 10%, compliance 10%)
+- **Diagram system expanded** from 3 to 4 diagram types with enhanced error handling
+- **Input methods enhanced** with comprehensive constraint capture across text, file, and Jira inputs
 
 ### Fixed
 - Password manager (1Password) interference with Q&A input fields
@@ -28,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pattern duplication problem (e.g., PAT-015 and PAT-016 for same use case)
 - Poor tech stack categorization and lack of context in recommendations
 - Text formatting issues with run-on paragraphs in technical analysis
+- **Mermaid diagram syntax errors** from malformed LLM output
+- **Missing enterprise constraints** functionality for technology restrictions
 
 ### Technical Details
 - Added `_is_conceptually_similar()` method with 70% similarity threshold
@@ -35,6 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `categorize_tech_stack_with_descriptions()` method in TechStackGenerator
 - Added `_render_formatted_text()` helper for better text display
 - Enhanced RecommendationService with async pattern creation decision logic
+- **Added `build_tech_stack_wiring_diagram()`** for technical architecture visualization
+- **Added `_clean_mermaid_code()`** for robust diagram generation error handling
+- **Enhanced constraint handling** throughout the recommendation pipeline
 
 ## [1.0.0] - 2024-12-XX
 
