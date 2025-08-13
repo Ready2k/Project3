@@ -177,8 +177,15 @@ IMPORTANT: Return only the JSON object, no other text or formatting."""
         domain = requirements.get('domain', 'Not specified')
         volume = requirements.get('volume', {})
         integrations = requirements.get('integrations', [])
-        data_sensitivity = requirements.get('data_sensitivity', 'Not specified')
-        compliance = requirements.get('compliance', [])
+        
+        # Extract constraints from nested structure
+        constraints = requirements.get('constraints', {})
+        data_sensitivity = constraints.get('data_sensitivity', 'Not specified')
+        compliance = constraints.get('compliance_requirements', [])
+        banned_tools = constraints.get('banned_tools', [])
+        required_integrations = constraints.get('required_integrations', [])
+        budget_constraints = constraints.get('budget_constraints', 'Not specified')
+        deployment_preference = constraints.get('deployment_preference', 'Not specified')
         
         prompt = f"""You are a senior software architect with expertise in system design and technology integration. 
 Your task is to explain how a technology stack works together to solve a specific automation requirement.
@@ -200,8 +207,16 @@ Avoid generic descriptions - be specific about how these technologies address th
 - Data sensitivity: {data_sensitivity}
 - Compliance: {compliance}
 
+**IMPORTANT CONSTRAINTS:**
+- Banned Technologies: {banned_tools if banned_tools else 'None'}
+- Required Integrations: {required_integrations if required_integrations else 'None'}
+- Budget Constraints: {budget_constraints}
+- Deployment Preference: {deployment_preference}
+
 **Technology Stack (use ALL of these technologies in your explanation):**
 {tech_stack_str}
+
+**NOTE:** The recommended technology stack has been selected considering the constraints above. Explain why these specific technologies were chosen given the restrictions and requirements.
 
 **Instructions:**
 Explain how these EXACT technologies work together to address the specific requirements above. 

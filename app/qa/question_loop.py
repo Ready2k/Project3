@@ -207,6 +207,12 @@ SCOPE GATE (read carefully):
 
 REQUIREMENT: {requirements.get('description', 'No description provided')}
 
+IMPORTANT CONSTRAINTS TO CONSIDER:
+- Banned Technologies: {requirements.get('constraints', {}).get('banned_tools', [])}
+- Required Integrations: {requirements.get('constraints', {}).get('required_integrations', [])}
+- Compliance Requirements: {requirements.get('constraints', {}).get('compliance_requirements', [])}
+- Data Sensitivity: {requirements.get('constraints', {}).get('data_sensitivity', 'Not specified')}
+
 Format your response as a JSON array of questions:
 
 If you proceed (i.e., scope is digital or digitally controllable), generate EXACTLY 2 to 4 clarifying questions to assess agentic feasibility.
@@ -357,6 +363,14 @@ SCOPE GATE (read carefully):
 - Only if there is a clear, software-only execution path should you proceed to generate questions.
 
 REQUIREMENT: {session.requirements.get('description', 'No description provided')}
+
+IMPORTANT CONSTRAINTS TO CONSIDER:
+- Banned Technologies: {session.requirements.get('constraints', {}).get('banned_tools', [])}
+- Required Integrations: {session.requirements.get('constraints', {}).get('required_integrations', [])}
+- Compliance Requirements: {session.requirements.get('constraints', {}).get('compliance_requirements', [])}
+- Data Sensitivity: {session.requirements.get('constraints', {}).get('data_sensitivity', 'Not specified')}
+- Budget Constraints: {session.requirements.get('constraints', {}).get('budget_constraints', 'Not specified')}
+- Deployment Preference: {session.requirements.get('constraints', {}).get('deployment_preference', 'Not specified')}
 
 If you proceed (i.e., scope is digital or digitally controllable), generate EXACTLY 2 to 4 clarifying questions to assess agentic feasibility.
 
@@ -518,6 +532,12 @@ SCOPE GATE (read carefully):
 - Only if there is a clear, software-only execution path should you proceed to generate questions.
 
 ORIGINAL REQUIREMENT: {requirements.get('description', 'No description provided')}
+
+IMPORTANT CONSTRAINTS:
+- Banned Technologies: {requirements.get('constraints', {}).get('banned_tools', [])}
+- Required Integrations: {requirements.get('constraints', {}).get('required_integrations', [])}
+- Compliance Requirements: {requirements.get('constraints', {}).get('compliance_requirements', [])}
+- Data Sensitivity: {requirements.get('constraints', {}).get('data_sensitivity', 'Not specified')}
 
 USER ANSWERS:
 {answers_text}

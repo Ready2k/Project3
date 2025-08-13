@@ -315,6 +315,15 @@ class PatternCreator:
         volume = requirements.get("volume", {})
         integrations = requirements.get("integrations", [])
         
+        # Extract constraints from nested structure
+        constraints = requirements.get("constraints", {})
+        banned_tools = constraints.get("banned_tools", [])
+        required_integrations = constraints.get("required_integrations", [])
+        compliance_requirements = constraints.get("compliance_requirements", [])
+        data_sensitivity = constraints.get("data_sensitivity", "")
+        budget_constraints = constraints.get("budget_constraints", "")
+        deployment_preference = constraints.get("deployment_preference", "")
+        
         prompt = f"""You are a senior software-based AI agents and Agentic AI architect. Analyze the following requirement and generate a comprehensive automation pattern.
 You analyze the requirements to determine whether they can be architect to work with agentic systems
 that reason, plan, and act within digital environments (not physical/industrial automation).
@@ -331,6 +340,14 @@ SCOPE GATE (read carefully):
 - Volume: {volume}
 - Required Integrations: {integrations}
 
+**CRITICAL CONSTRAINTS:**
+- Banned/Prohibited Technologies: {banned_tools if banned_tools else 'None'}
+- Required System Integrations: {required_integrations if required_integrations else 'None'}
+- Compliance Requirements: {compliance_requirements if compliance_requirements else 'None'}
+- Data Sensitivity Level: {data_sensitivity if data_sensitivity else 'Not specified'}
+- Budget Constraints: {budget_constraints if budget_constraints else 'Not specified'}
+- Deployment Preference: {deployment_preference if deployment_preference else 'Not specified'}
+
 **Instructions:**
 Generate a complete automation pattern analysis. Be specific to this exact requirement - avoid generic responses.
 
@@ -339,6 +356,10 @@ Generate a complete automation pattern analysis. Be specific to this exact requi
 2. If the domain involves sensitive data (legal, healthcare, finance), consider privacy constraints
 3. Effort estimates should reflect MVP vs full implementation complexity
 4. Pattern types should include broader categories for better matching (e.g., "nlp_processing", "api_integration")
+5. **NEVER include any technology listed in "Banned/Prohibited Technologies" in your tech_stack**
+6. **MUST include all "Required System Integrations" in your tech_stack or constraints**
+7. Consider compliance requirements when selecting technologies and approaches
+8. Respect data sensitivity level and deployment preferences in your recommendations
 
 Respond with ONLY a valid JSON object:
 {{
