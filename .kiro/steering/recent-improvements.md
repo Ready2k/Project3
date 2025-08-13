@@ -108,6 +108,31 @@ This document outlines recent improvements made to the AAA system and best pract
 - Use expandable UI sections for better organization
 - Format text with proper paragraph breaks for readability
 
+### 6. Tech Stack Wiring Diagram (August 2025)
+
+**Problem**: Users needed to understand how recommended technologies connect and interact:
+- No visual representation of technical architecture
+- Difficult to understand data flow between components
+- Missing blueprint for implementation planning
+- No clear view of API connections and protocols
+
+**Solution**:
+- **New Diagram Type**: Added "Tech Stack Wiring Diagram" to existing diagram options
+- **LLM-Generated Technical Blueprints**: AI creates diagrams showing:
+  - Data flow between components with labeled arrows (HTTP, SQL, API calls)
+  - Component types (services, databases, external APIs) with appropriate symbols
+  - Authentication flows and security layers
+  - Message queues and async processing connections
+  - Monitoring and logging integrations
+- **Smart Component Mapping**: Automatically categorizes technologies and creates realistic connections
+- **User Guidance**: Added legend explaining diagram symbols and connection types
+
+**Best Practices**:
+- Provide visual blueprints for technical implementation
+- Show realistic connections based on actual technology capabilities
+- Use appropriate symbols for different component types
+- Include helpful legends and explanations for technical diagrams
+
 ## Development Best Practices
 
 ### Caching Strategy
