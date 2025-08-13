@@ -53,6 +53,61 @@ This document outlines recent improvements made to the AAA system and best pract
 - Use combination of index + content hash for dynamic content
 - Test with duplicate data scenarios
 
+### 4. Pattern Duplication Prevention & Enhancement System (August 2025)
+
+**Problem**: System was creating duplicate patterns for conceptually similar requirements, leading to:
+- Pattern library bloat (PAT-015 and PAT-016 for same use case)
+- Maintenance overhead (multiple patterns to update)
+- User confusion (which pattern to choose?)
+- Reduced pattern quality (insights split across duplicates)
+
+**Solution**:
+- **Conceptual Similarity Detection**: Added weighted scoring system (70% threshold) that analyzes:
+  - Business process keywords (40% weight) - core functionality overlap
+  - Domain matching (20% weight) - same business domain  
+  - Pattern type overlap (20% weight) - similar automation patterns
+  - Feasibility alignment (10% weight) - same automation level
+  - Compliance overlap (10% weight) - regulatory requirements
+- **Smart Pattern Enhancement**: Instead of creating duplicates, system now enhances existing patterns by merging:
+  - Tech stack additions (OAuth2, DynamoDB, etc.)
+  - Pattern type extensions (authentication_workflow, etc.)
+  - Integration requirements (Active Directory, Google Authenticator)
+  - Compliance requirements (CCPA, SOX, etc.)
+  - Session tracking for audit trail
+- **Enhanced Q&A Experience**: Fixed password manager interference and answer counting issues:
+  - Switched from `text_input` to `text_area` to prevent 1Password confusion
+  - Added debug mode for Q&A troubleshooting
+  - Improved help text and placeholders
+
+**Best Practices**:
+- Check for conceptual similarity before creating new patterns
+- Enhance existing patterns when possible instead of duplicating
+- Track enhancement sessions for audit purposes
+- Use semantic analysis beyond just vector similarity
+- Maintain pattern quality through intelligent merging
+
+### 5. Enhanced Tech Stack Categorization & Display (August 2025)
+
+**Problem**: Tech stack recommendations showed poor categorization with minimal context:
+- "Additional Technologies" displayed as basic list without explanations
+- No meaningful grouping or descriptions
+- Users couldn't understand technology purposes or relationships
+
+**Solution**:
+- **Intelligent Categorization**: Added 9 specific categories with descriptions:
+  - Programming Languages, Web Frameworks & APIs, Databases & Storage
+  - Cloud & Infrastructure, Communication & Integration, Testing & Development Tools
+  - Data Processing & Analytics, Monitoring & Operations, Message Queues & Processing
+- **Individual Technology Descriptions**: Each tech gets contextual explanation
+- **Enhanced Visual Display**: Expandable sections with category descriptions
+- **Better Text Formatting**: Automatic paragraph breaks and section header detection
+
+**Best Practices**:
+- Provide context and explanations for technical recommendations
+- Group technologies by logical categories with clear descriptions
+- Use expandable UI sections for better organization
+- Format text with proper paragraph breaks for readability
+
 ## Development Best Practices
 
 ### Caching Strategy
