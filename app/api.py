@@ -484,6 +484,18 @@ async def ingest_requirements(request: IngestRequest, http_request: Request, res
                 "domain": security_validator.sanitize_string(str(request.payload.get("domain", ""))),
                 "pattern_types": [security_validator.sanitize_string(str(pt)) for pt in request.payload.get("pattern_types", [])]
             }
+            
+            # Extract constraints if provided
+            if "constraints" in request.payload and request.payload["constraints"]:
+                constraints = request.payload["constraints"]
+                requirements["constraints"] = {
+                    "banned_tools": [security_validator.sanitize_string(str(tool)) for tool in constraints.get("banned_tools", [])],
+                    "required_integrations": [security_validator.sanitize_string(str(integration)) for integration in constraints.get("required_integrations", [])],
+                    "compliance_requirements": [security_validator.sanitize_string(str(comp)) for comp in constraints.get("compliance_requirements", [])],
+                    "data_sensitivity": security_validator.sanitize_string(str(constraints.get("data_sensitivity", ""))) if constraints.get("data_sensitivity") else None,
+                    "budget_constraints": security_validator.sanitize_string(str(constraints.get("budget_constraints", ""))) if constraints.get("budget_constraints") else None,
+                    "deployment_preference": security_validator.sanitize_string(str(constraints.get("deployment_preference", ""))) if constraints.get("deployment_preference") else None
+                }
         elif request.source == "file":
             # Extract and validate file content
             file_content = request.payload.get("content", "")
@@ -498,6 +510,18 @@ async def ingest_requirements(request: IngestRequest, http_request: Request, res
                 "description": security_validator.sanitize_string(file_content),
                 "filename": security_validator.sanitize_string(filename)
             }
+            
+            # Extract constraints if provided
+            if "constraints" in request.payload and request.payload["constraints"]:
+                constraints = request.payload["constraints"]
+                requirements["constraints"] = {
+                    "banned_tools": [security_validator.sanitize_string(str(tool)) for tool in constraints.get("banned_tools", [])],
+                    "required_integrations": [security_validator.sanitize_string(str(integration)) for integration in constraints.get("required_integrations", [])],
+                    "compliance_requirements": [security_validator.sanitize_string(str(comp)) for comp in constraints.get("compliance_requirements", [])],
+                    "data_sensitivity": security_validator.sanitize_string(str(constraints.get("data_sensitivity", ""))) if constraints.get("data_sensitivity") else None,
+                    "budget_constraints": security_validator.sanitize_string(str(constraints.get("budget_constraints", ""))) if constraints.get("budget_constraints") else None,
+                    "deployment_preference": security_validator.sanitize_string(str(constraints.get("deployment_preference", ""))) if constraints.get("deployment_preference") else None
+                }
         elif request.source == "jira":
             # For Jira source, payload should contain ticket_key and credentials
             ticket_key = request.payload.get("ticket_key")

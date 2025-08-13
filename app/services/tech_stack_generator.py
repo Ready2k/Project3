@@ -138,7 +138,7 @@ class TechStackGenerator:
         if self.llm_provider:
             try:
                 llm_tech_stack = await self._generate_llm_tech_stack(
-                    requirements, pattern_technologies, banned_tools, required_integrations
+                    requirements, pattern_technologies, banned_tools, required_integrations, constraints
                 )
                 if llm_tech_stack:
                     app_logger.info(f"Generated LLM-based tech stack with {len(llm_tech_stack)} technologies")
@@ -185,7 +185,8 @@ class TechStackGenerator:
                                      requirements: Dict[str, Any],
                                      pattern_technologies: Dict[str, List[str]],
                                      banned_tools: Set[str],
-                                     required_integrations: List[str]) -> Optional[List[str]]:
+                                     required_integrations: List[str],
+                                     constraints: Optional[Dict[str, Any]] = None) -> Optional[List[str]]:
         """Generate tech stack using LLM analysis.
         
         Args:
@@ -232,17 +233,31 @@ Focus on technologies that directly address the requirements.""",
 **Available Technologies in Organization:**
 {available_tech_summary}
 
-**Constraints:**
-- Banned tools: {list(banned_tools) if banned_tools else 'None'}
-- Required integrations: {required_integrations if required_integrations else 'None'}
+**CRITICAL CONSTRAINTS (MUST BE ENFORCED):**
+- Banned/Prohibited Technologies: {list(banned_tools) if banned_tools else 'None'}
+- Required Integrations: {required_integrations if required_integrations else 'None'}
+- Compliance Requirements: {constraints.get('compliance_requirements', []) if constraints else 'None'}
+- Data Sensitivity Level: {constraints.get('data_sensitivity', 'Not specified') if constraints else 'Not specified'}
+- Budget Constraints: {constraints.get('budget_constraints', 'Not specified') if constraints else 'Not specified'}
+- Deployment Preference: {constraints.get('deployment_preference', 'Not specified') if constraints else 'Not specified'}
 
-**Instructions:**
+**CRITICAL INSTRUCTIONS:**
 1. Analyze the requirements carefully
-2. Select the most appropriate technologies that directly address the needs
-3. Avoid banned technologies
-4. Prefer technologies from similar patterns when suitable
-5. Only suggest technologies that are necessary and justified
-6. Provide 5-12 technologies maximum
+2. **NEVER recommend any technology listed in "Banned/Prohibited Technologies"**
+3. **MUST include all "Required Integrations" in your recommendations**
+4. Consider compliance requirements when selecting technologies
+5. Respect data sensitivity level and deployment preferences
+6. Consider budget constraints (prefer open source if specified)
+7. Select technologies that directly address the needs
+8. Prefer technologies from similar patterns when suitable
+9. Only suggest technologies that are necessary and justified
+10. Provide 5-12 technologies maximum
+
+**CONSTRAINT ENFORCEMENT:**
+- If a technology is banned, find suitable alternatives
+- If budget is "Low (Open source preferred)", prioritize open source solutions
+- If deployment is "On-premises only", avoid cloud-only services
+- If data sensitivity is "Confidential" or "Restricted", prioritize secure, enterprise-grade solutions
 
 Respond with a JSON object containing:
 {{

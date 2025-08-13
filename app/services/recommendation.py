@@ -423,9 +423,14 @@ class RecommendationService:
         """
         try:
             # Extract constraints from requirements and patterns
+            req_constraints = requirements.get("constraints", {})
             constraints = {
-                "banned_tools": requirements.get("banned_tools", []),
-                "required_integrations": requirements.get("integrations", [])
+                "banned_tools": req_constraints.get("banned_tools", []),
+                "required_integrations": req_constraints.get("required_integrations", []),
+                "compliance_requirements": req_constraints.get("compliance_requirements", []),
+                "data_sensitivity": req_constraints.get("data_sensitivity"),
+                "budget_constraints": req_constraints.get("budget_constraints"),
+                "deployment_preference": req_constraints.get("deployment_preference")
             }
             
             # Add pattern-specific constraints
