@@ -53,6 +53,16 @@ class PatternLoader:
             return patterns
         
         for pattern_file in self.pattern_library_path.glob("*.json"):
+            # Skip deleted patterns (files that start with .deleted_)
+            if pattern_file.name.startswith('.deleted_'):
+                app_logger.debug(f"Skipping deleted pattern file: {pattern_file.name}")
+                continue
+            
+            # Only load files that match the PAT-* pattern
+            if not pattern_file.name.startswith('PAT-'):
+                app_logger.debug(f"Skipping non-pattern file: {pattern_file.name}")
+                continue
+            
             try:
                 with open(pattern_file, 'r') as f:
                     pattern_data = json.load(f)
