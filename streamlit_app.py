@@ -2599,6 +2599,27 @@ class AutomatedAIAssessmentUI:
         selected_pattern = pattern_options[selected_pattern_key]
         pattern_id = selected_pattern.get('pattern_id', '')
         
+        # Handle delete confirmation outside of form
+        if st.session_state.get(f"confirm_delete_{pattern_id}", False):
+            st.warning(f"⚠️ Are you sure you want to delete pattern {pattern_id}?")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button(f"🗑️ Yes, Delete {pattern_id}", key=f"confirm_delete_yes_{pattern_id}"):
+                    self.delete_pattern_confirmed(pattern_id, pattern_loader)
+                    # Clear the confirmation state
+                    st.session_state[f"confirm_delete_{pattern_id}"] = False
+                    st.rerun()
+            
+            with col2:
+                if st.button("❌ Cancel", key=f"confirm_delete_cancel_{pattern_id}"):
+                    # Clear the confirmation state
+                    st.session_state[f"confirm_delete_{pattern_id}"] = False
+                    st.info("Deletion cancelled.")
+                    st.rerun()
+            
+            return  # Don't show the form while in delete confirmation mode
+        
         # Create unique keys for form elements
         form_key = f"edit_pattern_{hash(pattern_id)}"
         
@@ -2658,7 +2679,9 @@ class AutomatedAIAssessmentUI:
                 }, pattern_loader)
             
             elif delete_button:
-                self.delete_pattern(pattern_id, pattern_loader)
+                # Set delete confirmation state instead of calling delete_pattern directly
+                st.session_state[f"confirm_delete_{pattern_id}"] = True
+                st.rerun()
     
     def render_pattern_creator(self, pattern_loader):
         """Render the pattern creator interface."""
@@ -2814,8 +2837,8 @@ class AutomatedAIAssessmentUI:
             st.error(f"❌ Error saving pattern: {str(e)}")
             app_logger.error(f"Pattern save error: {e}")
     
-    def delete_pattern(self, pattern_id: str, pattern_loader):
-        """Delete a pattern from the library with confirmation and backup."""
+    def delete_pattern_confirmed(self, pattern_id: str, pattern_loader):
+        """Actually delete a pattern from the library (called after confirmation)."""
         try:
             import os
             import shutil
@@ -2827,28 +2850,16 @@ class AutomatedAIAssessmentUI:
                 st.error(f"❌ Pattern file not found: {file_path}")
                 return
             
-            # Show confirmation dialog
-            st.warning(f"⚠️ Are you sure you want to delete pattern {pattern_id}?")
-            col1, col2 = st.columns(2)
+            # Create backup before deletion
+            backup_path = f"data/patterns/.deleted_{pattern_id}_{int(datetime.now().timestamp())}.json"
+            shutil.copy2(file_path, backup_path)
             
-            with col1:
-                if st.button(f"🗑️ Yes, Delete {pattern_id}", key=f"confirm_delete_{pattern_id}"):
-                    # Create backup before deletion
-                    backup_path = f"data/patterns/.deleted_{pattern_id}_{int(datetime.now().timestamp())}.json"
-                    shutil.copy2(file_path, backup_path)
-                    
-                    # Delete the file
-                    os.remove(file_path)
-                    pattern_loader.refresh_cache()
-                    
-                    st.success(f"✅ Pattern {pattern_id} deleted successfully!")
-                    st.info(f"💾 Backup created: {backup_path}")
-                    st.rerun()
+            # Delete the file
+            os.remove(file_path)
+            pattern_loader.refresh_cache()
             
-            with col2:
-                if st.button("❌ Cancel", key=f"cancel_delete_{pattern_id}"):
-                    st.info("Deletion cancelled.")
-                    st.rerun()
+            st.success(f"✅ Pattern {pattern_id} deleted successfully!")
+            st.info(f"💾 Backup created: {backup_path}")
                 
         except Exception as e:
             st.error(f"❌ Error deleting pattern: {str(e)}")

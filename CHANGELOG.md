@@ -57,6 +57,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Streamlit Key Conflicts**: Fixed duplicate key errors in Q&A form
   - Made question input keys unique using index and question hash
   - Prevents conflicts when multiple questions have the same field ID
+- **Pattern Library Delete Button**: Fixed form button conflict in pattern deletion
+  - Moved delete confirmation outside of form context using session state
+  - Proper two-step confirmation process with backup creation
+  - Resolves "st.button() can't be used in an st.form()" error
   - Purpose filtering for different types of LLM calls (tech_stack_generation, architecture_explanation)
   - Complete prompt and response logging with timing and metadata
   - Better categorization and display of LLM interactions
