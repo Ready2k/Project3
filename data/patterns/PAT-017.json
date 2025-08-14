@@ -1,0 +1,77 @@
+{
+  "pattern_id": "PAT-017",
+  "name": "Digital Contact Centre Automation with Salesforce Integration",
+  "description": "This pattern automates the setup and management of a digital telephony platform acting as a contact centre for customer service, providing functionalities such as call recording, SIP connectivity, and Automatic Call Distribution (ACD). It integrates seamlessly with Salesforce to track and manage customer interactions.",
+  "feasibility": "Automatable",
+  "pattern_type": [
+    "telephony_automation",
+    "api_integration",
+    "customer_support_system",
+    "crm_integration"
+  ],
+  "input_requirements": [
+    "salesforce_api_credentials",
+    "telephony_platform_credentials",
+    "security_certificates"
+  ],
+  "tech_stack": [
+    "Twilio",
+    "Salesforce API",
+    "AWS",
+    "Node.js",
+    "Express",
+    "PostgreSQL"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.9,
+  "constraints": {
+    "banned_tools": [
+      "tools",
+      "that",
+      "do",
+      "not",
+      "comply",
+      "with",
+      "required",
+      "security",
+      "standards"
+    ],
+    "required_integrations": [
+      "need to just interact with salesforce",
+      "Twilio",
+      "Salesforce"
+    ],
+    "compliance_requirements": [
+      "gdpr"
+    ]
+  },
+  "domain": "customer-service",
+  "complexity": "Medium",
+  "estimated_effort": "6-12 weeks",
+  "effort_breakdown": "MVP: 6 weeks, Full implementation: 12 weeks",
+  "created_from_session": "e32d856c-fd1b-4a8c-9aaa-549ccfa5fd95",
+  "auto_generated": true,
+  "llm_insights": [
+    "Ensuring seamless integration with Salesforce",
+    "Handling large call volumes with ACD"
+  ],
+  "llm_challenges": [
+    "Ensuring seamless integration with Salesforce",
+    "Handling large call volumes with ACD"
+  ],
+  "llm_recommended_approach": "Use a cloud-based telephony API service like Twilio for setting up the contact centre features. Integrate with Salesforce using its API to log and manage customer interactions in real time. Deploy the solution using AWS cloud services to ensure scalability and reliability.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "e32d856c-fd1b-4a8c-9aaa-549ccfa5fd95",
+  "automation_metadata": {
+    "data_flow": "real_time",
+    "user_interaction": "fully_automated",
+    "processing_type": "data_transformation",
+    "scalability_needs": "high_scale",
+    "security_requirements": [
+      "encryption",
+      "authentication",
+      "audit_logging",
+      "compliance"
+    ]
+  }
+}
