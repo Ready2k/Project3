@@ -4,9 +4,10 @@
 
 ```
 ├── app/                    # Main application package
-├── data/                   # Pattern library and static data
+├── data/                   # Pattern library and technology catalog
 ├── exports/                # Generated export files
 ├── cache/                  # Diskcache storage
+├── scripts/                # Utility scripts (cleanup, maintenance)
 ├── config.yaml            # Application configuration
 ├── requirements.txt        # Python dependencies
 ├── Makefile               # Build and development commands
@@ -45,6 +46,12 @@
 - Schema: pattern_id, name, description, feasibility, tech_stack
 - Used for pattern matching and recommendations
 
+### Technology Catalog (`data/technologies.json`)
+- Centralized database of 55+ technologies with rich metadata
+- Schema: name, category, description, tags, maturity, license, alternatives, integrations, use_cases
+- Automatic backup creation (`technologies.json.backup`)
+- Used for LLM context and tech stack recommendations
+
 ## Configuration Files
 
 ### Application Config (`config.yaml`)
@@ -57,6 +64,14 @@
 - API keys for LLM providers
 - Jira integration credentials
 - Configuration overrides
+
+## Utility Scripts (`scripts/`)
+
+### Maintenance Scripts
+- `cleanup.sh` - Repository cleanup script for removing temporary files, old backups, and cache files
+- Removes Python cache files, temporary files, old coverage files
+- Cleans old export files (30+ days) and backup files (7+ days)
+- Preserves operational files like technology catalog backup
 
 ## Code Organization Patterns
 

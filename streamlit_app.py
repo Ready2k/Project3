@@ -2242,12 +2242,46 @@ class AutomatedAIAssessmentUI:
         """Render pattern matching analytics."""
         st.subheader("🎯 Pattern Matching Analytics")
         
+        # Add explanation
+        st.markdown("""
+        **Pattern Analytics** shows how well your solution patterns are performing in real-world usage:
+        - **Match Frequency**: How often each pattern is recommended
+        - **Acceptance Rates**: How often users accept pattern recommendations  
+        - **Quality Scores**: Average matching confidence scores
+        - **Usage Trends**: Pattern performance over time
+        """)
+        
+        # Add data filtering options
+        col1, col2, col3 = st.columns([2, 2, 1])
+        
+        with col1:
+            data_scope = st.selectbox(
+                "📊 Data Scope:",
+                ["All Time", "Current Session Only", "Last 24 Hours", "Last 7 Days", "Last 30 Days"],
+                help="Filter analytics by time period"
+            )
+        
+        with col2:
+            current_session_id = st.session_state.get('session_id')
+            if current_session_id and data_scope == "Current Session Only":
+                st.info(f"Showing data for session: {current_session_id[:8]}...")
+        
+        with col3:
+            if st.button("🔄 Refresh Data"):
+                st.rerun()
+        
         try:
-            # Fetch pattern statistics from audit data
-            pattern_stats = asyncio.run(self.get_pattern_statistics())
+            # Fetch pattern statistics with filtering
+            pattern_stats = asyncio.run(self.get_pattern_statistics(
+                session_filter=current_session_id if data_scope == "Current Session Only" else None,
+                time_filter=data_scope
+            ))
             
             if not pattern_stats or not pattern_stats.get('pattern_stats'):
-                st.info("No pattern analytics available yet. Run some analyses to see pattern matching data.")
+                if data_scope == "Current Session Only":
+                    st.info("No pattern analytics available for current session yet. Complete an analysis to see pattern matching data.")
+                else:
+                    st.info("No pattern analytics available yet. Run some analyses to see pattern matching data.")
                 return
             
             stats = pattern_stats['pattern_stats']
@@ -2288,24 +2322,62 @@ class AutomatedAIAssessmentUI:
             
             # Pattern quality metrics
             st.subheader("📊 Pattern Quality Metrics")
+            st.caption("💡 Click on a Pattern ID to view it in the Pattern Library")
             
-            # Format data for display
-            display_data = []
-            for stat in stats:
-                display_data.append({
-                    'Pattern ID': stat['pattern_id'],
-                    'Matches': stat['match_count'],
-                    'Avg Score': f"{stat['avg_score']:.3f}",
-                    'Min Score': f"{stat['min_score']:.3f}",
-                    'Max Score': f"{stat['max_score']:.3f}",
-                    'Accepted': stat['accepted_count'],
-                    'Acceptance Rate': f"{stat['acceptance_rate']:.1%}"
-                })
+            # Create clickable pattern table
+            if stats:
+                # Create columns for the table
+                cols = st.columns([2, 1, 1, 1, 1, 1, 1, 1])
+                
+                # Headers
+                with cols[0]:
+                    st.write("**Pattern ID**")
+                with cols[1]:
+                    st.write("**Matches**")
+                with cols[2]:
+                    st.write("**Avg Score**")
+                with cols[3]:
+                    st.write("**Min Score**")
+                with cols[4]:
+                    st.write("**Max Score**")
+                with cols[5]:
+                    st.write("**Accepted**")
+                with cols[6]:
+                    st.write("**Rate**")
+                with cols[7]:
+                    st.write("**Action**")
+                
+                # Data rows
+                for stat in stats[:15]:  # Limit to top 15 patterns
+                    cols = st.columns([2, 1, 1, 1, 1, 1, 1, 1])
+                    
+                    with cols[0]:
+                        st.write(stat['pattern_id'])
+                    with cols[1]:
+                        st.write(stat['match_count'])
+                    with cols[2]:
+                        st.write(f"{stat['avg_score']:.3f}")
+                    with cols[3]:
+                        st.write(f"{stat['min_score']:.3f}")
+                    with cols[4]:
+                        st.write(f"{stat['max_score']:.3f}")
+                    with cols[5]:
+                        st.write(stat['accepted_count'])
+                    with cols[6]:
+                        st.write(f"{stat['acceptance_rate']:.1%}")
+                    with cols[7]:
+                        # Create unique key for each button
+                        button_key = f"view_pattern_{stat['pattern_id']}_{hash(str(stat))}"
+                        if st.button("👁️ View", key=button_key, help=f"View {stat['pattern_id']} in Pattern Library"):
+                            # Set session state to navigate to pattern library
+                            st.session_state.selected_pattern_id = stat['pattern_id']
+                            st.session_state.navigate_to_pattern_library = True
+                            st.success(f"📋 Navigating to {stat['pattern_id']} in Pattern Library...")
+                            st.rerun()
+            else:
+                st.info("No pattern quality data available")
             
-            if display_data:
-                st.dataframe(display_data, use_container_width=True)
-            
-            # Pattern insights
+            # Pattern insights and recommendations
             st.subheader("💡 Pattern Insights")
             
             if len(stats) > 0:
@@ -2336,6 +2408,48 @@ class AutomatedAIAssessmentUI:
                         highest_score['pattern_id'],
                         f"{highest_score['avg_score']:.3f}"
                     )
+                
+                # Add insights about pattern diversity
+                st.markdown("---")
+                st.subheader("📈 Pattern Library Health")
+                
+                # Load all patterns to compare with usage
+                try:
+                    from app.pattern.loader import PatternLoader
+                    from pathlib import Path
+                    pattern_loader = PatternLoader(Path("data/patterns"))
+                    all_patterns = pattern_loader.load_patterns()
+                    
+                    total_patterns = len(all_patterns)
+                    used_patterns = len(stats)
+                    unused_patterns = total_patterns - used_patterns
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.metric("📚 Total Patterns", total_patterns)
+                    
+                    with col2:
+                        st.metric("✅ Used Patterns", used_patterns)
+                    
+                    with col3:
+                        usage_rate = (used_patterns / total_patterns * 100) if total_patterns > 0 else 0
+                        st.metric("📊 Usage Rate", f"{usage_rate:.1f}%")
+                    
+                    # Show unused patterns
+                    if unused_patterns > 0:
+                        used_pattern_ids = {stat['pattern_id'] for stat in stats}
+                        unused_pattern_ids = [p['pattern_id'] for p in all_patterns if p['pattern_id'] not in used_pattern_ids]
+                        
+                        st.info(f"**📋 Unused Patterns ({unused_patterns}):** {', '.join(unused_pattern_ids[:10])}")
+                        if len(unused_pattern_ids) > 10:
+                            st.caption(f"... and {len(unused_pattern_ids) - 10} more")
+                
+                except Exception as e:
+                    st.warning(f"Could not load pattern library for comparison: {e}")
+            
+            else:
+                st.info("No pattern matching data available yet. Complete some analyses to see insights.")
             
         except Exception as e:
             st.error(f"❌ Error loading pattern analytics: {str(e)}")
@@ -2668,14 +2782,78 @@ class AutomatedAIAssessmentUI:
             st.error(f"Error fetching provider statistics: {str(e)}")
             return {}
     
-    async def get_pattern_statistics(self) -> Dict[str, Any]:
-        """Fetch pattern statistics from audit system."""
+    async def get_pattern_statistics(self, session_filter: str = None, time_filter: str = "All Time") -> Dict[str, Any]:
+        """Fetch pattern statistics from audit system with filtering options.
+        
+        Args:
+            session_filter: Filter by specific session ID
+            time_filter: Time period filter
+            
+        Returns:
+            Pattern statistics dictionary
+        """
         try:
             # Import audit system
             from app.utils.audit import get_audit_logger
+            import sqlite3
+            from datetime import datetime, timedelta
             
             audit_logger = get_audit_logger()
-            return audit_logger.get_pattern_stats()
+            
+            # Build custom query with filtering
+            base_query = """
+                SELECT 
+                    pattern_id,
+                    COUNT(*) as match_count,
+                    AVG(score) as avg_score,
+                    MIN(score) as min_score,
+                    MAX(score) as max_score,
+                    SUM(CASE WHEN accepted = 1 THEN 1 ELSE 0 END) as accepted_count
+                FROM matches 
+                WHERE 1=1
+            """
+            
+            params = []
+            
+            # Add session filter
+            if session_filter:
+                base_query += " AND session_id = ?"
+                params.append(session_filter)
+            
+            # Add time filter
+            if time_filter != "All Time":
+                if time_filter == "Last 24 Hours":
+                    cutoff = datetime.now() - timedelta(hours=24)
+                elif time_filter == "Last 7 Days":
+                    cutoff = datetime.now() - timedelta(days=7)
+                elif time_filter == "Last 30 Days":
+                    cutoff = datetime.now() - timedelta(days=30)
+                else:
+                    cutoff = None
+                
+                if cutoff:
+                    base_query += " AND created_at >= ?"
+                    params.append(cutoff.isoformat())
+            
+            base_query += " GROUP BY pattern_id ORDER BY match_count DESC"
+            
+            # Execute custom query
+            with sqlite3.connect(audit_logger.db_path) as conn:
+                cursor = conn.execute(base_query, params)
+                
+                stats = []
+                for row in cursor.fetchall():
+                    stats.append({
+                        'pattern_id': row[0],
+                        'match_count': row[1],
+                        'avg_score': round(row[2], 3) if row[2] else 0,
+                        'min_score': row[3],
+                        'max_score': row[4],
+                        'accepted_count': row[5],
+                        'acceptance_rate': round(row[5] / row[1], 3) if row[1] > 0 else 0
+                    })
+                
+                return {'pattern_stats': stats}
             
         except Exception as e:
             st.error(f"Error fetching pattern statistics: {str(e)}")
@@ -2798,6 +2976,19 @@ class AutomatedAIAssessmentUI:
     def render_pattern_library_management(self):
         """Render the pattern library management interface."""
         st.header("📚 Pattern Library Management")
+        
+        # Handle navigation from Pattern Analytics
+        if st.session_state.get('navigate_to_pattern_library') and st.session_state.get('selected_pattern_id'):
+            selected_pattern_id = st.session_state.selected_pattern_id
+            st.success(f"🎯 Showing details for {selected_pattern_id} (navigated from Pattern Analytics)")
+            
+            # Clear navigation flags
+            st.session_state.navigate_to_pattern_library = False
+            st.session_state.selected_pattern_id = None
+            
+            # Auto-expand the view patterns section and highlight the selected pattern
+            st.session_state.auto_expand_view_patterns = True
+            st.session_state.highlight_pattern_id = selected_pattern_id
         
         # Add helpful documentation
         with st.expander("ℹ️ What is the Pattern Library?", expanded=False):
@@ -2972,9 +3163,20 @@ class AutomatedAIAssessmentUI:
                 'Not Automatable': '🔴'
             }.get(feasibility, '⚪')
             
-            pattern_header = f"{feasibility_emoji} {pattern.get('pattern_id', 'Unknown')} - {pattern.get('name', 'Unnamed Pattern')}"
+            pattern_id = pattern.get('pattern_id', 'Unknown')
+            pattern_header = f"{feasibility_emoji} {pattern_id} - {pattern.get('name', 'Unnamed Pattern')}"
             
-            with st.expander(pattern_header):
+            # Check if this pattern should be highlighted (navigated from analytics)
+            is_highlighted = st.session_state.get('highlight_pattern_id') == pattern_id
+            expanded = is_highlighted or st.session_state.get('auto_expand_view_patterns', False)
+            
+            # Add highlighting for selected pattern
+            if is_highlighted:
+                st.success(f"🎯 **Selected Pattern**: {pattern_id}")
+                # Clear the highlight after showing it
+                st.session_state.highlight_pattern_id = None
+            
+            with st.expander(pattern_header, expanded=expanded):
                 # Pattern types as prominent tags at the top
                 pattern_types = pattern.get('pattern_type', [])
                 if pattern_types:
@@ -3436,6 +3638,606 @@ class AutomatedAIAssessmentUI:
             st.error(f"❌ Error creating pattern: {str(e)}")
             app_logger.error(f"Pattern creation error: {e}")
     
+    def render_technology_catalog_management(self):
+        """Render the technology catalog management interface."""
+        st.header("🔧 Technology Catalog Management")
+        
+        # Add helpful documentation
+        with st.expander("ℹ️ What is the Technology Catalog?", expanded=False):
+            st.markdown("""
+            The **Technology Catalog** is a comprehensive database of technologies used in automation solutions. 
+            It provides detailed information about each technology including descriptions, categories, and relationships.
+            
+            ### 🏷️ **Technology Components Explained:**
+            
+            - **Technology ID**: Unique identifier (e.g., python, fastapi, postgresql)
+            - **Name**: Display name of the technology
+            - **Category**: Technology type (languages, frameworks, databases, cloud, etc.)
+            - **Description**: Detailed explanation of what the technology does
+            - **Tags**: Keywords describing the technology's characteristics
+            - **Maturity**: Stability level (stable, beta, experimental, deprecated)
+            - **License**: Licensing model (MIT, Apache 2.0, Commercial, etc.)
+            - **Alternatives**: Similar technologies that could be used instead
+            - **Integrates With**: Technologies that work well together
+            - **Use Cases**: Common scenarios where this technology is used
+            
+            ### 🎯 **How the Catalog is Used:**
+            - **LLM Recommendations**: When generating tech stacks, the LLM uses this catalog for context
+            - **Automatic Updates**: New technologies suggested by LLM are automatically added
+            - **Constraint Validation**: Banned technologies are filtered out during recommendations
+            - **Categorization**: Technologies are organized for better user experience
+            
+            ### 🔄 **Automatic Updates:**
+            When the LLM suggests new technologies not in the catalog, they are automatically:
+            1. Added with inferred categories and descriptions
+            2. Marked as `auto_generated: true`
+            3. Saved to the catalog file with backup creation
+            """)
+        
+        # Load technology catalog
+        try:
+            import sys
+            sys.path.append('app')
+            from services.tech_stack_generator import TechStackGenerator
+            
+            generator = TechStackGenerator()
+            catalog = generator.technology_catalog
+            technologies = catalog.get("technologies", {})
+            categories = catalog.get("categories", {})
+            
+        except Exception as e:
+            st.error(f"❌ Error loading technology catalog: {str(e)}")
+            return
+        
+        # Management tabs
+        view_tab, edit_tab, create_tab, import_tab = st.tabs(["👀 View Technologies", "✏️ Edit Technology", "➕ Add Technology", "📥 Import/Export"])
+        
+        with view_tab:
+            self.render_technology_viewer(technologies, categories)
+        
+        with edit_tab:
+            self.render_technology_editor(technologies, categories)
+        
+        with create_tab:
+            self.render_technology_creator()
+        
+        with import_tab:
+            self.render_technology_import_export(catalog)
+    
+    def render_technology_viewer(self, technologies: dict, categories: dict):
+        """Render the technology viewer interface."""
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.subheader("👀 Technology Catalog Overview")
+        with col2:
+            if st.button("🔄 Refresh Catalog", help="Refresh the technology catalog"):
+                st.cache_data.clear()
+                st.rerun()
+        
+        if not technologies:
+            st.info("📝 No technologies found in the catalog.")
+            return
+        
+        # Summary statistics
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Technologies", len(technologies))
+        with col2:
+            auto_generated = len([t for t in technologies.values() if t.get('auto_generated')])
+            st.metric("Auto-Generated", auto_generated)
+        with col3:
+            stable_count = len([t for t in technologies.values() if t.get('maturity') == 'stable'])
+            st.metric("Stable", stable_count)
+        with col4:
+            st.metric("Categories", len(categories))
+        
+        # Filter options
+        st.subheader("🔍 Filter Technologies")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            category_names = {cat_id: cat_info.get('name', cat_id) for cat_id, cat_info in categories.items()}
+            selected_category = st.selectbox("📂 Category", ["All"] + sorted(category_names.values()))
+        
+        with col2:
+            maturities = list(set(t.get('maturity', 'unknown') for t in technologies.values()))
+            selected_maturity = st.selectbox("🎯 Maturity", ["All"] + sorted(maturities))
+        
+        with col3:
+            licenses = list(set(t.get('license', 'unknown') for t in technologies.values()))
+            selected_license = st.selectbox("📄 License", ["All"] + sorted(licenses))
+        
+        with col4:
+            auto_gen_filter = st.selectbox("🤖 Source", ["All", "Manual", "Auto-Generated"])
+        
+        # Search box
+        search_term = st.text_input("🔍 Search technologies", placeholder="Search by name, description, or tags...")
+        
+        # Filter technologies
+        filtered_technologies = {}
+        
+        for tech_id, tech_info in technologies.items():
+            # Category filter
+            if selected_category != "All":
+                tech_category = tech_info.get('category', '')
+                category_name = categories.get(tech_category, {}).get('name', tech_category)
+                if category_name != selected_category:
+                    continue
+            
+            # Maturity filter
+            if selected_maturity != "All" and tech_info.get('maturity') != selected_maturity:
+                continue
+            
+            # License filter
+            if selected_license != "All" and tech_info.get('license') != selected_license:
+                continue
+            
+            # Auto-generated filter
+            if auto_gen_filter == "Manual" and tech_info.get('auto_generated'):
+                continue
+            elif auto_gen_filter == "Auto-Generated" and not tech_info.get('auto_generated'):
+                continue
+            
+            # Search filter
+            if search_term:
+                search_lower = search_term.lower()
+                name_match = search_lower in tech_info.get('name', '').lower()
+                desc_match = search_lower in tech_info.get('description', '').lower()
+                tags_match = any(search_lower in tag.lower() for tag in tech_info.get('tags', []))
+                
+                if not (name_match or desc_match or tags_match):
+                    continue
+            
+            filtered_technologies[tech_id] = tech_info
+        
+        # Show filtering results
+        st.write(f"📊 Showing **{len(filtered_technologies)}** of **{len(technologies)}** technologies")
+        
+        # Category overview
+        if st.button("📂 Show Category Overview"):
+            st.session_state.show_category_overview = not st.session_state.get('show_category_overview', False)
+        
+        if st.session_state.get('show_category_overview', False):
+            with st.expander("📂 Technology Categories", expanded=True):
+                for cat_id, cat_info in categories.items():
+                    cat_name = cat_info.get('name', cat_id)
+                    cat_desc = cat_info.get('description', '')
+                    cat_techs = cat_info.get('technologies', [])
+                    
+                    st.write(f"**{cat_name}** ({len(cat_techs)} technologies)")
+                    st.write(f"*{cat_desc}*")
+                    
+                    # Show first few technologies in this category
+                    sample_techs = []
+                    for tech_id in cat_techs[:5]:
+                        if tech_id in technologies:
+                            sample_techs.append(technologies[tech_id].get('name', tech_id))
+                    
+                    if sample_techs:
+                        st.write(f"Examples: {', '.join(sample_techs)}")
+                        if len(cat_techs) > 5:
+                            st.write(f"... and {len(cat_techs) - 5} more")
+                    st.write("")
+        
+        # Display technologies
+        for tech_id, tech_info in sorted(filtered_technologies.items()):
+            name = tech_info.get('name', tech_id)
+            category = tech_info.get('category', 'unknown')
+            category_name = categories.get(category, {}).get('name', category)
+            maturity = tech_info.get('maturity', 'unknown')
+            auto_gen = tech_info.get('auto_generated', False)
+            
+            # Create header with status indicators
+            status_indicators = []
+            if auto_gen:
+                status_indicators.append("🤖 Auto")
+            if maturity == 'stable':
+                status_indicators.append("✅ Stable")
+            elif maturity == 'beta':
+                status_indicators.append("🚧 Beta")
+            elif maturity == 'experimental':
+                status_indicators.append("🧪 Experimental")
+            elif maturity == 'deprecated':
+                status_indicators.append("⚠️ Deprecated")
+            
+            status_str = " ".join(status_indicators)
+            header = f"🔧 {name} ({category_name}) {status_str}"
+            
+            with st.expander(header):
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.write("**📝 Description:**")
+                    st.write(tech_info.get('description', 'No description available'))
+                    
+                    tags = tech_info.get('tags', [])
+                    if tags:
+                        st.write("**🏷️ Tags:**")
+                        cols = st.columns(min(len(tags), 4))
+                        for i, tag in enumerate(tags):
+                            with cols[i % 4]:
+                                st.code(tag, language=None)
+                    
+                    use_cases = tech_info.get('use_cases', [])
+                    if use_cases:
+                        st.write("**💡 Use Cases:**")
+                        for use_case in use_cases:
+                            st.write(f"• {use_case}")
+                
+                with col2:
+                    st.write("**ℹ️ Details:**")
+                    st.write(f"**ID:** `{tech_id}`")
+                    st.write(f"**Category:** {category_name}")
+                    st.write(f"**Maturity:** {maturity}")
+                    st.write(f"**License:** {tech_info.get('license', 'unknown')}")
+                    
+                    if auto_gen:
+                        st.write(f"**Added:** {tech_info.get('added_date', 'unknown')}")
+                    
+                    alternatives = tech_info.get('alternatives', [])
+                    if alternatives:
+                        st.write("**🔄 Alternatives:**")
+                        for alt in alternatives:
+                            st.write(f"• {alt}")
+                    
+                    integrates_with = tech_info.get('integrates_with', [])
+                    if integrates_with:
+                        st.write("**🔗 Integrates With:**")
+                        for integration in integrates_with:
+                            st.write(f"• {integration}")
+    
+    def render_technology_editor(self, technologies: dict, categories: dict):
+        """Render the technology editor interface."""
+        st.subheader("✏️ Edit Technology")
+        
+        if not technologies:
+            st.info("📝 No technologies available to edit.")
+            return
+        
+        # Technology selection
+        tech_options = {f"{info.get('name', tech_id)} ({tech_id})": tech_id 
+                       for tech_id, info in technologies.items()}
+        selected_display = st.selectbox("Select technology to edit:", [""] + sorted(tech_options.keys()))
+        
+        if not selected_display:
+            st.info("👆 Select a technology to edit")
+            return
+        
+        tech_id = tech_options[selected_display]
+        tech_info = technologies[tech_id]
+        
+        st.write(f"**Editing:** {tech_info.get('name', tech_id)} (`{tech_id}`)")
+        
+        # Edit form
+        with st.form(f"edit_tech_{tech_id}"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                name = st.text_input("Name", value=tech_info.get('name', ''))
+                
+                category_options = list(categories.keys())
+                current_category = tech_info.get('category', '')
+                category_index = category_options.index(current_category) if current_category in category_options else 0
+                category = st.selectbox("Category", category_options, index=category_index)
+                
+                maturity = st.selectbox("Maturity", 
+                                      ["stable", "beta", "experimental", "deprecated", "unknown"],
+                                      index=["stable", "beta", "experimental", "deprecated", "unknown"].index(tech_info.get('maturity', 'unknown')))
+                
+                license_val = st.text_input("License", value=tech_info.get('license', ''))
+            
+            with col2:
+                description = st.text_area("Description", value=tech_info.get('description', ''), height=100)
+                
+                tags_str = ', '.join(tech_info.get('tags', []))
+                tags = st.text_input("Tags (comma-separated)", value=tags_str)
+                
+                alternatives_str = ', '.join(tech_info.get('alternatives', []))
+                alternatives = st.text_input("Alternatives (comma-separated)", value=alternatives_str)
+                
+                integrates_str = ', '.join(tech_info.get('integrates_with', []))
+                integrates_with = st.text_input("Integrates With (comma-separated)", value=integrates_str)
+            
+            use_cases_str = '\n'.join(tech_info.get('use_cases', []))
+            use_cases = st.text_area("Use Cases (one per line)", value=use_cases_str, height=80)
+            
+            if st.form_submit_button("💾 Save Changes"):
+                try:
+                    # Update technology info
+                    updated_tech = {
+                        "name": name,
+                        "category": category,
+                        "description": description,
+                        "tags": [tag.strip() for tag in tags.split(',') if tag.strip()],
+                        "maturity": maturity,
+                        "license": license_val,
+                        "alternatives": [alt.strip() for alt in alternatives.split(',') if alt.strip()],
+                        "integrates_with": [int_tech.strip() for int_tech in integrates_with.split(',') if int_tech.strip()],
+                        "use_cases": [uc.strip() for uc in use_cases.split('\n') if uc.strip()],
+                        "auto_generated": tech_info.get('auto_generated', False),
+                        "added_date": tech_info.get('added_date', ''),
+                        "last_modified": datetime.now().strftime("%Y-%m-%d")
+                    }
+                    
+                    # Save to catalog
+                    self.save_technology_to_catalog(tech_id, updated_tech)
+                    st.success(f"✅ Technology {name} updated successfully!")
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"❌ Error updating technology: {str(e)}")
+    
+    def render_technology_creator(self):
+        """Render the technology creator interface."""
+        st.subheader("➕ Add New Technology")
+        
+        # Load categories for selection
+        try:
+            import sys
+            sys.path.append('app')
+            from services.tech_stack_generator import TechStackGenerator
+            
+            generator = TechStackGenerator()
+            categories = generator.technology_catalog.get("categories", {})
+            
+        except Exception as e:
+            st.error(f"❌ Error loading categories: {str(e)}")
+            return
+        
+        # Creation form
+        with st.form("create_technology"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                name = st.text_input("Technology Name*", placeholder="e.g., React Native")
+                
+                category_options = list(categories.keys())
+                category = st.selectbox("Category*", category_options)
+                
+                maturity = st.selectbox("Maturity", 
+                                      ["stable", "beta", "experimental", "deprecated", "unknown"],
+                                      index=0)
+                
+                license_val = st.text_input("License", placeholder="e.g., MIT, Apache 2.0, Commercial")
+            
+            with col2:
+                description = st.text_area("Description*", 
+                                         placeholder="Brief description of what this technology does...",
+                                         height=100)
+                
+                tags = st.text_input("Tags (comma-separated)", 
+                                    placeholder="e.g., mobile, react, javascript")
+                
+                alternatives = st.text_input("Alternatives (comma-separated)", 
+                                           placeholder="e.g., Flutter, Xamarin, Ionic")
+                
+                integrates_with = st.text_input("Integrates With (comma-separated)", 
+                                               placeholder="e.g., react, javascript, node.js")
+            
+            use_cases = st.text_area("Use Cases (one per line)", 
+                                   placeholder="mobile_app_development\ncross_platform_apps\nreact_native_apps",
+                                   height=80)
+            
+            if st.form_submit_button("➕ Add Technology"):
+                if not name or not description:
+                    st.error("❌ Name and description are required!")
+                else:
+                    try:
+                        # Generate tech ID
+                        tech_id = name.lower().replace(" ", "_").replace("/", "_").replace("-", "_")
+                        tech_id = ''.join(c for c in tech_id if c.isalnum() or c == '_')
+                        
+                        # Create technology info
+                        tech_info = {
+                            "name": name,
+                            "category": category,
+                            "description": description,
+                            "tags": [tag.strip() for tag in tags.split(',') if tag.strip()],
+                            "maturity": maturity,
+                            "license": license_val if license_val else "unknown",
+                            "alternatives": [alt.strip() for alt in alternatives.split(',') if alt.strip()],
+                            "integrates_with": [int_tech.strip() for int_tech in integrates_with.split(',') if int_tech.strip()],
+                            "use_cases": [uc.strip() for uc in use_cases.split('\n') if uc.strip()],
+                            "auto_generated": False,
+                            "added_date": datetime.now().strftime("%Y-%m-%d")
+                        }
+                        
+                        # Save to catalog
+                        self.save_technology_to_catalog(tech_id, tech_info)
+                        st.success(f"✅ Technology {name} added successfully with ID: {tech_id}")
+                        
+                    except Exception as e:
+                        st.error(f"❌ Error creating technology: {str(e)}")
+    
+    def render_technology_import_export(self, catalog: dict):
+        """Render the import/export interface."""
+        st.subheader("📥 Import/Export Technologies")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("**📤 Export Catalog**")
+            
+            if st.button("💾 Download Full Catalog"):
+                # Create downloadable JSON
+                import json
+                catalog_json = json.dumps(catalog, indent=2)
+                st.download_button(
+                    label="📥 Download technologies.json",
+                    data=catalog_json,
+                    file_name=f"technologies_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json"
+                )
+            
+            # Export specific categories
+            categories = catalog.get("categories", {})
+            if categories:
+                selected_categories = st.multiselect("Export specific categories:", 
+                                                   list(categories.keys()))
+                
+                if selected_categories and st.button("📤 Export Selected Categories"):
+                    # Filter technologies by selected categories
+                    filtered_technologies = {}
+                    for cat_id in selected_categories:
+                        cat_techs = categories[cat_id].get("technologies", [])
+                        for tech_id in cat_techs:
+                            if tech_id in catalog.get("technologies", {}):
+                                filtered_technologies[tech_id] = catalog["technologies"][tech_id]
+                    
+                    export_data = {
+                        "metadata": {
+                            "exported_categories": selected_categories,
+                            "export_date": datetime.now().isoformat(),
+                            "total_technologies": len(filtered_technologies)
+                        },
+                        "technologies": filtered_technologies,
+                        "categories": {cat_id: categories[cat_id] for cat_id in selected_categories}
+                    }
+                    
+                    export_json = json.dumps(export_data, indent=2)
+                    st.download_button(
+                        label=f"📥 Download {len(selected_categories)} categories",
+                        data=export_json,
+                        file_name=f"technologies_categories_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                        mime="application/json"
+                    )
+        
+        with col2:
+            st.write("**📥 Import Technologies**")
+            
+            uploaded_file = st.file_uploader("Upload technology catalog:", type=['json'])
+            
+            if uploaded_file is not None:
+                try:
+                    import json
+                    import_data = json.load(uploaded_file)
+                    
+                    # Validate structure
+                    if "technologies" not in import_data:
+                        st.error("❌ Invalid file format: missing 'technologies' section")
+                    else:
+                        technologies = import_data["technologies"]
+                        st.success(f"✅ Found {len(technologies)} technologies to import")
+                        
+                        # Show preview
+                        with st.expander("👀 Preview Import Data"):
+                            for tech_id, tech_info in list(technologies.items())[:5]:
+                                st.write(f"• **{tech_info.get('name', tech_id)}** ({tech_id})")
+                                st.write(f"  Category: {tech_info.get('category', 'unknown')}")
+                                st.write(f"  Description: {tech_info.get('description', 'No description')[:100]}...")
+                            
+                            if len(technologies) > 5:
+                                st.write(f"... and {len(technologies) - 5} more technologies")
+                        
+                        # Import options
+                        import_mode = st.radio("Import mode:", 
+                                             ["Merge (keep existing, add new)", 
+                                              "Replace (overwrite existing)"])
+                        
+                        if st.button("📥 Import Technologies"):
+                            try:
+                                self.import_technologies_to_catalog(import_data, import_mode == "Replace (overwrite existing)")
+                                st.success(f"✅ Successfully imported {len(technologies)} technologies!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Import failed: {str(e)}")
+                
+                except Exception as e:
+                    st.error(f"❌ Error reading file: {str(e)}")
+        
+        # Catalog statistics
+        st.write("---")
+        st.write("**📊 Current Catalog Statistics**")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        technologies = catalog.get("technologies", {})
+        categories = catalog.get("categories", {})
+        
+        with col1:
+            st.metric("Technologies", len(technologies))
+        with col2:
+            st.metric("Categories", len(categories))
+        with col3:
+            auto_generated = len([t for t in technologies.values() if t.get('auto_generated')])
+            st.metric("Auto-Generated", auto_generated)
+        with col4:
+            manual = len(technologies) - auto_generated
+            st.metric("Manual", manual)
+    
+    def save_technology_to_catalog(self, tech_id: str, tech_info: dict):
+        """Save a technology to the catalog file."""
+        try:
+            import sys
+            sys.path.append('app')
+            from services.tech_stack_generator import TechStackGenerator
+            
+            # Create generator and add technology
+            generator = TechStackGenerator()
+            
+            # Update in-memory catalog
+            generator.technology_catalog.setdefault("technologies", {})[tech_id] = tech_info
+            
+            # Update category
+            category_id = tech_info.get("category", "integration")
+            generator.technology_catalog.setdefault("categories", {}).setdefault(category_id, {
+                "name": category_id.replace("_", " ").title(),
+                "description": f"{category_id.replace('_', ' ').title()} technologies",
+                "technologies": []
+            })
+            
+            if tech_id not in generator.technology_catalog["categories"][category_id]["technologies"]:
+                generator.technology_catalog["categories"][category_id]["technologies"].append(tech_id)
+            
+            # Update metadata
+            total_techs = len(generator.technology_catalog.get("technologies", {}))
+            generator.technology_catalog.setdefault("metadata", {}).update({
+                "total_technologies": total_techs,
+                "last_updated": datetime.now().strftime("%Y-%m-%d"),
+                "last_manual_update": datetime.now().isoformat()
+            })
+            
+            # Save to file
+            asyncio.run(generator._save_catalog_to_file())
+            
+        except Exception as e:
+            raise Exception(f"Failed to save technology: {str(e)}")
+    
+    def import_technologies_to_catalog(self, import_data: dict, replace_existing: bool = False):
+        """Import technologies from uploaded data."""
+        try:
+            import sys
+            sys.path.append('app')
+            from services.tech_stack_generator import TechStackGenerator
+            
+            generator = TechStackGenerator()
+            
+            # Import technologies
+            import_technologies = import_data.get("technologies", {})
+            import_categories = import_data.get("categories", {})
+            
+            for tech_id, tech_info in import_technologies.items():
+                if replace_existing or tech_id not in generator.technology_catalog.get("technologies", {}):
+                    generator.technology_catalog.setdefault("technologies", {})[tech_id] = tech_info
+            
+            # Import categories
+            for cat_id, cat_info in import_categories.items():
+                if replace_existing or cat_id not in generator.technology_catalog.get("categories", {}):
+                    generator.technology_catalog.setdefault("categories", {})[cat_id] = cat_info
+            
+            # Update metadata
+            total_techs = len(generator.technology_catalog.get("technologies", {}))
+            generator.technology_catalog.setdefault("metadata", {}).update({
+                "total_technologies": total_techs,
+                "last_updated": datetime.now().strftime("%Y-%m-%d"),
+                "last_import": datetime.now().isoformat()
+            })
+            
+            # Save to file
+            asyncio.run(generator._save_catalog_to_file())
+            
+        except Exception as e:
+            raise Exception(f"Failed to import technologies: {str(e)}")
+    
     def run(self):
         """Main application entry point."""
         st.title("🤖 Automated AI Assessment (AAA)")
@@ -3445,7 +4247,7 @@ class AutomatedAIAssessmentUI:
         self.render_provider_panel()
         
         # Main content area
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 Analysis", "📊 Diagrams", "📈 Observability", "📚 Pattern Library", "ℹ️ About"])
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📝 Analysis", "📊 Diagrams", "📈 Observability", "📚 Pattern Library", "🔧 Technology Catalog", "ℹ️ About"])
         
         with tab1:
             # Input methods
@@ -3477,6 +4279,9 @@ class AutomatedAIAssessmentUI:
             self.render_pattern_library_management()
         
         with tab5:
+            self.render_technology_catalog_management()
+        
+        with tab6:
             st.markdown("""
             ## About Automated AI Assessment (AAA)
             

@@ -9,36 +9,71 @@ from app.llm.base import LLMProvider
 from app.utils.logger import app_logger
 from app.utils.audit import log_llm_call
 from datetime import datetime
+import shutil
 
 
 class TechStackGenerator:
     """Service for generating intelligent, context-aware technology stacks."""
     
-    def __init__(self, llm_provider: Optional[LLMProvider] = None):
+    def __init__(self, llm_provider: Optional[LLMProvider] = None, auto_update_catalog: bool = True):
         """Initialize tech stack generator.
         
         Args:
             llm_provider: LLM provider for intelligent analysis
+            auto_update_catalog: Whether to automatically update catalog with new technologies
         """
         self.llm_provider = llm_provider
+        self.auto_update_catalog = auto_update_catalog
         
-        # Load available technologies from patterns
-        self.available_technologies = self._load_available_technologies()
+        # Load technology catalog
+        self.technology_catalog = self._load_technology_catalog()
+        self.available_technologies = self._build_category_index()
         
-    def _load_available_technologies(self) -> Dict[str, Set[str]]:
-        """Load all available technologies from existing patterns.
+    def _load_technology_catalog(self) -> Dict[str, Any]:
+        """Load technology catalog from JSON file.
         
         Returns:
-            Dictionary mapping categories to sets of technologies
+            Technology catalog dictionary
         """
-        technologies = {
-            "languages": set(),
-            "frameworks": set(), 
-            "databases": set(),
-            "tools": set(),
-            "services": set(),
-            "libraries": set()
-        }
+        catalog_path = Path("data/technologies.json")
+        
+        if not catalog_path.exists():
+            app_logger.warning("Technology catalog not found, falling back to pattern extraction")
+            return self._fallback_to_pattern_extraction()
+        
+        try:
+            with open(catalog_path, 'r') as f:
+                catalog = json.load(f)
+            
+            tech_count = len(catalog.get("technologies", {}))
+            app_logger.info(f"Loaded {tech_count} available technologies from catalog")
+            return catalog
+            
+        except Exception as e:
+            app_logger.error(f"Failed to load technology catalog: {e}")
+            return self._fallback_to_pattern_extraction()
+    
+    def _build_category_index(self) -> Dict[str, Set[str]]:
+        """Build category index from technology catalog.
+        
+        Returns:
+            Dictionary mapping categories to sets of technology IDs
+        """
+        categories = {}
+        
+        # Initialize categories from catalog
+        for category_id, category_info in self.technology_catalog.get("categories", {}).items():
+            categories[category_id] = set(category_info.get("technologies", []))
+        
+        return categories
+    
+    def _fallback_to_pattern_extraction(self) -> Dict[str, Any]:
+        """Fallback method to extract technologies from patterns if catalog is missing.
+        
+        Returns:
+            Basic catalog structure from pattern extraction
+        """
+        technologies = {}
         
         # Load from pattern library
         pattern_dir = Path("data/patterns")
@@ -50,57 +85,65 @@ class TechStackGenerator:
                     
                     tech_stack = pattern.get("tech_stack", [])
                     for tech in tech_stack:
-                        # Categorize technologies
-                        self._categorize_technology(tech, technologies)
+                        tech_id = tech.lower().replace(" ", "_").replace("/", "_")
+                        technologies[tech_id] = {
+                            "name": tech,
+                            "category": "tools",  # Default category
+                            "description": f"Technology component: {tech}",
+                            "tags": [],
+                            "maturity": "unknown",
+                            "license": "unknown"
+                        }
                         
                 except Exception as e:
                     app_logger.warning(f"Failed to load pattern {pattern_file}: {e}")
         
-        app_logger.info(f"Loaded {sum(len(techs) for techs in technologies.values())} available technologies")
-        return technologies
+        app_logger.info(f"Extracted {len(technologies)} technologies from patterns")
+        
+        return {
+            "metadata": {"version": "fallback", "total_technologies": len(technologies)},
+            "technologies": technologies,
+            "categories": {"tools": {"name": "Tools", "technologies": list(technologies.keys())}}
+        }
     
-    def _categorize_technology(self, tech: str, technologies: Dict[str, Set[str]]) -> None:
-        """Categorize a technology into the appropriate category.
+    def get_technology_info(self, tech_id: str) -> Dict[str, Any]:
+        """Get detailed information about a technology.
         
         Args:
-            tech: Technology name
-            technologies: Dictionary to update with categorized tech
+            tech_id: Technology identifier
+            
+        Returns:
+            Technology information dictionary
         """
-        tech_lower = tech.lower()
+        return self.technology_catalog.get("technologies", {}).get(tech_id, {
+            "name": tech_id,
+            "category": "unknown",
+            "description": f"Technology: {tech_id}",
+            "tags": [],
+            "maturity": "unknown",
+            "license": "unknown"
+        })
+    
+    def find_technology_by_name(self, name: str) -> Optional[str]:
+        """Find technology ID by name (case-insensitive).
         
-        # Languages
-        if tech_lower in ["python", "javascript", "java", "go", "rust", "typescript", "c#", "php", "node.js"]:
-            technologies["languages"].add(tech)
-        # Frameworks & Web
-        elif tech_lower in ["fastapi", "django", "flask", "express", "react", "vue", "angular", "spring", "streamlit"]:
-            technologies["frameworks"].add(tech)
-        # Databases & Storage
-        elif tech_lower in ["postgresql", "mysql", "mongodb", "redis", "elasticsearch", "sqlite", "sqlalchemy"]:
-            technologies["databases"].add(tech)
-        # Cloud & Infrastructure
-        elif tech_lower in ["aws", "azure", "gcp", "docker", "kubernetes", "lambda", "heroku", "vercel"]:
-            technologies["services"].add(tech)
-        # Communication & Integration
-        elif any(keyword in tech_lower for keyword in ["api", "webhook", "oauth", "jwt", "twilio", "smtp", "http"]):
-            technologies["libraries"].add(tech)
-        # Testing & Development
-        elif tech_lower in ["pytest", "jest", "mocha", "selenium", "cypress", "postman"]:
-            technologies["tools"].add(tech)
-        # Data Processing & ML
-        elif tech_lower in ["pandas", "numpy", "scikit-learn", "tensorflow", "pytorch", "jupyter"]:
-            technologies["libraries"].add(tech)
-        # Monitoring & Logging
-        elif tech_lower in ["prometheus", "grafana", "elk", "datadog", "sentry", "loguru"]:
-            technologies["tools"].add(tech)
-        # Message Queues & Processing
-        elif tech_lower in ["celery", "rabbitmq", "kafka", "sqs", "redis"]:
-            technologies["services"].add(tech)
-        # Default fallback
-        else:
-            if any(keyword in tech_lower for keyword in ["lib", "sdk"]):
-                technologies["libraries"].add(tech)
-            else:
-                technologies["tools"].add(tech)
+        Args:
+            name: Technology name to search for
+            
+        Returns:
+            Technology ID if found, None otherwise
+        """
+        name_lower = name.lower()
+        
+        for tech_id, tech_info in self.technology_catalog.get("technologies", {}).items():
+            if tech_info.get("name", "").lower() == name_lower:
+                return tech_id
+            
+            # Also check if the name contains the tech name
+            if name_lower in tech_info.get("name", "").lower() or tech_info.get("name", "").lower() in name_lower:
+                return tech_id
+        
+        return None
     
     async def generate_tech_stack(self, 
                                 matches: List[MatchResult], 
@@ -313,6 +356,10 @@ Respond with a JSON object containing:
                 response=response_str
             )
             
+            # Update catalog with new technologies before validation (if enabled)
+            if self.auto_update_catalog:
+                await self._update_catalog_with_new_technologies(tech_stack)
+            
             # Validate and filter tech stack
             validated_tech_stack = self._validate_tech_stack(tech_stack, banned_tools)
             
@@ -331,12 +378,25 @@ Respond with a JSON object containing:
         """
         summary_parts = []
         
-        for category, techs in self.available_technologies.items():
-            if techs:
-                tech_list = ", ".join(sorted(list(techs))[:10])  # Limit to 10 per category
-                if len(techs) > 10:
-                    tech_list += f" (and {len(techs) - 10} others)"
-                summary_parts.append(f"- {category.title()}: {tech_list}")
+        categories = self.technology_catalog.get("categories", {})
+        technologies = self.technology_catalog.get("technologies", {})
+        
+        for category_id, category_info in categories.items():
+            category_name = category_info.get("name", category_id.title())
+            tech_ids = category_info.get("technologies", [])
+            
+            if tech_ids:
+                # Get actual technology names
+                tech_names = []
+                for tech_id in tech_ids[:10]:  # Limit to 10 per category
+                    tech_info = technologies.get(tech_id, {})
+                    tech_names.append(tech_info.get("name", tech_id))
+                
+                tech_list = ", ".join(tech_names)
+                if len(tech_ids) > 10:
+                    tech_list += f" (and {len(tech_ids) - 10} others)"
+                
+                summary_parts.append(f"- {category_name}: {tech_list}")
         
         return "\n".join(summary_parts) if summary_parts else "No specific technologies catalogued"
     
@@ -446,88 +506,74 @@ Respond with a JSON object containing:
         return validated_tech_stack[:10]  # Limit to 10 technologies
     
     def categorize_tech_stack_with_descriptions(self, tech_stack: List[str]) -> Dict[str, Dict[str, Any]]:
-        """Categorize tech stack with descriptions and explanations.
+        """Categorize tech stack with descriptions and explanations using catalog.
         
         Args:
-            tech_stack: List of technologies
+            tech_stack: List of technology names
             
         Returns:
             Dictionary with categorized technologies and descriptions
         """
-        categories = {
-            "Programming Languages": {
-                "description": "Core programming languages used for development",
-                "technologies": [],
-                "keywords": ["python", "javascript", "java", "go", "rust", "typescript", "c#", "php", "node.js"]
-            },
-            "Web Frameworks & APIs": {
-                "description": "Frameworks for building web applications and APIs",
-                "technologies": [],
-                "keywords": ["fastapi", "django", "flask", "express", "react", "vue", "angular", "spring", "streamlit"]
-            },
-            "Databases & Storage": {
-                "description": "Data storage and database management systems",
-                "technologies": [],
-                "keywords": ["postgresql", "mysql", "mongodb", "redis", "elasticsearch", "sqlite", "sqlalchemy"]
-            },
-            "Cloud & Infrastructure": {
-                "description": "Cloud services and infrastructure management",
-                "technologies": [],
-                "keywords": ["aws", "azure", "gcp", "docker", "kubernetes", "lambda", "heroku", "vercel"]
-            },
-            "Communication & Integration": {
-                "description": "APIs, messaging, and third-party integrations",
-                "technologies": [],
-                "keywords": ["api", "webhook", "oauth", "jwt", "twilio", "smtp", "http", "rest", "graphql"]
-            },
-            "Testing & Development Tools": {
-                "description": "Testing frameworks and development utilities",
-                "technologies": [],
-                "keywords": ["pytest", "jest", "mocha", "selenium", "cypress", "postman", "git", "github"]
-            },
-            "Data Processing & Analytics": {
-                "description": "Data processing, machine learning, and analytics tools",
-                "technologies": [],
-                "keywords": ["pandas", "numpy", "scikit-learn", "tensorflow", "pytorch", "jupyter", "matplotlib"]
-            },
-            "Monitoring & Operations": {
-                "description": "System monitoring, logging, and operational tools",
-                "technologies": [],
-                "keywords": ["prometheus", "grafana", "elk", "datadog", "sentry", "loguru", "nginx"]
-            },
-            "Message Queues & Processing": {
-                "description": "Asynchronous processing and message handling",
-                "technologies": [],
-                "keywords": ["celery", "rabbitmq", "kafka", "sqs", "redis", "worker", "queue"]
-            }
-        }
-        
-        # Categorize each technology
+        result_categories = {}
         uncategorized = []
         
-        for tech in tech_stack:
-            tech_lower = tech.lower()
-            found_category = False
+        catalog_categories = self.technology_catalog.get("categories", {})
+        catalog_technologies = self.technology_catalog.get("technologies", {})
+        
+        # Process each technology in the stack
+        for tech_name in tech_stack:
+            # Find the technology in catalog
+            tech_id = self.find_technology_by_name(tech_name)
             
-            for category_name, category_info in categories.items():
-                if any(keyword in tech_lower for keyword in category_info["keywords"]):
-                    category_info["technologies"].append(tech)
-                    found_category = True
-                    break
-            
-            if not found_category:
-                uncategorized.append(tech)
+            if tech_id and tech_id in catalog_technologies:
+                tech_info = catalog_technologies[tech_id]
+                category_id = tech_info.get("category", "unknown")
+                
+                # Find the category info
+                category_info = None
+                for cat_id, cat_data in catalog_categories.items():
+                    if cat_id == category_id or tech_id in cat_data.get("technologies", []):
+                        category_info = cat_data
+                        break
+                
+                if category_info:
+                    category_name = category_info.get("name", category_id.title())
+                    category_desc = category_info.get("description", f"{category_name} technologies")
+                    
+                    if category_name not in result_categories:
+                        result_categories[category_name] = {
+                            "description": category_desc,
+                            "technologies": []
+                        }
+                    
+                    # Add technology with its description
+                    tech_entry = {
+                        "name": tech_info.get("name", tech_name),
+                        "description": tech_info.get("description", f"Technology: {tech_name}"),
+                        "tags": tech_info.get("tags", []),
+                        "maturity": tech_info.get("maturity", "unknown")
+                    }
+                    result_categories[category_name]["technologies"].append(tech_entry)
+                else:
+                    uncategorized.append(tech_name)
+            else:
+                uncategorized.append(tech_name)
         
         # Add uncategorized technologies
         if uncategorized:
-            categories["Other Technologies"] = {
+            result_categories["Other Technologies"] = {
                 "description": "Additional specialized tools and technologies",
-                "technologies": uncategorized,
-                "keywords": []
+                "technologies": [
+                    {
+                        "name": tech,
+                        "description": f"Technology component: {tech}",
+                        "tags": [],
+                        "maturity": "unknown"
+                    } for tech in uncategorized
+                ]
             }
         
-        # Remove empty categories
-        return {k: v for k, v in categories.items() if v["technologies"]}
+        return result_categories
     
     def get_technology_description(self, tech: str) -> str:
         """Get a brief description of what a technology does.
@@ -538,23 +584,234 @@ Respond with a JSON object containing:
         Returns:
             Brief description of the technology
         """
-        descriptions = {
-            "python": "High-level programming language for automation and data processing",
-            "fastapi": "Modern, fast web framework for building APIs with Python",
-            "postgresql": "Advanced open-source relational database system",
-            "redis": "In-memory data structure store for caching and messaging",
-            "docker": "Containerization platform for application deployment",
-            "celery": "Distributed task queue for asynchronous processing",
-            "twilio": "Cloud communications platform for SMS, voice, and messaging",
-            "oauth 2.0": "Industry-standard protocol for authorization",
-            "pytest": "Testing framework for Python applications",
-            "jupyter": "Interactive computing environment for data analysis",
-            "aws": "Amazon Web Services cloud computing platform",
-            "kubernetes": "Container orchestration platform for scalable deployments",
-            "mongodb": "NoSQL document database for flexible data storage",
-            "react": "JavaScript library for building user interfaces",
-            "nginx": "Web server and reverse proxy for high-performance applications"
-        }
+        tech_id = self.find_technology_by_name(tech)
         
-        tech_lower = tech.lower()
-        return descriptions.get(tech_lower, f"Technology component: {tech}")
+        if tech_id:
+            tech_info = self.get_technology_info(tech_id)
+            return tech_info.get("description", f"Technology component: {tech}")
+        
+        return f"Technology component: {tech}"
+    
+    async def _update_catalog_with_new_technologies(self, tech_stack: List[str]) -> None:
+        """Update technology catalog with new technologies from LLM suggestions.
+        
+        Args:
+            tech_stack: List of technology names from LLM
+        """
+        new_technologies = []
+        catalog_updated = False
+        
+        for tech_name in tech_stack:
+            # Check if technology already exists in catalog
+            tech_id = self.find_technology_by_name(tech_name)
+            
+            if not tech_id:
+                # This is a new technology, add it to catalog
+                new_tech_id = self._generate_tech_id(tech_name)
+                new_tech_info = self._infer_technology_info(tech_name)
+                
+                # Add to in-memory catalog
+                self.technology_catalog.setdefault("technologies", {})[new_tech_id] = new_tech_info
+                
+                # Add to appropriate category
+                category_id = new_tech_info.get("category", "integration")
+                self.technology_catalog.setdefault("categories", {}).setdefault(category_id, {
+                    "name": category_id.replace("_", " ").title(),
+                    "description": f"{category_id.replace('_', ' ').title()} technologies",
+                    "technologies": []
+                })
+                
+                if new_tech_id not in self.technology_catalog["categories"][category_id]["technologies"]:
+                    self.technology_catalog["categories"][category_id]["technologies"].append(new_tech_id)
+                
+                new_technologies.append(tech_name)
+                catalog_updated = True
+                
+                app_logger.info(f"Added new technology to catalog: {tech_name} -> {new_tech_id}")
+        
+        # Save updated catalog to file if changes were made
+        if catalog_updated:
+            await self._save_catalog_to_file()
+            
+            # Update metadata
+            total_techs = len(self.technology_catalog.get("technologies", {}))
+            self.technology_catalog.setdefault("metadata", {}).update({
+                "total_technologies": total_techs,
+                "last_updated": datetime.now().strftime("%Y-%m-%d"),
+                "last_auto_update": datetime.now().isoformat()
+            })
+            
+            app_logger.info(f"Catalog updated with {len(new_technologies)} new technologies: {', '.join(new_technologies)}")
+    
+    def _generate_tech_id(self, tech_name: str) -> str:
+        """Generate a consistent technology ID from name.
+        
+        Args:
+            tech_name: Technology name
+            
+        Returns:
+            Technology ID (lowercase, underscores)
+        """
+        # Clean and normalize the name
+        tech_id = tech_name.lower()
+        tech_id = tech_id.replace(" ", "_")
+        tech_id = tech_id.replace("/", "_")
+        tech_id = tech_id.replace("-", "_")
+        tech_id = tech_id.replace(".", "_")
+        tech_id = tech_id.replace("(", "").replace(")", "")
+        
+        # Remove common suffixes/prefixes
+        tech_id = tech_id.replace("_api", "").replace("api_", "")
+        tech_id = tech_id.replace("_service", "").replace("service_", "")
+        
+        # Handle duplicates by checking existing IDs
+        base_id = tech_id
+        counter = 1
+        while tech_id in self.technology_catalog.get("technologies", {}):
+            tech_id = f"{base_id}_{counter}"
+            counter += 1
+        
+        return tech_id
+    
+    def _infer_technology_info(self, tech_name: str) -> Dict[str, Any]:
+        """Infer technology information from name using heuristics.
+        
+        Args:
+            tech_name: Technology name
+            
+        Returns:
+            Technology information dictionary
+        """
+        tech_lower = tech_name.lower()
+        
+        # Infer category based on name patterns
+        category = "integration"  # Default
+        tags = []
+        
+        if any(keyword in tech_lower for keyword in ["python", "java", "javascript", "node", "go", "rust", "c#"]):
+            category = "languages"
+            tags = ["programming", "language"]
+        elif any(keyword in tech_lower for keyword in ["api", "rest", "graphql", "webhook"]):
+            category = "integration"
+            tags = ["api", "integration"]
+        elif any(keyword in tech_lower for keyword in ["database", "db", "sql", "mongo", "redis", "elastic"]):
+            category = "databases"
+            tags = ["database", "storage"]
+        elif any(keyword in tech_lower for keyword in ["aws", "azure", "gcp", "cloud", "lambda", "function"]):
+            category = "cloud"
+            tags = ["cloud", "infrastructure"]
+        elif any(keyword in tech_lower for keyword in ["docker", "kubernetes", "k8s", "container"]):
+            category = "infrastructure"
+            tags = ["containers", "devops"]
+        elif any(keyword in tech_lower for keyword in ["kafka", "rabbitmq", "queue", "celery"]):
+            category = "processing"
+            tags = ["messaging", "queue"]
+        elif any(keyword in tech_lower for keyword in ["ai", "ml", "nlp", "gpt", "claude", "openai"]):
+            category = "ai"
+            tags = ["ai", "ml", "nlp"]
+        elif any(keyword in tech_lower for keyword in ["auth", "oauth", "jwt", "security"]):
+            category = "security"
+            tags = ["security", "authentication"]
+        elif any(keyword in tech_lower for keyword in ["test", "pytest", "jest", "selenium"]):
+            category = "testing"
+            tags = ["testing", "qa"]
+        elif any(keyword in tech_lower for keyword in ["framework", "django", "flask", "express", "spring"]):
+            category = "frameworks"
+            tags = ["framework", "web"]
+        
+        return {
+            "name": tech_name,
+            "category": category,
+            "description": f"Technology component: {tech_name}",
+            "tags": tags,
+            "maturity": "unknown",
+            "license": "unknown",
+            "alternatives": [],
+            "integrates_with": [],
+            "use_cases": [],
+            "auto_generated": True,
+            "added_date": datetime.now().strftime("%Y-%m-%d")
+        }
+    
+    async def _save_catalog_to_file(self) -> None:
+        """Save the updated catalog back to the JSON file.
+        
+        This method handles file I/O safely with backup and error handling.
+        """
+        catalog_path = Path("data/technologies.json")
+        backup_path = Path("data/technologies.json.backup")
+        
+        try:
+            # Create backup of existing catalog
+            if catalog_path.exists():
+                import shutil
+                shutil.copy2(catalog_path, backup_path)
+            
+            # Write updated catalog
+            with open(catalog_path, 'w') as f:
+                json.dump(self.technology_catalog, f, indent=2, sort_keys=True)
+            
+            app_logger.info(f"Technology catalog saved to {catalog_path}")
+            
+        except Exception as e:
+            app_logger.error(f"Failed to save technology catalog: {e}")
+            
+            # Restore from backup if write failed
+            if backup_path.exists():
+                try:
+                    import shutil
+                    shutil.copy2(backup_path, catalog_path)
+                    app_logger.info("Restored catalog from backup after write failure")
+                except Exception as restore_error:
+                    app_logger.error(f"Failed to restore catalog from backup: {restore_error}")
+    
+    async def add_technology_to_catalog(self, tech_name: str, tech_info: Optional[Dict[str, Any]] = None) -> str:
+        """Manually add a technology to the catalog.
+        
+        Args:
+            tech_name: Technology name
+            tech_info: Optional technology information (will be inferred if not provided)
+            
+        Returns:
+            Technology ID that was created
+        """
+        # Check if already exists
+        existing_id = self.find_technology_by_name(tech_name)
+        if existing_id:
+            app_logger.info(f"Technology {tech_name} already exists as {existing_id}")
+            return existing_id
+        
+        # Generate new technology entry
+        tech_id = self._generate_tech_id(tech_name)
+        
+        if tech_info is None:
+            tech_info = self._infer_technology_info(tech_name)
+        else:
+            # Ensure required fields are present
+            tech_info.setdefault("name", tech_name)
+            tech_info.setdefault("category", "integration")
+            tech_info.setdefault("description", f"Technology component: {tech_name}")
+            tech_info.setdefault("tags", [])
+            tech_info.setdefault("maturity", "unknown")
+            tech_info.setdefault("license", "unknown")
+            tech_info.setdefault("added_date", datetime.now().strftime("%Y-%m-%d"))
+        
+        # Add to catalog
+        self.technology_catalog.setdefault("technologies", {})[tech_id] = tech_info
+        
+        # Add to category
+        category_id = tech_info.get("category", "integration")
+        self.technology_catalog.setdefault("categories", {}).setdefault(category_id, {
+            "name": category_id.replace("_", " ").title(),
+            "description": f"{category_id.replace('_', ' ').title()} technologies",
+            "technologies": []
+        })
+        
+        if tech_id not in self.technology_catalog["categories"][category_id]["technologies"]:
+            self.technology_catalog["categories"][category_id]["technologies"].append(tech_id)
+        
+        # Save to file
+        await self._save_catalog_to_file()
+        
+        app_logger.info(f"Manually added technology: {tech_name} -> {tech_id}")
+        return tech_id

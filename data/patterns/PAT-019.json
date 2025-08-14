@@ -1,0 +1,68 @@
+{
+  "pattern_id": "PAT-019",
+  "name": "Automated Document Search and Storage System",
+  "description": "This automation pattern facilitates the storage, indexing, and retrieval of documents arriving via email, enabling search by customer name, ID, or date range while integrating with Azure AD for user access control.",
+  "feasibility": "Automatable",
+  "pattern_type": [
+    "document_management",
+    "nlp_processing",
+    "api_integration"
+  ],
+  "input_requirements": [
+    "pdf_documents",
+    "email_integration"
+  ],
+  "tech_stack": [
+    "Azure Functions",
+    "ElasticSearch",
+    "Azure Cognitive Services",
+    "Python"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.9,
+  "constraints": {
+    "banned_tools": [
+      "AWS",
+      "Lambda",
+      "Dynamodb"
+    ],
+    "required_integrations": [
+      "notification",
+      "ElasticSearch",
+      "Azure AD",
+      "we just have an Azure AD and I would [REMOVED_SUSPICIOUS_CONTENT]a new AD group called &#x27;Access_to_docs&#x27;"
+    ],
+    "compliance_requirements": [
+      "gdpr"
+    ]
+  },
+  "domain": "document_management",
+  "complexity": "Medium",
+  "estimated_effort": "3-6 weeks",
+  "effort_breakdown": "MVP: 3 weeks, Full implementation: 6 weeks",
+  "created_from_session": "c4e215b6-204e-448a-8999-f90da22bacf1",
+  "auto_generated": true,
+  "llm_insights": [
+    "GDPR compliance",
+    "real-time email processing"
+  ],
+  "llm_challenges": [
+    "GDPR compliance",
+    "real-time email processing"
+  ],
+  "llm_recommended_approach": "Utilize Azure Functions to automate email retrieval and document storage in a searchable index like ElasticSearch. Azure Cognitive Services can facilitate the text extraction and natural language processing for effective search capabilities. Integrate with Azure AD for secure user authentication and access control.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "c4e215b6-204e-448a-8999-f90da22bacf1",
+  "automation_metadata": {
+    "data_flow": "real_time",
+    "user_interaction": "fully_automated",
+    "processing_type": "ml_processing",
+    "scalability_needs": "medium_scale",
+    "security_requirements": [
+      "encryption",
+      "authentication",
+      "audit_logging",
+      "compliance"
+    ]
+  }
+}

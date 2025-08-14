@@ -8,8 +8,9 @@ Automated AI Assessment (AAA) is an interactive GUI + API system that judges if 
 - **Intelligent Pattern Matching**: Tag filtering + vector similarity with FAISS
 - **Interactive Q&A System**: LLM-generated clarifying questions with robust caching
 - **Feasibility Assessment**: Automatable, Partially Automatable, or Not Automatable
-- **AI-Generated Architecture Diagrams**: Context, Container, and Sequence diagrams with enhanced viewing
-- **LLM-Driven Tech Stack Generation**: Intelligent technology recommendations
+- **AI-Generated Architecture Diagrams**: Context, Container, Sequence, and Tech Stack Wiring diagrams with enhanced viewing
+- **LLM-Driven Tech Stack Generation**: Intelligent technology recommendations from 55+ catalog technologies
+- **Technology Catalog Management**: Complete CRUD interface for managing technology database
 - **Export Results**: JSON, Markdown, and interactive HTML formats
 - **Constraint-Aware**: Filters banned tools and applies business constraints
 
@@ -17,7 +18,8 @@ Automated AI Assessment (AAA) is an interactive GUI + API system that judges if 
 
 - **FastAPI Backend**: REST API with async endpoints and robust caching
 - **Streamlit Frontend**: Interactive web interface with enhanced diagram viewing
-- **Pattern Library**: JSON-based reusable solution patterns
+- **Pattern Library**: JSON-based reusable solution patterns with CRUD management
+- **Technology Catalog**: Centralized database of 55+ technologies with rich metadata
 - **FAISS Index**: Vector similarity search for pattern matching
 - **Q&A System**: LLM-powered question generation with duplicate prevention
 - **State Management**: Session persistence with diskcache/Redis

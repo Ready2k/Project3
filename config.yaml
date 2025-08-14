@@ -1,3 +1,7 @@
+# AAA (Automated AI Assessment) Configuration
+version: "2.1.0"
+release_name: "Technology Catalog"
+
 provider: openai
 model: gpt-4o
 pattern_library_path: ./data/patterns
