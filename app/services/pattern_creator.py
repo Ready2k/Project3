@@ -45,18 +45,28 @@ class PatternCreator:
         description = requirements.get("description", "").lower()
         domain = requirements.get("domain", "general")
         
-        # Check for physical tasks that shouldn't have patterns created
+        # Enhanced physical task detection with digital alternative check
         physical_keywords = [
+            "feed", "feeding", "water", "watering", "walk", "walking", "pet", "animal", "snail",
             "paint", "painting", "build", "construction", "repair", "fix", "install",
             "clean", "cleaning", "move", "transport", "deliver", "physical", "manual",
+            "pick up", "pickup", "carry", "carrying", "lift", "lifting",
             "hardware", "mechanical", "electrical wiring", "plumbing", "carpentry",
             "landscaping", "gardening", "cooking", "driving", "walking", "running"
         ]
         
+        digital_keywords = [
+            "remind", "notification", "alert", "schedule", "track", "monitor", "api",
+            "webhook", "database", "software", "app", "system", "digital", "online",
+            "email", "sms", "order", "purchase", "automate", "automatic"
+        ]
+        
         physical_count = sum(1 for keyword in physical_keywords if keyword in description)
-        if physical_count > 0:
-            app_logger.info(f"Detected physical task in description, creating 'Not Automatable' pattern")
-            # Create a pattern that explicitly marks this as not automatable
+        digital_count = sum(1 for keyword in digital_keywords if keyword in description)
+        
+        # If clearly physical with minimal digital indicators, create "Not Automatable" pattern
+        if physical_count >= 1 and digital_count == 0:
+            app_logger.info(f"🚫 SCOPE GATE: Detected physical task - '{description[:100]}...' (physical:{physical_count}, digital:{digital_count})")
             return await self._create_physical_task_pattern(pattern_id, requirements, session_id)
         
         # Analyze requirements to determine pattern characteristics using LLM

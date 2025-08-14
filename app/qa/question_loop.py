@@ -314,6 +314,30 @@ Only return the JSON array, no other text.
             app_logger.error(f"Session not found: {session_id}")
             return []
         
+        # Pre-processing scope gate check for physical tasks
+        description = session.requirements.get('description', '').lower()
+        physical_indicators = [
+            'feed', 'feeding', 'water', 'watering', 'clean', 'cleaning', 
+            'walk', 'walking', 'pick up', 'pickup', 'move', 'moving',
+            'pet', 'animal', 'plant', 'garden', 'physical', 'manually',
+            'snail', 'dog', 'cat', 'bird', 'fish'
+        ]
+        
+        digital_indicators = [
+            'remind', 'notification', 'alert', 'schedule', 'track', 'monitor',
+            'order', 'purchase', 'api', 'webhook', 'database', 'software',
+            'app', 'system', 'digital', 'online', 'email', 'sms', 'automate'
+        ]
+        
+        physical_score = sum(1 for indicator in physical_indicators if indicator in description)
+        digital_score = sum(1 for indicator in digital_indicators if indicator in description)
+        
+        # If clearly physical with minimal digital indicators, reject immediately
+        # Note: "automate" is often used in physical task descriptions, so we allow for 1 digital indicator
+        if physical_score >= 2 and digital_score <= 1:
+            app_logger.info(f"🚫 SCOPE GATE: Rejecting physical task - '{description[:100]}...' (physical:{physical_score}, digital:{digital_score})")
+            return []
+        
         # Check if we've already asked too many questions
         total_questions_asked = sum(len(qa.questions) for qa in session.qa_history)
         if total_questions_asked >= max_questions:

@@ -49,7 +49,38 @@ class RecommendationService:
         """
         app_logger.info(f"Generating recommendations from {len(matches)} pattern matches")
         
+        # Pre-processing scope gate for physical tasks
+        description = requirements.get('description', '').lower()
+        physical_indicators = [
+            'feed', 'feeding', 'water', 'watering', 'clean', 'cleaning', 
+            'walk', 'walking', 'pick up', 'pickup', 'move', 'moving',
+            'pet', 'animal', 'plant', 'garden', 'physical', 'manually',
+            'snail', 'dog', 'cat', 'bird', 'fish'
+        ]
+        
+        digital_indicators = [
+            'remind', 'notification', 'alert', 'schedule', 'track', 'monitor',
+            'order', 'purchase', 'api', 'webhook', 'database', 'software',
+            'app', 'system', 'digital', 'online', 'email', 'sms', 'automate'
+        ]
+        
+        physical_score = sum(1 for indicator in physical_indicators if indicator in description)
+        digital_score = sum(1 for indicator in digital_indicators if indicator in description)
+        
         recommendations = []
+        
+        # If clearly physical with minimal digital indicators, create "Not Automatable" recommendation
+        # Note: "automate" is often used in physical task descriptions, so we allow for 1 digital indicator
+        if physical_score >= 2 and digital_score <= 1:
+            app_logger.info(f"🚫 SCOPE GATE: Creating 'Not Automatable' recommendation for physical task - '{description[:100]}...'")
+            physical_recommendation = Recommendation(
+                pattern_id="PHYSICAL_TASK",
+                feasibility="Not Automatable",
+                confidence=0.95,
+                reasoning=f"This requirement involves physical manipulation that cannot be automated by software agents. The task requires physical actions like picking up and feeding a pet, which are outside the scope of digital automation. Digital alternatives like 'send feeding reminders' or 'track feeding schedule' could be automated instead.",
+                tech_stack=[]
+            )
+            return [physical_recommendation]
         
         # Check if we need to create a new pattern
         should_create_pattern = await self._should_create_new_pattern(matches, requirements, session_id)
