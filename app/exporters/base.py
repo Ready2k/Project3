@@ -35,12 +35,12 @@ class BaseExporter(ABC):
         Returns:
             Path to the exported file
         """
-        pass
+        raise NotImplementedError("Subclasses must implement export_session")
     
     @abstractmethod
     def get_file_extension(self) -> str:
         """Get file extension for this exporter."""
-        pass
+        raise NotImplementedError("Subclasses must implement get_file_extension")
     
     def generate_filename(self, session: SessionState, include_timestamp: bool = True) -> str:
         """Generate filename for export.

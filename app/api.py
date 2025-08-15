@@ -28,6 +28,8 @@ from app.services.recommendation import RecommendationService
 from app.services.jira import JiraService, JiraError, JiraConnectionError, JiraTicketNotFoundError
 from app.state.store import SessionState, Phase, DiskCacheStore
 from app.utils.logger import app_logger
+from app.utils.audit import log_pattern_match
+from app.version import __version__, RELEASE_NAME
 from app.security import SecurityMiddleware, RateLimitMiddleware, InputValidator, SecurityValidator, SecurityHeaders
 from app.security.middleware import setup_cors_middleware
 
@@ -78,7 +80,7 @@ class ProviderConfig(BaseModel):
 app = FastAPI(
     title="Automated AI Assessment (AAA) API",
     description="API for assessing automation feasibility of requirements",
-    version="AAA-1.0",
+    version=f"AAA-{__version__}",
     docs_url="/docs",  # Explicitly set docs URL
     redoc_url="/redoc",  # Explicitly set redoc URL
     openapi_url="/openapi.json"  # Explicitly set OpenAPI URL
@@ -146,7 +148,7 @@ async def health_check(response: Response):
     """Health check endpoint for monitoring."""
     # Add security headers
     SecurityHeaders.add_security_headers(response)
-    return {"status": "healthy", "version": "AAA-1.0"}
+    return {"status": "healthy", "version": f"AAA-{__version__}", "release_name": RELEASE_NAME}
 
 
 def get_settings() -> Settings:
@@ -843,13 +845,31 @@ async def match_patterns(request: MatchRequest, response: Response):
             raise HTTPException(status_code=404, detail="Session not found")
         
         matcher = await get_pattern_matcher()
-        constraints = {"banned_tools": []}  # TODO: Get from config
+        # Get constraints from session requirements if available
+        constraints = {
+            "banned_tools": session.requirements.get("banned_tools", []),
+            "required_integrations": session.requirements.get("required_integrations", []),
+            "compliance_requirements": session.requirements.get("compliance_requirements", [])
+        }
         
         matches = await matcher.match_patterns(
             session.requirements, 
             constraints, 
             top_k=request.top_k
         )
+        
+        # Log pattern matches for analytics
+        for match in matches:
+            try:
+                await log_pattern_match(
+                    session_id=request.session_id,
+                    pattern_id=match.pattern_id,
+                    score=match.blended_score,
+                    accepted=None  # Will be updated later if user accepts/rejects
+                )
+                app_logger.debug(f"Logged pattern match: {match.pattern_id} (score: {match.blended_score:.3f})")
+            except Exception as e:
+                app_logger.error(f"Failed to log pattern match for {match.pattern_id}: {e}")
         
         # Update session with matches
         session.matches = [
@@ -1186,12 +1206,7 @@ async def test_provider(request: dict, response: Response):
 
 
 
-@app.get("/health")
-async def health_check(response: Response):
-    """Health check endpoint for monitoring."""
-    # Add security headers
-    SecurityHeaders.add_security_headers(response)
-    return {"status": "healthy", "version": "AAA-1.0"}
+
 
 
 if __name__ == "__main__":

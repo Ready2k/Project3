@@ -42,7 +42,7 @@ class PatternCreator:
         pattern_id = self._generate_pattern_id()
         
         # Extract key information from requirements
-        description = requirements.get("description", "").lower()
+        description = str(requirements.get("description", "")).lower()
         domain = requirements.get("domain", "general")
         
         # Enhanced physical task detection with digital alternative check
@@ -755,7 +755,7 @@ IMPORTANT:
             integrations = [integrations]
         
         # Add common integrations based on description
-        description = requirements.get("description", "").lower()
+        description = str(requirements.get("description", "")).lower()
         
         if "database" in description:
             integrations.append("database")

@@ -8,11 +8,12 @@ import json
 import tempfile
 from pathlib import Path
 from datetime import datetime
+from app.utils.logger import app_logger
 
 # Test 1: Verify feasibility values are correct
 def test_feasibility_values():
     """Test that recommendation service uses correct feasibility values."""
-    print("🔍 Testing feasibility values...")
+    app_logger.info("🔍 Testing feasibility values...")
     
     from app.services.recommendation import RecommendationService
     from app.pattern.matcher import MatchResult
@@ -46,13 +47,13 @@ def test_feasibility_values():
     valid_values = ["Automatable", "Partially Automatable", "Not Automatable"]
     assert feasibility in valid_values, f"Invalid feasibility: {feasibility}"
     
-    print(f"✅ Feasibility determination works: {feasibility}")
+    app_logger.info(f"✅ Feasibility determination works: {feasibility}")
     return True
 
 # Test 2: Verify audit logging includes purpose
 def test_audit_purpose():
     """Test that audit logging includes purpose field."""
-    print("🔍 Testing audit logging with purpose...")
+    app_logger.info("🔍 Testing audit logging with purpose...")
     
     from app.utils.audit import AuditLogger
     import tempfile
@@ -83,7 +84,7 @@ def test_audit_purpose():
         assert len(messages) == 1, "Should have one message"
         assert messages[0]['purpose'] == 'test_purpose', f"Purpose should be 'test_purpose', got: {messages[0]['purpose']}"
         
-        print("✅ Audit logging with purpose works")
+        app_logger.info("✅ Audit logging with purpose works")
         return True
         
     finally:
@@ -94,7 +95,7 @@ def test_audit_purpose():
 # Test 3: Verify export schema validation
 def test_export_validation():
     """Test that export validation accepts correct feasibility values."""
-    print("🔍 Testing export validation...")
+    app_logger.info("🔍 Testing export validation...")
     
     from app.exporters.json_exporter import JSONExporter
     from app.state.store import SessionState, Phase, Recommendation
@@ -138,16 +139,16 @@ def test_export_validation():
             assert data['feasibility_assessment'] == 'Partially Automatable', \
                 f"Expected 'Partially Automatable', got: {data['feasibility_assessment']}"
             
-            print("✅ Export validation works with correct feasibility values")
+            app_logger.info("✅ Export validation works with correct feasibility values")
             return True
             
         except Exception as e:
-            print(f"❌ Export validation failed: {e}")
+            app_logger.error(f"❌ Export validation failed: {e}")
             return False
 
 def main():
     """Run all tests."""
-    print("🚀 Running bug fix verification tests...\n")
+    app_logger.info("🚀 Running bug fix verification tests...")
     
     tests = [
         test_feasibility_values,
@@ -165,17 +166,16 @@ def main():
             else:
                 failed += 1
         except Exception as e:
-            print(f"❌ Test {test.__name__} failed with exception: {e}")
+            app_logger.error(f"❌ Test {test.__name__} failed with exception: {e}")
             failed += 1
-        print()
     
-    print(f"📊 Test Results: {passed} passed, {failed} failed")
+    app_logger.info(f"📊 Test Results: {passed} passed, {failed} failed")
     
     if failed == 0:
-        print("🎉 All tests passed! Bug fixes are working correctly.")
+        app_logger.info("🎉 All tests passed! Bug fixes are working correctly.")
         return True
     else:
-        print("⚠️  Some tests failed. Please check the issues above.")
+        app_logger.warning("⚠️  Some tests failed. Please check the issues above.")
         return False
 
 if __name__ == "__main__":

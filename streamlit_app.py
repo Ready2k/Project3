@@ -353,11 +353,21 @@ Ensure each line is properly separated and indented."""
             # Create a more sophisticated fake diagram based on actual tech stack
             tech_list = unique_tech_stack if unique_tech_stack else ['Python', 'FastAPI', 'PostgreSQL', 'Redis']
             
-            # Identify component types
-            languages = [t for t in tech_list if t.lower() in ['python', 'javascript', 'java', 'node.js']]
-            frameworks = [t for t in tech_list if t.lower() in ['fastapi', 'django', 'flask', 'express', 'react']]
-            databases = [t for t in tech_list if t.lower() in ['postgresql', 'mysql', 'mongodb', 'redis', 'sqlite']]
-            services = [t for t in tech_list if t.lower() in ['twilio', 'oauth2', 'docker', 'aws', 'kubernetes']]
+            # Identify component types (ensure all items are strings)
+            safe_tech_list = []
+            for t in tech_list:
+                if isinstance(t, dict):
+                    tech_name = t.get('name') or t.get('technology') or str(t)
+                    safe_tech_list.append(tech_name)
+                elif not isinstance(t, str):
+                    safe_tech_list.append(str(t))
+                else:
+                    safe_tech_list.append(t)
+            
+            languages = [t for t in safe_tech_list if t.lower() in ['python', 'javascript', 'java', 'node.js']]
+            frameworks = [t for t in safe_tech_list if t.lower() in ['fastapi', 'django', 'flask', 'express', 'react']]
+            databases = [t for t in safe_tech_list if t.lower() in ['postgresql', 'mysql', 'mongodb', 'redis', 'sqlite']]
+            services = [t for t in safe_tech_list if t.lower() in ['twilio', 'oauth2', 'docker', 'aws', 'kubernetes']]
             
             diagram_parts = ["flowchart TB"]
             
@@ -369,6 +379,7 @@ Ensure each line is properly separated and indented."""
                 
             if databases:
                 for i, db in enumerate(databases):
+                    # db is already a string from safe_tech_list
                     if 'redis' in db.lower():
                         diagram_parts.append(f"    cache[{db} Cache]")
                     else:
@@ -378,6 +389,7 @@ Ensure each line is properly separated and indented."""
             
             # Add external services
             for service in services:
+                # service is already a string from safe_tech_list
                 if service.lower() not in ['docker', 'kubernetes']:
                     diagram_parts.append(f"    {service.lower().replace(' ', '_')}(({service}))")
             
@@ -387,12 +399,14 @@ Ensure each line is properly separated and indented."""
             
             if databases:
                 for i, db in enumerate(databases):
+                    # db is already a string from safe_tech_list
                     if 'redis' in db.lower():
                         diagram_parts.append("    api -->|Cache Check| cache")
                     else:
                         diagram_parts.append(f"    api -->|SQL Query| db{i}")
             
             for service in services:
+                # service is already a string from safe_tech_list
                 if service.lower() not in ['docker', 'kubernetes']:
                     service_key = service.lower().replace(' ', '_')
                     if 'oauth' in service.lower():
@@ -620,9 +634,28 @@ class AutomatedAIAssessmentUI:
             'region': region
         })
         
-        # Advanced options (placeholder for future options)
-        # with st.sidebar.expander("⚙️ Advanced Options"):
-        #     pass
+        # Debug options (for troubleshooting)
+        with st.sidebar.expander("🔍 Debug Options"):
+            st.session_state.show_diagram_debug = st.checkbox(
+                "Show diagram debug info",
+                value=st.session_state.get('show_diagram_debug', False),
+                help="Show technical debug information on the Systems Diagram page"
+            )
+            st.session_state.show_qa_debug = st.checkbox(
+                "Show Q&A debug info",
+                value=st.session_state.get('show_qa_debug', False),
+                help="Show debug information during question generation and answering"
+            )
+            st.session_state.debug_qa = st.checkbox(
+                "Show Q&A answer status",
+                value=st.session_state.get('debug_qa', False),
+                help="Show detailed answer status for each Q&A question"
+            )
+            st.session_state.show_llm_debug = st.checkbox(
+                "Show LLM analysis debug",
+                value=st.session_state.get('show_llm_debug', False),
+                help="Show detailed LLM analysis information in recommendations"
+            )
         
         # Test connection button
         if st.sidebar.button("🔍 Test Connection"):
@@ -653,6 +686,8 @@ class AutomatedAIAssessmentUI:
                 
                 except Exception as e:
                     st.error(f"❌ Error testing connection: {str(e)}")
+        
+
     
     def render_input_methods(self):
         """Render the input methods section."""
@@ -1107,7 +1142,9 @@ class AutomatedAIAssessmentUI:
             try:
                 st.session_state.generating_questions = True
                 st.session_state.generating_questions_timestamp = current_time
-                st.write(f"**Debug:** Generating questions for session {st.session_state.session_id}")
+                # Debug message (hidden by default)
+                if st.session_state.get('show_qa_debug', False):
+                    st.write(f"**Debug:** Generating questions for session {st.session_state.session_id}")
                 with st.spinner("🤖 AI is generating personalized questions for your requirement..."):
                     response = asyncio.run(self.make_api_request(
                         "GET",
@@ -1141,11 +1178,7 @@ class AutomatedAIAssessmentUI:
             finally:
                 st.session_state.generating_questions = False
         
-        # Debug toggle
-        if st.checkbox("🐛 Debug Q&A", key="debug_qa_toggle"):
-            st.session_state.debug_qa = True
-        else:
-            st.session_state.debug_qa = False
+        # Debug toggle (moved to sidebar with other debug options)
         
         # Show questions if we have them
         if st.session_state.qa_questions:
@@ -1334,13 +1367,14 @@ class AutomatedAIAssessmentUI:
             solution_explanation = self._generate_solution_explanation(best_rec, rec)
             st.write(solution_explanation)
             
-            # Debug: Show what LLM analysis we have
-            session_requirements = st.session_state.get('requirements', {})
-            if session_requirements.get('llm_analysis_automation_feasibility'):
-                with st.expander("🔍 Debug: LLM Analysis", expanded=False):
-                    st.write("**LLM Feasibility:**", session_requirements.get('llm_analysis_automation_feasibility'))
-                    st.write("**LLM Reasoning:**", session_requirements.get('llm_analysis_feasibility_reasoning'))
-                    st.write("**LLM Confidence:**", session_requirements.get('llm_analysis_confidence_level'))
+            # Debug: Show what LLM analysis we have (hidden by default)
+            if st.session_state.get('show_llm_debug', False):
+                session_requirements = st.session_state.get('requirements', {})
+                if session_requirements.get('llm_analysis_automation_feasibility'):
+                    with st.expander("🔍 Debug: LLM Analysis", expanded=False):
+                        st.write("**LLM Feasibility:**", session_requirements.get('llm_analysis_automation_feasibility'))
+                        st.write("**LLM Reasoning:**", session_requirements.get('llm_analysis_feasibility_reasoning'))
+                        st.write("**LLM Confidence:**", session_requirements.get('llm_analysis_confidence_level'))
         
         # Tech stack with explanations
         if rec.get('tech_stack'):
@@ -1444,8 +1478,16 @@ class AutomatedAIAssessmentUI:
                     cols = st.columns(min(len(techs), 3))
                     for i, tech in enumerate(techs):
                         with cols[i % 3]:
-                            tech_description = generator.get_technology_description(tech)
-                            st.info(f"**{tech}**\n\n{tech_description}")
+                            # tech is now a dict with name, description, etc.
+                            if isinstance(tech, dict):
+                                tech_name = tech.get("name", "Unknown")
+                                tech_description = tech.get("description", f"Technology component: {tech_name}")
+                            else:
+                                # Fallback for string tech names
+                                tech_name = str(tech)
+                                tech_description = generator.get_technology_description(tech_name)
+                            
+                            st.info(f"**{tech_name}**\n\n{tech_description}")
             
         except ImportError:
             # Fallback to simple categorization if import fails
@@ -1469,6 +1511,13 @@ class AutomatedAIAssessmentUI:
         uncategorized = []
         
         for tech in tech_stack:
+            # Ensure tech is a string (handle cases where it might be a dict)
+            if isinstance(tech, dict):
+                tech_name = tech.get('name') or tech.get('technology') or str(tech)
+                tech = tech_name
+            elif not isinstance(tech, str):
+                tech = str(tech)
+            
             found_category = None
             for category, techs in categories.items():
                 if any(t.lower() in tech.lower() or tech.lower() in t.lower() for t in techs):
@@ -1721,13 +1770,14 @@ class AutomatedAIAssessmentUI:
         # Extract recommendations list from the API response
         recommendations = recommendations_response.get('recommendations', []) if recommendations_response else []
         
-        # Debug info
-        st.write("**Debug Info:**")
-        st.write(f"- Session ID: {st.session_state.get('session_id', 'None')}")
-        st.write(f"- Requirements keys: {list(requirements.keys()) if requirements else 'None'}")
-        st.write(f"- Recommendations count: {len(recommendations)}")
-        st.write(f"- Provider: {provider_config.get('provider', 'None')}")
-        st.write(f"- API Key present: {bool(provider_config.get('api_key'))}")
+        # Debug info (hidden by default, can be enabled for troubleshooting)
+        if st.session_state.get('show_diagram_debug', False):
+            with st.expander("🔍 Debug Information", expanded=False):
+                st.write(f"- Session ID: {st.session_state.get('session_id', 'None')}")
+                st.write(f"- Requirements keys: {list(requirements.keys()) if requirements else 'None'}")
+                st.write(f"- Recommendations count: {len(recommendations)}")
+                st.write(f"- Provider: {provider_config.get('provider', 'None')}")
+                st.write(f"- API Key present: {bool(provider_config.get('api_key'))}")
         
         requirement_text = requirements.get('description', 'No requirement available')
         
@@ -2322,7 +2372,7 @@ class AutomatedAIAssessmentUI:
             
             # Pattern quality metrics
             st.subheader("📊 Pattern Quality Metrics")
-            st.caption("💡 Click on a Pattern ID to view it in the Pattern Library")
+            st.info("💡 **How to view pattern details:** Click the 👁️ **View** button, then switch to the **📚 Pattern Library** tab to see the highlighted pattern.")
             
             # Create clickable pattern table
             if stats:
@@ -2372,10 +2422,16 @@ class AutomatedAIAssessmentUI:
                             # Set session state to navigate to pattern library
                             st.session_state.selected_pattern_id = stat['pattern_id']
                             st.session_state.navigate_to_pattern_library = True
-                            st.success(f"📋 Navigating to {stat['pattern_id']} in Pattern Library...")
+                            st.success(f"✅ Pattern {stat['pattern_id']} is ready to view!")
+                            st.info(f"👉 **Next Step:** Click the **📚 Pattern Library** tab above to see the detailed pattern information.")
                             st.rerun()
             else:
                 st.info("No pattern quality data available")
+            
+            # Show navigation status if a pattern is selected
+            if st.session_state.get('navigate_to_pattern_library') and st.session_state.get('selected_pattern_id'):
+                selected_id = st.session_state.get('selected_pattern_id')
+                st.warning(f"🎯 **Pattern {selected_id} is ready to view!** Switch to the **📚 Pattern Library** tab to see it highlighted.")
             
             # Pattern insights and recommendations
             st.subheader("💡 Pattern Insights")
@@ -2815,10 +2871,12 @@ class AutomatedAIAssessmentUI:
             
             params = []
             
-            # Add session filter
+            # Add session filter (use redacted session ID for database query)
             if session_filter:
                 base_query += " AND session_id = ?"
-                params.append(session_filter)
+                # Redact the session ID to match what's stored in the database
+                redacted_session_id = audit_logger._redact_session_id(session_filter)
+                params.append(redacted_session_id)
             
             # Add time filter
             if time_filter != "All Time":
@@ -2980,14 +3038,14 @@ class AutomatedAIAssessmentUI:
         # Handle navigation from Pattern Analytics
         if st.session_state.get('navigate_to_pattern_library') and st.session_state.get('selected_pattern_id'):
             selected_pattern_id = st.session_state.selected_pattern_id
-            st.success(f"🎯 Showing details for {selected_pattern_id} (navigated from Pattern Analytics)")
+            st.success(f"🎯 **Pattern {selected_pattern_id}** is highlighted below (navigated from Pattern Analytics)")
+            st.info(f"💡 Look for the **highlighted pattern** in the View Patterns section below.")
             
             # Clear navigation flags
             st.session_state.navigate_to_pattern_library = False
             st.session_state.selected_pattern_id = None
             
-            # Auto-expand the view patterns section and highlight the selected pattern
-            st.session_state.auto_expand_view_patterns = True
+            # Highlight only the selected pattern (others will remain collapsed)
             st.session_state.highlight_pattern_id = selected_pattern_id
         
         # Add helpful documentation
@@ -3168,11 +3226,12 @@ class AutomatedAIAssessmentUI:
             
             # Check if this pattern should be highlighted (navigated from analytics)
             is_highlighted = st.session_state.get('highlight_pattern_id') == pattern_id
-            expanded = is_highlighted or st.session_state.get('auto_expand_view_patterns', False)
+            # Only expand the specifically highlighted pattern, keep all others collapsed
+            expanded = is_highlighted
             
             # Add highlighting for selected pattern
             if is_highlighted:
-                st.success(f"🎯 **Selected Pattern**: {pattern_id}")
+                st.success(f"🎯 **This is the pattern you selected from Pattern Analytics**: {pattern_id}")
                 # Clear the highlight after showing it
                 st.session_state.highlight_pattern_id = None
             

@@ -138,17 +138,17 @@ class SessionStore(ABC):
     @abstractmethod
     async def get_session(self, session_id: str) -> Optional[SessionState]:
         """Retrieve session state by ID."""
-        pass
+        raise NotImplementedError("Subclasses must implement get_session")
     
     @abstractmethod
     async def update_session(self, session_id: str, state: SessionState) -> None:
         """Store or update session state."""
-        pass
+        raise NotImplementedError("Subclasses must implement update_session")
     
     @abstractmethod
     async def delete_session(self, session_id: str) -> None:
         """Delete session state."""
-        pass
+        raise NotImplementedError("Subclasses must implement delete_session")
 
 
 class DiskCacheStore(SessionStore):

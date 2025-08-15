@@ -315,7 +315,7 @@ Only return the JSON array, no other text.
             return []
         
         # Pre-processing scope gate check for physical tasks
-        description = session.requirements.get('description', '').lower()
+        description = str(session.requirements.get('description', '')).lower()
         physical_indicators = [
             'feed', 'feeding', 'water', 'watering', 'clean', 'cleaning', 
             'walk', 'walking', 'pick up', 'pickup', 'move', 'moving',
@@ -604,12 +604,29 @@ Respond with ONLY valid JSON, no other text."""
             response = response.strip()
             
             # Try to extract JSON if it's wrapped in other text
-            if not response.startswith('{'):
-                json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if not response.startswith('{') and not response.startswith('['):
+                json_match = re.search(r'[\{\[].*[\}\]]', response, re.DOTALL)
                 if json_match:
                     response = json_match.group()
             
             analysis = json.loads(response)
+            
+            # Handle empty array response (scope gate rejection)
+            if isinstance(analysis, list) and len(analysis) == 0:
+                app_logger.info(f"LLM returned empty array - requirement rejected by scope gate")
+                return {
+                    "llm_analysis_automation_feasibility": "Not Automatable",
+                    "llm_analysis_feasibility_reasoning": "Requirement involves physical-world aspects that cannot be automated through software agents",
+                    "llm_analysis_key_insights": ["Physical world interaction required", "No clear digital control surface available"],
+                    "llm_analysis_automation_challenges": ["Physical world dependency", "Limited digital integration points"],
+                    "llm_analysis_recommended_approach": "Manual process or hybrid approach with human intervention",
+                    "llm_analysis_confidence_level": 0.95,
+                    "llm_analysis_next_steps": ["Consider manual workflow", "Identify digital touchpoints for partial automation"]
+                }
+            
+            # Handle normal analysis response
+            if not isinstance(analysis, dict):
+                raise ValueError(f"Expected dict or empty array, got {type(analysis)}")
             
             # Add prefix to avoid conflicts with user answers
             prefixed_analysis = {}

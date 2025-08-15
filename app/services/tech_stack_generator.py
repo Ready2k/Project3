@@ -435,6 +435,17 @@ Respond with a JSON object containing:
         validated = []
         
         for tech in tech_stack:
+            # Ensure tech is a string (handle cases where LLM returns dicts)
+            if isinstance(tech, dict):
+                # If it's a dict, try to extract the name
+                tech_name = tech.get('name') or tech.get('technology') or str(tech)
+                app_logger.warning(f"Tech stack item was dict, extracted name: {tech_name}")
+                tech = tech_name
+            elif not isinstance(tech, str):
+                # Convert to string if it's not already
+                tech = str(tech)
+                app_logger.warning(f"Tech stack item was {type(tech)}, converted to string: {tech}")
+            
             # Check if technology is banned
             if any(banned.lower() in tech.lower() for banned in banned_tools):
                 app_logger.warning(f"Skipping banned technology: {tech}")
@@ -472,8 +483,8 @@ Respond with a JSON object containing:
             tech_stack.extend(pattern_technologies.get("medium_confidence", []))
         
         # Add requirement-specific technologies
-        domain = requirements.get("domain", "").lower()
-        description = requirements.get("description", "").lower()
+        domain = str(requirements.get("domain", "")).lower()
+        description = str(requirements.get("description", "")).lower()
         
         # Domain-specific additions
         if "data" in domain or "processing" in description:
@@ -499,6 +510,15 @@ Respond with a JSON object containing:
         seen = set()
         
         for tech in tech_stack:
+            # Ensure tech is a string (handle cases where it might be a dict)
+            if isinstance(tech, dict):
+                tech_name = tech.get('name') or tech.get('technology') or str(tech)
+                app_logger.warning(f"Tech stack item was dict, extracted name: {tech_name}")
+                tech = tech_name
+            elif not isinstance(tech, str):
+                tech = str(tech)
+                app_logger.warning(f"Tech stack item was {type(tech)}, converted to string: {tech}")
+            
             if tech not in seen and not any(banned.lower() in tech.lower() for banned in banned_tools):
                 validated_tech_stack.append(tech)
                 seen.add(tech)
@@ -522,6 +542,14 @@ Respond with a JSON object containing:
         
         # Process each technology in the stack
         for tech_name in tech_stack:
+            # Ensure tech_name is a string (handle cases where it might be a dict)
+            if isinstance(tech_name, dict):
+                tech_name = tech_name.get('name') or tech_name.get('technology') or str(tech_name)
+                app_logger.warning(f"Tech stack item was dict in categorization, extracted name: {tech_name}")
+            elif not isinstance(tech_name, str):
+                tech_name = str(tech_name)
+                app_logger.warning(f"Tech stack item was {type(tech_name)} in categorization, converted to string: {tech_name}")
+            
             # Find the technology in catalog
             tech_id = self.find_technology_by_name(tech_name)
             

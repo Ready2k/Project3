@@ -1,0 +1,39 @@
+{
+  "pattern_id": "PAT-025",
+  "name": "Process Automation",
+  "description": "General purpose automation system with configurable processing and integration capabilities",
+  "feasibility": "Automatable",
+  "pattern_type": [
+    "general_automation"
+  ],
+  "input_requirements": [
+    "Clear process definition and requirements",
+    "Access to target systems and APIs"
+  ],
+  "tech_stack": [],
+  "related_patterns": [],
+  "confidence_score": 0.75,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": [],
+    "compliance_requirements": []
+  },
+  "domain": "None",
+  "complexity": "Low",
+  "estimated_effort": "1-2 weeks",
+  "effort_breakdown": "1-2 weeks",
+  "created_from_session": "51eb8f1a-f66e-458f-8300-7183bfa9e852",
+  "auto_generated": true,
+  "llm_insights": [],
+  "llm_challenges": [],
+  "llm_recommended_approach": "",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "51eb8f1a-f66e-458f-8300-7183bfa9e852",
+  "automation_metadata": {
+    "data_flow": "on_demand",
+    "user_interaction": "semi_automated",
+    "processing_type": "basic_processing",
+    "scalability_needs": "minimal_scale",
+    "security_requirements": []
+  }
+}

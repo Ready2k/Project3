@@ -8,6 +8,8 @@ import yaml
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
+from app.version import __version__, RELEASE_NAME
+
 
 class ConstraintsConfig(BaseModel):
     """Configuration for system constraints."""
@@ -49,6 +51,8 @@ class JiraConfig(BaseModel):
 
 class Settings(BaseSettings):
     """Main application settings."""
+    version: str = __version__
+    release_name: str = RELEASE_NAME
     provider: str = "openai"
     model: str = "gpt-4o"
     pattern_library_path: Path = Path("./data/patterns")

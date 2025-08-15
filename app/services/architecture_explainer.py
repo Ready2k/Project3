@@ -145,7 +145,7 @@ IMPORTANT: Return only the JSON object, no other text or formatting."""
     
     def _get_domain_based_tech_stack(self, requirements: Dict[str, Any]) -> List[str]:
         """Get basic tech stack based on domain."""
-        domain = requirements.get('domain', '').lower()
+        domain = str(requirements.get('domain', '')).lower()
         
         if 'data' in domain or 'analytics' in domain:
             return ["Python", "FastAPI", "PostgreSQL", "Pandas", "Redis", "Docker"]
@@ -283,7 +283,7 @@ Provide a clear, practical explanation in 2-3 paragraphs. Be specific to this us
         
         # Integration layer
         if categories.get("tools"):
-            integration_tools = [tool for tool in categories["tools"] if any(keyword in tool.lower() for keyword in ["http", "api", "request", "celery", "queue"])]
+            integration_tools = [tool for tool in categories["tools"] if isinstance(tool, str) and any(keyword in tool.lower() for keyword in ["http", "api", "request", "celery", "queue"])]
             if integration_tools:
                 explanation_parts.append(f"System integration and communication is managed through {', '.join(integration_tools[:2])}, enabling seamless data exchange.")
         
@@ -323,6 +323,15 @@ Provide a clear, practical explanation in 2-3 paragraphs. Be specific to this us
         }
         
         for tech in tech_stack:
+            # Ensure tech is a string (handle cases where it might be a dict)
+            if isinstance(tech, dict):
+                tech_name = tech.get('name') or tech.get('technology') or str(tech)
+                app_logger.warning(f"Tech stack item was dict in architecture explainer, extracted name: {tech_name}")
+                tech = tech_name
+            elif not isinstance(tech, str):
+                tech = str(tech)
+                app_logger.warning(f"Tech stack item was {type(tech)} in architecture explainer, converted to string: {tech}")
+            
             tech_lower = tech.lower()
             
             # Languages

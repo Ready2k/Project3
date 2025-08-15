@@ -24,7 +24,9 @@ class TestAPIEndpoints:
         data = response.json()
         assert data["status"] == "healthy"
         assert "version" in data
-        assert data["version"] == "1.3.2"
+        assert data["version"] == "AAA-2.1.0"
+        assert "release_name" in data
+        assert data["release_name"] == "Technology Catalog"
     
     # No root endpoint exists in the current API
     
