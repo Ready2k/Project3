@@ -11,6 +11,8 @@ Automated AI Assessment (AAA) is an interactive GUI + API system that judges if 
 - **AI-Generated Architecture Diagrams**: Context, Container, Sequence, and Tech Stack Wiring diagrams with enhanced viewing
 - **LLM-Driven Tech Stack Generation**: Intelligent technology recommendations from 55+ catalog technologies
 - **Technology Catalog Management**: Complete CRUD interface for managing technology database
+- **Pattern Analytics**: Real-time analytics showing pattern match frequency, acceptance rates, and quality scores
+- **Professional Debug Controls**: Hidden debug information with optional sidebar toggles for development
 - **Export Results**: JSON, Markdown, and interactive HTML formats
 - **Constraint-Aware**: Filters banned tools and applies business constraints
 
@@ -25,7 +27,8 @@ Automated AI Assessment (AAA) is an interactive GUI + API system that judges if 
 - **State Management**: Session persistence with diskcache/Redis
 - **Export System**: JSON, Markdown, and interactive HTML export
 - **Diagram System**: Mermaid-based architecture visualization with browser export
-- **Audit System**: Comprehensive logging and observability
+- **Audit System**: Comprehensive logging and observability with pattern match tracking
+- **Analytics Dashboard**: Pattern performance metrics with session filtering and time-based analysis
 
 ## Request Flow
 

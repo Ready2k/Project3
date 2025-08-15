@@ -1,25 +1,32 @@
 """Version information for AAA (Automated AI Assessment) system."""
 
-__version__ = "2.1.0"
-__version_info__ = (2, 1, 0)
+__version__ = "2.2.0"
+__version_info__ = (2, 2, 0)
 
 # Release information
-RELEASE_NAME = "Technology Catalog"
-RELEASE_DATE = "2025-08-14"
+RELEASE_NAME = "Code Quality & Analytics"
+RELEASE_DATE = "2025-08-15"
 RELEASE_NOTES = """
 Major Features:
-- Dedicated Technology Catalog system with 55+ technologies
-- Complete CRUD management interface in Streamlit
-- 90% performance improvement in startup time
-- Automatic LLM-suggested technology integration
-- Import/Export functionality for technology catalogs
-- Smart categorization across 17 technology categories
+- Fixed Pattern Analytics viewer with complete pattern match logging
+- Comprehensive code quality improvements (removed TODO/FIXME, print statements)
+- Enhanced debug controls with professional UI toggles
+- Improved Pattern Library navigation with targeted expansion
+- Fixed 'dict' object has no attribute 'lower' errors across the system
 
-Improvements:
-- Enhanced tech stack generation with rich metadata
-- Backup safety for all catalog operations
-- Advanced filtering and search capabilities
-- Repository cleanup and documentation updates
+Code Quality Improvements:
+- Replaced all print statements with structured loguru logging
+- Fixed abstract base classes with proper NotImplementedError implementations
+- Resolved Pydantic validation errors with centralized version management
+- Added comprehensive pattern match audit logging for analytics
+- Enhanced error handling and type safety throughout the codebase
+
+User Experience Enhancements:
+- Hidden debug information by default with optional sidebar toggles
+- Improved Pattern Analytics → Pattern Library navigation flow
+- Professional pattern highlighting without distracting animations
+- Clean, organized Pattern Library with collapsed-by-default patterns
+- Better user guidance and feedback throughout the application
 """
 
 def get_version():

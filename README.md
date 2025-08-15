@@ -480,6 +480,38 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for comprehensive debugging guide i
 - Streamlit logs: Check browser console and terminal
 - Application logs: Configured via `config.yaml` logging section
 
+## Changelog
+
+### v2.2.0 - Code Quality & Analytics (2025-08-15)
+
+**Major Features:**
+- ✅ **Fixed Pattern Analytics**: Restored complete pattern match logging and analytics functionality
+- 🧹 **Code Quality Overhaul**: Removed all TODO/FIXME comments, replaced print statements with structured logging
+- 🐛 **Error Resolution**: Fixed 'dict' object has no attribute 'lower' errors throughout the system
+- 🎛️ **Professional Debug Controls**: Hidden debug info by default with optional sidebar toggles
+- 🎯 **Enhanced Navigation**: Improved Pattern Analytics → Pattern Library navigation with clear user guidance
+
+**Technical Improvements:**
+- Comprehensive pattern match audit logging for analytics
+- Type safety improvements with proper dict/string handling
+- Abstract base classes now use proper NotImplementedError implementations
+- Centralized version management with Pydantic validation fixes
+- Professional UI with collapsed-by-default patterns and clean highlighting
+
+### v2.1.0 - Technology Catalog (2025-08-14)
+
+**Major Features:**
+- 📚 Dedicated Technology Catalog system with 55+ technologies
+- 🎛️ Complete CRUD management interface in Streamlit
+- ⚡ 90% performance improvement in startup time
+- 🤖 Automatic LLM-suggested technology integration
+- 📊 Smart categorization across 17 technology categories
+
+**Improvements:**
+- Enhanced tech stack generation with rich metadata
+- Backup safety for all catalog operations
+- Advanced filtering and search capabilities
+
 ## Contributing
 
 1. Fork the repository

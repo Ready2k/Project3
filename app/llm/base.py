@@ -18,7 +18,7 @@ class LLMProvider(ABC):
         Returns:
             Generated text response
         """
-        pass
+        raise NotImplementedError("Subclasses must implement generate")
     
     @abstractmethod
     async def test_connection(self) -> bool:
@@ -27,7 +27,7 @@ class LLMProvider(ABC):
         Returns:
             True if connection is successful, False otherwise
         """
-        pass
+        raise NotImplementedError("Subclasses must implement test_connection")
     
     @abstractmethod
     def get_model_info(self) -> Dict[str, Any]:
@@ -36,7 +36,7 @@ class LLMProvider(ABC):
         Returns:
             Dictionary with provider and model information
         """
-        pass
+        raise NotImplementedError("Subclasses must implement get_model_info")
 
 
 class EmbeddingProvider(ABC):
@@ -52,7 +52,7 @@ class EmbeddingProvider(ABC):
         Returns:
             List of float values representing the embedding
         """
-        pass
+        raise NotImplementedError("Subclasses must implement embed")
     
     @abstractmethod
     async def embed_batch(self, texts: List[str]) -> List[List[float]]:
@@ -64,4 +64,4 @@ class EmbeddingProvider(ABC):
         Returns:
             List of embeddings, one for each input text
         """
-        pass
+        raise NotImplementedError("Subclasses must implement embed_batch")

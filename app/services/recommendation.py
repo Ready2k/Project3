@@ -10,6 +10,7 @@ from app.services.pattern_creator import PatternCreator
 from app.services.tech_stack_generator import TechStackGenerator
 from app.llm.base import LLMProvider
 from app.utils.logger import app_logger
+from app.utils.audit import log_pattern_match
 
 
 class RecommendationService:
@@ -50,7 +51,7 @@ class RecommendationService:
         app_logger.info(f"Generating recommendations from {len(matches)} pattern matches")
         
         # Pre-processing scope gate for physical tasks
-        description = requirements.get('description', '').lower()
+        description = str(requirements.get('description', '')).lower()
         physical_indicators = [
             'feed', 'feeding', 'water', 'watering', 'clean', 'cleaning', 
             'walk', 'walking', 'pick up', 'pickup', 'move', 'moving',
@@ -138,6 +139,18 @@ class RecommendationService:
                 reasoning=reasoning
             )
             
+            # Log pattern match for analytics
+            try:
+                await log_pattern_match(
+                    session_id=session_id,
+                    pattern_id=match.pattern_id,
+                    score=match.blended_score,
+                    accepted=None  # Will be updated later if user accepts/rejects
+                )
+                app_logger.debug(f"Logged pattern match: {match.pattern_id} (score: {match.blended_score:.3f})")
+            except Exception as e:
+                app_logger.error(f"Failed to log pattern match for {match.pattern_id}: {e}")
+            
             recommendations.append(recommendation)
         
         # Sort by confidence (descending)
@@ -223,7 +236,7 @@ class RecommendationService:
         factors = {}
         
         # Data sensitivity complexity
-        data_sensitivity = requirements.get("data_sensitivity", "").lower()
+        data_sensitivity = str(requirements.get("data_sensitivity", "")).lower()
         if data_sensitivity == "high":
             factors["data_sensitivity"] = 2
         elif data_sensitivity == "medium":
@@ -323,7 +336,7 @@ class RecommendationService:
             factors["compliance"] = 0
         
         # Human review requirements
-        human_review = requirements.get("human_review", "").lower()
+        human_review = str(requirements.get("human_review", "")).lower()
         if human_review == "required":
             factors["human_review"] = 2
         elif human_review == "optional":
@@ -342,7 +355,7 @@ class RecommendationService:
             factors["sla"] = 0
         
         # Physical task risk - check description for physical activities
-        description = requirements.get("description", "").lower()
+        description = str(requirements.get("description", "")).lower()
         physical_keywords = [
             "paint", "painting", "build", "construction", "repair", "fix", "install",
             "clean", "cleaning", "move", "transport", "deliver", "physical", "manual",
@@ -641,7 +654,7 @@ class RecommendationService:
             return False
         
         # Create new pattern if the requirement is very specific and unique
-        description = requirements.get("description", "").lower()
+        description = str(requirements.get("description", "")).lower()
         
         # Check for unique/specific scenarios that likely need custom patterns
         unique_indicators = [
@@ -705,8 +718,8 @@ class RecommendationService:
             total_checks = 0
             
             # 1. Same core business process (high weight)
-            req_desc = requirements.get("description", "").lower()
-            pattern_desc = pattern_data.get("description", "").lower()
+            req_desc = str(requirements.get("description", "")).lower()
+            pattern_desc = str(pattern_data.get("description", "")).lower()
             
             # Core business process keywords
             business_keywords = [
