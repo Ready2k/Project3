@@ -1,6 +1,7 @@
 """Security middleware for FastAPI application."""
 
 import time
+import asyncio
 from collections import defaultdict
 from typing import Dict, Optional
 from fastapi import Request, Response, HTTPException
@@ -88,6 +89,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, max_request_size: int = 10 * 1024 * 1024):  # 10MB default
         super().__init__(app)
         self.max_request_size = max_request_size
+        self._advanced_defender = None  # Lazy initialization
     
     async def dispatch(self, request: Request, call_next):
         """Process security checks for incoming requests."""
@@ -112,6 +114,15 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         # Add request ID for tracing
         request.state.request_id = f"req_{int(time.time() * 1000)}"
         
+        # Validate request body with advanced defense (for critical endpoints)
+        if request.url.path in ["/api/v1/sessions", "/api/v1/sessions/analyze"]:
+            is_valid = await self._validate_request_body(request)
+            if not is_valid:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Request blocked by security system. Please ensure your request contains only legitimate business automation requirements."
+                )
+        
         # Process the request
         start_time = time.time()
         response = await call_next(request)
@@ -122,6 +133,80 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         response.headers["X-Process-Time"] = str(process_time)
         
         return response
+    
+    def _get_advanced_defender(self):
+        """Get the advanced prompt defender instance (lazy initialization)."""
+        if self._advanced_defender is None:
+            try:
+                from app.security.advanced_prompt_defender import AdvancedPromptDefender
+                self._advanced_defender = AdvancedPromptDefender()
+                app_logger.info("AdvancedPromptDefender integrated with SecurityMiddleware")
+            except ImportError as e:
+                app_logger.warning(f"AdvancedPromptDefender not available: {e}")
+                self._advanced_defender = False  # Mark as unavailable
+        return self._advanced_defender if self._advanced_defender is not False else None
+    
+    async def _validate_request_body(self, request: Request) -> bool:
+        """Validate request body for advanced prompt attacks."""
+        defender = self._get_advanced_defender()
+        if not defender:
+            return True  # Skip validation if not available
+        
+        try:
+            # Only validate POST requests with JSON bodies
+            if request.method != "POST":
+                return True
+            
+            content_type = request.headers.get("content-type", "")
+            if "application/json" not in content_type:
+                return True
+            
+            # Read and validate body
+            body = await request.body()
+            if not body:
+                return True
+            
+            # Decode body as text for validation
+            try:
+                body_text = body.decode('utf-8')
+            except UnicodeDecodeError:
+                app_logger.warning("Request body contains invalid UTF-8")
+                return False
+            
+            # Prepare metadata for security logging
+            client_ip = request.client.host if request.client else "unknown"
+            user_agent = request.headers.get("user-agent", "unknown")
+            session_id = getattr(request.state, 'request_id', 'middleware_unknown')
+            
+            metadata = {
+                "source": "middleware",
+                "client_ip": client_ip,
+                "user_agent": user_agent,
+                "endpoint": str(request.url.path),
+                "method": request.method,
+                "content_type": content_type
+            }
+            
+            # Validate with advanced defender including comprehensive logging
+            decision = await defender.validate_input(
+                body_text, 
+                session_id=session_id,
+                metadata=metadata
+            )
+            
+            if decision.action.value == "block":
+                app_logger.warning(f"Request blocked by advanced defense: {decision.user_message}")
+                return False
+            elif decision.action.value == "flag":
+                app_logger.info(f"Request flagged by advanced defense: {decision.user_message}")
+                # Allow flagged requests to proceed but log them
+                return True
+            
+            return True
+            
+        except Exception as e:
+            app_logger.error(f"Error validating request body: {e}")
+            return True  # Allow on error to avoid breaking functionality
 
 
 def setup_cors_middleware(app, allowed_origins: Optional[list] = None):

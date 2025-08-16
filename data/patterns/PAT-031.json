@@ -1,0 +1,56 @@
+{
+  "pattern_id": "PAT-031",
+  "name": "Shell Command Execution and Output Retrieval",
+  "description": "This automation pattern runs a shell command to list the contents of the /etc directory and retrieves the output for further processing or display. It operates fully within a digital environment, utilizing software-based automation tools to execute the shell command and capture the results.",
+  "feasibility": "Automatable",
+  "pattern_type": [
+    "basic_processing",
+    "os_command_execution",
+    "output_handling",
+    "data_retrieval"
+  ],
+  "input_requirements": [
+    "Access to a shell or command line interface on the target system"
+  ],
+  "tech_stack": [
+    "Python",
+    "Bash",
+    "SSH"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.9,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": [
+      "SSH for remote systems",
+      "Run a shell command to list /etc and paste here."
+    ],
+    "compliance_requirements": []
+  },
+  "domain": "general_automation",
+  "complexity": "Low",
+  "estimated_effort": "1-2 weeks",
+  "effort_breakdown": "MVP: 1 week, Full implementation: 2 weeks",
+  "created_from_session": "4db7ab9c-bd19-40da-af3d-6cd4d94c431f",
+  "auto_generated": true,
+  "llm_insights": [
+    "Ensuring command execution permissions",
+    "Handling different OS environments"
+  ],
+  "llm_challenges": [
+    "Ensuring command execution permissions",
+    "Handling different OS environments"
+  ],
+  "llm_recommended_approach": "Implement a Python script that uses subprocess to execute the shell command and retrieve the output. Optionally, use SSH for remote command execution if needed. Ensure logging of all command executions for auditing.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "4db7ab9c-bd19-40da-af3d-6cd4d94c431f",
+  "automation_metadata": {
+    "data_flow": "on_demand",
+    "user_interaction": "fully_automated",
+    "processing_type": "basic_processing",
+    "scalability_needs": "minimal_scale",
+    "security_requirements": [
+      "audit_logging"
+    ]
+  }
+}

@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 import jsonschema
 
 from app.utils.logger import app_logger
+from app.security.pattern_sanitizer import PatternSanitizer
 
 
 class PatternValidationError(Exception):
@@ -21,6 +22,7 @@ class PatternLoader:
         self.pattern_library_path = Path(pattern_library_path)
         self.schema = self._load_schema()
         self._patterns_cache: Optional[List[Dict[str, Any]]] = None
+        self.pattern_sanitizer = PatternSanitizer()
     
     def _load_schema(self) -> Dict[str, Any]:
         """Load the pattern JSON schema."""
@@ -84,8 +86,12 @@ class PatternLoader:
                 continue
         
         app_logger.info(f"Loaded {len(patterns)} patterns from library")
-        self._patterns_cache = patterns
-        return patterns
+        
+        # Sanitize patterns to remove any security testing patterns
+        clean_patterns = self.pattern_sanitizer.validate_existing_patterns(patterns)
+        
+        self._patterns_cache = clean_patterns
+        return clean_patterns
     
     def get_pattern_by_id(self, pattern_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific pattern by its ID."""
@@ -113,3 +119,33 @@ class PatternLoader:
     def refresh_cache(self) -> None:
         """Clear the pattern cache to force reload."""
         self._patterns_cache = None
+    
+    def save_pattern(self, pattern: Dict[str, Any]) -> tuple[bool, str]:
+        """Save a pattern to the library with security validation."""
+        # Sanitize pattern before storage
+        should_store, sanitized_pattern, reason = self.pattern_sanitizer.sanitize_pattern_for_storage(pattern)
+        
+        if not should_store:
+            app_logger.error(f"Pattern storage blocked: {reason}")
+            return False, reason
+        
+        try:
+            # Validate sanitized pattern
+            self._validate_pattern(sanitized_pattern)
+            
+            # Save to file
+            pattern_id = sanitized_pattern.get('pattern_id', 'unknown')
+            file_path = self.pattern_library_path / f"{pattern_id}.json"
+            
+            with open(file_path, 'w') as f:
+                json.dump(sanitized_pattern, f, indent=2)
+            
+            # Clear cache to force reload
+            self.refresh_cache()
+            
+            app_logger.info(f"Pattern saved successfully: {pattern_id}")
+            return True, f"Pattern {pattern_id} saved successfully"
+            
+        except Exception as e:
+            app_logger.error(f"Failed to save pattern: {e}")
+            return False, f"Failed to save pattern: {e}"
