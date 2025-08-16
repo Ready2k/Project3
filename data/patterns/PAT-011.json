@@ -1,0 +1,97 @@
+{
+  "pattern_id": "PAT-011",
+  "name": "Email-to-BACS Invoice Validation and Payment Assist",
+  "description": "Automates ingestion of daily invoice emails and attachments, extracts invoice data (supplier, line items, amounts, invoice number, due date), reconciles and validates that data against the user&#x27;s Excel-based ledger, surfaces mismatches for human review, and\u2014after explicit approval\u2014initiates BACS payments via HSBC (API or secure BACS file upload). Keeps an auditable trail and updates the ledger automatically (or exports an updated Excel/Google Sheet). The pattern emphasizes a human-in-loop approval step for financial control while automating repetitive extraction, validation, and payment orchestration tasks.",
+  "feasibility": "Partially Automatable",
+  "pattern_type": [
+    "email_ingestion",
+    "ocr_invoice_parsing",
+    "nlp_processing",
+    "data_validation",
+    "api_integration",
+    "payments_orchestration",
+    "workflow_automation",
+    "rpa_fallback",
+    "audit_logging"
+  ],
+  "input_requirements": [
+    "Invoices arriving as email attachments (PDF, TIFF, images) or embedded links",
+    "User-maintained Excel spreadsheet (location and schema clarified; ideally moved to cloud sheet or DB)",
+    "HSBC business banking credentials and access method for BACS (API credentials or secure file upload process + test environment)",
+    "Defined validation rules (which fields must match, tolerance on amounts, allowed suppliers, payment terms)",
+    "Designated approvers (users) and notification channels (email/Slack/MS Teams)"
+  ],
+  "tech_stack": [
+    "Email ingestion: IMAP or Microsoft Graph API (Office365) / Gmail API",
+    "Document extraction: Google Document AI or Azure Form Recognizer or AWS Textract (or open-source Tesseract for low-cost MVP)",
+    "Data pipeline / orchestration: Node.js or Python (FastAPI / Flask) with a workflow engine (Temporal / Camunda or lightweight serverless step functions)",
+    "Storage: PostgreSQL or cloud object store (S3 / OneDrive) and optional Google Sheets / Excel Online integration",
+    "Business rules &amp; reconciliation: Python/Node service with validation rules engine",
+    "Human approvals &amp; UI: lightweight web dashboard (React) or integration with MS Teams/Slack + email approval links",
+    "HSBC BACS: HSBC Business API (if available) or secure batch file creation (BACS Direct Credit file) + SFTP/EBICS upload or RPA for bank portal fallback",
+    "Authentication &amp; secrets: OAuth2 for APIs, Vault or cloud KMS (AWS KMS / Azure Key Vault / Google Secret Manager)",
+    "Observability &amp; audit: centralized logging (ELK/CloudWatch), audit DB table and immutable logs",
+    "Optional RPA: UI automation (e.g., Playwright/Robocorp) only if no API/batch upload is available"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.85,
+  "constraints": {
+    "banned_tools": [
+      "Avoid using unsecured personal email accounts for processing (e.g., plain IMAP without TLS)",
+      "Avoid storing bank credentials or secrets in plaintext or on user devices",
+      "Avoid unvetted third-party SaaS invoice parsers without a Data Processing Agreement (DPA) or EU/UK data residency assurances",
+      "Avoid relying solely on fragile RPA against the live HSBC web portal for production payments if a sanctioned API or secure file upload is available"
+    ],
+    "required_integrations": [
+      "Notification/approval channels (Email, MS Teams or Slack webhooks)",
+      "notification",
+      "bacs payment via hsbc",
+      "Cloud storage for attachments (S3 / OneDrive / Google Drive)",
+      "HSBC BACS integration: HSBC Business API or secure BACS file upload via EBICS/SFTP (confirm with HSBC relationship manager)",
+      "Email provider API (Office365/Microsoft Graph or Gmail API)",
+      "Cloud spreadsheet or relational DB for ledger canonicalization (Excel Online / Google Sheets / PostgreSQL)"
+    ],
+    "compliance_requirements": [
+      "gdpr (invoice PII handling, data residency, data subject access requests)",
+      "sox (if company requires financial controls and auditability)",
+      "banking_regulations / AML controls (transaction thresholds, monitoring unusual payments)",
+      "data_retention policies (retain audit logs and payment confirmations per company policy)",
+      "access_control_policies (least privilege for bank credentials and approvers)"
+    ]
+  },
+  "domain": "accounts_payable / invoice_processing",
+  "complexity": "Medium",
+  "estimated_effort": "3-6 weeks",
+  "effort_breakdown": "MVP: 4 weeks (email ingestion, basic OCR extraction, Excel reconciliation, manual approval flow, create BACS payment file in sandbox); Full implementation: 10 weeks (robust ML extraction tuning, two-way sync with cloud spreadsheet/DB, HSBC API integration, full audit trail, error handling, production hardening, end-to-end testing, documentation, onboarding)",
+  "created_from_session": "119bfba3-9c23-424d-a655-d6ec34157498",
+  "auto_generated": true,
+  "llm_insights": [
+    "Variability of invoice formats leading to extraction errors (line-item parsing is especially brittle)",
+    "Secure, compliant integration with HSBC for BACS: API availability, credential management, and production approvals",
+    "Mapping and migrating current free-form Excel rows to a structured schema (data cleansing)",
+    "Ensuring strong auditability and non-repudiation for financial approvals and payments",
+    "Handling false positives/negatives so approvers maintain trust (UX &amp; error handling)"
+  ],
+  "llm_challenges": [
+    "Variability of invoice formats leading to extraction errors (line-item parsing is especially brittle)",
+    "Secure, compliant integration with HSBC for BACS: API availability, credential management, and production approvals",
+    "Mapping and migrating current free-form Excel rows to a structured schema (data cleansing)",
+    "Ensuring strong auditability and non-repudiation for financial approvals and payments",
+    "Handling false positives/negatives so approvers maintain trust (UX &amp; error handling)"
+  ],
+  "llm_recommended_approach": "1) Discover &amp; stabilize inputs: inventory typical invoice formats, current Excel schema, and obtain HSBC sandbox access. 2) Ingest emails: implement IMAP or provider API connector to pick invoices and store attachments. 3) Extract data: use a managed Document AI (e.g., Azure Form Recognizer / Google Document AI) for higher accuracy; fallback to Tesseract for MVP. Validate extracted fields (supplier, invoice number, date, amount, sort code/account, BACS reference). 4) Normalize &amp; reconcile: map extracted fields into a canonical invoice model; reconcile against the Excel ledger (recommend migrating to Google Sheets or a small DB to simplify programmatic updates). Flag mismatches (amount differences, missing supplier data, duplicate invoices) and group straightforward matches for bulk approval. 5) Human-in-loop approval: present a compact review UI or approve via secure email/Teams link. Require two-factor approvals for payments above thresholds. 6) Payment orchestration: on approval, either (preferred) call HSBC Business API to submit BACS Direct Credit or (alternative) generate bank-compatible BACS file and upload via SFTP/EBICS to HSBC or hand off to bank bureau. Record payment reference and [REMOVED_SUSPICIOUS_CONTENT]ledger. 7) Auditing &amp; monitoring: store immutable audit records for each invoice, extraction confidence scores, approver identity, timestamp, and payment confirmation. 8) Hardening: add rate-limiting, retry logic, anomaly detection for unusual payments, and scheduled reconciliation jobs. 9) Compliance &amp; handover: document procedures, run penetration tests, and train approvers. Keep human oversight permanently for any high-risk cases.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "119bfba3-9c23-424d-a655-d6ec34157498",
+  "automation_metadata": {
+    "data_flow": "batch",
+    "user_interaction": "human_in_loop",
+    "processing_type": "validation",
+    "scalability_needs": "low_scale",
+    "security_requirements": [
+      "encryption",
+      "authentication",
+      "audit_logging",
+      "compliance"
+    ]
+  }
+}

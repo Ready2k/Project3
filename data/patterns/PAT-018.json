@@ -1,0 +1,98 @@
+{
+  "pattern_id": "PAT-018",
+  "name": "Email-to-Payments Invoice Processing with RPA Bank Portal Execution",
+  "description": "Automates ingestion of daily invoice emails, extracts structured invoice data (OCR + ML/NLP), validates line items and vendor/payee details against the user&#x27;s Excel ledger, routes exceptions to a human reviewer, and executes payments on a bank web portal via RPA when validation and approval criteria are met. Stores audit trails and updates the original spreadsheet/ledger automatically.",
+  "feasibility": "Partially Automatable",
+  "pattern_type": [
+    "invoice_processing",
+    "nlp_processing",
+    "ocr",
+    "rpa/web_ui_automation",
+    "api_integration",
+    "spreadsheet_integration",
+    "workflow_orchestration",
+    "data_validation"
+  ],
+  "input_requirements": [
+    "Corporate inbox access (IMAP or Microsoft Graph) with mailbox rule for vendor invoices",
+    "Invoices as PDF/HTML/attachments or embedded in email body",
+    "A canonical Excel spreadsheet/ledger or a cloud-hosted sheet with defined columns for invoice number, vendor, amount, date, status",
+    "Vendor master list (payee names, account details, match rules)",
+    "Bank web portal credentials or access method and details of MFA process",
+    "Business rules for auto-approval thresholds and validation checks"
+  ],
+  "tech_stack": [
+    "Email ingestion: Microsoft Graph API or IMAP client",
+    "Document extraction: OCR/Document AI (Google Document AI / AWS Textract) or Tesseract for simpler PDFs",
+    "NLP/parsing: spaCy + custom extraction models or regex-based parsers",
+    "Data processing: Python (pandas, openpyxl) or Node.js",
+    "RPA / Web UI automation: UiPath or Power Automate Desktop or Playwright + robust selector strategy",
+    "Secrets &amp; credentials: HashiCorp Vault or cloud KMS + secure parameter store",
+    "Storage: Postgres or managed cloud DB for normalized invoice records and audit logs",
+    "Orchestration: Prefect / Airflow / simple serverless functions (AWS Lambda / Azure Functions)",
+    "Notifications/UI: Slack/email + lightweight approval dashboard (React/Flask)",
+    "Logging &amp; monitoring: ELK/CloudWatch and audit logging",
+    "Optional accounting integration: QuickBooks/Xero API"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.82,
+  "constraints": {
+    "banned_tools": [
+      "storing bank credentials in plain text or in source code repositories",
+      "using ad-hoc screen-scraping scripts without TLS or retries",
+      "client-side password autofill or browser-saved credentials for production automation",
+      "insecure cloud storage buckets for invoice images/PII"
+    ],
+    "required_integrations": [
+      "Excel/Spreadsheet (OneDrive/SharePoint or Google Sheets) - required",
+      "notification",
+      "Secrets manager (HashiCorp Vault / Cloud KMS) - required",
+      "Optional: Open Banking API if bank provides it (preferred alternative to RPA)",
+      "Email [REMOVED_SUSPICIOUS_CONTENT]IMAP or Microsoft Graph) - required",
+      "Optional: Accounting API (QuickBooks/Xero) for ledger synchronization",
+      "bank web portal, login, find the payee and pay",
+      "Bank web portal (RPA/web UI automation) - required"
+    ],
+    "compliance_requirements": [
+      "gdpr (if vendor or payer data includes EU personal data) \u2014 data minimization and subject access controls",
+      "sox (if organization subject to financial controls) \u2014 strong audit trails and separation of duties",
+      "pci-dss considerations if card data is ever present in invoices",
+      "local banking regulations and contract terms regarding automated access to bank portals"
+    ]
+  },
+  "domain": "accounts_payable/finance",
+  "complexity": "Medium",
+  "estimated_effort": "6-12 weeks",
+  "effort_breakdown": "MVP: 6-12 weeks (email ingestion, OCR parser, Excel integration, RPA prototype for bank login and pay flow, basic approval UI, audit logging). Full implementation: 3+ months (robust ML extraction across formats, production-grade RPA with resilient selectors and MFA handling strategy, advanced reconciliation, accounting API integrations, SLA monitoring, security hardening).",
+  "created_from_session": "9ff3b359-785f-4581-9b00-ebd1b5c69bc3",
+  "auto_generated": true,
+  "llm_insights": [
+    "Bank web portal variability and fragility of UI selectors (requires robust RPA maintenance)",
+    "Handling MFA for bank logins securely and reliably (likely requires human intervention or bank API)",
+    "High variability in invoice formats causing OCR/NER extraction errors",
+    "Accurate payee matching and avoidance of false payments (fuzzy matching false positives)",
+    "Secure storage and rotation of bank credentials and transaction auditability"
+  ],
+  "llm_challenges": [
+    "Bank web portal variability and fragility of UI selectors (requires robust RPA maintenance)",
+    "Handling MFA for bank logins securely and reliably (likely requires human intervention or bank API)",
+    "High variability in invoice formats causing OCR/NER extraction errors",
+    "Accurate payee matching and avoidance of false payments (fuzzy matching false positives)",
+    "Secure storage and rotation of bank credentials and transaction auditability"
+  ],
+  "llm_recommended_approach": "1) Discovery: inventory invoice types, vendor master data, current Excel schema, and bank portal login/MFA method. 2) Ingestion: route vendor emails to a dedicated mailbox; implement connector using Microsoft Graph or IMAP. 3) Extraction: run attachments through Document AI/Textract for structured fields; augment with rule-based/NLP models for missing fields. 4) Normalization &amp; validation: map fields to canonical schema, validate totals, tax, PO matching, duplicate detection, and vendor account validation against vendor master and Excel ledger. 5) Risk scoring &amp; approval: compute auto-approve rules (e.g., below threshold, valid vendor, exact ledger match). Send exceptions and high-risk items to human approvers via a lightweight dashboard or Slack/email approval flow. 6) Payment execution: prefer bank API/Open Banking if available. If only web portal exists, implement RPA flow with explicit checkpoints and human OTP/MFA input step. Use headless automation frameworks (UiPath or Playwright) with robust selectors and retries. 7) Post-payment actions: capture confirmation, [REMOVED_SUSPICIOUS_CONTENT]Excel/ledger and accounting system, generate audit record and receipts, send notification to initiator. 8) Security &amp; operations: secrets in Vault/KMS, TLS for all comms, immutable audit logs, role-based access control, and alerts for failed payments. 9) Maintenance: scheduled retraining/tuning of parsers, RPA flow monitoring, and document format onboarding process.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "9ff3b359-785f-4581-9b00-ebd1b5c69bc3",
+  "automation_metadata": {
+    "data_flow": "on_demand",
+    "user_interaction": "human_in_loop",
+    "processing_type": "data_transformation",
+    "scalability_needs": "low_scale",
+    "security_requirements": [
+      "encryption",
+      "authentication",
+      "audit_logging",
+      "role_based_access_control"
+    ]
+  }
+}

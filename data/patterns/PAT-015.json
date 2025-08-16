@@ -1,0 +1,97 @@
+{
+  "pattern_id": "PAT-015",
+  "name": "AI Golf Swing Coaching and Handicap Reduction Automation",
+  "description": "Automates digital golf-swing analysis, personalized practice-plan generation, progress tracking, and coach-assisted review to reduce a player&#x27;s handicap. The agentic system ingests user-submitted swing videos and optional sensor/club data, runs pose estimation and swing-metric extraction (clubhead speed, tempo, swing plane, face angle, sequencing), diagnoses key faults, synthesizes prioritized drills and session plans, schedules practice reminders, and tracks KPI-driven progress toward handicap reduction. The system uses automated reasoning and planning to propose week-by-week routines and dynamically adapts plans based on performance; a human coach review loop is included for final validation and safety/explainability of instruction.",
+  "feasibility": "Partially Automatable",
+  "pattern_type": [
+    "ml_processing",
+    "video_analysis",
+    "pose_estimation",
+    "personalization",
+    "api_integration",
+    "feedback_loop",
+    "analytics",
+    "planning",
+    "agentic_reasoning",
+    "mobile_integration"
+  ],
+  "input_requirements": [
+    "high-quality swing video (front/face/backswing/down-the-line recommended, mp4/slow-motion when available)",
+    "optional IMU/accelerometer/gyroscope data from wearable or club sensor (CSV/JSON via API)",
+    "optional club/shot-tracking data (ball speed, spin, launch angle) via provider APIs",
+    "user profile: current handicap, goals, physical constraints, practice availability",
+    "consent and privacy preferences"
+  ],
+  "tech_stack": [
+    "MediaPipe or OpenPose (pose estimation / keypoint extraction)",
+    "PyTorch or TensorFlow (model training/inference)",
+    "FastAPI or Node.js (API layer)",
+    "React Native or Flutter (mobile app for uploads and drills)",
+    "WebRTC (real-time/video streaming for live review)",
+    "PostgreSQL (structured user and session data)",
+    "S3 or equivalent object storage (video/audio artifacts)",
+    "Redis (caching, session state)",
+    "Docker + Kubernetes (deployment/scale)",
+    "MLflow or Weights &amp; Biases (model lifecycle &amp; experiments)",
+    "Grafana/Prometheus (monitoring/metrics)",
+    "OAuth2 / OpenID Connect (authentication)",
+    "Jupyter / Label-studio (data labeling and annotation tooling)"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.85,
+  "constraints": {
+    "banned_tools": [
+      "Avoid closed-source, non-explainable 'black-box' coaching APIs with no model interpretability",
+      "Avoid collecting unnecessary PII and avoid storing raw videos longer than needed without consent",
+      "Avoid using unvetted third-party models for medical/physical advice without expert review"
+    ],
+    "required_integrations": [
+      "Push notification / messaging (Firebase, APNS)",
+      "Calendar integration (Google Calendar / iCal) for scheduling practice sessions",
+      "Authentication provider (OAuth2/OIDC)",
+      "Optional club/sensor APIs (TrackMan, Arccos, Garmin) where available",
+      "Video/object storage (S3 or equivalent)"
+    ],
+    "compliance_requirements": [
+      "gdpr (data subject rights, data minimization, retention policies)",
+      "ccpa (if serving California residents)",
+      "sporting-safety guidelines and liability disclaimers",
+      "age restrictions / COPPA considerations if minors are users"
+    ]
+  },
+  "domain": "golf_training",
+  "complexity": "Medium",
+  "estimated_effort": "6-12 weeks",
+  "effort_breakdown": "MVP: 6-8 weeks (video upload + pose pipeline, simple rule-based diagnostics, basic practice-plan generator, mobile/web upload UI, progress dashboard). Full implementation: 3+ months (robust ML models for metric extraction, sensor/API integrations, real-time feedback, coach dashboard, scaling, continuous learning pipeline).",
+  "created_from_session": "ed550eb4-a3e2-4cf3-bc7c-37f9ad8e2c1a",
+  "auto_generated": true,
+  "llm_insights": [
+    "Reliable pose and club-tracking from variable-quality consumer video (lighting, occlusion, camera angle)",
+    "Labeling and ground-truthing of swing faults and outcomes at scale (requires coach-annotated dataset)",
+    "Translating technical diagnostics into safe, personalized drills that reduce risk of injury",
+    "Model explainability and user trust for actionable coaching advice",
+    "Latency and accuracy trade-offs for real-time feedback vs batch analysis"
+  ],
+  "llm_challenges": [
+    "Reliable pose and club-tracking from variable-quality consumer video (lighting, occlusion, camera angle)",
+    "Labeling and ground-truthing of swing faults and outcomes at scale (requires coach-annotated dataset)",
+    "Translating technical diagnostics into safe, personalized drills that reduce risk of injury",
+    "Model explainability and user trust for actionable coaching advice",
+    "Latency and accuracy trade-offs for real-time feedback vs batch analysis"
+  ],
+  "llm_recommended_approach": "1) Discovery &amp; data collection: define required outputs (metrics that correlate to handicap reduction: clubhead speed, ball launch, dispersion, tempo, attack angle). Collect initial dataset: volunteer users + coach annotated swings and any available sensor data. 2) MVP pipeline: implement video ingestion, keypoint extraction (MediaPipe/OpenPose), derive heuristic metrics (joint angles, sequencing, tempo). Build rule-based diagnostic engine to map metric thresholds to prioritized drills. Expose APIs and a simple mobile/web uploader and dashboard. 3) Human-in-loop: include coach review UI so a certified coach can accept/adjust automated diagnoses and drill plans (required to prevent poor advice). Mark feasibility as Partially Automatable due to coach oversight. 4) ML iteration: train supervised models to predict swing faults and ball outcomes from pose + sensor features; add personalization layer that models user improvement curves and adapt plans. 5) Feedback &amp; planning: implement an agentic planner that reasons over user schedule, fatigue, and progress to generate weekly practice plans and micro-goals; allow user overrides. 6) Integrations: add optional sensor/club provider APIs (Arccos, TrackMan, Garmin), calendar and push notifications for reminders. 7) Monitoring &amp; continuous learning: capture outcomes after drills, retrain models periodically, maintain audit logs and model explainability for each recommendation. 8) Deployment &amp; safety: enforce consent, store PII encrypted, surface uncertainty/confidence with each automated recommendation and require coach sign-off for high-risk changes. Start with on_demand batch analysis; roadmap to optional real-time feedback via WebRTC.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "ed550eb4-a3e2-4cf3-bc7c-37f9ad8e2c1a",
+  "automation_metadata": {
+    "data_flow": "on_demand",
+    "user_interaction": "human_in_loop",
+    "processing_type": "ml_processing",
+    "scalability_needs": "low_scale",
+    "security_requirements": [
+      "encryption",
+      "authentication",
+      "audit_logging",
+      "consent_management"
+    ]
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "pattern_id": "PAT-012",
+  "name": "AI Golf Swing Coaching and Handicap Reduction Automation",
+  "description": "Provides an AI-driven digital golf coaching system that analyzes user swing video and sensor data, produces personalized drills and practice plans, tracks progress toward handicap reduction, and optionally routes ambiguous cases to human coaches. The pattern covers mobile capture (live or recorded), cloud-based computer vision and ML analysis (pose estimation, kinematic feature extraction, swing-phase classification), rule-based and learned feedback mapping to corrective drills, practice scheduling, and progress metrics tied to handicap estimation. Integrations include optional launch monitor data import (CSV/API), wearable IMU via Bluetooth/phone sensors, and analytics/notification systems.",
+  "feasibility": "Partially Automatable",
+  "pattern_type": [
+    "computer_vision",
+    "ml_processing",
+    "video_processing",
+    "recommendation_engine",
+    "api_integration",
+    "mobile_app",
+    "user_personalization",
+    "analytics",
+    "feedback_loop",
+    "data_pipeline"
+  ],
+  "input_requirements": [
+    "smartphone or tablet video of swings (recommended 60-240 FPS optional, stabilized)",
+    "optional IMU/accelerometer/gyroscope telemetry from phone or wearable (Bluetooth LE)",
+    "user profile: current handicap, handicap history, club set, dominant hand",
+    "optional launch monitor CSV/API data (ball speed, spin, launch angle)",
+    "consent for video processing and retention preferences",
+    "ground-truth labels for coach-reviewed swings (for supervised model refinement)"
+  ],
+  "tech_stack": [
+    "Mobile capture: Native iOS/Android or React Native with camera2/AVFoundation",
+    "Video encoding: ffmpeg",
+    "Pose/landmark extraction: Google MediaPipe or OpenPose / BlazePose",
+    "ML frameworks: PyTorch or TensorFlow",
+    "Feature extraction and signal processing: NumPy, SciPy, pandas",
+    "Backend API: Python FastAPI or Node.js (Express)",
+    "Storage: AWS S3 (or GCP Cloud Storage) for video; PostgreSQL for metadata",
+    "Realtime/streaming: WebSockets or WebRTC for live feedback",
+    "Queue/async: RabbitMQ or AWS SQS / Celery or AWS Lambda for processing",
+    "Containerization: Docker, orchestration: Kubernetes/ECS",
+    "Monitoring &amp; analytics: Prometheus/Grafana, or cloud equivalents",
+    "Authentication: OAuth2 / OpenID Connect",
+    "Notifications: Push notifications (APNs, FCM), email (SendGrid)",
+    "Optional integrations: TrackMan/Flightscope API connectors or CSV import"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.78,
+  "constraints": {
+    "banned_tools": [
+      "Avoid sending raw user video to third-party analytics providers without explicit consent or encryption",
+      "Avoid using unvetted facial recognition services for identity unless explicitly required and permitted",
+      "Avoid storing videos in public buckets or using unauthenticated file sharing services for user data"
+    ],
+    "required_integrations": [
+      "Smartphone camera APIs (iOS AVFoundation / Android camera2)",
+      "Optional launch monitor CSV/API connectors (TrackMan/Flightscope) for improved model accuracy",
+      "Bluetooth LE for optional IMU wearable integration",
+      "Cloud storage (S3 or equivalent) for video artifacts",
+      "Push notification services (APNs, FCM) and analytics (Mixpanel/Amplitude)"
+    ],
+    "compliance_requirements": [
+      "gdpr: obtain explicit consent, provide data access/deletion, minimize retention of raw video",
+      "ccpa: consumer data rights if applicable",
+      "data_protection: encrypt video at rest and in transit; use IAM and least privilege",
+      "privacy_by_design: anonymize and downsample data for model training where possible"
+    ]
+  },
+  "domain": "sports_performance_coaching_golf",
+  "complexity": "High",
+  "estimated_effort": "6-12 weeks",
+  "effort_breakdown": "MVP: 8-12 weeks, Full implementation: 16-24+ weeks (4-6+ months)",
+  "created_from_session": "ed550eb4-a3e2-4cf3-bc7c-37f9ad8e2c1a",
+  "auto_generated": true,
+  "llm_insights": [
+    "Robust pose detection across varying camera angles, lighting, and clothing",
+    "Labeling and building datasets that correlate swing features to handicap-reducing outcomes",
+    "Translating kinematic deviations into actionable, safe drills that are effective for handicap reduction",
+    "Low-latency real-time feedback on mobile devices without excessive battery/compute use",
+    "User adoption and adherence (coaching nudges, gamification) and measuring long-term efficacy"
+  ],
+  "llm_challenges": [
+    "Robust pose detection across varying camera angles, lighting, and clothing",
+    "Labeling and building datasets that correlate swing features to handicap-reducing outcomes",
+    "Translating kinematic deviations into actionable, safe drills that are effective for handicap reduction",
+    "Low-latency real-time feedback on mobile devices without excessive battery/compute use",
+    "User adoption and adherence (coaching nudges, gamification) and measuring long-term efficacy"
+  ],
+  "llm_recommended_approach": "1) Discovery &amp; data collection: define required inputs (video angles, distance, frame rate), obtain consent templates, and instrument a small cohort to collect labeled swings (coach-reviewed). 2) MVP scope: mobile app for on-demand video upload + backend pipeline that runs pose estimation (MediaPipe), extracts kinematic features (hip rotation, shoulder turn, clubhead speed estimate), applies rule-based diagnostics (e.g., early extension, over-the-top), and returns prioritized corrective drills and a simple practice plan. Include progress tracking (shot-level and session-level) and basic handicap projection. 3) Automation &amp; ML: train supervised models to classify swing faults and estimate ball/club metrics where launch monitor data is available. Use a recommender to personalize drills based on user profile and response history. 4) Human-in-loop: route low-confidence or edge cases to a coach dashboard for review and personalized notes; use coach feedback to augment training data. 5) Real-time enhancement: add WebRTC-based live feedback with lightweight on-device pose estimation for low latency. 6) Measurement &amp; iteration: A/B test drill effectiveness, track handicap trajectory, retention, and adjust algorithms. 7) Production: secure cloud storage, automated pipelines for model retraining, monitoring, and privacy-preserving retention policies.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "ed550eb4-a3e2-4cf3-bc7c-37f9ad8e2c1a",
+  "automation_metadata": {
+    "data_flow": "real_time",
+    "user_interaction": "human_in_loop",
+    "processing_type": "ml_processing",
+    "scalability_needs": "medium_scale",
+    "security_requirements": [
+      "encryption",
+      "authentication",
+      "audit_logging",
+      "compliance"
+    ]
+  }
+}

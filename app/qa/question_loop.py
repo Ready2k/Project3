@@ -633,6 +633,14 @@ Respond with ONLY valid JSON, no other text."""
             for key, value in analysis.items():
                 prefixed_analysis[f"llm_analysis_{key}"] = value
             
+            # Log confidence extraction specifically for debugging
+            confidence_level = analysis.get("confidence_level")
+            if confidence_level is not None:
+                app_logger.info(f"LLM analysis extracted confidence_level: {confidence_level} (type: {type(confidence_level)})")
+                app_logger.info(f"Will be stored as llm_analysis_confidence_level: {prefixed_analysis.get('llm_analysis_confidence_level')}")
+            else:
+                app_logger.warning(f"LLM analysis did not include confidence_level field")
+            
             app_logger.info(f"Successfully analyzed answers for session {session_id}")
             return prefixed_analysis
             

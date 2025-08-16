@@ -16,7 +16,7 @@ class PatternSanitizer:
         
         # Patterns that indicate security testing rather than business automation
         self.security_testing_indicators = [
-            "metadata", "penetration", "vulnerability", "exploit", "attack",
+            "penetration", "vulnerability", "exploit", "attack",
             "hack", "breach", "backdoor", "rootkit", "malware", "trojan",
             "privilege escalation", "lateral movement", "sql injection",
             "xss", "csrf", "ssrf", "brute force", "dictionary attack",

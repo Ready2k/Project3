@@ -1,0 +1,102 @@
+{
+  "pattern_id": "PAT-009",
+  "name": "AI Golf-Swing Analysis and Personalized Coaching Pipeline",
+  "description": "End-to-end software pipeline that captures video and sensor data of a golfer&#x27;s swing, performs computer-vision and kinematics analysis, generates personalized corrective drills and practice plans targeted to reduce handicap, and delivers real-time and post-session feedback via mobile/web. The pattern covers on-device or cloud-based pose estimation, swing segmentation, feature extraction (club path, clubface angle, tempo, rotation), ML-based fault detection and skill-level progression modeling, an adaptive recommender for drills and practice schedules, session logging, progress analytics, and optional human coach review workflows.",
+  "feasibility": "Partially Automatable",
+  "pattern_type": [
+    "computer_vision",
+    "ml_processing",
+    "recommender_system",
+    "api_integration",
+    "mobile_app",
+    "data_pipeline",
+    "real_time_feedback",
+    "analytics",
+    "user_feedback_loop",
+    "nlp_processing"
+  ],
+  "input_requirements": [
+    "high-frame-rate swing video (front/face/optional overhead) or single-camera with instructions for capture angles",
+    "optional IMU/wearable sensor streams (club/phone accelerometer/gyro)",
+    "user profile (handicap/current scoring, club set, preferred side)",
+    "contextual metadata (club used, ball position, tee/lie)",
+    "baseline assessment session and follow-up sessions for progress tracking",
+    "consent and privacy preferences for video storage/processing"
+  ],
+  "tech_stack": [
+    "Mobile: Swift (iOS), Kotlin (Android) or React Native (cross-platform)",
+    "On-device inference: Core ML (iOS), TensorFlow Lite, MediaPipe",
+    "Computer vision: OpenCV, MediaPipe/BlazePose or custom pose-detection models",
+    "ML frameworks: TensorFlow / PyTorch, ONNX for cross-runtime models",
+    "Server: FastAPI / Flask (Python) or Node.js for API endpoints",
+    "Storage: S3-compatible object storage for video, PostgreSQL for session metadata",
+    "Processing: AWS Lambda / GCP Cloud Functions or Kubernetes for scalable batch training",
+    "Realtime: WebRTC or HTTP streaming for low-latency feedback",
+    "Queue/stream: Kafka or AWS SQS for asynchronous processing",
+    "Analytics: Prometheus/Grafana, or Cloud analytics (BigQuery / Redshift)",
+    "CI/CD: GitHub Actions, container images (Docker)",
+    "Optional integrations: Apple HealthKit/Garmin Connect / wearable SDKs, Stripe for payments"
+  ],
+  "related_patterns": [],
+  "confidence_score": 0.82,
+  "constraints": {
+    "banned_tools": [
+      "Storing raw video in public/unencrypted buckets",
+      "Using third-party face/biometric recognition services without explicit consent",
+      "Relying solely on unvetted external ML model marketplaces for core coaching logic",
+      "Logging raw personally-identifiable video frames for debugging in production"
+    ],
+    "required_integrations": [
+      "Mobile camera + on-device ML runtimes (Core ML / TF Lite)",
+      "Auth provider (OAuth2 / OIDC) for user accounts",
+      "Analytics and BI (e.g., BigQuery, Grafana)",
+      "Payment gateway (Stripe) if monetized coaching",
+      "Wearable SDKs (optional): Apple HealthKit, Garmin, etc.",
+      "Cloud object storage (S3) with encrypted-at-rest"
+    ],
+    "compliance_requirements": [
+      "gdpr (user consent, right to delete, data minimization)",
+      "ccpa (data subject rights if U.S. users)",
+      "children's online privacy laws (COPPA) if minors are allowed",
+      "state biometric laws (e.g., Illinois BIPA) \u2014 video/keypoint data may qualify as biometric",
+      "data retention and secure deletion policies"
+    ]
+  },
+  "domain": "golf_coaching",
+  "complexity": "High",
+  "estimated_effort": "6-12 weeks",
+  "effort_breakdown": "MVP: 8-12 weeks (mobile capture + on-device pose estimation, simple fault classifier, basic drill recommender, session logging, rudimentary analytics). Full implementation: 16-24+ weeks (robust multicamera support, large-scale model training, personalization engine, coach dashboard, A/B testing, advanced analytics, privacy/consent tooling, production-grade scaling).",
+  "created_from_session": "ed550eb4-a3e2-4cf3-bc7c-37f9ad8e2c1a",
+  "auto_generated": true,
+  "llm_insights": [
+    "Collecting and labelling diverse, high-quality swing data across angles, clubs, and skill levels",
+    "Model generalization across device cameras, lighting, clothing, and player body types",
+    "Accurately mapping kinematic/pose outputs to actionable coaching cues (interpretability)",
+    "Latency and UX for real-time feedback versus heavy cloud processing",
+    "Privacy and consent for storing and processing video (biometric data)",
+    "Proving causal impact on handicap reduction requires long-term longitudinal data"
+  ],
+  "llm_challenges": [
+    "Collecting and labelling diverse, high-quality swing data across angles, clubs, and skill levels",
+    "Model generalization across device cameras, lighting, clothing, and player body types",
+    "Accurately mapping kinematic/pose outputs to actionable coaching cues (interpretability)",
+    "Latency and UX for real-time feedback versus heavy cloud processing",
+    "Privacy and consent for storing and processing video (biometric data)",
+    "Proving causal impact on handicap reduction requires long-term longitudinal data"
+  ],
+  "llm_recommended_approach": "Phase 1 (MVP): Build a mobile capture app with instructions for standardized camera placement; run on-device pose estimation (MediaPipe or TF Lite) to extract keypoints; implement a rules+ML hybrid classifier to detect common faults (over-the-top, early release, sway). Provide per-swing feedback and a short drill recommendation. Store anonymized session metadata and opt-in video uploads for further model training. Phase 2 (Personalization &amp; Scale): Aggregate labeled sessions, train supervised models to predict swing faults and a progression model to recommend drills and practice schedules personalized by learning rate. Add on-device inference for low-latency feedback, cloud retraining pipelines, and a coach dashboard for human review and issuing advanced drills. Phase 3 (Optimization &amp; Validation): Run controlled user studies to correlate practice adherence with handicap improvement; iterate models and UX. Implement role-based access, privacy controls, retention policies, and consent flows. Maintain test harnesses (synthetic/simulated swings) and CI for continuous model validation. Keep human-in-loop workflows for ambiguous cases and coach sign-offs for advanced recommendations.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "ed550eb4-a3e2-4cf3-bc7c-37f9ad8e2c1a",
+  "automation_metadata": {
+    "data_flow": "real_time",
+    "user_interaction": "human_in_loop",
+    "processing_type": "ml_processing",
+    "scalability_needs": "medium_scale",
+    "security_requirements": [
+      "encryption",
+      "authentication",
+      "audit_logging",
+      "privacy_by_design"
+    ]
+  }
+}
