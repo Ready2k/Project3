@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     git \
+    graphviz \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
@@ -36,6 +37,7 @@ WORKDIR /app
 # Install minimal runtime dependencies
 RUN apt-get update && apt-get install -y \
     curl \
+    graphviz \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 

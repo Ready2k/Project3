@@ -1,10 +1,11 @@
 """OpenAI provider implementation."""
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import openai
 
 from app.llm.base import LLMProvider
+from app.llm.model_discovery import model_discovery
 
 
 class OpenAIProvider(LLMProvider):
@@ -73,3 +74,17 @@ class OpenAIProvider(LLMProvider):
             "model": self.model,
             "api_key_set": bool(self.api_key)
         }
+    
+    async def get_available_models(self) -> List[Dict[str, Any]]:
+        """Get available OpenAI models."""
+        models = await model_discovery.get_available_models("openai", api_key=self.api_key)
+        return [
+            {
+                "id": model.id,
+                "name": model.name,
+                "description": model.description,
+                "context_length": model.context_length,
+                "capabilities": model.capabilities
+            }
+            for model in models
+        ]
