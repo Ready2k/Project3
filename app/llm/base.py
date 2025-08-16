@@ -1,7 +1,7 @@
 """Base interfaces for LLM and embedding providers."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 class LLMProvider(ABC):
@@ -37,6 +37,16 @@ class LLMProvider(ABC):
             Dictionary with provider and model information
         """
         raise NotImplementedError("Subclasses must implement get_model_info")
+    
+    async def get_available_models(self) -> List[Dict[str, Any]]:
+        """Get list of available models for this provider.
+        
+        Returns:
+            List of model information dictionaries
+        """
+        # Default implementation returns empty list
+        # Subclasses can override to provide dynamic model discovery
+        return []
 
 
 class EmbeddingProvider(ABC):

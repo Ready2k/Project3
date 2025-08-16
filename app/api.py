@@ -20,7 +20,11 @@ from app.embeddings.engine import SentenceTransformerEmbedder
 from app.embeddings.index import FAISSIndex
 from app.exporters.service import ExportService
 from app.llm.openai_provider import OpenAIProvider
+from app.llm.claude_provider import ClaudeProvider
+from app.llm.bedrock_provider import BedrockProvider
+from app.llm.internal_provider import InternalProvider
 from app.llm.fakes import FakeLLM
+from app.llm.model_discovery import model_discovery
 from app.pattern.loader import PatternLoader
 from app.pattern.matcher import PatternMatcher
 from app.qa.question_loop import QuestionLoop, TemplateLoader
@@ -210,22 +214,46 @@ def create_llm_provider(provider_config: Optional[ProviderConfig] = None, sessio
     app_logger.info(f"Creating LLM provider for session {session_id}")
     app_logger.info(f"Provider config: {provider_config.dict() if provider_config else 'None'}")
     app_logger.info(f"Settings provider: {settings.provider}")
-    app_logger.info(f"OPENAI_API_KEY exists: {bool(os.getenv('OPENAI_API_KEY'))}")
     
     if not provider_config:
         # Use settings default or fallback to fake
         app_logger.info(f"No provider config, using settings: provider={settings.provider}")
+        
         if settings.provider == "openai" and os.getenv("OPENAI_API_KEY"):
             base_provider = OpenAIProvider(
                 api_key=os.getenv("OPENAI_API_KEY"),
                 model=settings.model
             )
             app_logger.info(f"✅ Using OpenAI provider from environment: {settings.model}")
+        
+        elif settings.provider == "claude" and os.getenv("ANTHROPIC_API_KEY"):
+            base_provider = ClaudeProvider(
+                api_key=os.getenv("ANTHROPIC_API_KEY"),
+                model=settings.model
+            )
+            app_logger.info(f"✅ Using Claude provider from environment: {settings.model}")
+        
+        elif settings.provider == "bedrock":
+            base_provider = BedrockProvider(
+                model=settings.model,
+                region=settings.bedrock.region
+            )
+            app_logger.info(f"✅ Using Bedrock provider from environment: {settings.model}")
+        
+        elif settings.provider == "internal" and os.getenv("INTERNAL_ENDPOINT_URL"):
+            base_provider = InternalProvider(
+                endpoint_url=os.getenv("INTERNAL_ENDPOINT_URL"),
+                model=settings.model,
+                api_key=os.getenv("INTERNAL_API_KEY")
+            )
+            app_logger.info(f"✅ Using Internal provider from environment: {settings.model}")
+        
         else:
             if settings.disable_fake_llm:
                 raise ValueError("No valid LLM provider configuration found and FakeLLM is disabled")
             app_logger.warning("⚠️ No provider configuration found, using FakeLLM")
             base_provider = FakeLLM({}, seed=42)
+    
     else:
         app_logger.info(f"Using provider config: {provider_config.provider}/{provider_config.model}")
         
@@ -238,12 +266,39 @@ def create_llm_provider(provider_config: Optional[ProviderConfig] = None, sessio
             )
             app_logger.info(f"✅ Using OpenAI provider from config: {provider_config.model}")
         
+        elif provider_config.provider == "claude":
+            if not provider_config.api_key:
+                raise ValueError("Claude API key is required")
+            base_provider = ClaudeProvider(
+                api_key=provider_config.api_key,
+                model=provider_config.model
+            )
+            app_logger.info(f"✅ Using Claude provider from config: {provider_config.model}")
+        
+        elif provider_config.provider == "bedrock":
+            region = provider_config.region or settings.bedrock.region
+            base_provider = BedrockProvider(
+                model=provider_config.model,
+                region=region
+            )
+            app_logger.info(f"✅ Using Bedrock provider from config: {provider_config.model} in {region}")
+        
+        elif provider_config.provider == "internal":
+            if not provider_config.endpoint_url:
+                raise ValueError("Internal provider endpoint URL is required")
+            base_provider = InternalProvider(
+                endpoint_url=provider_config.endpoint_url,
+                model=provider_config.model,
+                api_key=provider_config.api_key
+            )
+            app_logger.info(f"✅ Using Internal provider from config: {provider_config.model}")
+        
         elif provider_config.provider == "fake":
             base_provider = FakeLLM({}, seed=42)
             app_logger.info("✅ Using FakeLLM provider from config")
         
         else:
-            raise ValueError(f"Provider {provider_config.provider} not implemented")
+            raise ValueError(f"Provider {provider_config.provider} not supported. Available: openai, claude, bedrock, internal, fake")
     
     # Log final provider info
     model_info = base_provider.get_model_info()
@@ -279,12 +334,12 @@ def get_recommendation_service() -> RecommendationService:
     return recommendation_service
 
 
-def get_export_service() -> ExportService:
+def get_export_service(llm_provider=None) -> ExportService:
     """Get export service instance."""
     global export_service
     if export_service is None:
         settings = get_settings()
-        export_service = ExportService(settings.export_path, base_url="/exports/")
+        export_service = ExportService(settings.export_path, base_url="/exports/", llm_provider=llm_provider)
     return export_service
 
 
@@ -399,7 +454,7 @@ class RecommendResponse(BaseModel):
 
 class ExportRequest(BaseModel):
     session_id: str
-    format: str  # "json" or "md"
+    format: str  # "json", "md", "markdown", "comprehensive", or "report"
     
     @field_validator('session_id')
     @classmethod
@@ -433,6 +488,37 @@ class ProviderTestRequest(BaseModel):
 class ProviderTestResponse(BaseModel):
     ok: bool
     message: str
+
+
+class ModelDiscoveryRequest(BaseModel):
+    """Request for discovering available models."""
+    provider: str
+    api_key: Optional[str] = None
+    endpoint_url: Optional[str] = None
+    region: Optional[str] = None
+    
+    @field_validator('provider')
+    @classmethod
+    def validate_provider(cls, v):
+        if not input_validator.validate_provider_name(v):
+            raise ValueError('Invalid provider name')
+        return v.lower()
+
+
+class ModelInfo(BaseModel):
+    """Information about an available model."""
+    id: str
+    name: str
+    description: Optional[str] = None
+    context_length: Optional[int] = None
+    capabilities: List[str] = []
+
+
+class ModelDiscoveryResponse(BaseModel):
+    """Response for model discovery."""
+    ok: bool
+    message: str
+    models: List[ModelInfo] = []
 
 
 class JiraTestRequest(BaseModel):
@@ -1013,7 +1099,23 @@ async def export_results(request: ExportRequest, response: Response):
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         
-        export_service = get_export_service()
+        # Create LLM provider for comprehensive exports
+        llm_provider = None
+        if request.format in ["comprehensive", "report"]:
+            try:
+                # Create provider config from session
+                provider_config = None
+                if session.provider_config:
+                    provider_config = ProviderConfig(**session.provider_config)
+                
+                # Create LLM provider for comprehensive analysis
+                llm_provider = create_llm_provider(provider_config, request.session_id)
+                app_logger.info(f"Created LLM provider for comprehensive export: {session.provider_config}")
+            except Exception as e:
+                app_logger.warning(f"Could not create LLM provider for comprehensive export: {e}")
+                # Continue without LLM provider - will use fallback analysis
+        
+        export_service = get_export_service(llm_provider)
         
         # Validate session is ready for export
         if not export_service.validate_session_for_export(session):
@@ -1064,14 +1166,6 @@ async def test_provider(request: ProviderTestRequest, response: Response):
             if not request.api_key:
                 return ProviderTestResponse(ok=False, message="API key required for OpenAI")
             
-            # Validate model name
-            valid_models = ["gpt-4o", "gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"]
-            if request.model not in valid_models:
-                return ProviderTestResponse(
-                    ok=False, 
-                    message=f"Invalid model '{request.model}'. Valid models: {', '.join(valid_models)}"
-                )
-            
             provider = OpenAIProvider(api_key=request.api_key, model=request.model)
             success, error_msg = await provider.test_connection_detailed()
             
@@ -1079,18 +1173,196 @@ async def test_provider(request: ProviderTestRequest, response: Response):
                 ok=success,
                 message="Connection successful" if success else f"Connection failed: {error_msg}"
             )
+            
+        elif request.provider == "claude":
+            if not request.api_key:
+                return ProviderTestResponse(ok=False, message="API key required for Claude")
+            
+            provider = ClaudeProvider(api_key=request.api_key, model=request.model)
+            success = await provider.test_connection()
+            
+            return ProviderTestResponse(
+                ok=success,
+                message="Connection successful" if success else "Connection failed: Unable to connect to Claude API"
+            )
+            
+        elif request.provider == "bedrock":
+            region = request.region or "us-east-1"
+            provider = BedrockProvider(model=request.model, region=region)
+            success = await provider.test_connection()
+            
+            return ProviderTestResponse(
+                ok=success,
+                message="Connection successful" if success else f"Connection failed: Unable to connect to Bedrock in {region}"
+            )
+            
+        elif request.provider == "internal":
+            if not request.endpoint_url:
+                return ProviderTestResponse(ok=False, message="Endpoint URL required for internal provider")
+            
+            provider = InternalProvider(
+                endpoint_url=request.endpoint_url,
+                model=request.model,
+                api_key=request.api_key
+            )
+            success = await provider.test_connection()
+            
+            return ProviderTestResponse(
+                ok=success,
+                message="Connection successful" if success else f"Connection failed: Unable to connect to {request.endpoint_url}"
+            )
+            
         elif request.provider == "fake":
             # FakeLLM always works
             return ProviderTestResponse(
                 ok=True,
                 message="FakeLLM connection successful (no real API call made)"
             )
+            
         else:
-            return ProviderTestResponse(ok=False, message=f"Provider {request.provider} not implemented")
+            return ProviderTestResponse(
+                ok=False, 
+                message=f"Provider {request.provider} not supported. Available: openai, claude, bedrock, internal, fake"
+            )
             
     except Exception as e:
         app_logger.error(f"Error testing provider {request.provider}: {e}")
         return ProviderTestResponse(ok=False, message=f"Unexpected error: {str(e)}")
+
+
+@app.post("/providers/models", response_model=ModelDiscoveryResponse)
+async def discover_models(request: ModelDiscoveryRequest, response: Response):
+    """Discover available models for a provider."""
+    try:
+        app_logger.info(f"Discovering models for provider: {request.provider}")
+        
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        
+        models = []
+        
+        if request.provider == "openai":
+            if not request.api_key:
+                return ModelDiscoveryResponse(
+                    ok=False, 
+                    message="API key required for OpenAI model discovery",
+                    models=[]
+                )
+            
+            discovered_models = await model_discovery.get_available_models(
+                "openai", 
+                api_key=request.api_key
+            )
+            
+            models = [
+                ModelInfo(
+                    id=model.id,
+                    name=model.name,
+                    description=model.description,
+                    context_length=model.context_length,
+                    capabilities=model.capabilities
+                )
+                for model in discovered_models
+            ]
+            
+        elif request.provider == "claude":
+            if not request.api_key:
+                return ModelDiscoveryResponse(
+                    ok=False, 
+                    message="API key required for Claude model discovery",
+                    models=[]
+                )
+            
+            discovered_models = await model_discovery.get_available_models(
+                "claude", 
+                api_key=request.api_key
+            )
+            
+            models = [
+                ModelInfo(
+                    id=model.id,
+                    name=model.name,
+                    description=model.description,
+                    context_length=model.context_length,
+                    capabilities=model.capabilities
+                )
+                for model in discovered_models
+            ]
+            
+        elif request.provider == "bedrock":
+            region = request.region or "us-east-1"
+            discovered_models = await model_discovery.get_available_models(
+                "bedrock", 
+                region=region
+            )
+            
+            models = [
+                ModelInfo(
+                    id=model.id,
+                    name=model.name,
+                    description=model.description,
+                    capabilities=model.capabilities
+                )
+                for model in discovered_models
+            ]
+            
+        elif request.provider == "internal":
+            if not request.endpoint_url:
+                return ModelDiscoveryResponse(
+                    ok=False, 
+                    message="Endpoint URL required for internal provider model discovery",
+                    models=[]
+                )
+            
+            discovered_models = await model_discovery.get_available_models(
+                "internal", 
+                endpoint_url=request.endpoint_url,
+                api_key=request.api_key
+            )
+            
+            models = [
+                ModelInfo(
+                    id=model.id,
+                    name=model.name,
+                    description=model.description,
+                    capabilities=model.capabilities
+                )
+                for model in discovered_models
+            ]
+            
+        elif request.provider == "fake":
+            # Return fake models for testing
+            models = [
+                ModelInfo(
+                    id="fake-llm",
+                    name="Fake LLM",
+                    description="Deterministic fake model for testing",
+                    capabilities=["text", "testing"]
+                )
+            ]
+            
+        else:
+            return ModelDiscoveryResponse(
+                ok=False, 
+                message=f"Provider {request.provider} not supported. Available: openai, claude, bedrock, internal, fake",
+                models=[]
+            )
+        
+        app_logger.info(f"Discovered {len(models)} models for {request.provider}")
+        
+        return ModelDiscoveryResponse(
+            ok=True,
+            message=f"Successfully discovered {len(models)} models",
+            models=models
+        )
+        
+    except Exception as e:
+        app_logger.error(f"Error discovering models for provider {request.provider}: {e}")
+        return ModelDiscoveryResponse(
+            ok=False,
+            message=f"Failed to discover models: {str(e)}",
+            models=[]
+        )
 
 
 @app.post("/jira/test", response_model=JiraTestResponse)

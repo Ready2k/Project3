@@ -11,6 +11,7 @@ Interactive GUI + API system that judges if user stories/requirements are automa
 - 🛠️ **LLM-Driven Tech Stack Generation**: Intelligent technology recommendations from 55+ catalog technologies
 - 🏗️ **AI-Generated Architecture Explanations**: LLM explains how technology components work together for your specific use case
 - 📈 **AI-Generated Architecture Diagrams**: Context, Container, Sequence, and Tech Stack Wiring diagrams using Mermaid with enhanced viewing options
+- 🏗️ **Infrastructure Diagrams**: Cloud architecture diagrams with vendor-specific icons (AWS, GCP, Azure) using mingrammer/diagrams
 - 🛡️ **Advanced Prompt Defense System**: Multi-layered security against prompt injection, data egress, and business logic attacks
 - 📚 **Technology Catalog Management**: Complete CRUD interface for managing 55+ technologies across 17 categories
 - 📊 **Pattern Analytics Dashboard**: Real-time analytics showing pattern match frequency, acceptance rates, and quality scores
@@ -126,6 +127,7 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
    - Context Diagram: System boundaries and external integrations
    - Container Diagram: Internal components and data flow
    - Sequence Diagram: Step-by-step process flow with decision points
+   - Infrastructure Diagram: Cloud architecture with vendor-specific icons (AWS, GCP, Azure)
    - Tech Stack Wiring Diagram: Technical component connections and data flows
 
 6. **Monitor Performance** (Observability Tab):

@@ -1,10 +1,11 @@
 """Internal HTTP provider implementation."""
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import httpx
 
 from app.llm.base import LLMProvider
+from app.llm.model_discovery import model_discovery
 
 
 class InternalProvider(LLMProvider):
@@ -58,3 +59,20 @@ class InternalProvider(LLMProvider):
             "endpoint_url": self.endpoint_url,
             "api_key_set": bool(self.api_key)
         }
+    
+    async def get_available_models(self) -> List[Dict[str, Any]]:
+        """Get available internal models."""
+        models = await model_discovery.get_available_models(
+            "internal", 
+            endpoint_url=self.endpoint_url, 
+            api_key=self.api_key
+        )
+        return [
+            {
+                "id": model.id,
+                "name": model.name,
+                "description": model.description,
+                "capabilities": model.capabilities
+            }
+            for model in models
+        ]

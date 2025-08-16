@@ -416,7 +416,7 @@ class InputValidator:
         """Validate export format."""
         if not format_type or not isinstance(format_type, str):
             return False
-        allowed_formats = ["json", "md", "markdown"]
+        allowed_formats = ["json", "md", "markdown", "comprehensive", "report"]
         return format_type.lower() in allowed_formats
     
     def validate_requirements_text(self, text: str) -> tuple[bool, str]:

@@ -6,27 +6,32 @@ from typing import Dict, Optional, Tuple
 from app.exporters.base import BaseExporter
 from app.exporters.json_exporter import JSONExporter
 from app.exporters.markdown_exporter import MarkdownExporter
+from app.exporters.comprehensive_exporter import ComprehensiveExporter
 from app.state.store import SessionState
 
 
 class ExportService:
     """Service for managing exports in multiple formats."""
     
-    def __init__(self, export_path: Path, base_url: Optional[str] = None):
+    def __init__(self, export_path: Path, base_url: Optional[str] = None, llm_provider=None):
         """Initialize export service.
         
         Args:
             export_path: Directory to store exported files
             base_url: Base URL for generating download URLs
+            llm_provider: LLM provider for comprehensive analysis
         """
         self.export_path = export_path
         self.base_url = base_url
+        self.llm_provider = llm_provider
         
         # Initialize exporters
         self.exporters: Dict[str, BaseExporter] = {
             "json": JSONExporter(export_path, base_url),
             "md": MarkdownExporter(export_path, base_url),
-            "markdown": MarkdownExporter(export_path, base_url)  # Alias
+            "markdown": MarkdownExporter(export_path, base_url),  # Alias
+            "comprehensive": ComprehensiveExporter(export_path, base_url, llm_provider),
+            "report": ComprehensiveExporter(export_path, base_url, llm_provider)  # Alias
         }
     
     def get_supported_formats(self) -> list:

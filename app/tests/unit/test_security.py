@@ -78,7 +78,7 @@ class TestInputValidator:
     
     def test_validate_export_format_valid(self):
         """Test valid export format validation."""
-        valid_formats = ["json", "md", "markdown", "JSON", "MD"]
+        valid_formats = ["json", "md", "markdown", "comprehensive", "report", "JSON", "MD", "COMPREHENSIVE"]
         
         for format_type in valid_formats:
             assert self.validator.validate_export_format(format_type) is True

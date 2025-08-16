@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 import sqlite3
 import time
 from datetime import datetime
@@ -498,6 +499,130 @@ IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```m
   
   U->>E: Sequence diagram generation failed: {str(e)}"""
 
+
+async def build_infrastructure_diagram(requirement: str, recommendations: List[Dict]) -> Dict[str, Any]:
+    """Build an infrastructure diagram specification using LLM based on the specific requirement."""
+    prompt = f"""Generate an infrastructure diagram specification for this automation requirement:
+
+REQUIREMENT: {requirement}
+
+RECOMMENDATIONS: {recommendations[0].get('reasoning', 'No recommendations available') if recommendations else 'No recommendations available'}
+
+Create a JSON specification for an infrastructure diagram showing:
+- Cloud providers (AWS, GCP, Azure) or on-premises components
+- Compute services (Lambda, EC2, Functions, VMs)
+- Databases (RDS, DynamoDB, SQL, etc.)
+- Storage (S3, GCS, Blob Storage)
+- Networking (API Gateway, Load Balancers)
+- Integration services (SQS, Pub/Sub, Service Bus)
+- External SaaS services
+
+Return a JSON object with this structure:
+{{
+  "title": "Infrastructure Diagram Title",
+  "clusters": [
+    {{
+      "provider": "aws|gcp|azure|k8s|onprem",
+      "name": "Cluster Name",
+      "nodes": [
+        {{"id": "unique_id", "type": "component_type", "label": "Display Label"}}
+      ]
+    }}
+  ],
+  "nodes": [
+    {{"id": "external_id", "type": "component_type", "provider": "provider", "label": "External Service"}}
+  ],
+  "edges": [
+    ["source_id", "target_id", "connection_label"]
+  ]
+}}
+
+Component types by provider:
+- AWS: lambda, ec2, rds, dynamodb, s3, apigateway, sqs, sns
+- GCP: functions, gce, sql, firestore, gcs, loadbalancing
+- Azure: functions, vm, sql, cosmosdb, storage, loadbalancer
+- OnPrem: server, postgresql, mysql, mongodb, redis, nginx
+- SaaS: auth0, okta, slack, teams, datadog
+
+IMPORTANT: Return ONLY valid JSON without markdown formatting."""
+
+    try:
+        provider_config = st.session_state.get('provider_config', {})
+        if provider_config.get('provider') == 'fake':
+            # Return a sample infrastructure spec for fake provider
+            return {
+                "title": "Sample Infrastructure",
+                "clusters": [
+                    {
+                        "provider": "aws",
+                        "name": "AWS Cloud",
+                        "nodes": [
+                            {"id": "api_gateway", "type": "apigateway", "label": "API Gateway"},
+                            {"id": "lambda_func", "type": "lambda", "label": "Lambda Function"},
+                            {"id": "database", "type": "dynamodb", "label": "Database"}
+                        ]
+                    }
+                ],
+                "nodes": [
+                    {"id": "user", "type": "server", "provider": "onprem", "label": "User"}
+                ],
+                "edges": [
+                    ["user", "api_gateway", "HTTPS"],
+                    ["api_gateway", "lambda_func", "invoke"],
+                    ["lambda_func", "database", "query"]
+                ]
+            }
+        
+        response = await make_llm_request(prompt, provider_config, purpose="infrastructure_diagram")
+        
+        # Try to parse JSON response
+        import json
+        try:
+            # Clean the response of any markdown formatting
+            cleaned_response = response.strip()
+            if cleaned_response.startswith('```json'):
+                cleaned_response = cleaned_response[7:]
+            if cleaned_response.endswith('```'):
+                cleaned_response = cleaned_response[:-3]
+            cleaned_response = cleaned_response.strip()
+            
+            return json.loads(cleaned_response)
+        except json.JSONDecodeError as e:
+            app_logger.error(f"Failed to parse infrastructure diagram JSON: {e}")
+            # Return fallback spec
+            return {
+                "title": "Infrastructure Diagram (Parsing Error)",
+                "clusters": [
+                    {
+                        "provider": "aws",
+                        "name": "System Components",
+                        "nodes": [
+                            {"id": "app", "type": "lambda", "label": "Application"},
+                            {"id": "db", "type": "dynamodb", "label": "Database"}
+                        ]
+                    }
+                ],
+                "nodes": [],
+                "edges": [["app", "db", "data"]]
+            }
+            
+    except Exception as e:
+        app_logger.error(f"Infrastructure diagram generation failed: {e}")
+        return {
+            "title": "Infrastructure Diagram (Error)",
+            "clusters": [
+                {
+                    "provider": "aws",
+                    "name": "Error",
+                    "nodes": [
+                        {"id": "error", "type": "lambda", "label": f"Generation failed: {str(e)}"}
+                    ]
+                }
+            ],
+            "nodes": [],
+            "edges": []
+        }
+
 # Configuration
 API_BASE_URL = "http://localhost:8000"
 POLL_INTERVAL = 2  # seconds
@@ -566,64 +691,219 @@ class AutomatedAIAssessmentUI:
         st.sidebar.header("🔧 Provider Configuration")
         
         # Provider selection
-        provider_options = ["openai", "bedrock", "claude", "internal", "fake"]
+        provider_options = ["openai", "claude", "bedrock", "internal", "fake"]
         current_provider = st.sidebar.selectbox(
             "LLM Provider",
             provider_options,
             index=provider_options.index(st.session_state.provider_config['provider'])
         )
         
-        # Model selection based on provider
+        # Initialize variables
+        api_key = ""
+        endpoint_url = ""
+        region = ""
+        model_options = []
+        available_models = []
+        
+        # Provider-specific configuration
         if current_provider == "openai":
-            model_options = ["gpt-4o", "gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"]
             api_key = st.sidebar.text_input(
                 "OpenAI API Key",
                 value=st.session_state.provider_config.get('api_key', ''),
-                type="password"
+                type="password",
+                help="Your OpenAI API key"
             )
-            model = st.sidebar.selectbox("Model", model_options)
-            endpoint_url = ""
-            region = ""
-        
-        elif current_provider == "bedrock":
-            model_options = ["claude-3-sonnet", "claude-3-haiku"]
-            model = st.sidebar.selectbox("Model", model_options)
-            region = st.sidebar.selectbox(
-                "AWS Region",
-                ["us-east-1", "us-west-2", "eu-west-1"],
-                index=0
-            )
-            api_key = ""
-            endpoint_url = ""
+            
+            # Discover models button
+            if st.sidebar.button("🔍 Discover Models", key="discover_openai"):
+                if api_key:
+                    with st.sidebar:
+                        with st.spinner("Discovering OpenAI models..."):
+                            try:
+                                response = asyncio.run(self.make_api_request(
+                                    "POST",
+                                    "/providers/models",
+                                    {
+                                        "provider": "openai",
+                                        "api_key": api_key
+                                    }
+                                ))
+                                if response.get('ok'):
+                                    available_models = response.get('models', [])
+                                    st.session_state[f'discovered_models_{current_provider}'] = available_models
+                                    st.success(f"Discovered {len(available_models)} models!")
+                                else:
+                                    st.error(f"Failed to discover models: {response.get('message', 'Unknown error')}")
+                            except Exception as e:
+                                st.error(f"Error discovering models: {str(e)}")
+                else:
+                    st.sidebar.warning("Please enter your API key first")
+            
+            # Use discovered models or fallback
+            if f'discovered_models_{current_provider}' in st.session_state:
+                available_models = st.session_state[f'discovered_models_{current_provider}']
+                model_options = [model['id'] for model in available_models]
+            else:
+                # Fallback models
+                model_options = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"]
         
         elif current_provider == "claude":
-            model_options = ["claude-3-opus", "claude-3-sonnet"]
-            model = st.sidebar.selectbox("Model", model_options)
             api_key = st.sidebar.text_input(
                 "Anthropic API Key",
                 value=st.session_state.provider_config.get('api_key', ''),
-                type="password"
+                type="password",
+                help="Your Anthropic API key"
             )
-            endpoint_url = ""
-            region = ""
+            
+            # Discover models button
+            if st.sidebar.button("🔍 Discover Models", key="discover_claude"):
+                if api_key:
+                    with st.sidebar:
+                        with st.spinner("Discovering Claude models..."):
+                            try:
+                                response = asyncio.run(self.make_api_request(
+                                    "POST",
+                                    "/providers/models",
+                                    {
+                                        "provider": "claude",
+                                        "api_key": api_key
+                                    }
+                                ))
+                                if response.get('ok'):
+                                    available_models = response.get('models', [])
+                                    st.session_state[f'discovered_models_{current_provider}'] = available_models
+                                    st.success(f"Discovered {len(available_models)} models!")
+                                else:
+                                    st.error(f"Failed to discover models: {response.get('message', 'Unknown error')}")
+                            except Exception as e:
+                                st.error(f"Error discovering models: {str(e)}")
+                else:
+                    st.sidebar.warning("Please enter your API key first")
+            
+            # Use discovered models or fallback
+            if f'discovered_models_{current_provider}' in st.session_state:
+                available_models = st.session_state[f'discovered_models_{current_provider}']
+                model_options = [model['id'] for model in available_models]
+            else:
+                # Fallback models
+                model_options = ["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"]
+        
+        elif current_provider == "bedrock":
+            region = st.sidebar.selectbox(
+                "AWS Region",
+                ["us-east-1", "us-west-2", "eu-west-1", "eu-west-2", "ap-southeast-1"],
+                index=0,
+                help="AWS region for Bedrock service"
+            )
+            
+            # Discover models button
+            if st.sidebar.button("🔍 Discover Models", key="discover_bedrock"):
+                with st.sidebar:
+                    with st.spinner("Discovering Bedrock models..."):
+                        try:
+                            response = asyncio.run(self.make_api_request(
+                                "POST",
+                                "/providers/models",
+                                {
+                                    "provider": "bedrock",
+                                    "region": region
+                                }
+                            ))
+                            if response.get('ok'):
+                                available_models = response.get('models', [])
+                                st.session_state[f'discovered_models_{current_provider}'] = available_models
+                                st.success(f"Discovered {len(available_models)} models!")
+                            else:
+                                st.error(f"Failed to discover models: {response.get('message', 'Unknown error')}")
+                        except Exception as e:
+                            st.error(f"Error discovering models: {str(e)}")
+            
+            # Use discovered models or fallback
+            if f'discovered_models_{current_provider}' in st.session_state:
+                available_models = st.session_state[f'discovered_models_{current_provider}']
+                model_options = [model['id'] for model in available_models]
+            else:
+                # Fallback models
+                model_options = ["anthropic.claude-3-sonnet-20240229-v1:0", "anthropic.claude-3-haiku-20240307-v1:0", "anthropic.claude-v2:1"]
         
         elif current_provider == "internal":
-            model_options = ["internal-model"]
-            model = st.sidebar.selectbox("Model", model_options)
             endpoint_url = st.sidebar.text_input(
                 "Endpoint URL",
-                value=st.session_state.provider_config.get('endpoint_url', '')
+                value=st.session_state.provider_config.get('endpoint_url', ''),
+                help="URL of your internal LLM API endpoint"
             )
-            api_key = ""
-            region = ""
+            api_key = st.sidebar.text_input(
+                "API Key (Optional)",
+                value=st.session_state.provider_config.get('api_key', ''),
+                type="password",
+                help="Optional API key for authentication"
+            )
+            
+            # Discover models button
+            if st.sidebar.button("🔍 Discover Models", key="discover_internal"):
+                if endpoint_url:
+                    with st.sidebar:
+                        with st.spinner("Discovering internal models..."):
+                            try:
+                                response = asyncio.run(self.make_api_request(
+                                    "POST",
+                                    "/providers/models",
+                                    {
+                                        "provider": "internal",
+                                        "endpoint_url": endpoint_url,
+                                        "api_key": api_key if api_key else None
+                                    }
+                                ))
+                                if response.get('ok'):
+                                    available_models = response.get('models', [])
+                                    st.session_state[f'discovered_models_{current_provider}'] = available_models
+                                    st.success(f"Discovered {len(available_models)} models!")
+                                else:
+                                    st.error(f"Failed to discover models: {response.get('message', 'Unknown error')}")
+                            except Exception as e:
+                                st.error(f"Error discovering models: {str(e)}")
+                else:
+                    st.sidebar.warning("Please enter the endpoint URL first")
+            
+            # Use discovered models or fallback
+            if f'discovered_models_{current_provider}' in st.session_state:
+                available_models = st.session_state[f'discovered_models_{current_provider}']
+                model_options = [model['id'] for model in available_models]
+            else:
+                # Fallback models
+                model_options = ["default", "custom-model"]
         
         else:  # fake
-            model_options = ["fake-model"]
-            model = st.sidebar.selectbox("Model", model_options)
-            api_key = ""
-            endpoint_url = ""
-            region = ""
+            model_options = ["fake-llm"]
             st.sidebar.info("🎭 Using FakeLLM for testing - no API key required")
+        
+        # Model selection
+        if model_options:
+            current_model = st.session_state.provider_config.get('model', model_options[0])
+            if current_model not in model_options:
+                current_model = model_options[0]
+            
+            model = st.sidebar.selectbox(
+                "Model",
+                model_options,
+                index=model_options.index(current_model) if current_model in model_options else 0,
+                help="Select the model to use for this provider"
+            )
+            
+            # Show model details if available
+            if available_models:
+                selected_model_info = next((m for m in available_models if m['id'] == model), None)
+                if selected_model_info:
+                    with st.sidebar.expander("ℹ️ Model Details"):
+                        st.write(f"**Name:** {selected_model_info.get('name', 'N/A')}")
+                        if selected_model_info.get('description'):
+                            st.write(f"**Description:** {selected_model_info['description']}")
+                        if selected_model_info.get('context_length'):
+                            st.write(f"**Context Length:** {selected_model_info['context_length']:,} tokens")
+                        if selected_model_info.get('capabilities'):
+                            st.write(f"**Capabilities:** {', '.join(selected_model_info['capabilities'])}")
+        else:
+            model = "default"
         
         # Update session state
         st.session_state.provider_config.update({
@@ -1677,20 +1957,74 @@ class AutomatedAIAssessmentUI:
         """Render export functionality."""
         st.subheader("📤 Export Results")
         
-        col1, col2 = st.columns(2)
+        # Export format selection
+        export_format = st.selectbox(
+            "Choose export format:",
+            options=[
+                ("comprehensive", "📊 Comprehensive Report - Complete analysis with all details"),
+                ("json", "📄 JSON - Structured data format"),
+                ("md", "📝 Markdown - Basic summary format")
+            ],
+            format_func=lambda x: x[1],
+            help="Select the type of export you need"
+        )
         
-        with col1:
-            if st.button("📄 Export as JSON"):
-                self.export_results("json")
+        format_key = export_format[0]
         
-        with col2:
-            if st.button("📝 Export as Markdown"):
-                self.export_results("md")
+        # Export button with format-specific styling
+        if format_key == "comprehensive":
+            button_text = "📊 Generate Comprehensive Report"
+            button_help = "Includes: Original Requirements, Feasibility Assessment, Recommended Solutions, Tech Stack Analysis, Architecture Explanations, Pattern Matches, Q&A History, and Implementation Guidance"
+        elif format_key == "json":
+            button_text = "📄 Export as JSON"
+            button_help = "Structured data format suitable for integration with other systems"
+        else:
+            button_text = "📝 Export as Markdown"
+            button_help = "Basic summary in Markdown format"
+        
+        if st.button(button_text, help=button_help, use_container_width=True):
+            self.export_results(format_key)
+        
+        # Format descriptions
+        with st.expander("ℹ️ Export Format Details"):
+            st.markdown("""
+            **📊 Comprehensive Report:**
+            - Complete analysis with all page data
+            - Original requirements and constraints
+            - Detailed feasibility assessment
+            - Tech stack recommendations with explanations
+            - Architecture analysis and patterns
+            - Pattern matching results
+            - Q&A history and analysis
+            - Implementation guidance and next steps
+            - Risk assessment and success metrics
+            
+            **📄 JSON Format:**
+            - Structured data for system integration
+            - All session data in machine-readable format
+            - Suitable for APIs and data processing
+            
+            **📝 Markdown Format:**
+            - Basic summary in readable text format
+            - Core recommendations and analysis
+            - Suitable for documentation and sharing
+            """)
     
     def export_results(self, format_type: str):
         """Export results in the specified format."""
         try:
-            with st.spinner(f"Exporting as {format_type.upper()}..."):
+            # Format-specific messaging
+            if format_type == "comprehensive":
+                spinner_text = "🔄 Generating comprehensive report with AI analysis..."
+                success_text = "✅ Comprehensive report generated successfully!"
+            elif format_type == "json":
+                spinner_text = "📄 Exporting structured data..."
+                success_text = "✅ JSON export completed!"
+            else:
+                spinner_text = "📝 Generating markdown summary..."
+                success_text = "✅ Markdown export completed!"
+            
+            with st.spinner(spinner_text):
                 response = asyncio.run(self.make_api_request(
                     "POST",
                     "/export",
@@ -1700,7 +2034,17 @@ class AutomatedAIAssessmentUI:
                     }
                 ))
                 
-                st.success(f"✅ Export successful!")
+                st.success(success_text)
+                
+                # Show file info
+                file_info = response.get('file_info', {})
+                if file_info:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("File Size", f"{file_info.get('size_bytes', 0):,} bytes")
+                    with col2:
+                        st.metric("Format", format_type.upper())
+                
                 st.info(f"**File:** {response['file_path']}")
                 
                 # Show download button
@@ -1719,11 +2063,23 @@ class AutomatedAIAssessmentUI:
                             file_content = file_response.content
                             filename = response['file_path'].split('/')[-1]
                             
+                            # Format-specific download button styling
+                            if format_type == "comprehensive":
+                                button_label = "📊 Download Comprehensive Report"
+                                mime_type = "text/markdown"
+                            elif format_type == "json":
+                                button_label = "📄 Download JSON Data"
+                                mime_type = "application/json"
+                            else:
+                                button_label = "📝 Download Markdown"
+                                mime_type = "text/markdown"
+                            
                             st.download_button(
-                                label="📥 Download File",
+                                label=button_label,
                                 data=file_content,
                                 file_name=filename,
-                                mime="application/octet-stream"
+                                mime=mime_type,
+                                use_container_width=True
                             )
                         else:
                             st.markdown(f"[📥 Download File]({download_url})")
@@ -1734,9 +2090,26 @@ class AutomatedAIAssessmentUI:
                         if not download_url.startswith('http'):
                             download_url = f"http://localhost:8000{download_url}"
                         st.markdown(f"[📥 Download File]({download_url})")
+                
+                # Show preview for comprehensive reports
+                if format_type == "comprehensive":
+                    with st.expander("📋 Report Preview"):
+                        st.info("The comprehensive report includes:")
+                        st.markdown("""
+                        - **Executive Summary** with overall assessment
+                        - **Original Requirements** with detailed breakdown
+                        - **Feasibility Assessment** with confidence metrics
+                        - **Recommended Solutions** with tech stack analysis
+                        - **Technical Analysis** with architecture patterns
+                        - **Pattern Matches** with detailed scoring
+                        - **Q&A History** with complete interaction log
+                        - **Implementation Guidance** with next steps and risk assessment
+                        """)
         
         except Exception as e:
             st.error(f"❌ Export failed: {str(e)}")
+            if format_type == "comprehensive":
+                st.info("💡 If comprehensive export fails, try the basic Markdown or JSON export options.")
     
     def render_mermaid_diagrams(self):
         """Render Mermaid diagrams panel."""
@@ -1749,7 +2122,7 @@ class AutomatedAIAssessmentUI:
         
         diagram_type = st.selectbox(
             "Select diagram type:",
-            ["Context Diagram", "Container Diagram", "Sequence Diagram", "Tech Stack Wiring Diagram"]
+            ["Context Diagram", "Container Diagram", "Sequence Diagram", "Tech Stack Wiring Diagram", "Infrastructure Diagram"]
         )
         
         # Show description for selected diagram type
@@ -1757,7 +2130,8 @@ class AutomatedAIAssessmentUI:
             "Context Diagram": "🌐 **System Context**: Shows the system boundaries, users, and external systems it integrates with.",
             "Container Diagram": "📦 **System Containers**: Shows the internal components, services, and how they interact within the system.",
             "Sequence Diagram": "🔄 **Process Flow**: Shows the step-by-step sequence of interactions and decision points in the automation.",
-            "Tech Stack Wiring Diagram": "🔌 **Technical Wiring**: Shows how all the recommended technologies connect, communicate, and pass data between each other. Like a blueprint for developers showing API calls, database connections, authentication flows, and service integrations."
+            "Tech Stack Wiring Diagram": "🔌 **Technical Wiring**: Shows how all the recommended technologies connect, communicate, and pass data between each other. Like a blueprint for developers showing API calls, database connections, authentication flows, and service integrations.",
+            "Infrastructure Diagram": "🏗️ **Infrastructure Architecture**: Shows cloud infrastructure components with vendor-specific icons (AWS, GCP, Azure). Displays compute, storage, database, and networking services with realistic cloud architecture patterns."
         }
         
         st.info(diagram_descriptions[diagram_type])
@@ -1797,15 +2171,25 @@ class AutomatedAIAssessmentUI:
                 with st.spinner(f"🤖 Generating {diagram_type.lower()} using AI..."):
                     if diagram_type == "Context Diagram":
                         mermaid_code = asyncio.run(build_context_diagram(requirement_text, recommendations))
+                        st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
+                        st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
                     elif diagram_type == "Container Diagram":
                         mermaid_code = asyncio.run(build_container_diagram(requirement_text, recommendations))
+                        st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
+                        st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
                     elif diagram_type == "Sequence Diagram":
                         mermaid_code = asyncio.run(build_sequence_diagram(requirement_text, recommendations))
-                    else:  # Tech Stack Wiring Diagram
+                        st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
+                        st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
+                    elif diagram_type == "Tech Stack Wiring Diagram":
                         mermaid_code = asyncio.run(build_tech_stack_wiring_diagram(requirement_text, recommendations))
+                        st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
+                        st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
+                    else:  # Infrastructure Diagram
+                        infrastructure_spec = asyncio.run(build_infrastructure_diagram(requirement_text, recommendations))
+                        st.session_state[f'{diagram_type.lower().replace(" ", "_")}_spec'] = infrastructure_spec
+                        st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "infrastructure"
                     
-                    # Store the generated diagram
-                    st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
                     st.success("✅ Diagram generated successfully!")
                     
             except Exception as e:
@@ -1815,10 +2199,20 @@ class AutomatedAIAssessmentUI:
         
         # Display the diagram if we have one
         diagram_key = f'{diagram_type.lower().replace(" ", "_")}_code'
-        if diagram_key in st.session_state:
-            mermaid_code = st.session_state[diagram_key]
-            # Display Mermaid diagram
-            self.render_mermaid(mermaid_code)
+        diagram_spec_key = f'{diagram_type.lower().replace(" ", "_")}_spec'
+        diagram_type_key = f'{diagram_type.lower().replace(" ", "_")}_type'
+        
+        if diagram_key in st.session_state or diagram_spec_key in st.session_state:
+            diagram_render_type = st.session_state.get(diagram_type_key, "mermaid")
+            
+            if diagram_render_type == "infrastructure":
+                # Handle infrastructure diagram
+                infrastructure_spec = st.session_state[diagram_spec_key]
+                self.render_infrastructure_diagram(infrastructure_spec, diagram_type)
+            else:
+                # Handle Mermaid diagram
+                mermaid_code = st.session_state[diagram_key]
+                self.render_mermaid(mermaid_code)
             
             # Add helpful context for the Tech Stack Wiring Diagram
             if diagram_type == "Tech Stack Wiring Diagram":
@@ -1833,31 +2227,33 @@ class AutomatedAIAssessmentUI:
                 This shows the technical "wiring" of your system - how each technology component connects to others.
                 """)
             
-            # Check if diagram generation failed and show helpful message
-            if "Diagram Generation Error" in mermaid_code:
-                st.warning("""
-                **Diagram Generation Issue Detected**
+            # Check if diagram generation failed and show helpful message (only for Mermaid diagrams)
+            if diagram_render_type == "mermaid":
+                mermaid_code = st.session_state[diagram_key]
+                if "Diagram Generation Error" in mermaid_code:
+                    st.warning("""
+                    **Diagram Generation Issue Detected**
+                    
+                    The LLM generated a diagram with formatting issues. This can happen with certain providers or complex tech stacks.
+                    
+                    **Suggestions:**
+                    - Try generating the diagram again (click the Generate button)
+                    - Switch to a different LLM provider (OpenAI usually works best for diagrams)
+                    - Use the fake provider for a basic diagram structure
+                    """)
+                elif "generation failed" in mermaid_code.lower():
+                    st.error("""
+                    **Diagram Generation Failed**
+                    
+                    There was an error generating the diagram. Please check:
+                    - Your LLM provider is properly configured
+                    - You have a valid API key
+                    - Try switching providers or generating again
+                    """)
                 
-                The LLM generated a diagram with formatting issues. This can happen with certain providers or complex tech stacks.
-                
-                **Suggestions:**
-                - Try generating the diagram again (click the Generate button)
-                - Switch to a different LLM provider (OpenAI usually works best for diagrams)
-                - Use the fake provider for a basic diagram structure
-                """)
-            elif "generation failed" in mermaid_code.lower():
-                st.error("""
-                **Diagram Generation Failed**
-                
-                There was an error generating the diagram. Please check:
-                - Your LLM provider is properly configured
-                - You have a valid API key
-                - Try switching providers or generating again
-                """)
-            
-            # Show code
-            with st.expander("View Mermaid Code"):
-                st.code(mermaid_code, language="mermaid")
+                # Show code
+                with st.expander("View Mermaid Code"):
+                    st.code(mermaid_code, language="mermaid")
     
     def render_mermaid(self, mermaid_code: str):
         """Render a Mermaid diagram with better viewing options."""
@@ -2147,6 +2543,215 @@ class AutomatedAIAssessmentUI:
 </html>"""
     
 
+    def render_infrastructure_diagram(self, infrastructure_spec: Dict[str, Any], diagram_type: str):
+        """Render an infrastructure diagram using mingrammer/diagrams."""
+        import hashlib
+        import json
+        import tempfile
+        import os
+        from pathlib import Path
+        
+        # Create a unique ID for this diagram
+        spec_str = json.dumps(infrastructure_spec, sort_keys=True)
+        diagram_id = hashlib.md5(spec_str.encode()).hexdigest()[:8]
+        
+        # Control buttons
+        col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+        with col2:
+            if st.button("🔍 Large View", key=f"infra_expand_{diagram_id}"):
+                st.session_state[f"show_large_infra_{diagram_id}"] = not st.session_state.get(f"show_large_infra_{diagram_id}", False)
+        
+        with col3:
+            if st.button("💾 Download", key=f"infra_download_{diagram_id}"):
+                self.download_infrastructure_diagram(infrastructure_spec, diagram_id)
+        
+        with col4:
+            if st.button("📋 Show Code", key=f"infra_code_{diagram_id}"):
+                st.session_state[f"show_infra_code_{diagram_id}"] = not st.session_state.get(f"show_infra_code_{diagram_id}", False)
+        
+        # Try to generate and display the infrastructure diagram
+        try:
+            from app.diagrams.infrastructure import InfrastructureDiagramGenerator
+            
+            generator = InfrastructureDiagramGenerator()
+            
+            # Create temporary file for the diagram
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+                temp_path = tmp_file.name[:-4]  # Remove .png extension
+            
+            try:
+                # Generate the diagram
+                diagram_path, python_code = generator.generate_diagram(
+                    infrastructure_spec, temp_path, format="png"
+                )
+                
+                # Display the diagram
+                if os.path.exists(diagram_path):
+                    show_large = st.session_state.get(f"show_large_infra_{diagram_id}", False)
+                    
+                    if show_large:
+                        st.write("**🔍 Large View Mode** - Click 'Large View' again to return to normal size")
+                        st.image(diagram_path, use_container_width=True)
+                    else:
+                        st.image(diagram_path, width=600)
+                    
+                    # Store the python code for display
+                    st.session_state[f"infra_python_code_{diagram_id}"] = python_code
+                    
+                    # Add helpful context for Infrastructure Diagram
+                    st.info("""
+                    **How to read this diagram:**
+                    - **Cloud Provider Icons** = Vendor-specific services (AWS Lambda, GCP Functions, etc.)
+                    - **Clusters** = Logical groupings (VPCs, Resource Groups, Projects)
+                    - **Arrows** = Data flow and connections between services
+                    - **Colors** = Different service categories (compute, storage, database, etc.)
+                    
+                    This shows your infrastructure using official cloud provider icons and realistic architecture patterns.
+                    """)
+                    
+                else:
+                    st.error("Failed to generate infrastructure diagram image")
+                    
+            except Exception as e:
+                st.error(f"Error generating infrastructure diagram: {str(e)}")
+                st.write("**Fallback:** Showing diagram specification as JSON")
+                st.json(infrastructure_spec)
+                
+            finally:
+                # Clean up temporary files
+                for ext in ['.png', '.svg']:
+                    temp_file_path = f"{temp_path}{ext}"
+                    if os.path.exists(temp_file_path):
+                        try:
+                            os.unlink(temp_file_path)
+                        except:
+                            pass
+                            
+        except ImportError:
+            st.warning("""
+            **Infrastructure Diagrams Not Available**
+            
+            The `diagrams` library is not installed. To enable infrastructure diagrams:
+            
+            ```bash
+            pip install diagrams
+            # Also install Graphviz system dependency
+            ```
+            
+            **Showing specification instead:**
+            """)
+            st.json(infrastructure_spec)
+        
+        # Show code if requested
+        if st.session_state.get(f"show_infra_code_{diagram_id}", False):
+            python_code = st.session_state.get(f"infra_python_code_{diagram_id}", "# Code not available")
+            
+            st.write("**📋 Python Code (mingrammer/diagrams):**")
+            st.code(python_code, language="python")
+            
+            st.write("**📋 JSON Specification:**")
+            st.code(json.dumps(infrastructure_spec, indent=2), language="json")
+            
+            # Download options
+            col1, col2 = st.columns(2)
+            with col1:
+                st.download_button(
+                    label="💾 Download Python Code",
+                    data=python_code,
+                    file_name=f"infrastructure_diagram_{diagram_id}.py",
+                    mime="text/plain",
+                    key=f"download_py_{diagram_id}"
+                )
+            
+            with col2:
+                st.download_button(
+                    label="💾 Download JSON Spec",
+                    data=json.dumps(infrastructure_spec, indent=2),
+                    file_name=f"infrastructure_spec_{diagram_id}.json",
+                    mime="application/json",
+                    key=f"download_json_{diagram_id}"
+                )
+    
+    def download_infrastructure_diagram(self, infrastructure_spec: Dict[str, Any], diagram_id: str):
+        """Generate and save infrastructure diagram for download."""
+        try:
+            from app.diagrams.infrastructure import InfrastructureDiagramGenerator
+            
+            generator = InfrastructureDiagramGenerator()
+            
+            # Create exports directory with absolute path
+            current_dir = os.getcwd()
+            exports_dir = os.path.join(current_dir, "exports")
+            os.makedirs(exports_dir, exist_ok=True)
+            st.info(f"📁 Created exports directory: {exports_dir}")
+            
+            output_path = os.path.join(exports_dir, f"infrastructure_diagram_{diagram_id}")
+            
+            # Generate PNG first
+            try:
+                png_path, python_code = generator.generate_diagram(
+                    infrastructure_spec, output_path, format="png"
+                )
+                st.info(f"✅ PNG generated: {png_path}")
+                
+                # Verify PNG file exists
+                if not os.path.exists(png_path):
+                    raise FileNotFoundError(f"PNG file not found after generation: {png_path}")
+                
+            except Exception as png_error:
+                st.error(f"PNG generation failed: {str(png_error)}")
+                raise
+            
+            # Generate SVG
+            try:
+                svg_path, _ = generator.generate_diagram(
+                    infrastructure_spec, output_path, format="svg"
+                )
+                st.info(f"✅ SVG generated: {svg_path}")
+                
+                # Verify SVG file exists
+                if not os.path.exists(svg_path):
+                    st.warning(f"SVG file not found after generation: {svg_path}")
+                    svg_path = "SVG generation failed"
+                
+            except Exception as svg_error:
+                st.warning(f"SVG generation failed: {str(svg_error)}")
+                svg_path = "SVG generation failed"
+            
+            # Save the Python code
+            try:
+                code_path = os.path.join(exports_dir, f"infrastructure_diagram_{diagram_id}.py")
+                with open(code_path, 'w') as f:
+                    f.write(python_code)
+                st.info(f"✅ Python code saved: {code_path}")
+            except Exception as code_error:
+                st.warning(f"Python code save failed: {str(code_error)}")
+                code_path = "Python code save failed"
+            
+            # Show success message
+            st.success(f"✅ Infrastructure diagram saved to exports/ directory!")
+            st.write(f"**Files created:**")
+            st.write(f"- `{png_path}` (PNG image)")
+            if svg_path != "SVG generation failed":
+                st.write(f"- `{svg_path}` (SVG vector)")
+            if code_path != "Python code save failed":
+                st.write(f"- `{code_path}` (Python source)")
+            
+        except Exception as e:
+            st.error(f"Failed to save infrastructure diagram: {str(e)}")
+            
+            # Show debugging information
+            with st.expander("🔍 Debug Information"):
+                st.write(f"**Error Type:** {type(e).__name__}")
+                st.write(f"**Error Message:** {str(e)}")
+                st.write(f"**Diagram ID:** {diagram_id}")
+                st.write(f"**Output Path:** exports/infrastructure_diagram_{diagram_id}")
+                st.write(f"**Current Directory:** {os.getcwd()}")
+                st.write(f"**Exports Directory Exists:** {os.path.exists('exports')}")
+                
+                # Show infrastructure spec for debugging
+                st.write("**Infrastructure Specification:**")
+                st.json(infrastructure_spec)
     
     def render_observability_dashboard(self):
         """Render the observability dashboard with metrics and analytics."""

@@ -1,11 +1,12 @@
 """AWS Bedrock provider implementation."""
 
 import json
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import boto3
 
 from app.llm.base import LLMProvider
+from app.llm.model_discovery import model_discovery
 
 
 class BedrockProvider(LLMProvider):
@@ -68,3 +69,16 @@ class BedrockProvider(LLMProvider):
             "model": self.model,
             "region": self.region
         }
+    
+    async def get_available_models(self) -> List[Dict[str, Any]]:
+        """Get available Bedrock models."""
+        models = await model_discovery.get_available_models("bedrock", region=self.region)
+        return [
+            {
+                "id": model.id,
+                "name": model.name,
+                "description": model.description,
+                "capabilities": model.capabilities
+            }
+            for model in models
+        ]

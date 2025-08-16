@@ -1,16 +1,17 @@
 """Claude Direct provider implementation."""
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import anthropic
 
 from app.llm.base import LLMProvider
+from app.llm.model_discovery import model_discovery
 
 
 class ClaudeProvider(LLMProvider):
     """Claude Direct API provider implementation."""
     
-    def __init__(self, api_key: str, model: str = "claude-3-sonnet-20240229"):
+    def __init__(self, api_key: str, model: str = "claude-3-5-sonnet-20241022"):
         self.api_key = api_key
         self.model = model
         self.client = anthropic.Anthropic(api_key=api_key)
@@ -47,3 +48,17 @@ class ClaudeProvider(LLMProvider):
             "model": self.model,
             "api_key_set": bool(self.api_key)
         }
+    
+    async def get_available_models(self) -> List[Dict[str, Any]]:
+        """Get available Claude models."""
+        models = await model_discovery.get_available_models("claude", api_key=self.api_key)
+        return [
+            {
+                "id": model.id,
+                "name": model.name,
+                "description": model.description,
+                "context_length": model.context_length,
+                "capabilities": model.capabilities
+            }
+            for model in models
+        ]
