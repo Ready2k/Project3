@@ -32,7 +32,27 @@
 - `services/` - Business logic, recommendations, and Jira integration
 - `state/` - Session state management with multi-layer caching
 - `utils/` - Utilities (logging, audit, PII redaction)
-- `security/` - Input validation and security measures
+- `security/` - Advanced prompt defense system with 8 specialized detectors
+
+### Security Package (`app/security/`)
+- `advanced_prompt_defender.py` - Main security orchestrator and coordinator
+- `overt_injection_detector.py` - Direct prompt manipulation detection
+- `covert_injection_detector.py` - Hidden attack detection (base64, markdown, zero-width)
+- `multilingual_attack_detector.py` - Multi-language attack detection (6 languages)
+- `context_attack_detector.py` - Buried instructions and lorem ipsum detection
+- `data_egress_detector.py` - System prompt and environment variable protection
+- `business_logic_protector.py` - Configuration access and safety toggle protection
+- `protocol_tampering_detector.py` - JSON validation and format manipulation protection
+- `scope_validator.py` - Business domain validation and enforcement
+- `security_event_logger.py` - Structured security event logging with PII redaction
+- `user_education.py` - Contextual user guidance and educational messaging
+- `performance_optimizer.py` - Security performance optimization and caching
+- `deployment_config.py` - Gradual rollout and feature flag management
+- `rollback_manager.py` - Automatic rollback capabilities and triggers
+- `attack_pack_manager.py` - Attack pattern version management and validation
+- `defense_config.py` - Security configuration management
+- `attack_patterns.py` - Attack pattern definitions and validation
+- `input_preprocessor.py` - Input sanitization and preprocessing
 
 ### Testing Structure (`app/tests/`)
 - `unit/` - Unit tests for individual components

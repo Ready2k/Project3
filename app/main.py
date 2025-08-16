@@ -104,7 +104,7 @@ def main():
                     st.warning("Please enter an API key")
     
     # Main interface
-    tab1, tab2, tab3 = st.tabs(["📝 Input", "❓ Q&A", "📊 Results"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📝 Input", "❓ Q&A", "📊 Results", "ℹ️ About"])
     
     with tab1:
         st.header("Requirement Input")
@@ -494,6 +494,198 @@ def main():
                         st.write(f"**Pattern:** {match.get('pattern_name', 'Unknown')}")
                         st.write(f"**Score:** {match.get('blended_score', 0):.0%}")
                         st.write(f"**Rationale:** {match.get('rationale', 'No rationale provided')}")
+    
+    with tab4:
+        st.header("ℹ️ About Automated AI Assessment (AAA)")
+        
+        st.markdown("""
+        **Automated AI Assessment (AAA)** is an enterprise-grade system that evaluates whether user stories and requirements 
+        can be automated using agentic AI. The system combines intelligent pattern matching, LLM-powered analysis, 
+        and comprehensive security to provide accurate feasibility assessments.
+        """)
+        
+        # Version and Release Info
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("📋 System Information")
+            st.write("**Version:** 2.3.0")
+            st.write("**Release:** Technology Catalog")
+            st.write("**Build Date:** August 2025")
+            st.write("**License:** MIT")
+        
+        with col2:
+            st.subheader("🔗 Quick Links")
+            st.markdown("- [📚 Documentation](http://localhost:8000/docs)")
+            st.markdown("- [🏥 Health Check](http://localhost:8000/health)")
+            st.markdown("- [📊 API Status](http://localhost:8000/status)")
+            st.markdown("- [🔍 Pattern Library](./data/patterns)")
+        
+        # Core Features
+        st.subheader("🚀 Core Features")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            **🤖 AI-Powered Analysis**
+            - Multi-provider LLM support (OpenAI, Claude, Bedrock)
+            - Intelligent pattern matching with FAISS
+            - AI-generated clarifying questions
+            - LLM-driven tech stack recommendations
+            
+            **📊 Assessment & Analytics**
+            - Feasibility scoring (Automatable/Partial/Not)
+            - Pattern analytics dashboard
+            - Real-time progress tracking
+            - Comprehensive audit trails
+            
+            **🏗️ Architecture Generation**
+            - Context and container diagrams
+            - Sequence flow diagrams
+            - Tech stack wiring diagrams
+            - Interactive diagram viewing
+            """)
+        
+        with col2:
+            st.markdown("""
+            **🛡️ Enterprise Security**
+            - Advanced prompt defense system
+            - 8 specialized attack detectors
+            - Multilingual security (6 languages)
+            - Data egress protection
+            
+            **📚 Technology Management**
+            - 55+ technology catalog
+            - 17 technology categories
+            - Complete CRUD interface
+            - Automatic LLM updates
+            
+            **🎯 Enterprise Features**
+            - Technology constraints support
+            - Compliance requirements (GDPR, HIPAA, SOX)
+            - Export to JSON/Markdown/HTML
+            - Jira integration
+            """)
+        
+        # Security Features
+        st.subheader("🛡️ Advanced Security System")
+        
+        st.markdown("""
+        The system includes a comprehensive multi-layered security framework designed to protect against 
+        various attack vectors while maintaining high performance.
+        """)
+        
+        security_col1, security_col2 = st.columns(2)
+        
+        with security_col1:
+            st.markdown("""
+            **🔍 Attack Detection**
+            - **Overt Injection**: Direct prompt manipulation
+            - **Covert Injection**: Hidden attacks (base64, markdown, zero-width)
+            - **Context Attacks**: Buried instructions, lorem ipsum
+            - **Data Egress**: System prompt extraction prevention
+            """)
+        
+        with security_col2:
+            st.markdown("""
+            **🔒 Protection Systems**
+            - **Business Logic**: Configuration access protection
+            - **Protocol Tampering**: JSON validation and format protection
+            - **Scope Validation**: Business domain enforcement
+            - **Multilingual**: Attack detection in 6 languages
+            """)
+        
+        st.info("🚀 **Performance**: Sub-100ms security validation with intelligent caching and parallel detection")
+        
+        # Technology Stack
+        st.subheader("🛠️ Technology Stack")
+        
+        tech_col1, tech_col2, tech_col3 = st.columns(3)
+        
+        with tech_col1:
+            st.markdown("""
+            **🐍 Backend**
+            - Python 3.10+
+            - FastAPI (async)
+            - Pydantic validation
+            - SQLAlchemy ORM
+            - FAISS vector search
+            """)
+        
+        with tech_col2:
+            st.markdown("""
+            **🎨 Frontend**
+            - Streamlit UI
+            - Streamlit-Mermaid
+            - Interactive diagrams
+            - Professional debug controls
+            - Real-time updates
+            """)
+        
+        with tech_col3:
+            st.markdown("""
+            **🔧 Infrastructure**
+            - Docker containerization
+            - Redis/Diskcache
+            - Structured logging
+            - Health monitoring
+            - Gradual deployment
+            """)
+        
+        # Recent Updates
+        st.subheader("📈 Recent Updates")
+        
+        with st.expander("🛡️ v2.3.0 - Advanced Prompt Defense System (August 2025)", expanded=True):
+            st.markdown("""
+            - **Multi-layered Security**: 8 specialized detectors for comprehensive threat coverage
+            - **Multilingual Support**: Attack detection in English, Spanish, French, German, Chinese, Japanese
+            - **Performance Optimized**: Sub-100ms validation with intelligent caching
+            - **User Education**: Contextual guidance for security violations
+            - **Deployment Safety**: Gradual rollout with automatic rollback capabilities
+            - **Configuration Integration**: Full Pydantic model integration with YAML configuration
+            """)
+        
+        with st.expander("🧹 v2.2.0 - Code Quality & Analytics (August 2025)"):
+            st.markdown("""
+            - **Pattern Analytics**: Restored complete analytics functionality with real-time dashboards
+            - **Code Quality**: Removed all TODO/FIXME comments, structured logging throughout
+            - **Error Resolution**: Fixed type safety issues and dict/string handling
+            - **Professional UI**: Hidden debug info by default with optional toggles
+            - **Enhanced Navigation**: Improved cross-tab navigation with clear user guidance
+            """)
+        
+        with st.expander("📚 v2.1.0 - Technology Catalog (August 2025)"):
+            st.markdown("""
+            - **Technology Catalog**: Centralized database of 55+ technologies across 17 categories
+            - **CRUD Management**: Complete management interface in Streamlit
+            - **Performance**: 90% faster startup time vs pattern file scanning
+            - **LLM Integration**: Automatic technology suggestions with smart categorization
+            - **Backup Safety**: Automatic backups before any catalog modifications
+            """)
+        
+        # Support Information
+        st.subheader("🆘 Support & Troubleshooting")
+        
+        st.markdown("""
+        **Common Issues:**
+        - **LLM Connection Errors**: Check API keys and model names (use 'gpt-4o', not 'gpt-5')
+        - **Import Errors**: Ensure PYTHONPATH includes project root
+        - **Port Conflicts**: Modify ports in docker-compose.yml or Makefile
+        - **Missing Dependencies**: Run `make install` or `pip install -r requirements.txt`
+        
+        **Debug Mode**: Enable the debug checkbox in the sidebar for detailed error messages and logs.
+        
+        **Health Checks**: Visit [/health](http://localhost:8000/health) for system status monitoring.
+        """)
+        
+        # Footer
+        st.markdown("---")
+        st.markdown("""
+        <div style='text-align: center; color: #666;'>
+            <p><strong>Automated AI Assessment (AAA)</strong> - Enterprise-grade automation feasibility assessment</p>
+            <p>Built with ❤️ using Python, FastAPI, and Streamlit</p>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":

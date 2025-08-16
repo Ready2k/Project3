@@ -139,8 +139,11 @@ class PatternCreator:
             }
         }
         
-        # Save pattern to library
-        await self._save_pattern(new_pattern)
+        # Save pattern to library with security validation
+        success, message = await self._save_pattern_securely(new_pattern)
+        if not success:
+            app_logger.error(f"Failed to save pattern due to security validation: {message}")
+            raise ValueError(f"Pattern creation blocked: {message}")
         
         app_logger.info(f"Created new pattern {pattern_id}: {pattern_name}")
         return new_pattern
@@ -804,15 +807,17 @@ IMPORTANT:
         app_logger.info(f"Created physical task pattern {pattern_id} for non-automatable task")
         return physical_pattern
     
-    async def _save_pattern(self, pattern: Dict[str, Any]) -> None:
-        """Save the new pattern to the pattern library."""
-        pattern_file = self.pattern_library_path / f"{pattern['pattern_id']}.json"
+    async def _save_pattern_securely(self, pattern: Dict[str, Any]) -> tuple[bool, str]:
+        """Save pattern to the library with security validation."""
+        from app.pattern.loader import PatternLoader
         
-        # Ensure directory exists
-        self.pattern_library_path.mkdir(parents=True, exist_ok=True)
+        # Use PatternLoader's secure save method
+        pattern_loader = PatternLoader(self.pattern_library_path)
+        success, message = pattern_loader.save_pattern(pattern)
         
-        # Save pattern
-        with open(pattern_file, 'w', encoding='utf-8') as f:
-            json.dump(pattern, f, indent=2, ensure_ascii=False)
+        if success:
+            app_logger.info(f"Securely saved pattern: {pattern['pattern_id']}")
+        else:
+            app_logger.error(f"Pattern save blocked by security validation: {message}")
         
-        app_logger.info(f"Saved new pattern to {pattern_file}")
+        return success, message

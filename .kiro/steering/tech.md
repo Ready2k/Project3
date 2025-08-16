@@ -3,14 +3,23 @@
 ## Core Technologies
 
 - **Python 3.10+**: Primary language
-- **FastAPI**: Async REST API framework with robust caching
-- **Streamlit**: Interactive web UI framework with enhanced components
+- **FastAPI**: Async REST API framework with robust caching and security middleware
+- **Streamlit**: Interactive web UI framework with enhanced components and professional debug controls
 - **Streamlit-Mermaid**: Native Mermaid diagram rendering
-- **Pydantic**: Data validation and settings management
+- **Pydantic**: Data validation, settings management, and security configuration
 - **FAISS**: Vector similarity search (faiss-cpu)
 - **Sentence Transformers**: Text embeddings
-- **SQLAlchemy**: Database ORM
+- **SQLAlchemy**: Database ORM with audit logging
 - **Diskcache/Redis**: Session state management with multi-layer caching
+
+## Security Technologies
+
+- **Advanced Prompt Defense**: Multi-layered security system with 8 specialized detectors
+- **Input Validation**: Comprehensive sanitization and validation pipeline
+- **Attack Pattern Detection**: Machine learning-based attack identification
+- **Security Event Logging**: Structured logging with PII redaction
+- **Performance Optimization**: Sub-100ms security validation with caching
+- **Deployment Management**: Gradual rollout with automatic rollback capabilities
 
 ## LLM Providers
 
@@ -74,6 +83,29 @@ make help       # Show all available commands
 - **Management UI**: Complete CRUD interface in Streamlit "Technology Catalog" tab
 - **Performance**: 90% faster startup vs pattern file scanning
 - **Backup Safety**: Automatic backups before any catalog modifications
+
+## Security Architecture
+
+### Advanced Prompt Defense Components
+
+- **`app/security/advanced_prompt_defender.py`**: Main security orchestrator
+- **`app/security/overt_injection_detector.py`**: Direct prompt manipulation detection
+- **`app/security/covert_injection_detector.py`**: Hidden attack detection (base64, markdown, zero-width)
+- **`app/security/multilingual_attack_detector.py`**: Multi-language attack detection
+- **`app/security/context_attack_detector.py`**: Buried instructions and lorem ipsum detection
+- **`app/security/data_egress_detector.py`**: System prompt and environment variable protection
+- **`app/security/business_logic_protector.py`**: Configuration access protection
+- **`app/security/protocol_tampering_detector.py`**: JSON validation and format protection
+- **`app/security/scope_validator.py`**: Business domain validation
+
+### Security Infrastructure
+
+- **`app/security/security_event_logger.py`**: Structured security event logging
+- **`app/security/user_education.py`**: Contextual user guidance system
+- **`app/security/performance_optimizer.py`**: Security performance optimization
+- **`app/security/deployment_config.py`**: Gradual rollout and feature management
+- **`app/security/rollback_manager.py`**: Automatic rollback capabilities
+- **`app/security/attack_pack_manager.py`**: Attack pattern version management
 
 ### Technology Categories
 

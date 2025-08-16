@@ -2,7 +2,8 @@
 
 import re
 import html
-from typing import Any, Dict, List, Optional, Union
+import asyncio
+from typing import Any, Dict, List, Optional, Union, Tuple
 from pydantic import BaseModel, validator
 from app.utils.logger import app_logger
 from app.utils.redact import PIIRedactor
@@ -13,6 +14,7 @@ class SecurityValidator:
     
     def __init__(self):
         self.pii_redactor = PIIRedactor()
+        self._advanced_defender = None  # Lazy initialization to avoid circular imports
         
         # Patterns for detecting potentially malicious input
         self.malicious_patterns = [
@@ -24,11 +26,62 @@ class SecurityValidator:
             re.compile(r'(eval|exec|system|shell_exec)\s*\(', re.IGNORECASE),  # Code injection
         ]
         
+        # Formula injection patterns (Excel/Sheets/CSV injection)
+        self.formula_injection_patterns = [
+            re.compile(r'^=', re.IGNORECASE),  # Starts with equals
+            re.compile(r'^@', re.IGNORECASE),  # Starts with at symbol
+            re.compile(r'^\+', re.IGNORECASE),  # Starts with plus
+            re.compile(r'^-', re.IGNORECASE),  # Starts with minus
+            re.compile(r'=\s*(WEBSERVICE|HYPERLINK|IMPORTXML|IMPORTHTML|IMPORTDATA|IMPORTRANGE|IMPORTFEED)', re.IGNORECASE),  # Dangerous functions
+            re.compile(r'=\s*(CMD|SYSTEM|SHELL|EXEC)', re.IGNORECASE),  # Command execution
+            re.compile(r'=\s*(DDE|DDEAUTO)', re.IGNORECASE),  # Dynamic Data Exchange
+        ]
+        
         # Banned tools/technologies that should never appear in outputs
         self.banned_tools = [
             "metasploit", "burp suite", "sqlmap", "nmap", "masscan", "wireshark",
             "john the ripper", "hashcat", "aircrack", "hydra", "nikto",
             "owasp zap", "beef framework", "maltego", "shodan", "censys"
+        ]
+        
+        # SSRF and malicious URL patterns
+        self.ssrf_patterns = [
+            re.compile(r'169\.254\.169\.254', re.IGNORECASE),  # AWS metadata
+            re.compile(r'169\.254\.170\.2', re.IGNORECASE),   # AWS metadata v2
+            re.compile(r'metadata\.google\.internal', re.IGNORECASE),  # GCP metadata
+            re.compile(r'169\.254\.169\.254/latest/meta-data', re.IGNORECASE),  # AWS specific
+            re.compile(r'169\.254\.169\.254/computeMetadata', re.IGNORECASE),   # GCP specific
+            re.compile(r'localhost:\d+', re.IGNORECASE),      # Local services
+            re.compile(r'127\.0\.0\.1:\d+', re.IGNORECASE),   # Local services
+            re.compile(r'0\.0\.0\.0:\d+', re.IGNORECASE),     # Local services
+            re.compile(r'10\.\d+\.\d+\.\d+', re.IGNORECASE),  # Private IP range
+            re.compile(r'192\.168\.\d+\.\d+', re.IGNORECASE), # Private IP range
+            re.compile(r'172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+', re.IGNORECASE), # Private IP range
+        ]
+        
+        # Malicious intent patterns
+        self.malicious_intent_patterns = [
+            re.compile(r'\b(penetration|pen)\s+test(ing)?\b', re.IGNORECASE),
+            re.compile(r'\bsecurity\s+(test|audit|assessment)\b', re.IGNORECASE),
+            re.compile(r'\b(vulnerability|vuln)\s+(scan|test|assessment)\b', re.IGNORECASE),
+            re.compile(r'\b(exploit|attack|hack|breach)\b', re.IGNORECASE),
+            re.compile(r'\b(backdoor|rootkit|malware|trojan)\b', re.IGNORECASE),
+            re.compile(r'\b(privilege\s+escalation|lateral\s+movement)\b', re.IGNORECASE),
+            re.compile(r'\b(sql\s+injection|xss|csrf|ssrf)\b', re.IGNORECASE),
+            re.compile(r'\b(brute\s+force|dictionary\s+attack)\b', re.IGNORECASE),
+            re.compile(r'\b(reverse\s+shell|web\s+shell)\b', re.IGNORECASE),
+            re.compile(r'\b(credential\s+(dump|harvest|steal))\b', re.IGNORECASE),
+            re.compile(r'\b(network\s+(scan|reconnaissance))\b', re.IGNORECASE),
+            re.compile(r'\b(port\s+scan|service\s+enumeration)\b', re.IGNORECASE),
+        ]
+        
+        # Out-of-scope patterns (not legitimate business automation)
+        self.out_of_scope_patterns = [
+            re.compile(r'\b(test|check|verify)\s+(security|vulnerabilities?)\b', re.IGNORECASE),
+            re.compile(r'\b(access|retrieve|get)\s+(metadata|secrets?|credentials?)\b', re.IGNORECASE),
+            re.compile(r'\b(bypass|circumvent|disable)\s+(security|authentication|authorization)\b', re.IGNORECASE),
+            re.compile(r'\b(enumerate|discover|map)\s+(services?|ports?|endpoints?)\b', re.IGNORECASE),
+            re.compile(r'\b(extract|dump|steal|harvest)\s+(data|information|files?|credentials?)\b', re.IGNORECASE),
         ]
     
     def sanitize_string(self, text: str, max_length: int = 10000) -> str:
@@ -52,6 +105,16 @@ class SecurityValidator:
             if pattern.search(text):
                 app_logger.warning(f"Potentially malicious pattern detected and removed: {pattern.pattern}")
                 text = pattern.sub('[REMOVED_SUSPICIOUS_CONTENT]', text)
+        
+        # Check for formula injection patterns and sanitize
+        for pattern in self.formula_injection_patterns:
+            if pattern.search(text):
+                app_logger.warning(f"Formula injection pattern detected and sanitized: {pattern.pattern}")
+                # Replace dangerous formula starts with safe alternatives
+                text = re.sub(r'^=', "'=", text, flags=re.MULTILINE)  # Prefix with quote to disable formula
+                text = re.sub(r'^@', "'@", text, flags=re.MULTILINE)
+                text = re.sub(r'^\+', "'+", text, flags=re.MULTILINE)
+                text = re.sub(r'^-', "'-", text, flags=re.MULTILINE)
         
         return text
     
@@ -78,6 +141,122 @@ class SecurityValidator:
             return False
         
         return True
+    
+    def detect_ssrf_attempts(self, text: str) -> tuple[bool, List[str]]:
+        """Detect SSRF attempts in text."""
+        found_ssrf = []
+        
+        for pattern in self.ssrf_patterns:
+            matches = pattern.findall(text)
+            if matches:
+                found_ssrf.extend(matches)
+        
+        if found_ssrf:
+            app_logger.error(f"SSRF patterns detected: {found_ssrf}")
+            return True, found_ssrf
+        
+        return False, []
+    
+    def detect_malicious_intent(self, text: str) -> tuple[bool, List[str]]:
+        """Detect malicious intent patterns in text."""
+        found_malicious = []
+        
+        for pattern in self.malicious_intent_patterns:
+            matches = pattern.findall(text)
+            if matches:
+                # Convert tuples to strings for logging
+                if isinstance(matches[0], tuple):
+                    found_malicious.extend([' '.join(match) for match in matches])
+                else:
+                    found_malicious.extend(matches)
+        
+        if found_malicious:
+            app_logger.error(f"Malicious intent patterns detected: {found_malicious}")
+            return True, found_malicious
+        
+        return False, []
+    
+    def detect_out_of_scope(self, text: str) -> tuple[bool, List[str]]:
+        """Detect out-of-scope requests (not legitimate business automation)."""
+        found_out_of_scope = []
+        
+        for pattern in self.out_of_scope_patterns:
+            matches = pattern.findall(text)
+            if matches:
+                # Convert tuples to strings for logging
+                if isinstance(matches[0], tuple):
+                    found_out_of_scope.extend([' '.join(match) for match in matches])
+                else:
+                    found_out_of_scope.extend(matches)
+        
+        if found_out_of_scope:
+            app_logger.warning(f"Out-of-scope patterns detected: {found_out_of_scope}")
+            return True, found_out_of_scope
+        
+        return False, []
+    
+    def validate_business_automation_scope(self, text: str) -> tuple[bool, str, Dict[str, List[str]]]:
+        """Comprehensive validation for legitimate business automation requirements."""
+        violations = {}
+        
+        # Check for formula injection attempts (CRITICAL - check first)
+        has_formula_injection, formula_patterns = self.detect_formula_injection(text)
+        if has_formula_injection:
+            violations['formula_injection'] = formula_patterns
+        
+        # Check for SSRF attempts
+        has_ssrf, ssrf_patterns = self.detect_ssrf_attempts(text)
+        if has_ssrf:
+            violations['ssrf'] = ssrf_patterns
+        
+        # Check for malicious intent
+        has_malicious, malicious_patterns = self.detect_malicious_intent(text)
+        if has_malicious:
+            violations['malicious_intent'] = malicious_patterns
+        
+        # Check for out-of-scope requests
+        has_out_of_scope, out_of_scope_patterns = self.detect_out_of_scope(text)
+        if has_out_of_scope:
+            violations['out_of_scope'] = out_of_scope_patterns
+        
+        if violations:
+            violation_types = list(violations.keys())
+            if 'formula_injection' in violations:
+                reason = "Formula injection attempt detected - spreadsheet formulas and executable content are not permitted"
+            elif 'ssrf' in violations:
+                reason = "SSRF attempt detected - requests to cloud metadata services and internal endpoints are not permitted"
+            elif 'malicious_intent' in violations:
+                reason = "Security testing/penetration testing requests are not permitted - this system is for legitimate business automation only"
+            elif 'out_of_scope' in violations:
+                reason = "Request appears to be for security testing rather than business automation - please provide legitimate business requirements"
+            else:
+                reason = f"Security policy violations detected: {', '.join(violation_types)}"
+            
+            return False, reason, violations
+        
+        return True, "Valid business automation requirement", {}
+    
+    def detect_formula_injection(self, text: str) -> tuple[bool, List[str]]:
+        """Detect formula injection attempts in text."""
+        found_formulas = []
+        
+        # Check each line for formula injection patterns
+        lines = text.split('\n')
+        for line_num, line in enumerate(lines, 1):
+            line = line.strip()
+            if not line:
+                continue
+                
+            for pattern in self.formula_injection_patterns:
+                if pattern.search(line):
+                    found_formulas.append(f"Line {line_num}: {line[:50]}...")
+                    break  # One match per line is enough
+        
+        if found_formulas:
+            app_logger.error(f"Formula injection patterns detected: {found_formulas}")
+            return True, found_formulas
+        
+        return False, []
     
     def sanitize_dict(self, data: Dict[str, Any], max_depth: int = 10) -> Dict[str, Any]:
         """Recursively sanitize dictionary values."""
@@ -129,6 +308,77 @@ class SecurityValidator:
     def redact_pii_from_logs(self, text: str) -> str:
         """Redact PII from text before logging."""
         return self.pii_redactor.redact(text)
+    
+    def _get_advanced_defender(self):
+        """Get the advanced prompt defender instance (lazy initialization)."""
+        if self._advanced_defender is None:
+            try:
+                from app.security.advanced_prompt_defender import AdvancedPromptDefender
+                self._advanced_defender = AdvancedPromptDefender()
+                app_logger.info("AdvancedPromptDefender integrated with SecurityValidator")
+            except ImportError as e:
+                app_logger.warning(f"AdvancedPromptDefender not available: {e}")
+                self._advanced_defender = False  # Mark as unavailable
+        return self._advanced_defender if self._advanced_defender is not False else None
+    
+    async def validate_with_advanced_defense(self, text: str) -> Tuple[bool, str, Dict[str, Any]]:
+        """
+        Validate text using advanced prompt defense system.
+        
+        Returns:
+            Tuple of (is_valid, reason, details)
+        """
+        defender = self._get_advanced_defender()
+        if not defender:
+            # Fall back to legacy validation
+            return self.validate_business_automation_scope(text)
+        
+        try:
+            decision = await defender.validate_input(text)
+            
+            # Convert SecurityDecision to legacy format
+            if decision.action.value == "pass":
+                return True, "Valid business automation requirement", {
+                    "action": decision.action.value,
+                    "confidence": decision.confidence,
+                    "detected_attacks": [p.id for p in decision.detected_attacks]
+                }
+            else:
+                return False, decision.user_message or "Security validation failed", {
+                    "action": decision.action.value,
+                    "confidence": decision.confidence,
+                    "detected_attacks": [p.id for p in decision.detected_attacks],
+                    "technical_details": decision.technical_details
+                }
+                
+        except Exception as e:
+            app_logger.error(f"Advanced defense validation failed: {e}")
+            # Fall back to legacy validation
+            return self.validate_business_automation_scope(text)
+    
+    def validate_with_advanced_defense_sync(self, text: str) -> Tuple[bool, str, Dict[str, Any]]:
+        """
+        Synchronous wrapper for advanced defense validation.
+        
+        Returns:
+            Tuple of (is_valid, reason, details)
+        """
+        try:
+            # Try to get existing event loop
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're already in an async context, we can't use run_until_complete
+                # Fall back to legacy validation
+                app_logger.debug("Already in async context, using legacy validation")
+                return self.validate_business_automation_scope(text)
+            else:
+                return loop.run_until_complete(self.validate_with_advanced_defense(text))
+        except RuntimeError:
+            # No event loop, create one
+            return asyncio.run(self.validate_with_advanced_defense(text))
+        except Exception as e:
+            app_logger.error(f"Sync advanced defense validation failed: {e}")
+            return self.validate_business_automation_scope(text)
 
 
 class InputValidator:
@@ -180,6 +430,22 @@ class InputValidator:
         
         if len(text.strip()) < 10:
             return False, "Requirements text too short (minimum 10 characters)"
+        
+        # Use advanced defense validation if available
+        try:
+            is_valid_scope, scope_reason, violations = self.security_validator.validate_with_advanced_defense_sync(text)
+            if not is_valid_scope:
+                app_logger.error(f"Requirements validation failed - advanced defense: {scope_reason}")
+                app_logger.error(f"Violation details: {violations}")
+                return False, scope_reason
+        except Exception as e:
+            app_logger.error(f"Advanced defense validation error: {e}")
+            # Fall back to legacy validation
+            is_valid_scope, scope_reason, violations = self.security_validator.validate_business_automation_scope(text)
+            if not is_valid_scope:
+                app_logger.error(f"Requirements validation failed - legacy validation: {scope_reason}")
+                app_logger.error(f"Violation details: {violations}")
+                return False, scope_reason
         
         # Sanitize and check for malicious content
         sanitized = self.security_validator.sanitize_string(text)

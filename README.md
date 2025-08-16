@@ -8,10 +8,13 @@ Interactive GUI + API system that judges if user stories/requirements are automa
 - 🔍 **Intelligent Pattern Matching**: Tag filtering + vector similarity with FAISS
 - ❓ **AI-Generated Q&A System**: LLM creates contextual clarifying questions based on your specific requirement
 - 📊 **Feasibility Assessment**: Automatable, Partially Automatable, or Not Automatable with confidence scores
-- 🛠️ **LLM-Driven Tech Stack Generation**: Intelligent technology recommendations based on requirements, constraints, and available patterns
+- 🛠️ **LLM-Driven Tech Stack Generation**: Intelligent technology recommendations from 55+ catalog technologies
 - 🏗️ **AI-Generated Architecture Explanations**: LLM explains how technology components work together for your specific use case
 - 📈 **AI-Generated Architecture Diagrams**: Context, Container, Sequence, and Tech Stack Wiring diagrams using Mermaid with enhanced viewing options
-- 📤 **Export Results**: JSON and Markdown formats with comprehensive analysis
+- 🛡️ **Advanced Prompt Defense System**: Multi-layered security against prompt injection, data egress, and business logic attacks
+- 📚 **Technology Catalog Management**: Complete CRUD interface for managing 55+ technologies across 17 categories
+- 📊 **Pattern Analytics Dashboard**: Real-time analytics showing pattern match frequency, acceptance rates, and quality scores
+- 📤 **Export Results**: JSON, Markdown, and interactive HTML formats with comprehensive analysis
 - 🎯 **Enterprise Constraints**: Comprehensive technology restrictions, compliance requirements, and integration constraints
 - 🔍 **LLM Message Audit Trail**: Complete visibility into LLM prompts and responses for transparency
 - 🧪 **100% Test Coverage**: TDD approach with deterministic fakes
@@ -385,15 +388,18 @@ mypy app/ --ignore-missing-imports
 
 ### Components
 
-- **FastAPI Backend**: REST API with async endpoints
-- **Streamlit Frontend**: Interactive web interface
-- **Pattern Library**: JSON-based reusable solution patterns
+- **FastAPI Backend**: REST API with async endpoints and advanced security
+- **Streamlit Frontend**: Interactive web interface with professional debug controls
+- **Pattern Library**: JSON-based reusable solution patterns with CRUD management
+- **Technology Catalog**: Centralized database of 55+ technologies with rich metadata
 - **FAISS Index**: Vector similarity search for pattern matching
-- **Q&A System**: Template-based question generation
+- **Q&A System**: LLM-powered question generation with robust caching
 - **Tech Stack Generator**: LLM-driven intelligent technology recommendations
 - **Architecture Explainer**: LLM-generated explanations of how components work together
+- **Advanced Security System**: Multi-layered prompt defense with 8 specialized detectors
+- **Pattern Analytics**: Real-time dashboard showing match frequency and quality metrics
 - **State Management**: Session persistence with diskcache/Redis
-- **Export System**: JSON and Markdown result export
+- **Export System**: JSON, Markdown, and interactive HTML result export
 - **Audit System**: Complete LLM message logging and observability
 
 ### Request Flow
@@ -481,6 +487,31 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for comprehensive debugging guide i
 - Application logs: Configured via `config.yaml` logging section
 
 ## Changelog
+
+### v2.3.0 - Advanced Prompt Defense System (2025-08-16)
+
+**Major Security Features:**
+- 🛡️ **Advanced Prompt Defense System**: Multi-layered security with 8 specialized detectors
+- 🔍 **Overt Injection Detection**: Identifies direct prompt manipulation attempts
+- 🕵️ **Covert Injection Detection**: Detects hidden attacks via encoding, markdown, zero-width characters
+- 🌐 **Multilingual Attack Detection**: Supports attacks in 6 languages (EN, ES, FR, DE, ZH, JA)
+- 🎯 **Context Attack Detection**: Identifies buried instructions and lorem ipsum attacks
+- 📊 **Data Egress Protection**: Prevents system prompt and environment variable extraction
+- 🔒 **Business Logic Protection**: Safeguards configuration access and safety toggles
+- 🌐 **Protocol Tampering Detection**: Validates JSON requests and prevents format manipulation
+- ✅ **Scope Validation**: Ensures requests stay within allowed business domains
+
+**Security Infrastructure:**
+- 📈 **Real-time Security Monitoring**: Comprehensive attack detection and alerting
+- 🎓 **User Education System**: Contextual guidance for security violations
+- 📊 **Performance Optimization**: Sub-100ms validation with intelligent caching
+- 🔄 **Deployment Management**: Gradual rollout with automatic rollback capabilities
+- 📋 **Configuration Management**: Centralized security settings with validation
+
+**Technical Improvements:**
+- ✅ **Configuration Fix**: Resolved Pydantic validation errors for advanced security settings
+- 🧪 **Comprehensive Testing**: 100% test coverage for all security components
+- 📊 **Performance Benchmarks**: Optimized for high-throughput production environments
 
 ### v2.2.0 - Code Quality & Analytics (2025-08-15)
 

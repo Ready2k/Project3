@@ -1,18 +1,245 @@
-# AAA (Automated AI Assessment) Configuration
-version: "2.1.0"
-release_name: "Technology Catalog"
-
-provider: openai
-model: gpt-4o
-pattern_library_path: ./data/patterns
-export_path: ./exports
+advanced_prompt_defense:
+  alert_on_attacks: true
+  appeal_mechanism: true
+  attack_pack_version: v2
+  block_threshold: 0.9
+  business_logic_protector:
+    confidence_threshold: 0.9
+    custom_settings:
+      monitor_configuration_access: true
+      protect_provider_settings: true
+      protect_safety_toggles: true
+      protect_system_parameters: true
+    enabled: true
+    sensitivity: high
+  cache_ttl_seconds: 300
+  context_attack_detector:
+    confidence_threshold: 0.8
+    custom_settings:
+      detect_buried_instructions: true
+      lorem_ipsum_threshold: 0.3
+      max_input_length: 10000
+      scan_entire_input: true
+    enabled: true
+    sensitivity: high
+  covert_injection:
+    confidence_threshold: 0.7
+    custom_settings:
+      check_markdown_links: true
+      decode_base64: true
+      detect_zero_width: true
+      normalize_unicode: true
+    enabled: true
+    sensitivity: high
+  data_egress_detector:
+    confidence_threshold: 0.9
+    custom_settings:
+      detect_canary_extraction: true
+      protect_environment_vars: true
+      protect_system_prompt: true
+      protect_user_data: true
+    enabled: true
+    sensitivity: high
+  detection_confidence_threshold: 0.7
+  educational_messages: true
+  enable_caching: true
+  enabled: true
+  flag_threshold: 0.5
+  log_all_detections: true
+  max_validation_time_ms: 100
+  metrics_enabled: true
+  multilingual_attack_detector:
+    confidence_threshold: 0.7
+    custom_settings:
+      detect_language_switching: true
+      normalize_unicode: true
+      supported_languages:
+      - en
+      - es
+      - fr
+      - de
+      - zh
+      - ja
+    enabled: true
+    sensitivity: medium
+  overt_injection:
+    confidence_threshold: 0.8
+    custom_settings:
+      check_instruction_override: true
+      check_role_manipulation: true
+      check_system_access: true
+    enabled: true
+    sensitivity: high
+  parallel_detection: true
+  protocol_tampering_detector:
+    confidence_threshold: 0.6
+    custom_settings:
+      check_unauthorized_fields: true
+      prevent_format_manipulation: true
+      validate_json_requests: true
+    enabled: true
+    sensitivity: medium
+  provide_user_guidance: true
+  scope_validator:
+    confidence_threshold: 0.6
+    custom_settings:
+      allowed_business_domains:
+      - feasibility
+      - automation
+      - assessment
+      blocked_tasks:
+      - summarization
+      - translation
+      - code_generation
+      - creative_writing
+    enabled: true
+    sensitivity: medium
+bedrock:
+  region: eu-west-2
 constraints:
   unavailable_tools: []
-timeouts:
-  llm: 20
-  http: 10
+deployment:
+  active_attack_pack_version: v2
+  alert_channels: []
+  attack_pack_versions:
+    v3:
+      checksum: 22b8f23f230a59fa1e579d67b3b5d682373491c5de7690df681204fc045aef40
+      deployed_at: '2025-08-16T08:46:12.100302'
+      file_path: /var/folders/bz/cft665f9133cp3bn8nb8vy4r0000gn/T/tmpwg64ip9p/v3/attack_pack.json
+      is_active: false
+      metadata:
+        checksum: 22b8f23f230a59fa1e579d67b3b5d682373491c5de7690df681204fc045aef40
+        installed_at: '2025-08-16T08:46:12.100200'
+        pattern_count: 1
+        source_file: /var/folders/bz/cft665f9133cp3bn8nb8vy4r0000gn/T/tmpwg64ip9p/source_pack.json
+        validation_result:
+          is_valid: true
+          issues: []
+          warnings:
+          - 'Low pattern count: 1 (expected at least 10)'
+        version: v3
+      pattern_count: 1
+      validation_status: validated
+  beta_user_percentage: 10.0
+  canary_user_percentage: 1.0
+  config_version: '1.0'
+  deployment_environment: production
+  feature_flags:
+    advanced_prompt_defense:
+      enabled: false
+      metadata: {}
+      rollout_percentage: 100.0
+      stage: full
+      target_groups: []
+    business_logic_protector:
+      enabled: false
+      metadata: {}
+      rollout_percentage: 100.0
+      stage: full
+      target_groups: []
+    context_attack_detector:
+      enabled: false
+      metadata: {}
+      rollout_percentage: 100.0
+      stage: full
+      target_groups: []
+    covert_injection_detector:
+      enabled: false
+      metadata: {}
+      rollout_percentage: 100.0
+      stage: full
+      target_groups: []
+    data_egress_detector:
+      enabled: false
+      metadata: {}
+      rollout_percentage: 100.0
+      stage: full
+      target_groups: []
+    multilingual_attack_detector:
+      enabled: false
+      metadata: {}
+      rollout_percentage: 100.0
+      stage: full
+      target_groups: []
+    overt_injection_detector:
+      enabled: false
+      metadata: {}
+      rollout_percentage: 100.0
+      stage: full
+      target_groups: []
+    performance_optimization:
+      enabled: false
+      metadata: {}
+      rollout_percentage: 100.0
+      stage: full
+      target_groups: []
+    protocol_tampering_detector:
+      enabled: false
+      metadata: {}
+      rollout_percentage: 100.0
+      stage: full
+      target_groups: []
+    scope_validator:
+      enabled: false
+      metadata: {}
+      rollout_percentage: 100.0
+      stage: full
+      target_groups: []
+    security_monitoring:
+      enabled: false
+      metadata: {}
+      rollout_percentage: 100.0
+      stage: full
+      target_groups: []
+    user_education:
+      enabled: false
+      metadata: {}
+      rollout_percentage: 100.0
+      stage: full
+      target_groups: []
+  gradual_rollout_enabled: true
+  health_check_enabled: true
+  health_check_endpoints:
+  - /health/security
+  - /health/detectors
+  - /health/performance
+  health_check_interval_seconds: 30
+  health_check_timeout_seconds: 10
+  last_updated: '2025-08-16T08:46:12.069164'
+  metrics_retention_days: 30
+  monitoring_enabled: true
+  rollback_config:
+    cooldown_minutes: 30
+    enabled: true
+    max_rollbacks_per_day: 5
+    notification_channels: []
+    triggers:
+      health_check_failure:
+        check_interval_seconds: 30
+        consecutive_failures: 3
+      high_error_rate:
+        min_requests: 100
+        threshold: 0.05
+        window_minutes: 5
+      high_false_positive_rate:
+        min_requests: 50
+        threshold: 0.1
+        window_minutes: 10
+      high_latency:
+        min_requests: 100
+        threshold_ms: 200
+        window_minutes: 5
+  staged_user_percentage: 50.0
+  updated_by: system
+export_path: ./exports
 logging:
   level: INFO
   redact_pii: true
-bedrock:
-  region: eu-west-2
+model: gpt-4o
+pattern_library_path: ./data/patterns
+provider: openai
+release_name: Technology Catalog
+timeouts:
+  http: 10
+  llm: 20
+version: 2.1.0
