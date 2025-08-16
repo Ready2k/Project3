@@ -73,6 +73,56 @@ def _sanitize(label: str) -> str:
     allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_.:")
     return ''.join(ch if ch in allowed else '_' for ch in (label or '')) or 'unknown'
 
+def _validate_mermaid_syntax(mermaid_code: str) -> tuple[bool, str]:
+    """Validate basic Mermaid syntax and return (is_valid, error_message)."""
+    if not mermaid_code.strip():
+        return False, "Empty diagram code"
+    
+    # Check for severely malformed code (all on one line with no spaces around arrows)
+    if '\n' not in mermaid_code and len(mermaid_code) > 200:
+        return False, "Diagram code appears to be malformed (all on one line). This usually indicates an LLM formatting error."
+    
+    lines = [line.strip() for line in mermaid_code.split('\n') if line.strip()]
+    
+    # Check for valid diagram type
+    first_line = lines[0].lower()
+    valid_starts = ['flowchart', 'graph', 'sequencediagram', 'classDiagram', 'stateDiagram']
+    if not any(first_line.startswith(start) for start in valid_starts):
+        valid_starts_str = ', '.join(valid_starts)
+        return False, f"Invalid diagram type. Must start with one of: {valid_starts_str}"
+    
+    # Check for common syntax issues
+    for i, line in enumerate(lines):
+        # Check for unmatched brackets/parentheses
+        if line.count('[') != line.count(']'):
+            return False, f"Unmatched square brackets on line {i+1}: {line}"
+        if line.count('(') != line.count(')'):
+            return False, f"Unmatched parentheses on line {i+1}: {line}"
+        if line.count('{') != line.count('}'):
+            return False, f"Unmatched curly braces on line {i+1}: {line}"
+        
+        # Skip arrow validation as Mermaid has many valid arrow syntaxes
+        # (-->, ->>, ->, -->>:, etc.) and validation was too restrictive
+    
+    # Check for subgraph matching (only for flowcharts, not sequence diagrams)
+    if first_line.startswith('flowchart') or first_line.startswith('graph'):
+        subgraph_count = sum(1 for line in lines if line.strip().startswith('subgraph'))
+        end_count = sum(1 for line in lines if line.strip() == 'end')
+        if subgraph_count != end_count:
+            return False, f"Mismatched subgraph/end statements: {subgraph_count} subgraphs, {end_count} ends"
+    
+    # For sequence diagrams, check alt/else/end matching
+    elif first_line.startswith('sequencediagram'):
+        alt_count = sum(1 for line in lines if line.strip().startswith('alt '))
+        else_count = sum(1 for line in lines if line.strip().startswith('else'))
+        end_count = sum(1 for line in lines if line.strip() == 'end')
+        
+        # Each alt block should have one end, else blocks don't need separate ends
+        if alt_count != end_count:
+            return False, f"Mismatched alt/end statements in sequence diagram: {alt_count} alt blocks, {end_count} end statements"
+    
+    return True, ""
+
 def _clean_mermaid_code(mermaid_code: str) -> str:
     """Clean and format Mermaid code to ensure proper syntax."""
     if not mermaid_code:
@@ -85,9 +135,70 @@ def _clean_mermaid_code(mermaid_code: str) -> str:
     elif code.startswith('```'):
         code = code.replace('```', '').strip()
     
-    # If the code looks malformed (no line breaks), return a simple fallback
-    if '\n' not in code and len(code) > 100:
-        # This is likely malformed code without line breaks
+    # Handle malformed code that's all on one line or has missing line breaks
+    # Look for common Mermaid patterns and add line breaks
+    if '\n' not in code or (len(code.split('\n')) < 3 and len(code) > 100):
+        # For severely malformed code, return a simple fallback
+        # This handles cases where the LLM output is completely concatenated
+        return """flowchart TB
+    error[Diagram Generation Error]
+    note[The LLM generated malformed diagram code]
+    
+    error --> note
+    
+    fix1[Try generating again]
+    fix2[Switch to OpenAI provider]
+    fix3[Simplify your requirement]
+    
+    note --> fix1
+    note --> fix2
+    note --> fix3"""
+    
+    # Basic cleaning: fix common issues
+    import re
+    
+    lines = code.split('\n')
+    cleaned_lines = []
+    
+    # Detect diagram type
+    first_line = lines[0].lower().strip() if lines else ""
+    is_sequence_diagram = first_line.startswith('sequencediagram')
+    
+    for i, line in enumerate(lines):
+        # Skip empty lines and comments
+        if not line.strip() or line.strip().startswith('%%'):
+            cleaned_lines.append(line)
+            continue
+        
+        # For sequence diagrams, remove stray 'end' statements that don't belong to alt blocks
+        if is_sequence_diagram and line.strip() == 'end':
+            # Look backwards to see if there's a matching 'alt' without an 'end'
+            alt_count = 0
+            end_count = 0
+            for prev_line in cleaned_lines:
+                if prev_line.strip().startswith('alt '):
+                    alt_count += 1
+                elif prev_line.strip() == 'end':
+                    end_count += 1
+            
+            # Only keep this 'end' if we have more 'alt' than 'end' statements
+            if alt_count > end_count:
+                cleaned_lines.append(line)
+            # Otherwise skip this stray 'end' statement
+            continue
+            
+        # For flowchart arrows, ensure proper spacing
+        if not is_sequence_diagram and '-->' in line and not ('-->>' in line or '-->|' in line):
+            # Only fix simple arrows in flowcharts, not sequence diagrams or labeled arrows
+            line = re.sub(r'(\w+)-->(\w+)', r'\1 --> \2', line)
+        
+        cleaned_lines.append(line)
+    
+    code = '\n'.join(cleaned_lines)
+    
+    # If still looks malformed, return a fallback
+    lines = [line.strip() for line in code.split('\n') if line.strip()]
+    if len(lines) < 2:
         return """flowchart TB
     error[Diagram Generation Error]
     note[The generated diagram had formatting issues]
@@ -96,17 +207,6 @@ def _clean_mermaid_code(mermaid_code: str) -> str:
     
     note2[Please try generating again or use a different LLM provider]
     note --> note2"""
-    
-    # Split into lines and clean each line
-    lines = []
-    for line in code.split('\n'):
-        line = line.strip()
-        if line:
-            lines.append(line)
-    
-    # Ensure proper formatting
-    if not lines:
-        return "flowchart TB\n    error[No diagram generated]"
     
     # Check if it starts with a flowchart declaration
     first_line = lines[0].lower()
@@ -121,16 +221,31 @@ def _clean_mermaid_code(mermaid_code: str) -> str:
             line.startswith('end') or
             line.startswith('participant') or
             line.lower().startswith('flowchart') or
-            line.lower().startswith('sequencediagram')):
+            line.lower().startswith('sequencediagram') or
+            line.startswith('%%')):  # Comments
             formatted_lines.append(line)
         else:
             # Add indentation if not already present
-            if not line.startswith('    '):
+            if not line.startswith('    ') and not line.startswith('\t'):
                 formatted_lines.append('    ' + line)
             else:
                 formatted_lines.append(line)
     
-    return '\n'.join(formatted_lines)
+    result = '\n'.join(formatted_lines)
+    
+    # Validate the final result
+    is_valid, error_msg = _validate_mermaid_syntax(result)
+    if not is_valid:
+        return f"""flowchart TB
+    error[Diagram Syntax Error]
+    details[{error_msg}]
+    
+    error --> details
+    
+    note[Please try generating again with a different LLM provider]
+    details --> note"""
+    
+    return result
 
 async def build_context_diagram(requirement: str, recommendations: List[Dict]) -> str:
     """Build a context diagram using LLM based on the specific requirement."""
@@ -153,17 +268,23 @@ Use Mermaid flowchart syntax. Start with "flowchart LR" and use:
 
 Example format:
 flowchart LR
-  user([Warehouse Supervisor])
-  scanner[Mobile Scanner App]
-  api[Inventory API]
-  db[(Inventory Database)]
-  erp[ERP System]
-  
-  user --> scanner --> api
-  api --> db
-  api --> erp
+    user([Warehouse Supervisor])
+    scanner[Mobile Scanner App]
+    api[Inventory API]
+    db[(Inventory Database)]
+    erp[ERP System]
+    
+    user --> scanner
+    scanner --> api
+    api --> db
+    api --> erp
 
-IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)."""
+CRITICAL FORMATTING REQUIREMENTS:
+1. Each line must be on a separate line with proper line breaks
+2. Use 4 spaces for indentation of nodes and connections
+3. Put each node definition and connection on its own line
+4. Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)
+5. Ensure proper spacing and line breaks between elements"""
 
     try:
         # Use the current provider config to generate the diagram
@@ -213,23 +334,29 @@ Use Mermaid flowchart syntax with subgraphs. Start with "flowchart TB" and use:
 
 Example format:
 flowchart TB
-  subgraph "Inventory System"
-    ui[Mobile Scanner UI]
-    api[Inventory API]
-    rules[Business Rules Engine]
-    queue[Message Queue]
-  end
-  
-  db[(Inventory DB)]
-  erp[ERP System]
-  
-  ui --> api
-  api --> rules
-  api --> db
-  rules --> queue
-  queue --> erp
+    subgraph "Inventory System"
+        ui[Mobile Scanner UI]
+        api[Inventory API]
+        rules[Business Rules Engine]
+        queue[Message Queue]
+    end
+    
+    db[(Inventory DB)]
+    erp[ERP System]
+    
+    ui --> api
+    api --> rules
+    api --> db
+    rules --> queue
+    queue --> erp
 
-IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)."""
+CRITICAL FORMATTING REQUIREMENTS:
+1. Each line must be on a separate line with proper line breaks
+2. Use 4 spaces for indentation of nodes and connections
+3. Use 8 spaces for indentation inside subgraphs
+4. Put each node definition and connection on its own line
+5. Add blank lines between major sections for readability
+6. Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)"""
 
     try:
         provider_config = st.session_state.get('provider_config', {})
@@ -455,24 +582,32 @@ Use Mermaid sequenceDiagram syntax:
 - alt/else for conditions
 - Note over A: Comments
 
-Example (like your warehouse example):
+Example format:
 sequenceDiagram
-  participant W as Worker (Android Scanner)
-  participant API as FastAPI Orchestrator
-  participant DB as PostgreSQL (Inventory/Thresholds)
-  participant ERP as ERP API
-  
-  W->>API: POST /scan {{sku, qty, location, ts}}
-  API->>DB: GET inventory, reorder_threshold, supplier
-  API-->>API: Apply rules (seasonality, high-value gate)
-  alt Below threshold & not seasonal
-    API->>ERP: Create purchase order (sku, qty, supplier)
-    ERP-->>API: PO ID
-  else High-value item
-    API-->>W: Event (Approval required)
-  end
+    participant W as Worker (Android Scanner)
+    participant API as FastAPI Orchestrator
+    participant DB as PostgreSQL (Inventory/Thresholds)
+    participant ERP as ERP API
+    
+    W->>API: POST /scan {{sku, qty, location, ts}}
+    API->>DB: GET inventory, reorder_threshold, supplier
+    API-->>API: Apply rules (seasonality, high-value gate)
+    alt Below threshold & not seasonal
+        API->>ERP: Create purchase order (sku, qty, supplier)
+        ERP-->>API: PO ID
+    else High-value item
+        API-->>W: Event (Approval required)
+    end
 
-IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)."""
+CRITICAL FORMATTING REQUIREMENTS:
+1. Start with "sequenceDiagram" on its own line
+2. Put each participant definition on a separate line with 4-space indentation
+3. Put each message/interaction on a separate line with 4-space indentation
+4. Use 8-space indentation inside alt/else blocks
+5. IMPORTANT: Only use "end" to close "alt" blocks - each "alt" needs exactly one "end"
+6. Do NOT add extra "end" statements - they are only for closing alt/else blocks
+7. Add blank lines between major sections for readability
+8. Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)"""
 
     try:
         provider_config = st.session_state.get('provider_config', {})
@@ -669,9 +804,13 @@ class AutomatedAIAssessmentUI:
     
     async def make_api_request(self, method: str, endpoint: str, data: Optional[Dict] = None) -> Dict:
         """Make async API request to FastAPI backend."""
+        return await self.make_api_request_with_timeout(method, endpoint, data, timeout=30.0)
+    
+    async def make_api_request_with_timeout(self, method: str, endpoint: str, data: Optional[Dict] = None, timeout: float = 30.0) -> Dict:
+        """Make async API request to FastAPI backend with configurable timeout."""
         url = f"{API_BASE_URL}{endpoint}"
         
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             if method.upper() == "GET":
                 response = await client.get(url)
             elif method.upper() == "POST":
@@ -1341,13 +1480,27 @@ class AutomatedAIAssessmentUI:
         if not st.session_state.session_id:
             return
         
+        # Debug info (hidden by default)
+        if st.session_state.get('show_debug', False):
+            st.write(f"**Debug:** Checking status for session: {st.session_state.session_id[:8]}...")
+        
         st.header("📊 Processing Progress")
         
         try:
-            response = asyncio.run(self.make_api_request(
-                "GET",
-                f"/status/{st.session_state.session_id}"
-            ))
+            # Status endpoint should be fast, but add retry logic for robustness
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    response = asyncio.run(self.make_api_request(
+                        "GET",
+                        f"/status/{st.session_state.session_id}"
+                    ))
+                    break  # Success, exit retry loop
+                except Exception as e:
+                    if attempt == max_retries - 1:  # Last attempt
+                        raise e
+                    else:
+                        time.sleep(1)  # Wait 1 second before retry
             
             phase = response['phase']
             progress = response['progress']
@@ -1389,7 +1542,18 @@ class AutomatedAIAssessmentUI:
                 self.load_recommendations()
         
         except Exception as e:
-            st.error(f"❌ Error getting status: {str(e)}")
+            error_msg = str(e)
+            if "404" in error_msg or "Session not found" in error_msg:
+                st.error("❌ Session expired or not found. Please start a new analysis.")
+                if st.button("🔄 Start New Analysis"):
+                    st.session_state.clear()
+                    st.rerun()
+            elif "timeout" in error_msg.lower():
+                st.error("❌ Status check timed out. The system may be under heavy load.")
+                st.info("💡 Please wait a moment and the page will refresh automatically.")
+            else:
+                st.error(f"❌ Error getting status: {error_msg}")
+                st.info("🔄 The page will continue to refresh automatically.")
     
     def render_qa_section(self):
         """Render Q&A interaction section."""
@@ -1543,14 +1707,22 @@ class AutomatedAIAssessmentUI:
         """Load and display final recommendations."""
         if st.session_state.recommendations is None:
             try:
-                response = asyncio.run(self.make_api_request(
-                    "POST",
-                    "/recommend",
-                    {"session_id": st.session_state.session_id, "top_k": 3}
-                ))
+                # Show loading message for long operations
+                with st.spinner("🔄 Generating recommendations... This may take up to 2 minutes for complex requirements."):
+                    response = asyncio.run(self.make_api_request_with_timeout(
+                        "POST",
+                        "/recommend",
+                        {"session_id": st.session_state.session_id, "top_k": 3},
+                        timeout=120.0  # 2 minutes for recommendation generation
+                    ))
                 st.session_state.recommendations = response
             except Exception as e:
-                st.error(f"❌ Error loading recommendations: {str(e)}")
+                error_msg = str(e)
+                if "ReadTimeout" in error_msg or "timeout" in error_msg.lower():
+                    st.error("❌ Request timed out. The system is still processing your request. Please try refreshing in a moment.")
+                    st.info("💡 Complex requirements with novel technologies may take longer to analyze and create new patterns.")
+                else:
+                    st.error(f"❌ Error loading recommendations: {error_msg}")
                 return
         
         self.render_results()
@@ -2258,6 +2430,51 @@ class AutomatedAIAssessmentUI:
     def render_mermaid(self, mermaid_code: str):
         """Render a Mermaid diagram with better viewing options."""
         import hashlib
+        
+        # Validate the Mermaid code before rendering
+        is_valid, error_msg = _validate_mermaid_syntax(mermaid_code)
+        if not is_valid:
+            st.error(f"**Mermaid Syntax Error:** {error_msg}")
+            
+            # Provide specific guidance based on error type
+            if "malformed" in error_msg.lower() and "one line" in error_msg.lower():
+                st.warning("""
+                **Severely Malformed Diagram Code**
+                
+                The LLM generated diagram code without proper line breaks. This is a common issue with certain providers.
+                
+                **Recommended solutions:**
+                1. **Switch to OpenAI provider** (best Mermaid syntax generation)
+                2. **Try generating again** (sometimes works on retry)
+                3. **Use fake provider** for a basic diagram structure
+                """)
+            elif "unmatched" in error_msg.lower():
+                st.warning("""
+                **Syntax Error in Diagram**
+                
+                The diagram has unmatched brackets or parentheses.
+                
+                **Recommended solutions:**
+                1. **Generate again** (LLM may fix the syntax on retry)
+                2. **Switch providers** (different models handle syntax differently)
+                3. **Simplify your requirement** (complex requirements can cause syntax errors)
+                """)
+            else:
+                st.warning("""
+                **Diagram Syntax Issue**
+                
+                The generated diagram has syntax errors.
+                
+                **Try these solutions:**
+                1. Generate the diagram again (sometimes works on retry)
+                2. Switch to OpenAI provider (usually better at Mermaid syntax)
+                3. Use a simpler requirement description
+                """)
+            
+            with st.expander("View Generated Code (with errors)"):
+                st.code(mermaid_code, language="mermaid")
+            return
+        
         diagram_id = hashlib.md5(mermaid_code.encode()).hexdigest()[:8]
         
         # Store diagram in session state

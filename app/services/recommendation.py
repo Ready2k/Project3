@@ -2,6 +2,8 @@
 
 from typing import Dict, List, Any, Tuple, Optional
 import math
+import json
+import re
 from pathlib import Path
 
 from app.pattern.matcher import MatchResult
@@ -373,7 +375,7 @@ class RecommendationService:
                             match: MatchResult, 
                             requirements: Dict[str, Any], 
                             feasibility: str) -> float:
-        """Calculate adjusted confidence score.
+        """Calculate adjusted confidence score with enhanced LLM parsing and validation.
         
         Args:
             match: Pattern matching result
@@ -383,14 +385,15 @@ class RecommendationService:
         Returns:
             Adjusted confidence score (0.0 to 1.0)
         """
-        # Prioritize LLM confidence if available
-        llm_confidence = requirements.get("llm_analysis_confidence_level")
-        if llm_confidence and isinstance(llm_confidence, (int, float)):
-            app_logger.info(f"Using LLM confidence: {llm_confidence}")
-            return min(max(llm_confidence, 0.0), 1.0)  # Ensure it's between 0 and 1
+        # Try to extract LLM confidence with enhanced parsing
+        llm_confidence = self._extract_llm_confidence(requirements)
+        
+        if llm_confidence is not None:
+            app_logger.info(f"Using LLM confidence: {llm_confidence:.3f} (source: LLM)")
+            return llm_confidence
         
         # Fallback to pattern-based confidence calculation
-        app_logger.info("Using pattern-based confidence calculation")
+        app_logger.info(f"Using pattern-based confidence calculation for {match.pattern_id}")
         base_confidence = match.blended_score
         
         # Adjust based on feasibility determination
@@ -406,23 +409,262 @@ class RecommendationService:
         # Adjust based on requirements completeness
         completeness_score = self._calculate_completeness_score(requirements)
         
-        # Calculate final confidence
-        confidence = (
-            base_confidence * 0.4 +
-            pattern_confidence * 0.3 +
-            completeness_score * 0.3
-        ) * feasibility_multiplier[feasibility]
+        # Calculate final confidence with detailed logging
+        base_weighted = base_confidence * 0.4
+        pattern_weighted = pattern_confidence * 0.3
+        completeness_weighted = completeness_score * 0.3
+        pre_feasibility_confidence = base_weighted + pattern_weighted + completeness_weighted
+        
+        feasibility_mult = feasibility_multiplier.get(feasibility, 0.3)
+        confidence = pre_feasibility_confidence * feasibility_mult
         
         # Ensure confidence is within bounds
         confidence = max(0.0, min(1.0, confidence))
         
-        app_logger.debug(f"Confidence calculation for {match.pattern_id}: "
-                        f"base={base_confidence:.3f}, pattern={pattern_confidence:.3f}, "
-                        f"completeness={completeness_score:.3f}, "
-                        f"feasibility_mult={feasibility_multiplier[feasibility]:.3f}, "
-                        f"final={confidence:.3f}")
+        app_logger.info(f"Pattern-based confidence calculation for {match.pattern_id}: "
+                       f"base={base_confidence:.3f}*0.4={base_weighted:.3f}, "
+                       f"pattern={pattern_confidence:.3f}*0.3={pattern_weighted:.3f}, "
+                       f"completeness={completeness_score:.3f}*0.3={completeness_weighted:.3f}, "
+                       f"pre_feasibility={pre_feasibility_confidence:.3f}, "
+                       f"feasibility='{feasibility}'*{feasibility_mult:.1f}={confidence:.3f} (source: pattern-based)")
         
         return confidence
+    
+    def _extract_llm_confidence(self, requirements: Dict[str, Any]) -> Optional[float]:
+        """Extract and validate LLM confidence with enhanced parsing and fallback mechanisms.
+        
+        Args:
+            requirements: User requirements dictionary
+            
+        Returns:
+            Validated confidence value (0.0-1.0) or None if extraction fails
+        """
+        
+        # Try multiple sources for LLM confidence
+        confidence_sources = [
+            "llm_analysis_confidence_level",
+            "confidence_level", 
+            "confidence",
+            "llm_confidence"
+        ]
+        
+        for source_key in confidence_sources:
+            raw_value = requirements.get(source_key)
+            if raw_value is not None:
+                app_logger.debug(f"Found potential confidence value in '{source_key}': {raw_value} (type: {type(raw_value)})")
+                
+                # Try to extract confidence from this source
+                confidence = self._parse_confidence_value(raw_value, source_key)
+                if confidence is not None:
+                    return confidence
+        
+        # Try to extract from full LLM response if available
+        llm_response = requirements.get("llm_analysis_raw_response")
+        if llm_response:
+            app_logger.debug("Attempting to extract confidence from raw LLM response")
+            confidence = self._extract_confidence_from_response(llm_response)
+            if confidence is not None:
+                return confidence
+        
+        app_logger.debug("No valid LLM confidence found in any source")
+        return None
+    
+    def _parse_confidence_value(self, raw_value: Any, source_key: str) -> Optional[float]:
+        """Parse and validate a confidence value from various formats.
+        
+        Args:
+            raw_value: Raw confidence value in any format
+            source_key: Source key for logging
+            
+        Returns:
+            Validated confidence value (0.0-1.0) or None if invalid
+        """
+        validation_errors = []
+        
+        try:
+            # Handle None or empty values
+            if raw_value is None or raw_value == "":
+                validation_errors.append("Value is None or empty")
+                return None
+            
+            # Handle boolean values (reject them)
+            if isinstance(raw_value, bool):
+                validation_errors.append(f"Boolean value ({raw_value}) is not a valid confidence")
+                app_logger.warning(f"Confidence from '{source_key}' is boolean ({raw_value}), rejecting")
+                return None
+            
+            # Handle numeric values (int/float, but not bool)
+            if isinstance(raw_value, (int, float)) and not isinstance(raw_value, bool):
+                confidence = float(raw_value)
+                return self._validate_confidence_range(confidence, source_key, str(raw_value))
+            
+            # Handle string values - attempt multiple parsing strategies
+            if isinstance(raw_value, str):
+                return self._parse_confidence_from_string(raw_value, source_key)
+            
+            # Handle dict values - look for confidence keys
+            if isinstance(raw_value, dict):
+                return self._extract_confidence_from_dict(raw_value, source_key)
+            
+            # Handle list values - look for confidence in first element
+            if isinstance(raw_value, list) and len(raw_value) > 0:
+                app_logger.debug(f"Attempting to extract confidence from list: {raw_value}")
+                return self._parse_confidence_value(raw_value[0], f"{source_key}[0]")
+            
+            # Unsupported type
+            validation_errors.append(f"Unsupported type {type(raw_value)}")
+            app_logger.warning(f"Confidence from '{source_key}' has unsupported type {type(raw_value)}: {raw_value}")
+            return None
+            
+        except Exception as e:
+            validation_errors.append(f"Exception during parsing: {e}")
+            app_logger.error(f"Error parsing confidence from '{source_key}': {e}")
+            return None
+    
+    def _parse_confidence_from_string(self, value: str, source_key: str) -> Optional[float]:
+        """Parse confidence from string with multiple strategies.
+        
+        Args:
+            value: String value to parse
+            source_key: Source key for logging
+            
+        Returns:
+            Validated confidence value or None
+        """
+        # Strategy 1: Direct float conversion
+        try:
+            confidence = float(value.strip())
+            return self._validate_confidence_range(confidence, source_key, value)
+        except (ValueError, TypeError):
+            pass
+        
+        # Strategy 2: Extract percentage (e.g., "85%", "0.85%")
+        percentage_match = re.search(r'(\d+(?:\.\d+)?)%', value)
+        if percentage_match:
+            try:
+                percentage = float(percentage_match.group(1))
+                # Convert percentage to decimal if > 1
+                confidence = percentage / 100.0 if percentage > 1.0 else percentage
+                app_logger.debug(f"Extracted percentage {percentage}% as confidence {confidence}")
+                return self._validate_confidence_range(confidence, source_key, value)
+            except (ValueError, TypeError):
+                pass
+        
+        # Strategy 3: Extract decimal number from text (e.g., "confidence: 0.85")
+        decimal_match = re.search(r'(\d+(?:\.\d+)?)', value)
+        if decimal_match:
+            try:
+                number = float(decimal_match.group(1))
+                # If number is > 1, assume it's a percentage
+                confidence = number / 100.0 if number > 1.0 else number
+                app_logger.debug(f"Extracted number {number} as confidence {confidence}")
+                return self._validate_confidence_range(confidence, source_key, value)
+            except (ValueError, TypeError):
+                pass
+        
+        # Strategy 4: Try to parse as JSON
+        try:
+            parsed = json.loads(value)
+            return self._parse_confidence_value(parsed, f"{source_key}(json)")
+        except (json.JSONDecodeError, TypeError):
+            pass
+        
+        app_logger.warning(f"Could not parse confidence from string '{value}' in '{source_key}'")
+        return None
+    
+    def _extract_confidence_from_dict(self, data: dict, source_key: str) -> Optional[float]:
+        """Extract confidence from dictionary structure.
+        
+        Args:
+            data: Dictionary to search
+            source_key: Source key for logging
+            
+        Returns:
+            Validated confidence value or None
+        """
+        confidence_keys = ["confidence", "confidence_level", "score", "probability"]
+        
+        for key in confidence_keys:
+            if key in data:
+                app_logger.debug(f"Found confidence key '{key}' in dict from '{source_key}'")
+                return self._parse_confidence_value(data[key], f"{source_key}.{key}")
+        
+        app_logger.debug(f"No confidence keys found in dict from '{source_key}': {list(data.keys())}")
+        return None
+    
+    def _extract_confidence_from_response(self, response: str) -> Optional[float]:
+        """Extract confidence from full LLM response text.
+        
+        Args:
+            response: Full LLM response text
+            
+        Returns:
+            Validated confidence value or None
+        """
+        # Try to extract JSON from response first
+        try:
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                json_data = json.loads(json_match.group())
+                confidence = self._extract_confidence_from_dict(json_data, "llm_response_json")
+                if confidence is not None:
+                    return confidence
+        except (json.JSONDecodeError, AttributeError):
+            pass
+        
+        # Look for confidence patterns in text
+        patterns = [
+            r'confidence[:\s]+(\d+(?:\.\d+)?)%?',
+            r'confidence[:\s]+is[:\s]+(\d+(?:\.\d+)?)%?',
+            r'(\d+(?:\.\d+)?)%\s+confident',  # "89% confident"
+            r'(\d+(?:\.\d+)?)%?\s+confidence',
+            r'score[:\s]+(\d+(?:\.\d+)?)%?'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, response, re.IGNORECASE)
+            if match:
+                try:
+                    number = float(match.group(1))
+                    # Check if the matched text contains a % symbol to determine if it's a percentage
+                    matched_text = match.group(0)
+                    if '%' in matched_text:
+                        confidence = number / 100.0
+                    else:
+                        confidence = number / 100.0 if number > 1.0 else number
+                    app_logger.debug(f"Extracted confidence {confidence} from response using pattern '{pattern}' (matched: '{matched_text}')")
+                    return self._validate_confidence_range(confidence, "llm_response_text", matched_text)
+                except (ValueError, TypeError):
+                    continue
+        
+        app_logger.debug("No confidence patterns found in LLM response")
+        return None
+    
+    def _validate_confidence_range(self, confidence: float, source: str, original_value: str) -> Optional[float]:
+        """Validate confidence is in valid range and clamp if necessary.
+        
+        Args:
+            confidence: Confidence value to validate
+            source: Source of the confidence for logging
+            original_value: Original value string for logging
+            
+        Returns:
+            Validated confidence value (0.0-1.0) or None if invalid
+        """
+        # Check for invalid values
+        if math.isnan(confidence) or math.isinf(confidence):
+            app_logger.warning(f"Confidence from '{source}' is NaN or infinite: {confidence} (original: '{original_value}')")
+            return None
+        
+        # Clamp to valid range
+        clamped_confidence = max(0.0, min(1.0, confidence))
+        
+        if confidence != clamped_confidence:
+            app_logger.warning(f"Confidence from '{source}' was out of range ({confidence}), clamped to {clamped_confidence} (original: '{original_value}')")
+        else:
+            app_logger.info(f"Valid confidence extracted from '{source}': {clamped_confidence} (original: '{original_value}')")
+        
+        return clamped_confidence
     
     def _calculate_completeness_score(self, requirements: Dict[str, Any]) -> float:
         """Calculate how complete the requirements are.
@@ -626,6 +868,9 @@ class RecommendationService:
     async def _should_create_new_pattern(self, matches: List[MatchResult], requirements: Dict[str, Any], session_id: str = "unknown") -> bool:
         """Determine if a new pattern should be created or if an existing one should be enhanced.
         
+        Enhanced logic that separates technology novelty from conceptual similarity to ensure
+        new patterns are created when requirements contain novel technologies.
+        
         Args:
             matches: Existing pattern matches
             requirements: User requirements
@@ -634,71 +879,372 @@ class RecommendationService:
         Returns:
             True if a new pattern should be created, False if existing pattern should be enhanced or used
         """
-        # Create new pattern if no matches at all
-        if not matches:
-            app_logger.info("No existing pattern matches found - will create new pattern")
-            return True
-        
-        # Create new pattern if all matches have low scores
-        best_match_score = max(match.blended_score for match in matches)
-        if best_match_score < 0.4:
-            app_logger.info(f"Best match score {best_match_score:.3f} is too low - will create new pattern")
-            return True
-        
-        # NEW: Check for conceptual similarity with existing patterns
-        # If we find a conceptually similar pattern, enhance it instead of creating a new one
-        best_match = matches[0]
-        if await self._is_conceptually_similar(best_match, requirements):
-            app_logger.info(f"Found conceptually similar pattern {best_match.pattern_id} - will enhance instead of creating new")
-            await self._enhance_existing_pattern(best_match, requirements, session_id)
-            return False
-        
-        # Create new pattern if the requirement is very specific and unique
-        description = str(requirements.get("description", "")).lower()
-        
-        # Check for unique/specific scenarios that likely need custom patterns
-        unique_indicators = [
-            "amazon connect",  # Specific AWS service
-            "real-time translation",  # Specific real-time requirement
-            "bidirectional translation",  # Specific translation requirement
-            "native language",  # Language preference requirement
-            "system settings",  # User preference integration
-            "customer chat",  # Specific communication context
-        ]
-        
-        unique_score = sum(1 for indicator in unique_indicators if indicator in description)
-        if unique_score >= 2:
-            app_logger.info(f"Detected unique scenario (score: {unique_score}) - will create new pattern")
-            return True
-        
-        # Check for domain-specific requirements that don't match well
-        domain = requirements.get("domain", "")
-        if domain and matches:
-            # If we have a specific domain but the best match is from a different domain
-            # and the score isn't great, create a new pattern
-            if best_match.blended_score < 0.7 and domain not in ["general", "automation"]:
-                app_logger.info(f"Domain-specific requirement ({domain}) with mediocre match - will create new pattern")
+        try:
+            decision_factors = {
+                "no_matches": False,
+                "low_scores": False,
+                "technology_novelty": False,
+                "conceptual_similarity": False,
+                "unique_scenario": False,
+                "domain_mismatch": False,
+                "significant_tech_difference": False
+            }
+            
+            # Create new pattern if no matches at all
+            if not matches:
+                decision_factors["no_matches"] = True
+                self._log_pattern_decision(True, decision_factors, session_id, "No existing pattern matches found")
                 return True
-        
-        # Don't create new pattern if we have good existing matches
-        app_logger.info(f"Found adequate existing matches (best: {best_match_score:.3f}) - will use existing patterns")
-        return False
+            
+            # Create new pattern if all matches have low scores
+            best_match_score = max(match.blended_score for match in matches)
+            if best_match_score < 0.4:
+                decision_factors["low_scores"] = True
+                self._log_pattern_decision(True, decision_factors, session_id, f"Best match score {best_match_score:.3f} is too low")
+                return True
+            
+            best_match = matches[0]
+            
+            # Enhanced technology novelty assessment with error handling
+            try:
+                technology_novelty_score = await self._calculate_technology_novelty_score(matches, requirements)
+                conceptual_similarity_score = await self._calculate_conceptual_similarity_score(best_match, requirements)
+                
+                decision_factors["technology_novelty"] = technology_novelty_score > 0.6
+                decision_factors["conceptual_similarity"] = conceptual_similarity_score > 0.7
+                
+                # NEW: Check for significant technology stack differences
+                tech_difference_score = await self._calculate_technology_difference_score(best_match, requirements)
+                decision_factors["significant_tech_difference"] = tech_difference_score > 0.7
+                
+                app_logger.info(f"Pattern creation analysis for session {session_id}:")
+                app_logger.info(f"  Technology novelty: {technology_novelty_score:.3f}")
+                app_logger.info(f"  Conceptual similarity: {conceptual_similarity_score:.3f}")
+                app_logger.info(f"  Technology difference: {tech_difference_score:.3f}")
+                
+                # Enhanced decision logic: Create new pattern if technology is significantly different
+                if technology_novelty_score > 0.6 or tech_difference_score > 0.7:
+                    reason = f"High technology novelty ({technology_novelty_score:.3f})" if technology_novelty_score > 0.6 else f"Significant technology difference ({tech_difference_score:.3f})"
+                    self._log_pattern_decision(True, decision_factors, session_id, f"{reason} warrants new pattern")
+                    return True
+                
+                # If conceptually similar and technology is not significantly different, enhance existing pattern
+                if conceptual_similarity_score > 0.7 and technology_novelty_score <= 0.6 and tech_difference_score <= 0.7:
+                    self._log_pattern_decision(False, decision_factors, session_id, 
+                                             f"High conceptual similarity ({conceptual_similarity_score:.3f}) with low technology novelty ({technology_novelty_score:.3f}) and difference ({tech_difference_score:.3f}) - will enhance existing pattern")
+                    await self._enhance_existing_pattern(best_match, requirements, session_id)
+                    return False
+                    
+            except Exception as e:
+                app_logger.error(f"Error in technology analysis for pattern creation decision: {e}")
+                # On error, default to creating new pattern to be safe
+                self._log_pattern_decision(True, decision_factors, session_id, f"Technology analysis failed ({e}) - defaulting to new pattern creation")
+                return True
+            
+            # Create new pattern if the requirement is very specific and unique
+            description = str(requirements.get("description", "")).lower()
+            
+            # Enhanced unique scenario detection
+            unique_indicators = [
+                "amazon connect",  # Specific AWS service
+                "real-time translation",  # Specific real-time requirement
+                "bidirectional translation",  # Specific translation requirement
+                "native language",  # Language preference requirement
+                "system settings",  # User preference integration
+                "customer chat",  # Specific communication context
+                "blockchain",  # Emerging technology
+                "machine learning model",  # ML-specific requirements
+                "microservices architecture",  # Specific architectural pattern
+                "event-driven",  # Specific architectural pattern
+                "serverless",  # Specific deployment pattern
+                "edge computing",  # Specific deployment pattern
+            ]
+            
+            unique_score = sum(1 for indicator in unique_indicators if indicator in description)
+            if unique_score >= 2:
+                decision_factors["unique_scenario"] = True
+                self._log_pattern_decision(True, decision_factors, session_id, f"Detected unique scenario (score: {unique_score})")
+                return True
+            
+            # Check for domain-specific requirements that don't match well
+            domain = requirements.get("domain", "")
+            if domain and matches:
+                # If we have a specific domain but the best match is from a different domain
+                # and the score isn't great, create a new pattern
+                if best_match.blended_score < 0.7 and domain not in ["general", "automation"]:
+                    decision_factors["domain_mismatch"] = True
+                    self._log_pattern_decision(True, decision_factors, session_id, f"Domain-specific requirement ({domain}) with mediocre match")
+                    return True
+            
+            # Don't create new pattern if we have good existing matches
+            self._log_pattern_decision(False, decision_factors, session_id, f"Found adequate existing matches (best: {best_match_score:.3f})")
+            return False
+            
+        except Exception as e:
+            app_logger.error(f"Critical error in pattern creation decision logic: {e}")
+            # On critical error, default to not creating new pattern to avoid potential issues
+            return False
     
-    async def _is_conceptually_similar(self, match: MatchResult, requirements: Dict[str, Any]) -> bool:
-        """Check if a pattern is conceptually similar to the requirements.
+    def _log_pattern_decision(self, should_create: bool, decision_factors: Dict[str, bool], session_id: str, rationale: str):
+        """Log pattern creation decision with detailed rationale for audit purposes.
         
-        This checks for patterns that solve the same core business problem but may have
-        different technical implementations or minor variations.
+        Args:
+            should_create: Whether a new pattern should be created
+            decision_factors: Dictionary of decision factors and their values
+            session_id: Session ID for tracking
+            rationale: Human-readable rationale for the decision
+        """
+        decision_type = "CREATE_NEW_PATTERN" if should_create else "USE_EXISTING_PATTERN"
+        
+        app_logger.info(f"PATTERN_DECISION [{session_id}]: {decision_type}")
+        app_logger.info(f"  Rationale: {rationale}")
+        app_logger.info(f"  Decision Factors:")
+        for factor, value in decision_factors.items():
+            app_logger.info(f"    - {factor}: {value}")
+        
+        # Also log to audit system if available
+        try:
+            from app.utils.audit import log_pattern_decision
+            # Note: This would need to be implemented in the audit system
+            # For now, we'll just use the logger
+        except ImportError:
+            pass
+    
+    async def _calculate_technology_novelty_score(self, matches: List[MatchResult], requirements: Dict[str, Any]) -> float:
+        """Calculate technology novelty score to determine if requirements contain novel technologies.
+        
+        This score is separate from conceptual similarity and focuses specifically on whether
+        the technology stack or approach is significantly different from existing patterns.
+        
+        Args:
+            matches: Existing pattern matches
+            requirements: User requirements
+            
+        Returns:
+            Technology novelty score (0.0 to 1.0, higher means more novel)
+        """
+        try:
+            # Extract technologies from requirements
+            req_technologies = set()
+            
+            # From explicit tech stack
+            if "tech_stack" in requirements:
+                req_technologies.update(str(tech).lower() for tech in requirements["tech_stack"])
+            
+            # From LLM analysis if available
+            if "llm_analysis_tech_stack" in requirements:
+                llm_tech = requirements["llm_analysis_tech_stack"]
+                if isinstance(llm_tech, list):
+                    req_technologies.update(str(tech).lower() for tech in llm_tech)
+                elif isinstance(llm_tech, str):
+                    # Parse comma-separated or space-separated technologies
+                    req_technologies.update(tech.strip().lower() for tech in llm_tech.replace(',', ' ').split())
+            
+            # Extract from description using keyword matching
+            description = str(requirements.get("description", "")).lower()
+            tech_keywords = [
+                "oauth2", "jwt", "saml", "ldap", "active directory", "azure ad",
+                "dynamodb", "mongodb", "postgresql", "mysql", "redis", "elasticsearch",
+                "lambda", "azure functions", "google cloud functions", "kubernetes",
+                "docker", "terraform", "cloudformation", "ansible", "jenkins",
+                "react", "angular", "vue", "node.js", "python", "java", "c#",
+                "fastapi", "django", "flask", "spring boot", "express",
+                "kafka", "rabbitmq", "sqs", "sns", "eventbridge",
+                "cloudwatch", "datadog", "new relic", "prometheus", "grafana"
+            ]
+            
+            for keyword in tech_keywords:
+                if keyword in description:
+                    req_technologies.add(keyword)
+            
+            if not req_technologies:
+                app_logger.debug("No technologies found in requirements - novelty score: 0.0")
+                return 0.0
+            
+            # Load existing pattern technologies
+            existing_technologies = set()
+            try:
+                from app.pattern.loader import PatternLoader
+                from pathlib import Path
+                pattern_loader = PatternLoader(Path("data/patterns"))
+                patterns = pattern_loader.load_patterns()
+                
+                for pattern in patterns:
+                    tech_stack = pattern.get("tech_stack", [])
+                    if isinstance(tech_stack, list):
+                        existing_technologies.update(str(tech).lower() for tech in tech_stack)
+                    
+            except Exception as e:
+                app_logger.warning(f"Could not load existing patterns for novelty analysis: {e}")
+                # If we can't load patterns, assume high novelty
+                return 0.8
+            
+            # Calculate novelty based on technology overlap
+            if not existing_technologies:
+                app_logger.debug("No existing technologies found - novelty score: 1.0")
+                return 1.0
+            
+            # Calculate intersection and union
+            intersection = req_technologies.intersection(existing_technologies)
+            union = req_technologies.union(existing_technologies)
+            
+            # Novelty score is based on how many new technologies are introduced
+            novel_technologies = req_technologies - existing_technologies
+            novelty_ratio = len(novel_technologies) / len(req_technologies) if req_technologies else 0
+            
+            # Also consider the overall technology diversity
+            if union:
+                diversity_factor = len(novel_technologies) / len(union)
+            else:
+                diversity_factor = 0
+            
+            # Combine novelty ratio (70%) and diversity factor (30%)
+            novelty_score = (novelty_ratio * 0.7) + (diversity_factor * 0.3)
+            
+            app_logger.info(f"Technology novelty analysis:")
+            app_logger.info(f"  Required technologies: {sorted(req_technologies)}")
+            app_logger.info(f"  Novel technologies: {sorted(novel_technologies)}")
+            app_logger.info(f"  Novelty ratio: {novelty_ratio:.3f}")
+            app_logger.info(f"  Diversity factor: {diversity_factor:.3f}")
+            app_logger.info(f"  Final novelty score: {novelty_score:.3f}")
+            
+            return min(1.0, max(0.0, novelty_score))
+            
+        except Exception as e:
+            app_logger.error(f"Error calculating technology novelty score: {e}")
+            # Return moderate novelty on error to be safe
+            return 0.5
+    
+    async def _calculate_technology_difference_score(self, match: MatchResult, requirements: Dict[str, Any]) -> float:
+        """Calculate technology difference score between requirements and existing pattern.
+        
+        This measures how different the technology stack is from the best matching pattern,
+        helping decide if a new pattern should be created even when conceptually similar.
         
         Args:
             match: Best matching pattern
             requirements: User requirements
             
         Returns:
-            True if the pattern is conceptually similar and should be enhanced
+            Technology difference score (0.0 to 1.0, higher means more different)
         """
-        # Load the full pattern data to analyze
         try:
+            # Extract technologies from requirements
+            req_technologies = set()
+            
+            # From explicit tech stack
+            if "tech_stack" in requirements:
+                req_technologies.update(str(tech).lower() for tech in requirements["tech_stack"])
+            
+            # From LLM analysis if available
+            if "llm_analysis_tech_stack" in requirements:
+                llm_tech = requirements["llm_analysis_tech_stack"]
+                if isinstance(llm_tech, list):
+                    req_technologies.update(str(tech).lower() for tech in llm_tech)
+                elif isinstance(llm_tech, str):
+                    # Parse comma-separated or space-separated technologies
+                    req_technologies.update(tech.strip().lower() for tech in llm_tech.replace(',', ' ').split())
+            
+            # Extract from description using keyword matching
+            description = str(requirements.get("description", "")).lower()
+            tech_keywords = [
+                "oauth2", "jwt", "saml", "ldap", "active directory", "azure ad",
+                "dynamodb", "mongodb", "postgresql", "mysql", "redis", "elasticsearch",
+                "lambda", "azure functions", "google cloud functions", "kubernetes",
+                "docker", "terraform", "cloudformation", "ansible", "jenkins",
+                "react", "angular", "vue", "node.js", "python", "java", "c#",
+                "fastapi", "django", "flask", "spring boot", "express",
+                "kafka", "rabbitmq", "sqs", "sns", "eventbridge",
+                "cloudwatch", "datadog", "new relic", "prometheus", "grafana",
+                "blockchain", "ethereum", "solidity", "web3",
+                "tensorflow", "pytorch", "scikit-learn", "pandas", "numpy"
+            ]
+            
+            for keyword in tech_keywords:
+                if keyword in description:
+                    req_technologies.add(keyword)
+            
+            if not req_technologies:
+                app_logger.debug("No technologies found in requirements - difference score: 0.0")
+                return 0.0
+            
+            # Get pattern technologies
+            pattern_technologies = set()
+            if hasattr(match, 'tech_stack') and match.tech_stack:
+                pattern_technologies.update(str(tech).lower() for tech in match.tech_stack)
+            
+            # Load full pattern data for more complete tech stack
+            try:
+                from app.pattern.loader import PatternLoader
+                from pathlib import Path
+                pattern_loader = PatternLoader(Path("data/patterns"))
+                patterns = pattern_loader.load_patterns()
+                
+                for pattern in patterns:
+                    if pattern.get("pattern_id") == match.pattern_id:
+                        tech_stack = pattern.get("tech_stack", [])
+                        if isinstance(tech_stack, list):
+                            pattern_technologies.update(str(tech).lower() for tech in tech_stack)
+                        break
+                        
+            except Exception as e:
+                app_logger.warning(f"Could not load full pattern data for difference analysis: {e}")
+            
+            if not pattern_technologies:
+                app_logger.debug("No technologies found in pattern - difference score: 1.0")
+                return 1.0
+            
+            # Calculate technology difference using Jaccard distance
+            intersection = req_technologies.intersection(pattern_technologies)
+            union = req_technologies.union(pattern_technologies)
+            
+            if not union:
+                return 0.0
+            
+            # Jaccard similarity
+            jaccard_similarity = len(intersection) / len(union)
+            
+            # Jaccard distance (difference)
+            jaccard_distance = 1.0 - jaccard_similarity
+            
+            # Also consider the proportion of completely new technologies
+            new_technologies = req_technologies - pattern_technologies
+            new_tech_ratio = len(new_technologies) / len(req_technologies) if req_technologies else 0
+            
+            # Combine Jaccard distance (60%) with new technology ratio (40%)
+            difference_score = (jaccard_distance * 0.6) + (new_tech_ratio * 0.4)
+            
+            app_logger.info(f"Technology difference analysis for {match.pattern_id}:")
+            app_logger.info(f"  Required technologies: {sorted(req_technologies)}")
+            app_logger.info(f"  Pattern technologies: {sorted(pattern_technologies)}")
+            app_logger.info(f"  New technologies: {sorted(new_technologies)}")
+            app_logger.info(f"  Jaccard similarity: {jaccard_similarity:.3f}")
+            app_logger.info(f"  Jaccard distance: {jaccard_distance:.3f}")
+            app_logger.info(f"  New tech ratio: {new_tech_ratio:.3f}")
+            app_logger.info(f"  Final difference score: {difference_score:.3f}")
+            
+            return min(1.0, max(0.0, difference_score))
+            
+        except Exception as e:
+            app_logger.error(f"Error calculating technology difference score: {e}")
+            # Return moderate difference on error to be safe
+            return 0.5
+
+    async def _calculate_conceptual_similarity_score(self, match: MatchResult, requirements: Dict[str, Any]) -> float:
+        """Calculate conceptual similarity score separate from technology novelty.
+        
+        This focuses on whether the core business problem and approach are similar,
+        regardless of the specific technologies used.
+        
+        Args:
+            match: Best matching pattern
+            requirements: User requirements
+            
+        Returns:
+            Conceptual similarity score (0.0 to 1.0, higher means more similar)
+        """
+        try:
+            # Load the full pattern data to analyze
             from app.pattern.loader import PatternLoader
             from pathlib import Path
             pattern_loader = PatternLoader(Path("data/patterns"))
@@ -711,11 +1257,12 @@ class RecommendationService:
                     break
             
             if not pattern_data:
-                return False
+                app_logger.warning(f"Could not find pattern {match.pattern_id} for similarity analysis")
+                return 0.0
             
             # Check for conceptual similarity indicators
             similarity_score = 0
-            total_checks = 0
+            total_weight = 0
             
             # 1. Same core business process (high weight)
             req_desc = str(requirements.get("description", "")).lower()
@@ -725,7 +1272,8 @@ class RecommendationService:
             business_keywords = [
                 "identity verification", "card blocking", "chatbot", "otp", "security questions",
                 "fraud detection", "authentication", "authorization", "user verification",
-                "account security", "two-factor", "multi-factor"
+                "account security", "two-factor", "multi-factor", "password reset",
+                "user registration", "login", "logout", "session management"
             ]
             
             req_business_matches = sum(1 for keyword in business_keywords if keyword in req_desc)
@@ -737,14 +1285,14 @@ class RecommendationService:
                 total_matches = max(req_business_matches, pattern_business_matches)
                 business_similarity = overlap / total_matches
                 similarity_score += business_similarity * 0.4  # 40% weight
-            total_checks += 0.4
+            total_weight += 0.4
             
             # 2. Same domain (medium weight)
             req_domain = requirements.get("domain", "")
             pattern_domain = pattern_data.get("domain", "")
             if req_domain and pattern_domain and req_domain == pattern_domain:
                 similarity_score += 0.2  # 20% weight
-            total_checks += 0.2
+            total_weight += 0.2
             
             # 3. Similar pattern types (medium weight)
             req_pattern_types = set(requirements.get("pattern_types", []))
@@ -755,14 +1303,14 @@ class RecommendationService:
                 if type_total > 0:
                     type_similarity = type_overlap / type_total
                     similarity_score += type_similarity * 0.2  # 20% weight
-            total_checks += 0.2
+            total_weight += 0.2
             
             # 4. Similar feasibility and complexity (low weight)
             req_feasibility = requirements.get("feasibility", "")
             pattern_feasibility = pattern_data.get("feasibility", "")
             if req_feasibility and pattern_feasibility and req_feasibility == pattern_feasibility:
                 similarity_score += 0.1  # 10% weight
-            total_checks += 0.1
+            total_weight += 0.1
             
             # 5. Similar compliance requirements (low weight)
             req_compliance = set(requirements.get("compliance", []))
@@ -773,24 +1321,45 @@ class RecommendationService:
                 if compliance_total > 0:
                     compliance_similarity = compliance_overlap / compliance_total
                     similarity_score += compliance_similarity * 0.1  # 10% weight
-            total_checks += 0.1
+            total_weight += 0.1
             
             # Calculate final similarity score
-            if total_checks > 0:
-                final_similarity = similarity_score / total_checks
+            if total_weight > 0:
+                final_similarity = similarity_score / total_weight
             else:
                 final_similarity = 0
             
-            # Consider it conceptually similar if similarity > 70%
-            is_similar = final_similarity > 0.7
+            app_logger.info(f"Conceptual similarity analysis for {match.pattern_id}:")
+            app_logger.info(f"  Business process similarity: {req_business_matches} vs {pattern_business_matches} matches")
+            app_logger.info(f"  Domain match: {req_domain} vs {pattern_domain}")
+            app_logger.info(f"  Pattern types: {req_pattern_types} vs {pattern_types}")
+            app_logger.info(f"  Final similarity score: {final_similarity:.3f}")
             
-            app_logger.info(f"Conceptual similarity check for {match.pattern_id}: {final_similarity:.3f} ({'similar' if is_similar else 'different'})")
-            
-            return is_similar
+            return final_similarity
             
         except Exception as e:
-            app_logger.error(f"Error checking conceptual similarity: {e}")
-            return False
+            app_logger.error(f"Error calculating conceptual similarity: {e}")
+            return 0.0
+
+    async def _is_conceptually_similar(self, match: MatchResult, requirements: Dict[str, Any]) -> bool:
+        """Check if a pattern is conceptually similar to the requirements.
+        
+        This method is now a wrapper around _calculate_conceptual_similarity_score
+        for backward compatibility.
+        
+        Args:
+            match: Best matching pattern
+            requirements: User requirements
+            
+        Returns:
+            True if the pattern is conceptually similar and should be enhanced
+        """
+        similarity_score = await self._calculate_conceptual_similarity_score(match, requirements)
+        is_similar = similarity_score > 0.7
+        
+        app_logger.info(f"Conceptual similarity check for {match.pattern_id}: {similarity_score:.3f} ({'similar' if is_similar else 'different'})")
+        
+        return is_similar
     
     async def _enhance_existing_pattern(self, match: MatchResult, requirements: Dict[str, Any], session_id: str):
         """Enhance an existing pattern with new requirements data.

@@ -27,7 +27,7 @@ class PatternCreator:
     async def create_pattern_from_requirements(self, 
                                              requirements: Dict[str, Any],
                                              session_id: str) -> Dict[str, Any]:
-        """Create a new pattern based on user requirements.
+        """Create a new pattern based on user requirements with comprehensive error handling.
         
         Args:
             requirements: User requirements dictionary
@@ -35,134 +35,307 @@ class PatternCreator:
             
         Returns:
             New pattern dictionary
+            
+        Raises:
+            ValueError: If pattern creation fails due to validation or security issues
+            RuntimeError: If critical pattern creation steps fail
         """
-        app_logger.info(f"Creating new pattern for session {session_id}")
-        
-        # Generate pattern ID
-        pattern_id = self._generate_pattern_id()
-        
-        # Extract key information from requirements
-        description = str(requirements.get("description", "")).lower()
-        domain = requirements.get("domain", "general")
-        
-        # Enhanced physical task detection with digital alternative check
-        physical_keywords = [
-            "feed", "feeding", "water", "watering", "walk", "walking", "pet", "animal", "snail",
-            "paint", "painting", "build", "construction", "repair", "fix", "install",
-            "clean", "cleaning", "move", "transport", "deliver", "physical", "manual",
-            "pick up", "pickup", "carry", "carrying", "lift", "lifting",
-            "hardware", "mechanical", "electrical wiring", "plumbing", "carpentry",
-            "landscaping", "gardening", "cooking", "driving", "walking", "running"
-        ]
-        
-        digital_keywords = [
-            "remind", "notification", "alert", "schedule", "track", "monitor", "api",
-            "webhook", "database", "software", "app", "system", "digital", "online",
-            "email", "sms", "order", "purchase", "automate", "automatic"
-        ]
-        
-        physical_count = sum(1 for keyword in physical_keywords if keyword in description)
-        digital_count = sum(1 for keyword in digital_keywords if keyword in description)
-        
-        # If clearly physical with minimal digital indicators, create "Not Automatable" pattern
-        if physical_count >= 1 and digital_count == 0:
-            app_logger.info(f"🚫 SCOPE GATE: Detected physical task - '{description[:100]}...' (physical:{physical_count}, digital:{digital_count})")
-            return await self._create_physical_task_pattern(pattern_id, requirements, session_id)
-        
-        # Analyze requirements to determine pattern characteristics using LLM
-        pattern_analysis = await self._analyze_requirements(requirements)
-        
-        # Extract values from LLM analysis or use fallbacks
-        pattern_name = pattern_analysis.get("pattern_name") or self._generate_pattern_name(requirements, pattern_analysis)
-        feasibility = pattern_analysis.get("feasibility") or self._determine_feasibility(requirements, pattern_analysis)
-        pattern_types = pattern_analysis.get("pattern_types") or self._generate_pattern_types(requirements, pattern_analysis)
-        input_requirements = pattern_analysis.get("input_requirements") or self._generate_input_requirements(requirements, pattern_analysis)
-        confidence_score = pattern_analysis.get("confidence_score") or self._calculate_pattern_confidence(requirements, pattern_analysis)
-        complexity = pattern_analysis.get("complexity") or self._estimate_complexity(requirements, pattern_analysis)
-        estimated_effort = pattern_analysis.get("estimated_effort") or self._estimate_effort(complexity, pattern_analysis)
-        tech_stack = pattern_analysis.get("tech_stack") or await self._generate_intelligent_tech_stack(requirements, pattern_analysis)
-        
-        # Extract domain from analysis, with fallback
-        analyzed_domain = pattern_analysis.get("domain")
-        if analyzed_domain and analyzed_domain not in ["None", "none", "general", ""]:
-            domain = analyzed_domain
-        
-        # Get pattern description from LLM analysis
-        pattern_description = pattern_analysis.get("pattern_description") or self._generate_pattern_description(requirements, pattern_analysis)
-        
-        # Extract enhanced constraint information from LLM analysis
-        banned_tools_suggestions = pattern_analysis.get("banned_tools_suggestions", [])
-        required_integrations_suggestions = pattern_analysis.get("required_integrations_suggestions", [])
-        compliance_considerations = pattern_analysis.get("compliance_considerations", [])
-        
-        # Combine LLM suggestions with extracted requirements
-        all_required_integrations = list(set(
-            self._extract_required_integrations(requirements) + 
-            required_integrations_suggestions
-        ))
-        
-        # Create pattern dictionary with LLM-generated content
-        new_pattern = {
-            "pattern_id": pattern_id,
-            "name": pattern_name,
-            "description": pattern_description,
-            "feasibility": feasibility,
-            "pattern_type": pattern_types,
-            "input_requirements": input_requirements,
-            "tech_stack": tech_stack,
-            "related_patterns": [],  # Will be populated later if needed
-            "confidence_score": confidence_score,
-            "constraints": {
-                "banned_tools": banned_tools_suggestions,
-                "required_integrations": all_required_integrations,
-                "compliance_requirements": compliance_considerations
-            },
-            "domain": domain,
-            "complexity": complexity,
-            "estimated_effort": estimated_effort,
-            "effort_breakdown": pattern_analysis.get("effort_breakdown", estimated_effort),
-            "created_from_session": session_id,
-            "auto_generated": True,
-            # Add LLM-enhanced fields with better separation
-            "llm_insights": pattern_analysis.get("key_challenges", []),
-            "llm_challenges": pattern_analysis.get("key_challenges", []),
-            "llm_recommended_approach": pattern_analysis.get("recommended_approach", ""),
-            "enhanced_by_llm": True,
-            "enhanced_from_session": session_id,
-            # Add metadata for better pattern matching
-            "automation_metadata": {
-                "data_flow": pattern_analysis.get("data_flow", "on_demand"),
-                "user_interaction": pattern_analysis.get("user_interaction", "semi_automated"),
-                "processing_type": pattern_analysis.get("processing_type", "basic_processing"),
-                "scalability_needs": pattern_analysis.get("scalability_needs", "low_scale"),
-                "security_requirements": pattern_analysis.get("security_requirements", [])
-            }
-        }
-        
-        # Save pattern to library with security validation
-        success, message = await self._save_pattern_securely(new_pattern)
-        if not success:
-            app_logger.error(f"Failed to save pattern due to security validation: {message}")
-            raise ValueError(f"Pattern creation blocked: {message}")
-        
-        app_logger.info(f"Created new pattern {pattern_id}: {pattern_name}")
-        return new_pattern
+        try:
+            app_logger.info(f"Creating new pattern for session {session_id}")
+            
+            # Validate input requirements
+            if not requirements:
+                raise ValueError("Requirements dictionary cannot be empty")
+            
+            if not session_id or session_id.strip() == "":
+                raise ValueError("Session ID cannot be empty")
+            
+            # Generate unique pattern ID with duplicate validation
+            try:
+                pattern_id = self._generate_pattern_id()
+                app_logger.info(f"Generated pattern ID: {pattern_id}")
+            except Exception as e:
+                app_logger.error(f"Failed to generate unique pattern ID: {e}")
+                raise RuntimeError(f"Pattern ID generation failed: {e}")
+            
+            # Extract key information from requirements with error handling
+            try:
+                description = str(requirements.get("description", "")).lower()
+                domain = requirements.get("domain", "general")
+                
+                if not description.strip():
+                    app_logger.warning("Empty description provided, using fallback")
+                    description = "automated process"
+                    
+            except Exception as e:
+                app_logger.error(f"Error extracting basic requirements: {e}")
+                raise ValueError(f"Invalid requirements format: {e}")
+            
+            # Enhanced physical task detection with digital alternative check
+            try:
+                physical_keywords = [
+                    "feed", "feeding", "water", "watering", "walk", "walking", "pet", "animal", "snail",
+                    "paint", "painting", "build", "construction", "repair", "fix", "install",
+                    "clean", "cleaning", "move", "transport", "deliver", "physical", "manual",
+                    "pick up", "pickup", "carry", "carrying", "lift", "lifting",
+                    "hardware", "mechanical", "electrical wiring", "plumbing", "carpentry",
+                    "landscaping", "gardening", "cooking", "driving", "walking", "running"
+                ]
+                
+                digital_keywords = [
+                    "remind", "notification", "alert", "schedule", "track", "monitor", "api",
+                    "webhook", "database", "software", "app", "system", "digital", "online",
+                    "email", "sms", "order", "purchase", "automate", "automatic"
+                ]
+                
+                physical_count = sum(1 for keyword in physical_keywords if keyword in description)
+                digital_count = sum(1 for keyword in digital_keywords if keyword in description)
+                
+                # If clearly physical with minimal digital indicators, create "Not Automatable" pattern
+                if physical_count >= 1 and digital_count == 0:
+                    app_logger.info(f"🚫 SCOPE GATE: Detected physical task - '{description[:100]}...' (physical:{physical_count}, digital:{digital_count})")
+                    return await self._create_physical_task_pattern(pattern_id, requirements, session_id)
+                    
+            except Exception as e:
+                app_logger.warning(f"Error in physical task detection: {e}")
+                # Continue with normal pattern creation if detection fails
+            
+            # Analyze requirements to determine pattern characteristics using LLM
+            try:
+                pattern_analysis = await self._analyze_requirements(requirements)
+                app_logger.info(f"Successfully analyzed requirements for pattern {pattern_id}")
+            except Exception as e:
+                app_logger.error(f"LLM analysis failed for pattern {pattern_id}: {e}")
+                # Use fallback analysis
+                pattern_analysis = self._create_fallback_analysis(requirements)
+                app_logger.info(f"Using fallback analysis for pattern {pattern_id}")
+            
+            # Extract values from LLM analysis or use fallbacks with error handling
+            try:
+                pattern_name = pattern_analysis.get("pattern_name") or self._generate_pattern_name(requirements, pattern_analysis)
+                feasibility = pattern_analysis.get("feasibility") or self._determine_feasibility(requirements, pattern_analysis)
+                pattern_types = pattern_analysis.get("pattern_types") or self._generate_pattern_types(requirements, pattern_analysis)
+                input_requirements = pattern_analysis.get("input_requirements") or self._generate_input_requirements(requirements, pattern_analysis)
+                confidence_score = pattern_analysis.get("confidence_score") or self._calculate_pattern_confidence(requirements, pattern_analysis)
+                complexity = pattern_analysis.get("complexity") or self._estimate_complexity(requirements, pattern_analysis)
+                estimated_effort = pattern_analysis.get("estimated_effort") or self._estimate_effort(complexity, pattern_analysis)
+                
+                # Validate extracted values
+                if not pattern_name or pattern_name.strip() == "":
+                    pattern_name = f"Automated Process {pattern_id}"
+                    
+                if feasibility not in ["Automatable", "Partially Automatable", "Not Automatable"]:
+                    app_logger.warning(f"Invalid feasibility '{feasibility}', defaulting to 'Automatable'")
+                    feasibility = "Automatable"
+                    
+                if not isinstance(pattern_types, list):
+                    pattern_types = ["general_automation"]
+                    
+                if not isinstance(confidence_score, (int, float)) or not (0 <= confidence_score <= 1):
+                    confidence_score = 0.7
+                    
+            except Exception as e:
+                app_logger.error(f"Error extracting pattern values: {e}")
+                raise RuntimeError(f"Pattern value extraction failed: {e}")
+            
+            # Generate tech stack with error handling
+            try:
+                tech_stack = pattern_analysis.get("tech_stack") or await self._generate_intelligent_tech_stack(requirements, pattern_analysis)
+                if not isinstance(tech_stack, list):
+                    tech_stack = []
+                    app_logger.warning(f"Invalid tech stack format, using empty list")
+            except Exception as e:
+                app_logger.error(f"Tech stack generation failed: {e}")
+                tech_stack = self._generate_fallback_tech_stack(requirements, pattern_analysis)
+            
+            # Extract domain from analysis, with fallback
+            try:
+                analyzed_domain = pattern_analysis.get("domain")
+                if analyzed_domain and analyzed_domain not in ["None", "none", "general", ""]:
+                    domain = analyzed_domain
+            except Exception as e:
+                app_logger.warning(f"Error extracting domain: {e}")
+                # Keep original domain
+            
+            # Get pattern description from LLM analysis with fallback
+            try:
+                pattern_description = pattern_analysis.get("pattern_description") or self._generate_pattern_description(requirements, pattern_analysis)
+                if not pattern_description or pattern_description.strip() == "":
+                    pattern_description = f"Automated processing system for {description[:100]}..."
+            except Exception as e:
+                app_logger.warning(f"Error generating pattern description: {e}")
+                pattern_description = f"Automated processing system for {description[:100]}..."
+            
+            # Extract enhanced constraint information from LLM analysis with error handling
+            try:
+                banned_tools_suggestions = pattern_analysis.get("banned_tools_suggestions", [])
+                required_integrations_suggestions = pattern_analysis.get("required_integrations_suggestions", [])
+                compliance_considerations = pattern_analysis.get("compliance_considerations", [])
+                
+                # Ensure they are lists
+                if not isinstance(banned_tools_suggestions, list):
+                    banned_tools_suggestions = []
+                if not isinstance(required_integrations_suggestions, list):
+                    required_integrations_suggestions = []
+                if not isinstance(compliance_considerations, list):
+                    compliance_considerations = []
+                    
+            except Exception as e:
+                app_logger.warning(f"Error extracting constraint information: {e}")
+                banned_tools_suggestions = []
+                required_integrations_suggestions = []
+                compliance_considerations = []
+            
+            # Combine LLM suggestions with extracted requirements
+            try:
+                all_required_integrations = list(set(
+                    self._extract_required_integrations(requirements) + 
+                    required_integrations_suggestions
+                ))
+            except Exception as e:
+                app_logger.warning(f"Error combining integrations: {e}")
+                all_required_integrations = required_integrations_suggestions
+            
+            # Create pattern dictionary with comprehensive error handling
+            try:
+                new_pattern = {
+                    "pattern_id": pattern_id,
+                    "name": pattern_name,
+                    "description": pattern_description,
+                    "feasibility": feasibility,
+                    "pattern_type": pattern_types,
+                    "input_requirements": input_requirements,
+                    "tech_stack": tech_stack,
+                    "related_patterns": [],  # Will be populated later if needed
+                    "confidence_score": confidence_score,
+                    "constraints": {
+                        "banned_tools": banned_tools_suggestions,
+                        "required_integrations": all_required_integrations,
+                        "compliance_requirements": compliance_considerations
+                    },
+                    "domain": domain,
+                    "complexity": complexity,
+                    "estimated_effort": estimated_effort,
+                    "effort_breakdown": pattern_analysis.get("effort_breakdown", estimated_effort),
+                    "created_from_session": session_id,
+                    "auto_generated": True,
+                    # Add LLM-enhanced fields with better separation
+                    "llm_insights": pattern_analysis.get("key_challenges", []),
+                    "llm_challenges": pattern_analysis.get("key_challenges", []),
+                    "llm_recommended_approach": pattern_analysis.get("recommended_approach", ""),
+                    "enhanced_by_llm": True,
+                    "enhanced_from_session": session_id,
+                    # Add metadata for better pattern matching
+                    "automation_metadata": {
+                        "data_flow": pattern_analysis.get("data_flow", "on_demand"),
+                        "user_interaction": pattern_analysis.get("user_interaction", "semi_automated"),
+                        "processing_type": pattern_analysis.get("processing_type", "basic_processing"),
+                        "scalability_needs": pattern_analysis.get("scalability_needs", "low_scale"),
+                        "security_requirements": pattern_analysis.get("security_requirements", [])
+                    }
+                }
+                
+                app_logger.info(f"Successfully created pattern dictionary for {pattern_id}")
+                
+            except Exception as e:
+                app_logger.error(f"Error creating pattern dictionary: {e}")
+                raise RuntimeError(f"Pattern dictionary creation failed: {e}")
+            
+            # Save pattern to library with security validation and comprehensive error handling
+            try:
+                success, message = await self._save_pattern_securely(new_pattern)
+                if not success:
+                    app_logger.error(f"Failed to save pattern due to security validation: {message}")
+                    raise ValueError(f"Pattern creation blocked: {message}")
+                    
+                app_logger.info(f"Successfully saved pattern {pattern_id}: {pattern_name}")
+                
+            except ValueError:
+                # Re-raise security validation errors
+                raise
+            except Exception as e:
+                app_logger.error(f"Unexpected error saving pattern: {e}")
+                raise RuntimeError(f"Pattern save operation failed: {e}")
+            
+            app_logger.info(f"Created new pattern {pattern_id}: {pattern_name}")
+            return new_pattern
+            
+        except (ValueError, RuntimeError):
+            # Re-raise expected exceptions
+            raise
+        except Exception as e:
+            app_logger.error(f"Unexpected error in pattern creation: {e}")
+            raise RuntimeError(f"Pattern creation failed with unexpected error: {e}")
     
     def _generate_pattern_id(self) -> str:
-        """Generate a unique pattern ID."""
-        # Find the highest existing pattern number
-        existing_patterns = list(self.pattern_library_path.glob("PAT-*.json"))
-        max_num = 0
+        """Generate a unique pattern ID with duplicate validation.
         
-        for pattern_file in existing_patterns:
+        Returns:
+            Unique pattern ID in format PAT-XXX
+            
+        Raises:
+            ValueError: If unable to generate unique ID after multiple attempts
+        """
+        try:
+            # Find the highest existing pattern number from files
+            existing_patterns = list(self.pattern_library_path.glob("PAT-*.json"))
+            max_num = 0
+            existing_ids = set()
+            
+            for pattern_file in existing_patterns:
+                try:
+                    pattern_id = pattern_file.stem
+                    existing_ids.add(pattern_id)
+                    
+                    # Extract number for max calculation
+                    num_str = pattern_id.split("-")[1]
+                    num = int(num_str)
+                    max_num = max(max_num, num)
+                except (IndexError, ValueError) as e:
+                    app_logger.warning(f"Could not parse pattern ID from file {pattern_file}: {e}")
+                    continue
+            
+            # Also check loaded patterns to ensure no conflicts
             try:
-                num_str = pattern_file.stem.split("-")[1]
-                num = int(num_str)
-                max_num = max(max_num, num)
-            except (IndexError, ValueError):
-                continue
-        
-        return f"PAT-{max_num + 1:03d}"
+                from app.pattern.loader import PatternLoader
+                pattern_loader = PatternLoader(self.pattern_library_path)
+                loaded_patterns = pattern_loader.load_patterns()
+                
+                for pattern in loaded_patterns:
+                    pattern_id = pattern.get("pattern_id")
+                    if pattern_id:
+                        existing_ids.add(pattern_id)
+                        try:
+                            num_str = pattern_id.split("-")[1]
+                            num = int(num_str)
+                            max_num = max(max_num, num)
+                        except (IndexError, ValueError):
+                            continue
+                            
+            except Exception as e:
+                app_logger.warning(f"Could not load existing patterns for ID validation: {e}")
+            
+            # Generate new ID and validate uniqueness
+            max_attempts = 100  # Prevent infinite loop
+            for attempt in range(max_attempts):
+                new_id = f"PAT-{max_num + 1 + attempt:03d}"
+                
+                if new_id not in existing_ids:
+                    app_logger.info(f"Generated unique pattern ID: {new_id}")
+                    return new_id
+                    
+                app_logger.warning(f"Pattern ID {new_id} already exists, trying next number")
+            
+            # If we get here, we couldn't generate a unique ID
+            raise ValueError(f"Unable to generate unique pattern ID after {max_attempts} attempts")
+            
+        except Exception as e:
+            app_logger.error(f"Error generating pattern ID: {e}")
+            # Fallback to UUID-based ID to ensure uniqueness
+            import uuid
+            fallback_id = f"PAT-{str(uuid.uuid4())[:8].upper()}"
+            app_logger.warning(f"Using fallback UUID-based pattern ID: {fallback_id}")
+            return fallback_id
     
     async def _analyze_requirements(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
         """Analyze requirements to extract pattern characteristics using LLM.
@@ -321,6 +494,117 @@ class PatternCreator:
         
         return security_reqs
     
+    def _create_fallback_analysis(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
+        """Create fallback analysis when LLM analysis fails.
+        
+        Args:
+            requirements: User requirements
+            
+        Returns:
+            Basic analysis dictionary with fallback values
+        """
+        try:
+            description = requirements.get("description", "")
+            domain = requirements.get("domain", "general")
+            
+            # Use rule-based analysis methods
+            automation_type = self._detect_automation_type(description, requirements)
+            data_flow = self._detect_data_flow(description, requirements)
+            integration_points = self._detect_integration_points(description, requirements)
+            user_interaction = self._detect_user_interaction(description, requirements)
+            processing_type = self._detect_processing_type(description, requirements)
+            scalability_needs = self._detect_scalability_needs(description, requirements)
+            security_requirements = self._detect_security_requirements(description, requirements)
+            
+            # Generate basic pattern information
+            pattern_name = f"{domain.title()} {automation_type.replace('_', ' ').title()}"
+            
+            # Determine feasibility based on complexity
+            complexity_factors = len(integration_points) + len(security_requirements)
+            if complexity_factors > 5:
+                feasibility = "Partially Automatable"
+                complexity = "High"
+            elif complexity_factors > 2:
+                feasibility = "Automatable"
+                complexity = "Medium"
+            else:
+                feasibility = "Automatable"
+                complexity = "Low"
+            
+            # Generate pattern types
+            pattern_types = [automation_type]
+            if integration_points:
+                pattern_types.append("integration")
+            if security_requirements:
+                pattern_types.append("security")
+            
+            # Generate basic tech stack
+            tech_stack = ["Python", "FastAPI"]
+            if "database" in integration_points:
+                tech_stack.append("PostgreSQL")
+            if "api" in integration_points:
+                tech_stack.append("REST API")
+            if "cloud" in integration_points:
+                tech_stack.append("AWS")
+            
+            fallback_analysis = {
+                "pattern_name": pattern_name,
+                "pattern_description": f"Automated {automation_type.replace('_', ' ')} system with {data_flow} processing",
+                "feasibility": feasibility,
+                "pattern_types": pattern_types,
+                "domain": domain,
+                "complexity": complexity,
+                "automation_type": automation_type,
+                "data_flow": data_flow,
+                "user_interaction": user_interaction,
+                "processing_type": processing_type,
+                "scalability_needs": scalability_needs,
+                "security_requirements": security_requirements,
+                "integration_points": integration_points,
+                "input_requirements": ["User input", "System configuration"],
+                "tech_stack": tech_stack,
+                "estimated_effort": "3-6 weeks" if complexity == "High" else "1-2 weeks",
+                "effort_breakdown": f"MVP: 1 week, Full implementation: {'4 weeks' if complexity == 'High' else '2 weeks'}",
+                "key_challenges": ["Integration complexity", "Error handling"],
+                "recommended_approach": f"Implement {automation_type.replace('_', ' ')} using standard patterns",
+                "confidence_score": 0.7,
+                "banned_tools_suggestions": [],
+                "required_integrations_suggestions": integration_points,
+                "compliance_considerations": security_requirements
+            }
+            
+            app_logger.info(f"Created fallback analysis: {pattern_name}")
+            return fallback_analysis
+            
+        except Exception as e:
+            app_logger.error(f"Error creating fallback analysis: {e}")
+            # Return minimal fallback
+            return {
+                "pattern_name": "General Automation Pattern",
+                "pattern_description": "General purpose automation system",
+                "feasibility": "Automatable",
+                "pattern_types": ["general_automation"],
+                "domain": "general",
+                "complexity": "Medium",
+                "automation_type": "general_automation",
+                "data_flow": "on_demand",
+                "user_interaction": "semi_automated",
+                "processing_type": "basic_processing",
+                "scalability_needs": "low_scale",
+                "security_requirements": [],
+                "integration_points": [],
+                "input_requirements": ["User input"],
+                "tech_stack": ["Python", "FastAPI"],
+                "estimated_effort": "1-2 weeks",
+                "effort_breakdown": "MVP: 1 week, Full implementation: 2 weeks",
+                "key_challenges": ["Implementation"],
+                "recommended_approach": "Standard automation approach",
+                "confidence_score": 0.6,
+                "banned_tools_suggestions": [],
+                "required_integrations_suggestions": [],
+                "compliance_considerations": []
+            }
+    
     async def _llm_analyze_requirements(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
         """Use LLM to comprehensively analyze requirements and generate pattern details."""
         description = requirements.get("description", "")
@@ -349,6 +633,12 @@ SCOPE GATE (read carefully):
 
 CRITICAL: "Feed my pet snail" = PHYSICAL TASK = RETURN [] (empty array)
 DIGITAL ALTERNATIVE: "Send me reminders to feed my pet" = DIGITAL TASK = PROCEED
+
+DIGITAL WORKFLOWS (PROCEED WITH ANALYSIS):
+- Email processing, data extraction, spreadsheet updates = DIGITAL
+- Invoice processing, payment automation via APIs = DIGITAL  
+- Document processing, data validation, notifications = DIGITAL
+- Banking operations via Open Banking APIs = DIGITAL
 
 **Requirement Details:**
 - Description: {description}
