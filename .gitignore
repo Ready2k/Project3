@@ -120,7 +120,6 @@ dmypy.json
 
 # Automated AI Assessment (AAA) specific
 cache/
-exports/
 *.faiss
 *.mapping.pkl
 .streamlit/
