@@ -98,7 +98,7 @@ class TestJiraServiceValidation:
         config = JiraConfig(base_url="https://test.atlassian.net", api_token="token")
         service = JiraService(config)
         
-        with pytest.raises(JiraConnectionError, match="email is required"):
+        with pytest.raises(JiraConnectionError, match="Email is required for API token authentication"):
             service._validate_config()
     
     def test_validate_config_missing_api_token(self):

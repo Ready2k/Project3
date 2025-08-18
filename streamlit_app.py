@@ -1283,38 +1283,293 @@ class AutomatedAIAssessmentUI:
                 except Exception as e:
                     st.error(f"Error reading file: {str(e)}")
     
+    def handle_authentication_fallback(self, base_url: str, initial_auth_type: str) -> Optional[Dict[str, Any]]:
+        """Handle authentication fallback with user prompts."""
+        st.warning("🔄 Initial authentication failed. Let's try alternative methods.")
+        
+        # Show available fallback options
+        fallback_options = []
+        if initial_auth_type != "sso":
+            fallback_options.append("sso")
+        if initial_auth_type != "basic":
+            fallback_options.append("basic")
+        if initial_auth_type != "pat":
+            fallback_options.append("pat")
+        
+        if not fallback_options:
+            st.error("❌ No alternative authentication methods available.")
+            return None
+        
+        st.info("🔐 Please try one of the following authentication methods:")
+        
+        # Create fallback form
+        with st.form("auth_fallback_form"):
+            fallback_auth_type = st.selectbox(
+                "Alternative Authentication Method",
+                options=fallback_options,
+                format_func=lambda x: {
+                    "sso": "🔐 SSO/Current Session (try Windows credentials)",
+                    "basic": "👤 Username/Password (temporary, session-only)",
+                    "pat": "🎫 Personal Access Token"
+                }[x],
+                help="Select an alternative authentication method"
+            )
+            
+            # Dynamic fields based on selected fallback method
+            fallback_credentials = {}
+            
+            if fallback_auth_type == "basic":
+                st.warning("⚠️ Credentials will be stored securely for this session only and will not be saved.")
+                col1, col2 = st.columns(2)
+                with col1:
+                    fallback_username = st.text_input(
+                        "Username",
+                        placeholder="your-username",
+                        help="Your Jira username"
+                    )
+                with col2:
+                    fallback_password = st.text_input(
+                        "Password",
+                        type="password",
+                        help="Your Jira password"
+                    )
+                fallback_credentials = {
+                    "username": fallback_username,
+                    "password": fallback_password
+                }
+            
+            elif fallback_auth_type == "pat":
+                fallback_pat = st.text_input(
+                    "Personal Access Token",
+                    type="password",
+                    help="Generate from Jira Data Center: Profile > Personal Access Tokens"
+                )
+                fallback_credentials = {
+                    "personal_access_token": fallback_pat
+                }
+            
+            elif fallback_auth_type == "sso":
+                st.info("🔐 SSO authentication will attempt to use your current browser session or Windows credentials")
+                fallback_credentials = {"use_sso": True}
+            
+            try_fallback = st.form_submit_button("🔄 Try Alternative Authentication", type="primary")
+            
+            if try_fallback:
+                # Validate fallback credentials
+                validation_errors = []
+                
+                if fallback_auth_type == "basic":
+                    if not fallback_credentials.get("username"):
+                        validation_errors.append("Username is required")
+                    if not fallback_credentials.get("password"):
+                        validation_errors.append("Password is required")
+                elif fallback_auth_type == "pat":
+                    if not fallback_credentials.get("personal_access_token"):
+                        validation_errors.append("Personal Access Token is required")
+                
+                if validation_errors:
+                    st.error("❌ Please fix the following issues:\n" + "\n".join(f"• {error}" for error in validation_errors))
+                    return None
+                
+                # Return fallback configuration
+                return {
+                    "auth_type": fallback_auth_type,
+                    **fallback_credentials
+                }
+        
+        return None
+    
+    def show_authentication_status(self, auth_result: Dict[str, Any]):
+        """Display authentication status and guidance."""
+        if auth_result.get("success"):
+            st.success("✅ Authentication successful!")
+            
+            auth_type = auth_result.get("auth_type", "unknown")
+            auth_type_names = {
+                "api_token": "API Token",
+                "pat": "Personal Access Token",
+                "sso": "SSO/Current Session",
+                "basic": "Username/Password"
+            }
+            
+            st.info(f"🔐 Authenticated using: {auth_type_names.get(auth_type, auth_type)}")
+            
+            # Show security information for basic auth
+            if auth_type == "basic":
+                st.warning("⚠️ Username/password credentials are stored securely for this session only and will be cleared when you close the browser.")
+        else:
+            st.error("❌ Authentication failed")
+            
+            error_message = auth_result.get("error_message", "Unknown error")
+            st.error(f"Error: {error_message}")
+            
+            # Show guidance based on error type
+            if "401" in error_message or "unauthorized" in error_message.lower():
+                st.info("💡 **Authentication Tips:**")
+                st.write("• Verify your credentials are correct and not expired")
+                st.write("• For Data Center: try Personal Access Token instead of API token")
+                st.write("• For SSO: ensure you're logged into Jira in another browser tab")
+                st.write("• Check if your account has the necessary permissions")
+            elif "403" in error_message or "forbidden" in error_message.lower():
+                st.info("💡 **Permission Tips:**")
+                st.write("• Your account may not have permission to access this Jira instance")
+                st.write("• Contact your Jira administrator to verify your access level")
+                st.write("• Ensure you're using the correct Jira instance URL")
+            elif "timeout" in error_message.lower() or "connection" in error_message.lower():
+                st.info("💡 **Connection Tips:**")
+                st.write("• Check your network connection")
+                st.write("• Verify the Jira URL is correct and accessible")
+                st.write("• Try increasing the timeout value in Network Configuration")
+                st.write("• Check if you need proxy settings for your network")
+
     def render_jira_input(self):
-        """Render Jira integration interface."""
+        """Render enhanced Jira integration interface with Data Center support."""
         st.subheader("🎫 Jira Integration")
         
         with st.form("jira_form"):
             st.write("**Jira Configuration**")
             
+            # Deployment Type Selection
             col1, col2 = st.columns(2)
             with col1:
-                jira_base_url = st.text_input(
-                    "Jira Base URL",
-                    placeholder="https://your-domain.atlassian.net",
-                    help="Your Jira instance URL"
-                )
-                jira_email = st.text_input(
-                    "Email",
-                    placeholder="your-email@company.com",
-                    help="Your Jira account email"
+                deployment_type = st.selectbox(
+                    "Deployment Type",
+                    options=["auto_detect", "cloud", "data_center", "server"],
+                    format_func=lambda x: {
+                        "auto_detect": "🔍 Auto-detect",
+                        "cloud": "☁️ Jira Cloud",
+                        "data_center": "🏢 Jira Data Center",
+                        "server": "🖥️ Jira Server"
+                    }[x],
+                    help="Select your Jira deployment type or let the system auto-detect"
                 )
             
             with col2:
-                jira_api_token = st.text_input(
-                    "API Token",
-                    type="password",
-                    help="Generate from Jira Account Settings > Security > API tokens"
-                )
-                jira_ticket_key = st.text_input(
-                    "Ticket Key",
-                    placeholder="PROJ-123",
-                    help="Jira ticket key (e.g., PROJ-123)"
+                auth_type = st.selectbox(
+                    "Authentication Method",
+                    options=["api_token", "pat", "sso", "basic"],
+                    format_func=lambda x: {
+                        "api_token": "🔑 API Token (Cloud)",
+                        "pat": "🎫 Personal Access Token (Data Center)",
+                        "sso": "🔐 SSO/Current Session",
+                        "basic": "👤 Username/Password"
+                    }[x],
+                    help="Choose authentication method based on your Jira deployment"
                 )
             
+            # Base URL Configuration
+            jira_base_url = st.text_input(
+                "Jira Base URL",
+                placeholder="https://your-domain.atlassian.net or https://jira.company.com:8080",
+                help="Your Jira instance URL (include custom port if needed)"
+            )
+            
+            # Authentication Configuration (dynamic based on auth_type)
+            st.write("**Authentication Details**")
+            
+            jira_email = None
+            jira_api_token = None
+            jira_username = None
+            jira_password = None
+            jira_personal_access_token = None
+            
+            if auth_type == "api_token":
+                col1, col2 = st.columns(2)
+                with col1:
+                    jira_email = st.text_input(
+                        "Email",
+                        placeholder="your-email@company.com",
+                        help="Your Jira account email"
+                    )
+                with col2:
+                    jira_api_token = st.text_input(
+                        "API Token",
+                        type="password",
+                        help="Generate from Jira Account Settings > Security > API tokens"
+                    )
+            
+            elif auth_type == "pat":
+                jira_personal_access_token = st.text_input(
+                    "Personal Access Token",
+                    type="password",
+                    help="Generate from Jira Data Center: Profile > Personal Access Tokens"
+                )
+            
+            elif auth_type == "basic":
+                col1, col2 = st.columns(2)
+                with col1:
+                    jira_username = st.text_input(
+                        "Username",
+                        placeholder="your-username",
+                        help="Your Jira username"
+                    )
+                with col2:
+                    jira_password = st.text_input(
+                        "Password",
+                        type="password",
+                        help="Your Jira password (stored only for current session)"
+                    )
+            
+            elif auth_type == "sso":
+                st.info("🔐 SSO authentication will attempt to use your current browser session or Windows credentials")
+                use_sso = True
+            else:
+                use_sso = False
+            
+            # Network Configuration (expandable section)
+            with st.expander("🌐 Network Configuration (Optional)", expanded=False):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    verify_ssl = st.checkbox(
+                        "Verify SSL Certificates",
+                        value=True,
+                        help="Uncheck for self-signed certificates (not recommended for production)"
+                    )
+                    
+                    ca_cert_path = st.text_input(
+                        "Custom CA Certificate Path",
+                        placeholder="/path/to/ca-bundle.crt",
+                        help="Path to custom CA certificate bundle for internal certificates"
+                    )
+                    
+                    proxy_url = st.text_input(
+                        "Proxy URL",
+                        placeholder="http://proxy.company.com:8080",
+                        help="HTTP/HTTPS proxy URL if required"
+                    )
+                
+                with col2:
+                    timeout = st.number_input(
+                        "Connection Timeout (seconds)",
+                        min_value=5,
+                        max_value=300,
+                        value=30,
+                        help="Timeout for network requests"
+                    )
+                    
+                    context_path = st.text_input(
+                        "Context Path",
+                        placeholder="/jira",
+                        help="Custom context path for Data Center installations"
+                    )
+                    
+                    custom_port = st.number_input(
+                        "Custom Port",
+                        min_value=1,
+                        max_value=65535,
+                        value=None,
+                        help="Custom port if not using standard HTTP/HTTPS ports"
+                    )
+            
+            # Ticket Key Input
+            jira_ticket_key = st.text_input(
+                "Ticket Key",
+                placeholder="PROJ-123",
+                help="Jira ticket key (e.g., PROJ-123)"
+            )
+            
+            # Form submission buttons
             col1, col2, col3 = st.columns([1, 1, 2])
             
             with col1:
@@ -1328,38 +1583,174 @@ class AutomatedAIAssessmentUI:
         
         # Handle test connection
         if test_connection:
-            if not all([jira_base_url, jira_email, jira_api_token]):
-                st.error("❌ Please fill in all Jira configuration fields")
+            # Validate required fields based on auth type
+            validation_errors = []
+            
+            if not jira_base_url:
+                validation_errors.append("Base URL is required")
+            
+            if auth_type == "api_token":
+                if not jira_email:
+                    validation_errors.append("Email is required for API token authentication")
+                if not jira_api_token:
+                    validation_errors.append("API token is required for API token authentication")
+            elif auth_type == "pat":
+                if not jira_personal_access_token:
+                    validation_errors.append("Personal Access Token is required for PAT authentication")
+            elif auth_type == "basic":
+                if not jira_username:
+                    validation_errors.append("Username is required for basic authentication")
+                if not jira_password:
+                    validation_errors.append("Password is required for basic authentication")
+            # SSO doesn't require additional fields
+            
+            if validation_errors:
+                st.error("❌ Please fix the following issues:\n" + "\n".join(f"• {error}" for error in validation_errors))
             else:
                 with st.spinner("Testing Jira connection..."):
                     try:
-                        test_result = asyncio.run(self.make_api_request("POST", "/jira/test", {
+                        # Prepare request payload with all configuration options
+                        test_payload = {
                             "base_url": jira_base_url,
+                            "auth_type": auth_type,
+                            
+                            # Authentication fields
                             "email": jira_email,
-                            "api_token": jira_api_token
-                        }))
+                            "api_token": jira_api_token,
+                            "username": jira_username,
+                            "password": jira_password,
+                            "personal_access_token": jira_personal_access_token,
+                            
+                            # Network configuration
+                            "verify_ssl": verify_ssl,
+                            "ca_cert_path": ca_cert_path if ca_cert_path else None,
+                            "proxy_url": proxy_url if proxy_url else None,
+                            "timeout": int(timeout),
+                            
+                            # SSO configuration
+                            "use_sso": auth_type == "sso",
+                            
+                            # Data Center configuration
+                            "context_path": context_path if context_path else None,
+                            "custom_port": int(custom_port) if custom_port else None
+                        }
+                        
+                        # Remove None values to avoid API issues
+                        test_payload = {k: v for k, v in test_payload.items() if v is not None}
+                        
+                        test_result = asyncio.run(self.make_api_request("POST", "/jira/test", test_payload))
                         
                         if test_result and test_result.get("ok"):
                             st.success("✅ Jira connection successful!")
+                            
+                            # Display deployment information if available
+                            deployment_info = test_result.get("deployment_info")
+                            if deployment_info:
+                                with st.expander("📋 Connection Details", expanded=True):
+                                    col1, col2 = st.columns(2)
+                                    
+                                    with col1:
+                                        st.write(f"**Deployment Type:** {deployment_info.get('deployment_type', 'Unknown').title()}")
+                                        st.write(f"**Version:** {deployment_info.get('version', 'Unknown')}")
+                                        if deployment_info.get('build_number'):
+                                            st.write(f"**Build:** {deployment_info['build_number']}")
+                                    
+                                    with col2:
+                                        st.write(f"**API Version:** {test_result.get('api_version_detected', 'Unknown')}")
+                                        auth_methods = test_result.get("auth_methods_available", [])
+                                        if auth_methods:
+                                            st.write(f"**Available Auth Methods:** {', '.join(auth_methods)}")
+                                    
+                                    if deployment_info.get('supports_sso'):
+                                        st.info("🔐 This instance supports SSO authentication")
+                                    if deployment_info.get('supports_pat'):
+                                        st.info("🎫 This instance supports Personal Access Tokens")
                         else:
                             error_msg = test_result.get("message", "Unknown error") if test_result else "Connection failed"
                             st.error(f"❌ Connection failed: {error_msg}")
+                            
+                            # Display detailed error information if available
+                            error_details = test_result.get("error_details") if test_result else None
+                            if error_details:
+                                with st.expander("🔍 Troubleshooting Information", expanded=False):
+                                    st.write(f"**Error Type:** {error_details.get('error_type', 'Unknown')}")
+                                    if error_details.get('error_code'):
+                                        st.write(f"**Error Code:** {error_details['error_code']}")
+                                    
+                                    troubleshooting_steps = error_details.get('troubleshooting_steps', [])
+                                    if troubleshooting_steps:
+                                        st.write("**Troubleshooting Steps:**")
+                                        for step in troubleshooting_steps:
+                                            st.write(f"• {step}")
+                                    
+                                    doc_links = error_details.get('documentation_links', [])
+                                    if doc_links:
+                                        st.write("**Documentation:**")
+                                        for link in doc_links:
+                                            st.write(f"• {link}")
                     except Exception as e:
                         st.error(f"❌ Connection failed: {str(e)}")
         
         # Handle fetch ticket
         if fetch_ticket:
-            if not all([jira_base_url, jira_email, jira_api_token, jira_ticket_key]):
-                st.error("❌ Please fill in all fields including ticket key")
+            # Validate required fields based on auth type
+            validation_errors = []
+            
+            if not jira_base_url:
+                validation_errors.append("Base URL is required")
+            if not jira_ticket_key:
+                validation_errors.append("Ticket key is required")
+            
+            if auth_type == "api_token":
+                if not jira_email:
+                    validation_errors.append("Email is required for API token authentication")
+                if not jira_api_token:
+                    validation_errors.append("API token is required for API token authentication")
+            elif auth_type == "pat":
+                if not jira_personal_access_token:
+                    validation_errors.append("Personal Access Token is required for PAT authentication")
+            elif auth_type == "basic":
+                if not jira_username:
+                    validation_errors.append("Username is required for basic authentication")
+                if not jira_password:
+                    validation_errors.append("Password is required for basic authentication")
+            
+            if validation_errors:
+                st.error("❌ Please fix the following issues:\n" + "\n".join(f"• {error}" for error in validation_errors))
             else:
                 with st.spinner(f"Fetching ticket {jira_ticket_key}..."):
                     try:
-                        fetch_result = asyncio.run(self.make_api_request("POST", "/jira/fetch", {
+                        # Prepare request payload with all configuration options
+                        fetch_payload = {
                             "ticket_key": jira_ticket_key,
                             "base_url": jira_base_url,
+                            "auth_type": auth_type,
+                            
+                            # Authentication fields
                             "email": jira_email,
-                            "api_token": jira_api_token
-                        }))
+                            "api_token": jira_api_token,
+                            "username": jira_username,
+                            "password": jira_password,
+                            "personal_access_token": jira_personal_access_token,
+                            
+                            # Network configuration
+                            "verify_ssl": verify_ssl,
+                            "ca_cert_path": ca_cert_path if ca_cert_path else None,
+                            "proxy_url": proxy_url if proxy_url else None,
+                            "timeout": int(timeout),
+                            
+                            # SSO configuration
+                            "use_sso": auth_type == "sso",
+                            
+                            # Data Center configuration
+                            "context_path": context_path if context_path else None,
+                            "custom_port": int(custom_port) if custom_port else None
+                        }
+                        
+                        # Remove None values to avoid API issues
+                        fetch_payload = {k: v for k, v in fetch_payload.items() if v is not None}
+                        
+                        fetch_result = asyncio.run(self.make_api_request("POST", "/jira/fetch", fetch_payload))
                         
                         if fetch_result:
                             ticket_data = fetch_result.get("ticket_data", {})
@@ -1402,17 +1793,61 @@ class AutomatedAIAssessmentUI:
         
         # Handle submit analysis
         if submit_jira:
-            if not all([jira_base_url, jira_email, jira_api_token, jira_ticket_key]):
-                st.error("❌ Please fill in all fields")
+            # Validate required fields based on auth type
+            validation_errors = []
+            
+            if not jira_base_url:
+                validation_errors.append("Base URL is required")
+            if not jira_ticket_key:
+                validation_errors.append("Ticket key is required")
+            
+            if auth_type == "api_token":
+                if not jira_email:
+                    validation_errors.append("Email is required for API token authentication")
+                if not jira_api_token:
+                    validation_errors.append("API token is required for API token authentication")
+            elif auth_type == "pat":
+                if not jira_personal_access_token:
+                    validation_errors.append("Personal Access Token is required for PAT authentication")
+            elif auth_type == "basic":
+                if not jira_username:
+                    validation_errors.append("Username is required for basic authentication")
+                if not jira_password:
+                    validation_errors.append("Password is required for basic authentication")
+            
+            if validation_errors:
+                st.error("❌ Please fix the following issues:\n" + "\n".join(f"• {error}" for error in validation_errors))
             else:
                 with st.spinner("Starting Jira analysis..."):
                     # Use the ingest endpoint with Jira source
                     payload = {
                         "ticket_key": jira_ticket_key,
                         "base_url": jira_base_url,
+                        "auth_type": auth_type,
+                        
+                        # Authentication fields
                         "email": jira_email,
-                        "api_token": jira_api_token
+                        "api_token": jira_api_token,
+                        "username": jira_username,
+                        "password": jira_password,
+                        "personal_access_token": jira_personal_access_token,
+                        
+                        # Network configuration
+                        "verify_ssl": verify_ssl,
+                        "ca_cert_path": ca_cert_path if ca_cert_path else None,
+                        "proxy_url": proxy_url if proxy_url else None,
+                        "timeout": int(timeout),
+                        
+                        # SSO configuration
+                        "use_sso": auth_type == "sso",
+                        
+                        # Data Center configuration
+                        "context_path": context_path if context_path else None,
+                        "custom_port": int(custom_port) if custom_port else None
                     }
+                    
+                    # Remove None values to avoid API issues
+                    payload = {k: v for k, v in payload.items() if v is not None}
                     
                     # Add provider config if set
                     provider_config = None
