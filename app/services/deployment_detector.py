@@ -278,11 +278,18 @@ class DeploymentDetector:
         try:
             verify_config = self._get_verify_config()
             proxy_config = self._get_proxy_config()
-            async with httpx.AsyncClient(
-                timeout=self.timeout, 
-                verify=verify_config,
-                proxies=proxy_config
-            ) as client:
+            
+            # Build client configuration
+            client_config = {
+                "timeout": self.timeout,
+                "verify": verify_config
+            }
+            
+            # Only add proxies if configured
+            if proxy_config:
+                client_config["proxies"] = proxy_config
+            
+            async with httpx.AsyncClient(**client_config) as client:
                 # Try the server info endpoint first (usually accessible without auth)
                 url = urljoin(base_url, "/rest/api/2/serverInfo")
                 headers = {"Accept": "application/json"}

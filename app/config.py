@@ -316,6 +316,42 @@ class JiraConfig(BaseModel):
                 url = f"{url}/{context}"
         
         return url
+    
+    def disable_ssl_verification(self) -> None:
+        """Convenience method to disable SSL verification for testing.
+        
+        Warning: This should only be used for testing with self-signed certificates.
+        Never use this in production environments.
+        """
+        self.verify_ssl = False
+        self.ca_cert_path = None
+    
+    def enable_ssl_verification(self, ca_cert_path: Optional[str] = None) -> None:
+        """Convenience method to enable SSL verification.
+        
+        Args:
+            ca_cert_path: Optional path to custom CA certificate bundle
+        """
+        self.verify_ssl = True
+        self.ca_cert_path = ca_cert_path
+    
+    def get_ssl_config_summary(self) -> Dict[str, Any]:
+        """Get a summary of SSL configuration for troubleshooting.
+        
+        Returns:
+            Dictionary with SSL configuration details
+        """
+        return {
+            "ssl_verification_enabled": self.verify_ssl,
+            "custom_ca_certificate": bool(self.ca_cert_path),
+            "ca_cert_path": self.ca_cert_path,
+            "base_url_uses_https": bool(self.base_url and self.base_url.startswith('https://')),
+            "ssl_troubleshooting_tip": (
+                "If you're having SSL issues with self-signed certificates, "
+                "you can temporarily disable SSL verification by setting verify_ssl=False. "
+                "For production, add your CA certificate to ca_cert_path instead."
+            )
+        }
 
 
 class Settings(BaseSettings):
