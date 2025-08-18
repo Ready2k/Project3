@@ -3,9 +3,10 @@
 import os
 from pathlib import Path
 from typing import List, Optional, Dict, Any
+from enum import Enum
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
 
 from app.version import __version__, RELEASE_NAME
@@ -160,12 +161,161 @@ class BedrockConfig(BaseModel):
     region: str = "eu-west-2"
 
 
+class JiraAuthType(str, Enum):
+    """Enumeration of supported Jira authentication types."""
+    API_TOKEN = "api_token"
+    PERSONAL_ACCESS_TOKEN = "pat"
+    SSO = "sso"
+    BASIC = "basic"
+
+
+class JiraDeploymentType(str, Enum):
+    """Enumeration of supported Jira deployment types."""
+    CLOUD = "cloud"
+    DATA_CENTER = "data_center"
+    SERVER = "server"
+
+
 class JiraConfig(BaseModel):
-    """Configuration for Jira integration."""
+    """Configuration for Jira integration with Data Center support."""
     base_url: Optional[str] = None
+    deployment_type: Optional[JiraDeploymentType] = None
+    auth_type: JiraAuthType = JiraAuthType.API_TOKEN
+    
+    # Existing fields for backward compatibility
     email: Optional[str] = None
     api_token: Optional[str] = None
+    
+    # New fields for Data Center authentication
+    username: Optional[str] = None
+    password: Optional[str] = None
+    personal_access_token: Optional[str] = None
+    
+    # Network configuration
+    verify_ssl: bool = True
+    ca_cert_path: Optional[str] = None
+    proxy_url: Optional[str] = None
     timeout: int = 30
+    
+    # SSO configuration
+    use_sso: bool = False
+    sso_session_cookie: Optional[str] = None
+    
+    # Data Center specific configuration
+    context_path: Optional[str] = None
+    custom_port: Optional[int] = None
+    
+    # Retry and timeout configuration
+    max_retries: int = 3
+    retry_delay: float = 1.0
+    max_retry_delay: float = 60.0
+    retry_backoff_multiplier: float = 2.0
+    total_timeout: Optional[int] = None
+    
+    @field_validator('base_url')
+    @classmethod
+    def validate_base_url(cls, v):
+        """Validate and normalize base URL."""
+        if v is not None:
+            v = v.rstrip('/')
+            if not v.startswith(('http://', 'https://')):
+                raise ValueError('Base URL must start with http:// or https://')
+        return v
+    
+    @field_validator('custom_port')
+    @classmethod
+    def validate_custom_port(cls, v):
+        """Validate custom port range."""
+        if v is not None and (v < 1 or v > 65535):
+            raise ValueError('Custom port must be between 1 and 65535')
+        return v
+    
+    @field_validator('timeout')
+    @classmethod
+    def validate_timeout(cls, v):
+        """Validate timeout value."""
+        if v < 1:
+            raise ValueError('Timeout must be at least 1 second')
+        return v
+    
+    @field_validator('max_retries')
+    @classmethod
+    def validate_max_retries(cls, v):
+        """Validate max retries value."""
+        if v < 0:
+            raise ValueError('Max retries must be non-negative')
+        if v > 10:
+            raise ValueError('Max retries should not exceed 10')
+        return v
+    
+    @field_validator('retry_delay')
+    @classmethod
+    def validate_retry_delay(cls, v):
+        """Validate retry delay value."""
+        if v < 0:
+            raise ValueError('Retry delay must be non-negative')
+        return v
+    
+    @field_validator('retry_backoff_multiplier')
+    @classmethod
+    def validate_retry_backoff_multiplier(cls, v):
+        """Validate retry backoff multiplier."""
+        if v < 1.0:
+            raise ValueError('Retry backoff multiplier must be at least 1.0')
+        return v
+    
+    def validate_auth_config(self) -> List[str]:
+        """Validate authentication configuration and return any errors."""
+        errors = []
+        
+        if self.auth_type == JiraAuthType.API_TOKEN:
+            if not self.email:
+                errors.append("Email is required for API token authentication")
+            if not self.api_token:
+                errors.append("API token is required for API token authentication")
+        
+        elif self.auth_type == JiraAuthType.PERSONAL_ACCESS_TOKEN:
+            if not self.personal_access_token:
+                errors.append("Personal access token is required for PAT authentication")
+        
+        elif self.auth_type == JiraAuthType.BASIC:
+            if not self.username:
+                errors.append("Username is required for basic authentication")
+            if not self.password:
+                errors.append("Password is required for basic authentication")
+        
+        elif self.auth_type == JiraAuthType.SSO:
+            if not self.use_sso:
+                errors.append("SSO must be enabled for SSO authentication")
+        
+        return errors
+    
+    def is_data_center_deployment(self) -> bool:
+        """Check if this is a Data Center deployment."""
+        return self.deployment_type == JiraDeploymentType.DATA_CENTER
+    
+    def is_cloud_deployment(self) -> bool:
+        """Check if this is a Cloud deployment."""
+        return self.deployment_type == JiraDeploymentType.CLOUD
+    
+    def get_normalized_base_url(self) -> Optional[str]:
+        """Get normalized base URL with custom port and context path."""
+        if not self.base_url:
+            return None
+        
+        url = self.base_url
+        
+        # Add custom port if specified and not already in URL
+        if self.custom_port and ':' not in url.split('://', 1)[1]:
+            url = f"{url}:{self.custom_port}"
+        
+        # Add context path if specified
+        if self.context_path:
+            context = self.context_path.strip('/')
+            if context:
+                url = f"{url}/{context}"
+        
+        return url
 
 
 class Settings(BaseSettings):
@@ -224,15 +374,30 @@ def load_settings(config_path: Optional[str] = None) -> Settings:
         'JIRA_BASE_URL': 'base_url',
         'JIRA_EMAIL': 'email', 
         'JIRA_API_TOKEN': 'api_token',
-        'JIRA_TIMEOUT': 'timeout'
+        'JIRA_TIMEOUT': 'timeout',
+        'JIRA_DEPLOYMENT_TYPE': 'deployment_type',
+        'JIRA_AUTH_TYPE': 'auth_type',
+        'JIRA_USERNAME': 'username',
+        'JIRA_PASSWORD': 'password',
+        'JIRA_PERSONAL_ACCESS_TOKEN': 'personal_access_token',
+        'JIRA_VERIFY_SSL': 'verify_ssl',
+        'JIRA_CA_CERT_PATH': 'ca_cert_path',
+        'JIRA_PROXY_URL': 'proxy_url',
+        'JIRA_USE_SSO': 'use_sso',
+        'JIRA_SSO_SESSION_COOKIE': 'sso_session_cookie',
+        'JIRA_CONTEXT_PATH': 'context_path',
+        'JIRA_CUSTOM_PORT': 'custom_port'
     }
     
     jira_config = {}
     for env_key, config_key in jira_env_vars.items():
         if env_key in os.environ:
             value = os.environ[env_key]
-            if config_key == 'timeout':
+            # Type conversions
+            if config_key in ['timeout', 'custom_port']:
                 value = int(value)
+            elif config_key in ['verify_ssl', 'use_sso']:
+                value = value.lower() in ('true', '1', 'yes', 'on')
             jira_config[config_key] = value
     
     if jira_config:

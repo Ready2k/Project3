@@ -285,9 +285,15 @@ AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 
 # Jira Integration (optional)
+# For Jira Cloud
 JIRA_BASE_URL=https://your-domain.atlassian.net
 JIRA_EMAIL=you@example.com
 JIRA_API_TOKEN=...
+
+# For Jira Data Center 9.12.22
+JIRA_BASE_URL=https://jira.yourcompany.com
+JIRA_AUTH_TYPE=personal_access_token
+JIRA_PERSONAL_ACCESS_TOKEN=...
 
 # Configuration Overrides
 PROVIDER=openai
@@ -467,6 +473,23 @@ If you're getting "❌ Connection failed" when testing providers:
 3. **Enable Debug Mode**: Check the debug checkbox in Streamlit sidebar
 4. **Test Directly**: Run `python3 test_provider.py YOUR_API_KEY`
 
+### 🏢 Jira Data Center Integration
+
+For Jira Data Center 9.12.22 integration issues:
+
+1. **Authentication**: Use Personal Access Tokens (PATs) instead of API tokens
+2. **SSL Certificates**: Configure custom CA certificates for internal deployments
+3. **Network Configuration**: Set up proxy and timeout settings for enterprise networks
+4. **API Compatibility**: System automatically detects and falls back between API v3 and v2
+
+**Comprehensive Jira Data Center Documentation**:
+- [Setup Guide](documents/JIRA_DATA_CENTER_SETUP.md) - Complete configuration guide
+- [API Documentation](documents/JIRA_API_DOCUMENTATION.md) - API endpoints and examples
+- [Authentication Flows](documents/JIRA_AUTHENTICATION_FLOWS.md) - Authentication methods and flows
+- [Error Handling](documents/JIRA_ERROR_HANDLING_EXAMPLES.md) - Troubleshooting examples
+- [Migration Guide](documents/JIRA_CLOUD_TO_DATA_CENTER_MIGRATION.md) - Cloud to Data Center migration
+- [Troubleshooting Guide](documents/JIRA_DATA_CENTER_TROUBLESHOOTING.md) - Common issues and solutions
+
 ### 📋 Common Issues
 
 1. **Import Errors**: Ensure `PYTHONPATH` includes the project root
@@ -476,7 +499,7 @@ If you're getting "❌ Connection failed" when testing providers:
 
 ### 📖 Detailed Troubleshooting
 
-See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for comprehensive debugging guide including:
+See [TROUBLESHOOTING.md](documents/TROUBLESHOOTING.md) for comprehensive debugging guide including:
 - Detailed error solutions
 - Debug mode usage
 - Test scripts and commands

@@ -523,25 +523,139 @@ class ModelDiscoveryResponse(BaseModel):
 
 class JiraTestRequest(BaseModel):
     base_url: str
-    email: str
-    api_token: str
+    auth_type: Optional[str] = "api_token"  # api_token, pat, sso, basic
+    
+    # Existing authentication fields
+    email: Optional[str] = None
+    api_token: Optional[str] = None
+    
+    # New Data Center authentication fields
+    username: Optional[str] = None
+    password: Optional[str] = None
+    personal_access_token: Optional[str] = None
+    
+    # Network configuration options
+    verify_ssl: bool = True
+    ca_cert_path: Optional[str] = None
+    proxy_url: Optional[str] = None
+    timeout: int = 30
+    
+    # SSO configuration
+    use_sso: bool = False
+    sso_session_cookie: Optional[str] = None
+    
+    # Data Center specific configuration
+    context_path: Optional[str] = None
+    custom_port: Optional[int] = None
+    
+    # Retry configuration
+    max_retries: int = 3
+    retry_delay: float = 1.0
+    
+    @field_validator('base_url')
+    @classmethod
+    def validate_base_url(cls, v):
+        """Validate and normalize base URL."""
+        if v is not None:
+            v = v.rstrip('/')
+            if not v.startswith(('http://', 'https://')):
+                raise ValueError('Base URL must start with http:// or https://')
+        return v
+    
+    @field_validator('auth_type')
+    @classmethod
+    def validate_auth_type(cls, v):
+        """Validate authentication type."""
+        allowed_types = ["api_token", "pat", "sso", "basic"]
+        if v not in allowed_types:
+            raise ValueError(f'Invalid auth_type. Must be one of: {allowed_types}')
+        return v
+    
+    @field_validator('custom_port')
+    @classmethod
+    def validate_custom_port(cls, v):
+        """Validate custom port range."""
+        if v is not None and (v < 1 or v > 65535):
+            raise ValueError('Custom port must be between 1 and 65535')
+        return v
+    
+    @field_validator('timeout')
+    @classmethod
+    def validate_timeout(cls, v):
+        """Validate timeout value."""
+        if v < 1:
+            raise ValueError('Timeout must be at least 1 second')
+        return v
+    
+    def validate_auth_config(self) -> List[str]:
+        """Validate authentication configuration and return any errors."""
+        errors = []
+        
+        if self.auth_type == "api_token":
+            if not self.email:
+                errors.append("Email is required for API token authentication")
+            if not self.api_token:
+                errors.append("API token is required for API token authentication")
+        
+        elif self.auth_type == "pat":
+            if not self.personal_access_token:
+                errors.append("Personal access token is required for PAT authentication")
+        
+        elif self.auth_type == "basic":
+            if not self.username:
+                errors.append("Username is required for basic authentication")
+            if not self.password:
+                errors.append("Password is required for basic authentication")
+        
+        elif self.auth_type == "sso":
+            if not self.use_sso:
+                errors.append("SSO must be enabled for SSO authentication")
+        
+        return errors
+
+
+class JiraErrorDetail(BaseModel):
+    """Detailed error information with troubleshooting steps."""
+    error_type: str
+    error_code: Optional[str] = None
+    message: str
+    troubleshooting_steps: List[str]
+    documentation_links: List[str] = []
+    suggested_config_changes: Optional[Dict[str, Any]] = None
 
 
 class JiraTestResponse(BaseModel):
     ok: bool
     message: str
+    deployment_info: Optional[Dict[str, Any]] = None
+    error_details: Optional[JiraErrorDetail] = None
+    auth_methods_available: List[str] = []
+    api_version_detected: Optional[str] = None
 
 
-class JiraFetchRequest(BaseModel):
+class JiraFetchRequest(JiraTestRequest):
     ticket_key: str
-    base_url: str
-    email: str
-    api_token: str
+    
+    @field_validator('ticket_key')
+    @classmethod
+    def validate_ticket_key(cls, v):
+        """Validate Jira ticket key format."""
+        if not v or not isinstance(v, str):
+            raise ValueError('Ticket key is required and must be a string')
+        
+        # Basic validation for Jira ticket key format (PROJECT-123)
+        import re
+        if not re.match(r'^[A-Z][A-Z0-9]*-\d+$', v.upper()):
+            raise ValueError('Invalid ticket key format. Expected format: PROJECT-123')
+        
+        return v.upper()
 
 
 class JiraFetchResponse(BaseModel):
     ticket_data: Dict[str, Any]
     requirements: Dict[str, Any]
+    deployment_info: Optional[Dict[str, Any]] = None
+    api_version_used: Optional[str] = None
 
 
 # API Endpoints
@@ -1366,66 +1480,344 @@ async def discover_models(request: ModelDiscoveryRequest, response: Response):
 
 
 @app.post("/jira/test", response_model=JiraTestResponse)
-async def test_jira_connection(request: JiraTestRequest):
-    """Test Jira connection with provided credentials."""
+async def test_jira_connection(request: JiraTestRequest, response: Response):
+    """Test Jira connection with enhanced Data Center support and authentication fallback."""
     try:
-        from app.config import JiraConfig
+        # Validate authentication configuration first
+        auth_errors = request.validate_auth_config()
+        if auth_errors:
+            error_detail = JiraErrorDetail(
+                error_type="configuration_error",
+                message="Invalid authentication configuration",
+                troubleshooting_steps=[
+                    "Review authentication requirements for selected auth type",
+                    "Ensure all required fields are provided"
+                ] + auth_errors,
+                documentation_links=[
+                    "https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/",
+                    "https://confluence.atlassian.com/enterprise/using-personal-access-tokens-1026032365.html"
+                ]
+            )
+            
+            SecurityHeaders.add_security_headers(response)
+            return JiraTestResponse(
+                ok=False,
+                message="Authentication configuration validation failed",
+                error_details=error_detail
+            )
+        
+        # Create JiraConfig from request
+        from app.config import JiraConfig, JiraAuthType, JiraDeploymentType
+        
+        # Map string auth type to enum
+        auth_type_mapping = {
+            "api_token": JiraAuthType.API_TOKEN,
+            "pat": JiraAuthType.PERSONAL_ACCESS_TOKEN,
+            "sso": JiraAuthType.SSO,
+            "basic": JiraAuthType.BASIC
+        }
+        
         jira_config = JiraConfig(
             base_url=request.base_url,
+            auth_type=auth_type_mapping.get(request.auth_type, JiraAuthType.API_TOKEN),
+            
+            # Authentication fields
             email=request.email,
-            api_token=request.api_token
+            api_token=request.api_token,
+            username=request.username,
+            password=request.password,
+            personal_access_token=request.personal_access_token,
+            
+            # Network configuration
+            verify_ssl=request.verify_ssl,
+            ca_cert_path=request.ca_cert_path,
+            proxy_url=request.proxy_url,
+            timeout=request.timeout,
+            
+            # SSO configuration
+            use_sso=request.use_sso,
+            sso_session_cookie=request.sso_session_cookie,
+            
+            # Data Center configuration
+            context_path=request.context_path,
+            custom_port=request.custom_port,
+            
+            # Retry configuration
+            max_retries=request.max_retries,
+            retry_delay=request.retry_delay
         )
         
+        # Create Jira service with enhanced configuration
         jira_service = JiraService(jira_config)
-        success, error_msg = await jira_service.test_connection()
         
-        return JiraTestResponse(
-            ok=success,
-            message="Jira connection successful" if success else error_msg
-        )
+        # Perform auto-configuration to detect deployment type
+        try:
+            auto_config = await jira_service.auto_configure()
+            jira_service.config = auto_config
+            app_logger.info(f"Auto-detected deployment type: {auto_config.deployment_type}")
+        except Exception as e:
+            app_logger.warning(f"Auto-configuration failed, using provided config: {e}")
+        
+        # Test connection with fallback authentication
+        try:
+            connection_result = await jira_service.test_connection_with_fallback()
+            
+            if connection_result.success:
+                # Prepare successful response with deployment info
+                deployment_info = None
+                if connection_result.deployment_info:
+                    deployment_info = {
+                        "deployment_type": connection_result.deployment_info.deployment_type.value,
+                        "version": connection_result.deployment_info.version,
+                        "build_number": connection_result.deployment_info.build_number,
+                        "base_url_normalized": connection_result.deployment_info.base_url_normalized,
+                        "context_path": connection_result.deployment_info.context_path,
+                        "supports_sso": connection_result.deployment_info.supports_sso,
+                        "supports_pat": connection_result.deployment_info.supports_pat
+                    }
+                
+                # Determine available auth methods
+                auth_methods = ["api_token"]  # Always available
+                if connection_result.deployment_info:
+                    if connection_result.deployment_info.supports_pat:
+                        auth_methods.append("pat")
+                    if connection_result.deployment_info.supports_sso:
+                        auth_methods.append("sso")
+                    # Basic auth is typically available for Data Center
+                    if connection_result.deployment_info.deployment_type == JiraDeploymentType.DATA_CENTER:
+                        auth_methods.append("basic")
+                
+                # Detect API version
+                api_version = None
+                try:
+                    api_version = await jira_service.detect_and_set_api_version()
+                except Exception as e:
+                    app_logger.warning(f"API version detection failed: {e}")
+                
+                SecurityHeaders.add_security_headers(response)
+                return JiraTestResponse(
+                    ok=True,
+                    message="Jira connection successful",
+                    deployment_info=deployment_info,
+                    auth_methods_available=auth_methods,
+                    api_version_detected=api_version
+                )
+            
+            else:
+                # Connection failed, provide detailed error information
+                error_detail = None
+                if connection_result.error_details:
+                    error_detail = JiraErrorDetail(
+                        error_type=connection_result.error_details.get("error_type", "connection_error"),
+                        error_code=connection_result.error_details.get("error_code"),
+                        message=connection_result.error_details.get("message", "Connection failed"),
+                        troubleshooting_steps=connection_result.troubleshooting_steps,
+                        documentation_links=connection_result.error_details.get("documentation_links", []),
+                        suggested_config_changes=connection_result.error_details.get("suggested_config_changes")
+                    )
+                
+                SecurityHeaders.add_security_headers(response)
+                return JiraTestResponse(
+                    ok=False,
+                    message=connection_result.error_details.get("message", "Connection failed") if connection_result.error_details else "Connection failed",
+                    error_details=error_detail
+                )
+        
+        except JiraConnectionError as e:
+            error_detail = JiraErrorDetail(
+                error_type="connection_error",
+                message=str(e),
+                troubleshooting_steps=[
+                    "Verify the base URL is correct and accessible",
+                    "Check network connectivity to the Jira instance",
+                    "Ensure firewall rules allow access to Jira",
+                    "For Data Center: verify custom port and context path if used"
+                ],
+                documentation_links=[
+                    "https://confluence.atlassian.com/jirakb/unable-to-connect-to-jira-applications-due-to-network-or-firewall-issues-203394974.html"
+                ]
+            )
+            
+            SecurityHeaders.add_security_headers(response)
+            return JiraTestResponse(
+                ok=False,
+                message=f"Connection failed: {str(e)}",
+                error_details=error_detail
+            )
+        
+        except JiraError as e:
+            error_detail = JiraErrorDetail(
+                error_type="authentication_error",
+                message=str(e),
+                troubleshooting_steps=[
+                    "Verify authentication credentials are correct",
+                    "Check if the user account has necessary permissions",
+                    "For API tokens: ensure token is not expired",
+                    "For PAT: verify token has required scopes",
+                    "For SSO: check if session is still valid"
+                ],
+                documentation_links=[
+                    "https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/",
+                    "https://confluence.atlassian.com/enterprise/using-personal-access-tokens-1026032365.html"
+                ]
+            )
+            
+            SecurityHeaders.add_security_headers(response)
+            return JiraTestResponse(
+                ok=False,
+                message=f"Authentication failed: {str(e)}",
+                error_details=error_detail
+            )
         
     except Exception as e:
-        app_logger.error(f"Error testing Jira connection: {e}")
-        return JiraTestResponse(ok=False, message=f"Unexpected error: {str(e)}")
+        app_logger.error(f"Unexpected error testing Jira connection: {e}")
+        
+        error_detail = JiraErrorDetail(
+            error_type="unexpected_error",
+            message=f"Unexpected error: {str(e)}",
+            troubleshooting_steps=[
+                "Check application logs for detailed error information",
+                "Verify all required configuration fields are provided",
+                "Try with a simpler configuration first",
+                "Contact system administrator if the issue persists"
+            ]
+        )
+        
+        SecurityHeaders.add_security_headers(response)
+        return JiraTestResponse(
+            ok=False,
+            message=f"Unexpected error: {str(e)}",
+            error_details=error_detail
+        )
 
 
 @app.post("/jira/fetch", response_model=JiraFetchResponse)
 async def fetch_jira_ticket(request: JiraFetchRequest, response: Response):
-    """Fetch Jira ticket and map to requirements format."""
+    """Fetch Jira ticket with enhanced Data Center support and API version detection."""
     try:
-        from app.config import JiraConfig
+        # Validate authentication configuration first
+        auth_errors = request.validate_auth_config()
+        if auth_errors:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Authentication configuration validation failed: {'; '.join(auth_errors)}"
+            )
+        
+        # Create JiraConfig from request
+        from app.config import JiraConfig, JiraAuthType, JiraDeploymentType
+        
+        # Map string auth type to enum
+        auth_type_mapping = {
+            "api_token": JiraAuthType.API_TOKEN,
+            "pat": JiraAuthType.PERSONAL_ACCESS_TOKEN,
+            "sso": JiraAuthType.SSO,
+            "basic": JiraAuthType.BASIC
+        }
+        
         jira_config = JiraConfig(
             base_url=request.base_url,
+            auth_type=auth_type_mapping.get(request.auth_type, JiraAuthType.API_TOKEN),
+            
+            # Authentication fields
             email=request.email,
-            api_token=request.api_token
+            api_token=request.api_token,
+            username=request.username,
+            password=request.password,
+            personal_access_token=request.personal_access_token,
+            
+            # Network configuration
+            verify_ssl=request.verify_ssl,
+            ca_cert_path=request.ca_cert_path,
+            proxy_url=request.proxy_url,
+            timeout=request.timeout,
+            
+            # SSO configuration
+            use_sso=request.use_sso,
+            sso_session_cookie=request.sso_session_cookie,
+            
+            # Data Center configuration
+            context_path=request.context_path,
+            custom_port=request.custom_port,
+            
+            # Retry configuration
+            max_retries=request.max_retries,
+            retry_delay=request.retry_delay
         )
         
+        # Create Jira service with enhanced configuration
         jira_service = JiraService(jira_config)
         
-        # Fetch ticket
+        # Perform auto-configuration to detect deployment type and API version
+        try:
+            auto_config = await jira_service.auto_configure()
+            jira_service.config = auto_config
+            app_logger.info(f"Auto-detected deployment type: {auto_config.deployment_type}")
+        except Exception as e:
+            app_logger.warning(f"Auto-configuration failed, using provided config: {e}")
+        
+        # Detect and set API version
+        api_version = None
+        try:
+            api_version = await jira_service.detect_and_set_api_version()
+            app_logger.info(f"Using API version: {api_version}")
+        except Exception as e:
+            app_logger.warning(f"API version detection failed, using default: {e}")
+            api_version = "3"  # Default fallback
+        
+        # Fetch ticket with API version support
         ticket = await jira_service.fetch_ticket(request.ticket_key)
         
         # Map to requirements
         requirements = jira_service.map_ticket_to_requirements(ticket)
         
-        result = {
-            "ticket_data": ticket.model_dump(),
-            "requirements": requirements
-        }
+        # Prepare deployment info
+        deployment_info = None
+        if hasattr(jira_service, 'deployment_info') and jira_service.deployment_info:
+            deployment_info = {
+                "deployment_type": jira_service.deployment_info.deployment_type.value,
+                "version": jira_service.deployment_info.version,
+                "build_number": jira_service.deployment_info.build_number,
+                "base_url_normalized": jira_service.deployment_info.base_url_normalized
+            }
+        
+        result = JiraFetchResponse(
+            ticket_data=ticket.model_dump(),
+            requirements=requirements,
+            deployment_info=deployment_info,
+            api_version_used=api_version
+        )
         
         # Add security headers
         SecurityHeaders.add_security_headers(response)
         return result
         
+    except HTTPException:
+        # Re-raise HTTPExceptions to preserve status codes
+        raise
     except JiraConnectionError as e:
-        raise HTTPException(status_code=401, detail=f"Jira connection failed: {str(e)}")
+        app_logger.error(f"Jira connection failed for ticket {request.ticket_key}: {e}")
+        raise HTTPException(
+            status_code=401, 
+            detail=f"Jira connection failed: {str(e)}. Please verify your credentials and network configuration."
+        )
     except JiraTicketNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        app_logger.error(f"Jira ticket not found: {request.ticket_key}: {e}")
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Ticket {request.ticket_key} not found: {str(e)}"
+        )
     except JiraError as e:
-        raise HTTPException(status_code=400, detail=f"Jira error: {str(e)}")
+        app_logger.error(f"Jira error fetching ticket {request.ticket_key}: {e}")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Jira error: {str(e)}. Check your authentication and permissions."
+        )
     except Exception as e:
-        app_logger.error(f"Error fetching Jira ticket {request.ticket_key}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch Jira ticket: {str(e)}")
+        app_logger.error(f"Unexpected error fetching Jira ticket {request.ticket_key}: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to fetch Jira ticket: {str(e)}. Check application logs for details."
+        )
 
 
 @app.post("/providers/test")
