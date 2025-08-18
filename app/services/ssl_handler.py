@@ -252,11 +252,13 @@ class SSLHandler:
                         "Check if the certificate is valid and not expired",
                         "Verify the certificate chain is complete",
                         "For self-signed certificates, add the CA certificate to ca_cert_path",
+                        "QUICK FIX: In Jira configuration, uncheck 'Verify SSL Certificates'",
+                        "Alternative: Set environment variable JIRA_VERIFY_SSL=false",
                         "For testing only, you can set verify_ssl=False (not recommended for production)"
                     ],
                     "suggested_config": {
                         "verify_ssl": False,
-                        "note": "Only for testing - not recommended for production"
+                        "note": "TESTING ONLY - Disables SSL verification. Never use in production!"
                     }
                 }
             elif "name mismatch" in error_msg.lower() or "hostname" in error_msg.lower():
@@ -276,11 +278,14 @@ class SSLHandler:
                     "troubleshooting_steps": [
                         "Add the self-signed certificate to your CA certificate bundle",
                         "Set ca_cert_path to point to the certificate file",
+                        "QUICK FIX: In Jira configuration, uncheck 'Verify SSL Certificates'",
+                        "Alternative: Set environment variable JIRA_VERIFY_SSL=false",
                         "For testing only, you can set verify_ssl=False"
                     ],
                     "suggested_config": {
                         "ca_cert_path": "/path/to/your/certificate.pem",
-                        "note": "Replace with actual path to your certificate"
+                        "verify_ssl": False,
+                        "note": "Either add certificate path OR disable SSL verification for testing"
                     }
                 }
             else:

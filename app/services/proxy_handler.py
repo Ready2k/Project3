@@ -242,7 +242,12 @@ class ProxyHandler:
             proxy_config = self.get_httpx_proxy_config()
             start_time = time.time()
             
-            async with httpx.AsyncClient(proxies=proxy_config, timeout=timeout) as client:
+            # Build client configuration
+            client_config = {"timeout": timeout}
+            if proxy_config:
+                client_config["proxies"] = proxy_config
+            
+            async with httpx.AsyncClient(**client_config) as client:
                 response = await client.get(test_url)
                 
                 end_time = time.time()

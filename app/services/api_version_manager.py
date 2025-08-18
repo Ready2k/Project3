@@ -140,11 +140,18 @@ class APIVersionManager:
             
             verify_config = self._get_verify_config()
             proxy_config = self._get_proxy_config()
-            async with httpx.AsyncClient(
-                timeout=self.timeout, 
-                verify=verify_config,
-                proxies=proxy_config
-            ) as client:
+            
+            # Build client configuration
+            client_config = {
+                "timeout": self.timeout,
+                "verify": verify_config
+            }
+            
+            # Only add proxies if configured
+            if proxy_config:
+                client_config["proxies"] = proxy_config
+            
+            async with httpx.AsyncClient(**client_config) as client:
                 headers = {"Accept": "application/json"}
                 headers.update(auth_headers)
                 
