@@ -588,7 +588,11 @@ Focus on:
 - Current workflow and automation readiness
 - Risk factors and compliance considerations
 
-Respond with ONLY valid JSON, no other text."""
+STRICT OUTPUT FORMAT:
+- Do NOT use Markdown code fences or backticks anywhere (no ``` or ```json).
+- Do NOT include any text before or after the JSON.
+- The first character of the response must be "{" and the last must be "}".
+"""
 
         try:
             app_logger.info(f"Analyzing answers with LLM for session {session_id}")
@@ -597,19 +601,9 @@ Respond with ONLY valid JSON, no other text."""
             app_logger.info(f"LLM answer analysis response: {response[:200]}...")
             
             # Parse JSON response
-            import json
-            import re
+            from app.utils.json_parser import parse_llm_json_response
             
-            # Clean the response - sometimes LLM adds extra text
-            response = response.strip()
-            
-            # Try to extract JSON if it's wrapped in other text
-            if not response.startswith('{') and not response.startswith('['):
-                json_match = re.search(r'[\{\[].*[\}\]]', response, re.DOTALL)
-                if json_match:
-                    response = json_match.group()
-            
-            analysis = json.loads(response)
+            analysis = parse_llm_json_response(response, default_value={}, service_name="question_loop")
             
             # Handle empty array response (scope gate rejection)
             if isinstance(analysis, list) and len(analysis) == 0:

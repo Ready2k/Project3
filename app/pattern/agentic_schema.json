@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "pattern_id", "name", "description", "feasibility", "pattern_type", 
+    "input_requirements", "tech_stack", "confidence_score", "autonomy_level",
+    "reasoning_types", "decision_boundaries", "exception_handling_strategy"
+  ],
+  "properties": {
+    "pattern_id": {
+      "type": "string", 
+      "pattern": "^APAT-[0-9]{3,}$"
+    },
+    "name": {"type": "string"},
+    "description": {"type": "string"},
+    "feasibility": {
+      "enum": ["Automatable", "Fully Automatable", "Partially Automatable", "Not Automatable"]
+    },
+    "pattern_type": {
+      "type": "array", 
+      "items": {"type": "string"}
+    },
+    "input_requirements": {
+      "type": "array", 
+      "items": {"type": "string"}
+    },
+    "tech_stack": {
+      "type": "array", 
+      "items": {"type": "string"}
+    },
+    "related_patterns": {
+      "type": "array", 
+      "items": {"type": "string"}
+    },
+    "confidence_score": {
+      "type": "number", 
+      "minimum": 0, 
+      "maximum": 1
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "banned_tools": {"type": "array", "items": {"type": "string"}},
+        "required_integrations": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "autonomy_level": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Level of autonomous operation (0.0 = fully human-dependent, 1.0 = fully autonomous)"
+    },
+    "reasoning_types": {
+      "type": "array",
+      "items": {
+        "enum": ["logical", "causal", "temporal", "spatial", "analogical", "case_based", "probabilistic", "strategic"]
+      },
+      "description": "Types of reasoning the agent needs to perform"
+    },
+    "decision_boundaries": {
+      "type": "object",
+      "properties": {
+        "autonomous_decisions": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Decisions the agent can make independently"
+        },
+        "escalation_triggers": {
+          "type": "array", 
+          "items": {"type": "string"},
+          "description": "Conditions that require escalation"
+        },
+        "decision_authority_level": {
+          "enum": ["low", "medium", "high", "full"],
+          "description": "Level of decision-making authority"
+        }
+      }
+    },
+    "exception_handling_strategy": {
+      "type": "object",
+      "properties": {
+        "autonomous_resolution_approaches": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Methods the agent uses to resolve exceptions autonomously"
+        },
+        "reasoning_fallbacks": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Alternative reasoning approaches when primary methods fail"
+        },
+        "escalation_criteria": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Specific criteria that trigger human escalation"
+        }
+      }
+    },
+    "learning_mechanisms": {
+      "type": "array",
+      "items": {
+        "enum": ["feedback_incorporation", "pattern_recognition", "performance_optimization", "strategy_adaptation", "continuous_improvement"]
+      },
+      "description": "How the agent learns and improves over time"
+    },
+    "self_monitoring_capabilities": {
+      "type": "array",
+      "items": {
+        "enum": ["performance_tracking", "error_detection", "quality_assessment", "resource_monitoring", "predictive_maintenance"]
+      },
+      "description": "Agent's ability to monitor and assess its own performance"
+    },
+    "agent_architecture": {
+      "enum": ["single_agent", "multi_agent_collaborative", "hierarchical_agents", "swarm_intelligence"],
+      "description": "Recommended agent architecture pattern"
+    },
+    "coordination_requirements": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "communication_protocols": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "coordination_mechanisms": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "conflict_resolution": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Requirements for multi-agent coordination (if applicable)"
+    },
+    "agentic_frameworks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Recommended agentic frameworks for implementation"
+    },
+    "reasoning_engines": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Recommended reasoning engines for complex logic"
+    }
+  }
+}
