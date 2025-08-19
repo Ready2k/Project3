@@ -1,0 +1,98 @@
+{
+  "session_id": "f4920b10-1131-4d79-842f-80ab97998bea",
+  "export_timestamp": "2025-08-19T10:02:49.096222",
+  "requirements": {
+    "description": "AI Solution for Lost Card Scenarios - Design and implement an AI-powered solution to assist customers in lost card scenarios, reducing resolution time and improving user experience.\n The solution should:\n • Automatically identify lost card situations via chatbot or triggers.\n• Guide secure verification.\n• Block lost cards and initiate replacements.\n• Integrate with CRM and card management systems.\n• Offer empathetic, human-like support.",
+    "source": "jira",
+    "jira_key": "AR-1",
+    "priority": null,
+    "status": "To Do",
+    "issue_type": "Epic",
+    "assignee": null,
+    "reporter": "james cregeen",
+    "labels": [],
+    "components": [],
+    "created": "2025-08-12T13:58:16.130+0100",
+    "updated": "2025-08-12T13:58:16.130+0100",
+    "process_scope": "digital",
+    "data_sources": "cams API",
+    "decision_complexity": "frame in place",
+    "integrations": "yes all restful",
+    "llm_analysis_automation_feasibility": "Automatable",
+    "llm_analysis_feasibility_reasoning": "The process is entirely digital, with all actions occurring within software systems. The availability of RESTful integrations and a decision framework in place suggests that automated reasoning, planning, and execution are supported.",
+    "llm_analysis_key_insights": [
+      "Integration with CRM and card management systems provides necessary interfaces for end-to-end process automation.",
+      "The CAMS API offers a robust data source for identifying lost card situations.",
+      "An AI-powered chatbot can handle customer interactions with human-like empathy, enhancing user experience while automating standard procedures."
+    ],
+    "llm_analysis_automation_challenges": [
+      "Ensuring secure customer verification without compromising user experience.",
+      "Maintaining up-to-date and accurate integrations with multiple external systems."
+    ],
+    "llm_analysis_recommended_approach": "Leverage AI agents to automate customer interaction, verification, and backend processing through established digital interfaces, ensuring scalable and efficient handling of lost card scenarios.",
+    "llm_analysis_confidence_level": 0.85,
+    "llm_analysis_next_steps": [
+      "Design AI conversation flows for chatbot interactions.",
+      "Develop integration modules for CRM and card management systems using RESTful APIs."
+    ]
+  },
+  "feasibility_assessment": "Automatable",
+  "recommendations": [
+    {
+      "pattern_id": "PAT-008",
+      "feasibility": "Automatable",
+      "confidence": 0.85,
+      "tech_stack": [
+        "AWS Lambda",
+        "Twilio",
+        "AWS Comprehend",
+        "Python",
+        "REST API"
+      ],
+      "reasoning": "Pattern match with 'Lost Card Detection and Replacement Workflow Automation' is moderate (64%). The process is entirely digital, with all actions occurring within software systems. The availability of RESTful integrations and a decision framework in place suggests that automated reasoning, planning, and execution are supported."
+    },
+    {
+      "pattern_id": "PAT-007",
+      "feasibility": "Automatable",
+      "confidence": 0.85,
+      "tech_stack": [
+        "AWS Lambda",
+        "Twilio",
+        "AWS Comprehend",
+        "Python",
+        "REST API"
+      ],
+      "reasoning": "Pattern match with 'Multilingual Support Ticket Processing' is moderate (46%). The process is entirely digital, with all actions occurring within software systems. The availability of RESTful integrations and a decision framework in place suggests that automated reasoning, planning, and execution are supported."
+    },
+    {
+      "pattern_id": "PAT-010",
+      "feasibility": "Automatable",
+      "confidence": 0.85,
+      "tech_stack": [
+        "AWS Lambda",
+        "Twilio",
+        "AWS Comprehend",
+        "Python",
+        "REST API"
+      ],
+      "reasoning": "Pattern match with 'AI Golf Swing Analysis and Digital Coaching Agent' is moderate (45%). The process is entirely digital, with all actions occurring within software systems. The availability of RESTful integrations and a decision framework in place suggests that automated reasoning, planning, and execution are supported."
+    }
+  ],
+  "pattern_matches": [],
+  "qa_history": [
+    {
+      "questions": [],
+      "answers": {
+        "process_scope": "digital",
+        "data_sources": "cams API",
+        "decision_complexity": "frame in place",
+        "integrations": "yes all restful"
+      },
+      "timestamp": "2025-08-18T18:16:47.550391"
+    }
+  ],
+  "processing_phases": {
+    "final_phase": "DONE",
+    "progress": 100
+  }
+}

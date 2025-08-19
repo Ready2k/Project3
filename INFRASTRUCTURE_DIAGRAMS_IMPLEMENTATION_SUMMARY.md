@@ -7,9 +7,9 @@ Successfully enhanced the diagram generation function to support both Mermaid an
 ## ✅ Completed Features
 
 ### 1. Dual Diagram Support
-- **Mermaid Rendering**: Kept existing support for Context, Container, Sequence, and Tech Stack Wiring diagrams
+- **Mermaid Rendering**: Kept existing support for Context, Container, Sequence, C4 Architecture, and Tech Stack Wiring diagrams
 - **Infrastructure Rendering**: Added new mingrammer/diagrams support for cloud architecture diagrams
-- **Unified Interface**: Single dropdown with 5 diagram types, seamless switching between rendering engines
+- **Unified Interface**: Single dropdown with 6 diagram types, seamless switching between rendering engines
 
 ### 2. Infrastructure Diagram Generator (`app/diagrams/infrastructure.py`)
 - **Multi-Cloud Support**: AWS, GCP, Azure, Kubernetes, On-Premises, SaaS components

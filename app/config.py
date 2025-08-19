@@ -159,6 +159,9 @@ class AuditConfig(BaseModel):
 class BedrockConfig(BaseModel):
     """Configuration for AWS Bedrock."""
     region: str = "eu-west-2"
+    aws_access_key_id: Optional[str] = None
+    aws_secret_access_key: Optional[str] = None
+    aws_session_token: Optional[str] = None
 
 
 class JiraAuthType(str, Enum):
@@ -438,6 +441,22 @@ def load_settings(config_path: Optional[str] = None) -> Settings:
     
     if jira_config:
         env_overrides['jira'] = jira_config
+    
+    # Handle AWS Bedrock environment variables
+    bedrock_env_vars = {
+        'AWS_ACCESS_KEY_ID': 'aws_access_key_id',
+        'AWS_SECRET_ACCESS_KEY': 'aws_secret_access_key',
+        'AWS_SESSION_TOKEN': 'aws_session_token',
+        'BEDROCK_REGION': 'region'
+    }
+    
+    bedrock_config = {}
+    for env_key, config_key in bedrock_env_vars.items():
+        if env_key in os.environ:
+            bedrock_config[config_key] = os.environ[env_key]
+    
+    if bedrock_config:
+        env_overrides['bedrock'] = bedrock_config
     
     # Merge config data with environment overrides
     config_data.update(env_overrides)

@@ -96,6 +96,10 @@ advanced_prompt_defense:
     sensitivity: medium
 bedrock:
   region: eu-west-2
+  # AWS credentials (can also be set via environment variables)
+  # aws_access_key_id: your_access_key_id
+  # aws_secret_access_key: your_secret_access_key
+  # aws_session_token: your_session_token  # Optional for temporary credentials
 constraints:
   unavailable_tools: []
 deployment:

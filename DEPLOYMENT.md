@@ -32,7 +32,7 @@ This guide covers various deployment options for Automated AI Assessment (AAA), 
 At least one of the following LLM providers:
 - **OpenAI**: API key from https://platform.openai.com/
 - **Anthropic**: API key from https://console.anthropic.com/
-- **AWS Bedrock**: AWS credentials with Bedrock access
+- **AWS Bedrock**: AWS credentials with Bedrock access (Access Key ID, Secret Access Key, optional Session Token)
 - **Internal HTTP**: Custom provider endpoint
 
 ## Local Development
@@ -354,8 +354,10 @@ PROVIDER=openai                    # openai, anthropic, bedrock, internal
 MODEL=gpt-4o                      # Model name
 OPENAI_API_KEY=sk-...             # OpenAI API key
 ANTHROPIC_API_KEY=...             # Anthropic API key
-AWS_ACCESS_KEY_ID=...             # AWS credentials
-AWS_SECRET_ACCESS_KEY=...         # AWS credentials
+AWS_ACCESS_KEY_ID=...             # AWS Bedrock credentials
+AWS_SECRET_ACCESS_KEY=...         # AWS Bedrock credentials  
+AWS_SESSION_TOKEN=...             # AWS Bedrock session token (optional)
+BEDROCK_REGION=us-east-1          # AWS Bedrock region (optional)
 
 # Jira Integration (Optional)
 JIRA_BASE_URL=https://company.atlassian.net
@@ -401,7 +403,10 @@ logging:
 # Provider-specific settings
 bedrock:
   region: us-east-1
-  model_id: anthropic.claude-3-sonnet-20240229-v1:0
+  # AWS credentials (can also be set via environment variables)
+  # aws_access_key_id: your_access_key_id
+  # aws_secret_access_key: your_secret_access_key
+  # aws_session_token: your_session_token  # Optional for temporary credentials
 
 openai:
   base_url: https://api.openai.com/v1

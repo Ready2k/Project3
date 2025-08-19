@@ -12,10 +12,22 @@ from app.llm.model_discovery import model_discovery
 class BedrockProvider(LLMProvider):
     """AWS Bedrock LLM provider implementation."""
     
-    def __init__(self, model: str, region: str = "us-east-1"):
+    def __init__(self, model: str, region: str = "us-east-1", aws_access_key_id: str = None, 
+                 aws_secret_access_key: str = None, aws_session_token: str = None):
         self.model = model
         self.region = region
-        self.client = boto3.client("bedrock-runtime", region_name=region)
+        
+        # Create boto3 client with credentials if provided
+        client_kwargs = {"region_name": region}
+        if aws_access_key_id and aws_secret_access_key:
+            client_kwargs.update({
+                "aws_access_key_id": aws_access_key_id,
+                "aws_secret_access_key": aws_secret_access_key
+            })
+            if aws_session_token:
+                client_kwargs["aws_session_token"] = aws_session_token
+        
+        self.client = boto3.client("bedrock-runtime", **client_kwargs)
     
     async def generate(self, prompt: str, **kwargs: Any) -> str:
         """Generate text using AWS Bedrock."""

@@ -86,7 +86,8 @@ def _validate_mermaid_syntax(mermaid_code: str) -> tuple[bool, str]:
     
     # Check for valid diagram type
     first_line = lines[0].lower()
-    valid_starts = ['flowchart', 'graph', 'sequencediagram', 'classDiagram', 'stateDiagram']
+    valid_starts = ['flowchart', 'graph', 'sequencediagram', 'classDiagram', 'stateDiagram', 
+                   'c4context', 'c4container', 'c4component', 'c4dynamic']
     if not any(first_line.startswith(start) for start in valid_starts):
         valid_starts_str = ', '.join(valid_starts)
         return False, f"Invalid diagram type. Must start with one of: {valid_starts_str}"
@@ -121,6 +122,50 @@ def _validate_mermaid_syntax(mermaid_code: str) -> tuple[bool, str]:
         if alt_count != end_count:
             return False, f"Mismatched alt/end statements in sequence diagram: {alt_count} alt blocks, {end_count} end statements"
     
+    # For C4 diagrams, validate C4-specific syntax
+    elif any(first_line.startswith(c4_type) for c4_type in ['c4context', 'c4container', 'c4component', 'c4dynamic']):
+        # Validate C4-specific elements
+        valid_c4_elements = ['person', 'system', 'container', 'component', 'rel', 'relnote', 
+                           'system_ext', 'container_ext', 'component_ext', 'person_ext',
+                           'enterprise_boundary', 'system_boundary', 'container_boundary',
+                           'title', 'updatelayout']
+        
+        for i, line in enumerate(lines[1:], 2):  # Skip first line (diagram type)
+            line_lower = line.lower().strip()
+            
+            # Skip empty lines and comments
+            if not line_lower or line_lower.startswith('%%'):
+                continue
+                
+            # Check if line contains a valid C4 element
+            has_valid_element = False
+            for element in valid_c4_elements:
+                if line_lower.startswith(element + '(') or line_lower.startswith(element + ' '):
+                    has_valid_element = True
+                    break
+            
+            # Allow certain utility lines
+            if (line_lower.startswith('updatelayout') or 
+                line_lower.startswith('title ')):
+                has_valid_element = True
+            
+            if not has_valid_element and line_lower not in ['', '%%']:
+                # Check for lines that look like C4 elements but aren't valid
+                if '(' in line_lower and ')' in line_lower:
+                    return False, f"Invalid C4 element syntax on line {i}: {line}. Valid C4 elements: {', '.join(valid_c4_elements)}"
+        
+        # Validate C4 relationship syntax (Rel statements)
+        for i, line in enumerate(lines):
+            line_lower = line.lower().strip()
+            if line_lower.startswith('rel('):
+                # Basic validation for Rel syntax: Rel(from, to, label, [technology])
+                if line_lower.count('(') != line_lower.count(')'):
+                    return False, f"Unmatched parentheses in Rel statement on line {i+1}: {line}"
+                # Check for minimum required parameters (from, to, label)
+                content = line_lower[4:-1]  # Remove 'rel(' and ')'
+                if content.count(',') < 2:
+                    return False, f"Rel statement missing required parameters on line {i+1}: {line}. Format: Rel(from, to, label, [technology])"
+    
     return True, ""
 
 def _clean_mermaid_code(mermaid_code: str) -> str:
@@ -135,12 +180,31 @@ def _clean_mermaid_code(mermaid_code: str) -> str:
     elif code.startswith('```'):
         code = code.replace('```', '').strip()
     
+    # Detect diagram type early for better handling
+    first_line = code.split('\n')[0].lower().strip() if code else ""
+    is_c4_diagram = any(first_line.startswith(c4_type) for c4_type in ['c4context', 'c4container', 'c4component', 'c4dynamic'])
+    
     # Handle malformed code that's all on one line or has missing line breaks
     # Look for common Mermaid patterns and add line breaks
     if '\n' not in code or (len(code.split('\n')) < 3 and len(code) > 100):
-        # For severely malformed code, return a simple fallback
-        # This handles cases where the LLM output is completely concatenated
-        return """flowchart TB
+        # For severely malformed code, return appropriate fallback based on diagram type
+        if is_c4_diagram or 'c4' in code.lower():
+            return """C4Context
+    title Diagram Generation Error
+    
+    Person(user, "User", "System user requesting diagram")
+    System(error_system, "Error System", "Diagram generation failed due to malformed code")
+    System_Ext(llm, "LLM Provider", "Generated invalid diagram syntax")
+    
+    Rel(user, error_system, "Encountered error")
+    Rel(llm, error_system, "Provided malformed code")
+    
+    %% Suggestions for resolution
+    %% 1. Try generating again
+    %% 2. Switch to OpenAI provider  
+    %% 3. Simplify your requirement"""
+        else:
+            return """flowchart TB
     error[Diagram Generation Error]
     note[The LLM generated malformed diagram code]
     
@@ -160,7 +224,7 @@ def _clean_mermaid_code(mermaid_code: str) -> str:
     lines = code.split('\n')
     cleaned_lines = []
     
-    # Detect diagram type
+    # Detect diagram type (already detected above, but keep for consistency)
     first_line = lines[0].lower().strip() if lines else ""
     is_sequence_diagram = first_line.startswith('sequencediagram')
     
@@ -168,6 +232,52 @@ def _clean_mermaid_code(mermaid_code: str) -> str:
         # Skip empty lines and comments
         if not line.strip() or line.strip().startswith('%%'):
             cleaned_lines.append(line)
+            continue
+        
+        # C4-specific cleaning rules
+        if is_c4_diagram:
+            # Clean up C4 element syntax - ensure proper formatting
+            line_stripped = line.strip()
+            
+            # Fix common C4 element formatting issues
+            # Ensure proper spacing around parentheses in C4 elements
+            c4_elements = ['Person', 'System', 'Container', 'Component', 'Rel', 'RelNote',
+                          'System_Ext', 'Container_Ext', 'Component_Ext', 'Person_Ext',
+                          'Enterprise_Boundary', 'System_Boundary', 'Container_Boundary']
+            
+            for element in c4_elements:
+                # Fix missing spaces around commas in C4 elements (3 parameters)
+                pattern = rf'({element})\s*\(\s*([^,]+?)\s*,\s*([^,]+?)\s*,\s*([^,)]+?)\s*\)'
+                match = re.search(pattern, line_stripped, re.IGNORECASE)
+                if match:
+                    # Clean up each parameter by removing extra spaces
+                    param1 = match.group(2).strip()
+                    param2 = match.group(3).strip()
+                    param3 = match.group(4).strip()
+                    line_stripped = re.sub(pattern, rf'{element}({param1}, {param2}, {param3})', line_stripped, flags=re.IGNORECASE)
+                    continue
+                
+                # Fix 4-parameter C4 elements (like Rel with technology)
+                pattern_4 = rf'({element})\s*\(\s*([^,]+?)\s*,\s*([^,]+?)\s*,\s*([^,]+?)\s*,\s*([^,)]+?)\s*\)'
+                match_4 = re.search(pattern_4, line_stripped, re.IGNORECASE)
+                if match_4:
+                    # Clean up each parameter by removing extra spaces
+                    param1 = match_4.group(2).strip()
+                    param2 = match_4.group(3).strip()
+                    param3 = match_4.group(4).strip()
+                    param4 = match_4.group(5).strip()
+                    line_stripped = re.sub(pattern_4, rf'{element}({param1}, {param2}, {param3}, {param4})', line_stripped, flags=re.IGNORECASE)
+            
+            # Ensure C4 title statements are properly formatted
+            if line_stripped.lower().startswith('title '):
+                # Remove extra spaces and ensure single space after 'title'
+                line_stripped = re.sub(r'title\s+', 'title ', line_stripped, flags=re.IGNORECASE)
+            
+            # Clean up UpdateLayout statements
+            if line_stripped.lower().startswith('updatelayout'):
+                line_stripped = re.sub(r'updatelayout\s*\(\s*([^)]*)\s*\)', r'UpdateLayout(\1)', line_stripped, flags=re.IGNORECASE)
+            
+            cleaned_lines.append(line_stripped)
             continue
         
         # For sequence diagrams, remove stray 'end' statements that don't belong to alt blocks
@@ -187,9 +297,9 @@ def _clean_mermaid_code(mermaid_code: str) -> str:
             # Otherwise skip this stray 'end' statement
             continue
             
-        # For flowchart arrows, ensure proper spacing
-        if not is_sequence_diagram and '-->' in line and not ('-->>' in line or '-->|' in line):
-            # Only fix simple arrows in flowcharts, not sequence diagrams or labeled arrows
+        # For flowchart arrows, ensure proper spacing (but not for C4 diagrams)
+        if not is_sequence_diagram and not is_c4_diagram and '-->' in line and not ('-->>' in line or '-->|' in line):
+            # Only fix simple arrows in flowcharts, not sequence diagrams, C4 diagrams, or labeled arrows
             line = re.sub(r'(\w+)-->(\w+)', r'\1 --> \2', line)
         
         cleaned_lines.append(line)
@@ -199,7 +309,25 @@ def _clean_mermaid_code(mermaid_code: str) -> str:
     # If still looks malformed, return a fallback
     lines = [line.strip() for line in code.split('\n') if line.strip()]
     if len(lines) < 2:
-        return """flowchart TB
+        # Check if this was supposed to be a C4 diagram
+        if is_c4_diagram or any('c4' in line.lower() for line in lines):
+            return """C4Context
+    title Error in C4 Diagram Generation
+    
+    Person(user, "User", "System user requesting diagram")
+    System(error_system, "Error System", "Diagram generation encountered formatting issues")
+    System_Ext(llm_provider, "LLM Provider", "Generated incomplete or malformed C4 syntax")
+    
+    Rel(user, error_system, "Requested diagram")
+    Rel(llm_provider, error_system, "Provided invalid syntax")
+    
+    %% Resolution suggestions:
+    %% 1. Try generating the diagram again
+    %% 2. Switch to a different LLM provider (OpenAI recommended for C4)
+    %% 3. Simplify the requirement description
+    %% 4. Check if the requirement is suitable for C4 modeling"""
+        else:
+            return """flowchart TB
     error[Diagram Generation Error]
     note[The generated diagram had formatting issues]
     
@@ -208,24 +336,33 @@ def _clean_mermaid_code(mermaid_code: str) -> str:
     note2[Please try generating again or use a different LLM provider]
     note --> note2"""
     
-    # Check if it starts with a flowchart declaration
+    # Check if it starts with a valid diagram declaration
     first_line = lines[0].lower()
-    if not (first_line.startswith('flowchart') or first_line.startswith('graph') or first_line.startswith('sequencediagram')):
+    valid_diagram_starts = ['flowchart', 'graph', 'sequencediagram', 'c4context', 'c4container', 'c4component', 'c4dynamic']
+    if not any(first_line.startswith(start) for start in valid_diagram_starts):
         lines.insert(0, 'flowchart TB')
     
     # Add proper indentation for non-declaration lines
     formatted_lines = []
     for i, line in enumerate(lines):
-        if (i == 0 or 
-            line.startswith('subgraph') or 
-            line.startswith('end') or
-            line.startswith('participant') or
-            line.lower().startswith('flowchart') or
-            line.lower().startswith('sequencediagram') or
-            line.startswith('%%')):  # Comments
+        # Check if this is a diagram declaration or special line that shouldn't be indented
+        is_declaration = (i == 0 or 
+                         line.startswith('subgraph') or 
+                         line.startswith('end') or
+                         line.startswith('participant') or
+                         line.lower().startswith('flowchart') or
+                         line.lower().startswith('sequencediagram') or
+                         any(line.lower().startswith(c4_type) for c4_type in ['c4context', 'c4container', 'c4component', 'c4dynamic']) or
+                         line.startswith('%%'))  # Comments
+        
+        # C4 diagrams don't need indentation for their elements
+        is_c4_element = any(line.lower().strip().startswith(element) for element in 
+                           ['person', 'system', 'container', 'component', 'rel', 'title', 'updatelayout'])
+        
+        if is_declaration or (is_c4_diagram and is_c4_element):
             formatted_lines.append(line)
         else:
-            # Add indentation if not already present
+            # Add indentation if not already present (for flowcharts and sequence diagrams)
             if not line.startswith('    ') and not line.startswith('\t'):
                 formatted_lines.append('    ' + line)
             else:
@@ -236,7 +373,27 @@ def _clean_mermaid_code(mermaid_code: str) -> str:
     # Validate the final result
     is_valid, error_msg = _validate_mermaid_syntax(result)
     if not is_valid:
-        return f"""flowchart TB
+        # Provide C4-specific error fallback if this was a C4 diagram
+        if is_c4_diagram or any('c4' in result.lower() for result in result.split('\n')[:3]):
+            return f"""C4Context
+    title C4 Diagram Syntax Error
+    
+    Person(user, "User", "Requested C4 diagram")
+    System(validator, "Syntax Validator", "Detected syntax issues in generated C4 code")
+    System_Ext(llm_provider, "LLM Provider", "Generated invalid C4 syntax")
+    
+    Rel(user, validator, "Submitted diagram for validation")
+    Rel(llm_provider, validator, "Provided code with errors")
+    
+    %% Error Details: {error_msg}
+    %% 
+    %% Troubleshooting steps:
+    %% 1. Try generating again with OpenAI (best C4 support)
+    %% 2. Ensure requirement is suitable for C4 modeling
+    %% 3. Check for proper C4 element syntax (Person, System, Container, Rel)
+    %% 4. Verify relationship definitions are complete"""
+        else:
+            return f"""flowchart TB
     error[Diagram Syntax Error]
     details[{error_msg}]
     
@@ -758,6 +915,114 @@ IMPORTANT: Return ONLY valid JSON without markdown formatting."""
             "edges": []
         }
 
+async def build_c4_diagram(requirement: str, recommendations: List[Dict]) -> str:
+    """Build a C4 diagram using LLM with proper Mermaid C4 syntax."""
+    prompt = f"""Generate a proper C4 diagram using Mermaid's C4 syntax for this automation requirement:
+
+REQUIREMENT: {requirement}
+
+RECOMMENDATIONS: {recommendations[0].get('reasoning', 'No recommendations available') if recommendations else 'No recommendations available'}
+
+Create a C4 Context or Container diagram using proper Mermaid C4 syntax. Choose the appropriate level:
+- C4Context for high-level system overview showing external actors and systems
+- C4Container for detailed view showing internal containers and their interactions
+
+Use proper Mermaid C4 syntax with these elements:
+- Person(id, "Name", "Description") for users/actors
+- System(id, "Name", "Description") for internal systems
+- System_Ext(id, "Name", "Description") for external systems
+- Container(id, "Name", "Description", "Technology") for containers (if using C4Container)
+- Rel(from, to, "Label") for relationships
+- Rel(from, to, "Label", "Technology") for relationships with technology details
+
+Example C4Context format:
+C4Context
+    title System Context for [System Name]
+    
+    Person(user, "End User", "Person using the automated system")
+    System(main_system, "Automation System", "Core system handling the automation workflow")
+    System_Ext(external_api, "External API", "Third-party service integration")
+    System_Ext(database, "Database System", "Data storage and retrieval")
+    
+    Rel(user, main_system, "Uses", "Web/Mobile")
+    Rel(main_system, external_api, "Integrates with", "REST API")
+    Rel(main_system, database, "Stores/Retrieves data", "SQL")
+
+Example C4Container format:
+C4Container
+    title Container Diagram for [System Name]
+    
+    Person(user, "End User", "Person using the system")
+    
+    System_Boundary(system, "Automation System") {{
+        Container(web_app, "Web Application", "User Interface", "React/Angular")
+        Container(api, "API Gateway", "REST API", "Node.js/Python")
+        Container(processor, "Business Logic", "Core Processing", "Python/Java")
+        Container(queue, "Message Queue", "Async Processing", "RabbitMQ/SQS")
+    }}
+    
+    System_Ext(external_api, "External Service", "Third-party integration")
+    ContainerDb(database, "Database", "Data Storage", "PostgreSQL/MongoDB")
+    
+    Rel(user, web_app, "Uses", "HTTPS")
+    Rel(web_app, api, "Makes API calls", "REST/JSON")
+    Rel(api, processor, "Delegates to", "Internal")
+    Rel(processor, queue, "Sends messages", "AMQP")
+    Rel(processor, database, "Reads/Writes", "SQL/NoSQL")
+    Rel(processor, external_api, "Integrates", "REST API")
+
+CRITICAL FORMATTING REQUIREMENTS:
+1. Start with either "C4Context" or "C4Container" (choose based on detail level needed)
+2. Include a descriptive title using "title [description]"
+3. Each C4 element must be on its own line
+4. Use proper C4 element syntax with parentheses and quotes
+5. Relationships use Rel(from, to, "label") or Rel(from, to, "label", "technology")
+6. For Container diagrams, use System_Boundary for grouping containers
+7. Return ONLY the raw Mermaid C4 code without markdown formatting (no ```mermaid blocks)
+8. Ensure all element IDs are unique and referenced correctly in relationships"""
+
+    try:
+        # Use the current provider config to generate the diagram
+        provider_config = st.session_state.get('provider_config', {})
+        if provider_config.get('provider') == 'fake':
+            # Fallback for fake provider - provide realistic C4 diagram structure
+            return """C4Context
+    title System Context for Automated Process
+    
+    Person(user, "Business User", "Person who initiates and monitors the automated process")
+    Person(admin, "System Administrator", "Manages and configures the automation system")
+    
+    System(automation_system, "Automation System", "Core system that handles business process automation")
+    
+    System_Ext(external_api, "External API", "Third-party service for data integration")
+    System_Ext(notification_service, "Notification Service", "Email/SMS service for alerts")
+    System_Ext(audit_system, "Audit System", "Compliance and logging system")
+    
+    Rel(user, automation_system, "Initiates processes", "Web Interface")
+    Rel(admin, automation_system, "Configures", "Admin Panel")
+    Rel(automation_system, external_api, "Fetches data", "REST API")
+    Rel(automation_system, notification_service, "Sends alerts", "SMTP/SMS")
+    Rel(automation_system, audit_system, "Logs activities", "Secure API")"""
+        
+        response = await make_llm_request(prompt, provider_config)
+        return _clean_mermaid_code(response.strip())
+    except Exception as e:
+        return f"""C4Context
+    title C4 Diagram Generation Error
+    
+    Person(user, "User", "Person requesting C4 diagram")
+    System(error_system, "Error System", "Diagram generation failed")
+    System_Ext(llm_provider, "LLM Provider", "Failed to generate proper C4 syntax")
+    
+    Rel(user, error_system, "Encountered error")
+    Rel(llm_provider, error_system, "Generated error: {str(e)}")
+    
+    %% Troubleshooting:
+    %% 1. Try generating again
+    %% 2. Switch to OpenAI provider (best C4 support)
+    %% 3. Ensure requirement is suitable for C4 modeling"""
+
+
 # Configuration
 API_BASE_URL = "http://localhost:8000"
 POLL_INTERVAL = 2  # seconds
@@ -935,6 +1200,63 @@ class AutomatedAIAssessmentUI:
                 help="AWS region for Bedrock service"
             )
             
+            # AWS Credentials Configuration
+            st.sidebar.markdown("**AWS Credentials**")
+            st.sidebar.info("💡 AWS credentials are required to connect to Bedrock. You can also set these via environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).")
+            
+            # Option to choose input method
+            creds_input_method = st.sidebar.radio(
+                "Credentials Input Method",
+                ["Individual Fields", "Combined Format"],
+                help="Choose how to enter AWS credentials"
+            )
+            
+            if creds_input_method == "Individual Fields":
+                aws_access_key_id = st.sidebar.text_input(
+                    "AWS Access Key ID",
+                    value=st.session_state.provider_config.get('aws_access_key_id', ''),
+                    type="password",
+                    help="Your AWS Access Key ID"
+                )
+                aws_secret_access_key = st.sidebar.text_input(
+                    "AWS Secret Access Key", 
+                    value=st.session_state.provider_config.get('aws_secret_access_key', ''),
+                    type="password",
+                    help="Your AWS Secret Access Key"
+                )
+                aws_session_token = st.sidebar.text_input(
+                    "AWS Session Token (Optional)",
+                    value=st.session_state.provider_config.get('aws_session_token', ''),
+                    type="password",
+                    help="Optional AWS Session Token for temporary credentials"
+                )
+            else:
+                # Combined format
+                combined_creds = st.sidebar.text_area(
+                    "AWS Credentials (Combined)",
+                    value=st.session_state.provider_config.get('combined_aws_creds', ''),
+                    height=100,
+                    help="Enter credentials in format:\nAWS_ACCESS_KEY_ID=your_key_id\nAWS_SECRET_ACCESS_KEY=your_secret_key\nAWS_SESSION_TOKEN=your_token (optional)"
+                )
+                
+                # Parse combined credentials
+                aws_access_key_id = ""
+                aws_secret_access_key = ""
+                aws_session_token = ""
+                
+                if combined_creds:
+                    for line in combined_creds.strip().split('\n'):
+                        if '=' in line:
+                            key, value = line.split('=', 1)
+                            key = key.strip()
+                            value = value.strip()
+                            if key == "AWS_ACCESS_KEY_ID":
+                                aws_access_key_id = value
+                            elif key == "AWS_SECRET_ACCESS_KEY":
+                                aws_secret_access_key = value
+                            elif key == "AWS_SESSION_TOKEN":
+                                aws_session_token = value
+            
             # Discover models button
             if st.sidebar.button("🔍 Discover Models", key="discover_bedrock"):
                 with st.sidebar:
@@ -945,7 +1267,10 @@ class AutomatedAIAssessmentUI:
                                 "/providers/models",
                                 {
                                     "provider": "bedrock",
-                                    "region": region
+                                    "region": region,
+                                    "aws_access_key_id": aws_access_key_id,
+                                    "aws_secret_access_key": aws_secret_access_key,
+                                    "aws_session_token": aws_session_token
                                 }
                             ))
                             if response.get('ok'):
@@ -1045,13 +1370,24 @@ class AutomatedAIAssessmentUI:
             model = "default"
         
         # Update session state
-        st.session_state.provider_config.update({
+        config_update = {
             'provider': current_provider,
             'model': model,
             'api_key': api_key,
             'endpoint_url': endpoint_url,
             'region': region
-        })
+        }
+        
+        # Add AWS credentials for Bedrock
+        if current_provider == "bedrock":
+            config_update.update({
+                'aws_access_key_id': aws_access_key_id,
+                'aws_secret_access_key': aws_secret_access_key,
+                'aws_session_token': aws_session_token,
+                'combined_aws_creds': combined_creds if creds_input_method == "Combined Format" else ""
+            })
+        
+        st.session_state.provider_config.update(config_update)
         
         # Debug options (for troubleshooting)
         with st.sidebar.expander("🔍 Debug Options"):
@@ -2269,6 +2605,10 @@ class AutomatedAIAssessmentUI:
             
             # Generate and show LLM-enhanced tech stack with explanations
             enhanced_tech_stack, architecture_explanation = asyncio.run(self._generate_llm_tech_stack_and_explanation(rec['tech_stack']))
+            
+            # Store the enhanced data back to session state for export
+            self._update_recommendations_with_enhanced_data(enhanced_tech_stack, architecture_explanation)
+            
             self._render_tech_stack_explanation(enhanced_tech_stack)
             
             # Show architecture explanation
@@ -2560,6 +2900,50 @@ class AutomatedAIAssessmentUI:
             st.error(f"Failed to generate tech stack and explanation: {e}")
             return original_tech_stack, self._generate_fallback_architecture_explanation(original_tech_stack)
     
+    def _update_recommendations_with_enhanced_data(self, enhanced_tech_stack: List[str], architecture_explanation: str):
+        """Update stored recommendations with enhanced tech stack and architecture explanation."""
+        try:
+            if 'recommendations' in st.session_state and st.session_state.recommendations:
+                recommendations = st.session_state.recommendations
+                
+                # Update each recommendation with enhanced data
+                if 'recommendations' in recommendations:
+                    for rec in recommendations['recommendations']:
+                        # Store enhanced data for export
+                        rec['enhanced_tech_stack'] = enhanced_tech_stack
+                        rec['architecture_explanation'] = architecture_explanation
+                
+                # Also store at the top level for backward compatibility
+                recommendations['enhanced_tech_stack'] = enhanced_tech_stack
+                recommendations['architecture_explanation'] = architecture_explanation
+                
+                # Update session state
+                st.session_state.recommendations = recommendations
+                
+                # Also update the persistent session state via API
+                asyncio.run(self._update_persistent_session_state())
+                
+        except Exception as e:
+            from app.utils.logger import app_logger
+            app_logger.error(f"Failed to update recommendations with enhanced data: {e}")
+    
+    async def _update_persistent_session_state(self):
+        """Update the persistent session state with enhanced recommendation data."""
+        try:
+            if 'session_id' in st.session_state and 'recommendations' in st.session_state:
+                # Call API to update session state
+                await self.make_api_request(
+                    "PUT",
+                    f"/sessions/{st.session_state.session_id}/enhanced_data",
+                    {
+                        "enhanced_tech_stack": st.session_state.recommendations.get('enhanced_tech_stack'),
+                        "architecture_explanation": st.session_state.recommendations.get('architecture_explanation')
+                    }
+                )
+        except Exception as e:
+            from app.utils.logger import app_logger
+            app_logger.error(f"Failed to update persistent session state: {e}")
+
     def render_export_buttons(self):
         """Render export functionality."""
         st.subheader("📤 Export Results")
@@ -2729,7 +3113,7 @@ class AutomatedAIAssessmentUI:
         
         diagram_type = st.selectbox(
             "Select diagram type:",
-            ["Context Diagram", "Container Diagram", "Sequence Diagram", "Tech Stack Wiring Diagram", "Infrastructure Diagram"]
+            ["Context Diagram", "Container Diagram", "Sequence Diagram", "Tech Stack Wiring Diagram", "Infrastructure Diagram", "C4 Diagram"]
         )
         
         # Show description for selected diagram type
@@ -2738,7 +3122,8 @@ class AutomatedAIAssessmentUI:
             "Container Diagram": "📦 **System Containers**: Shows the internal components, services, and how they interact within the system.",
             "Sequence Diagram": "🔄 **Process Flow**: Shows the step-by-step sequence of interactions and decision points in the automation.",
             "Tech Stack Wiring Diagram": "🔌 **Technical Wiring**: Shows how all the recommended technologies connect, communicate, and pass data between each other. Like a blueprint for developers showing API calls, database connections, authentication flows, and service integrations.",
-            "Infrastructure Diagram": "🏗️ **Infrastructure Architecture**: Shows cloud infrastructure components with vendor-specific icons (AWS, GCP, Azure). Displays compute, storage, database, and networking services with realistic cloud architecture patterns."
+            "Infrastructure Diagram": "🏗️ **Infrastructure Architecture**: Shows cloud infrastructure components with vendor-specific icons (AWS, GCP, Azure). Displays compute, storage, database, and networking services with realistic cloud architecture patterns.",
+            "C4 Diagram": "🏛️ **C4 Architecture Model**: Uses proper C4 syntax to show software architecture following the official C4 model standards. Provides standardized architectural documentation with automatic C4 styling, system boundaries, and relationship conventions. Unlike the Context/Container diagrams above (which use flowchart syntax), C4 diagrams use official C4 notation with built-in styling and follow industry-standard C4 modeling practices."
         }
         
         st.info(diagram_descriptions[diagram_type])
@@ -2792,6 +3177,10 @@ class AutomatedAIAssessmentUI:
                         mermaid_code = asyncio.run(build_tech_stack_wiring_diagram(requirement_text, recommendations))
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
+                    elif diagram_type == "C4 Diagram":
+                        mermaid_code = asyncio.run(build_c4_diagram(requirement_text, recommendations))
+                        st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
+                        st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
                     else:  # Infrastructure Diagram
                         infrastructure_spec = asyncio.run(build_infrastructure_diagram(requirement_text, recommendations))
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_spec'] = infrastructure_spec
@@ -2834,11 +3223,24 @@ class AutomatedAIAssessmentUI:
                 This shows the technical "wiring" of your system - how each technology component connects to others.
                 """)
             
+            # Add helpful context for C4 Diagrams
+            elif diagram_type == "C4 Diagram":
+                st.info("""
+                **How to read this C4 diagram:**
+                - **Person** = External users or actors (customers, admins)
+                - **System** = Software systems (your application, external services)
+                - **Container** = Applications, databases, file systems within a system
+                - **Boundaries** = System or enterprise boundaries (dotted lines)
+                - **Relationships** = Interactions between elements with descriptions
+                
+                This follows the official C4 model for software architecture documentation with standardized notation and styling.
+                """)
+            
             # Check if diagram generation failed and show helpful message (only for Mermaid diagrams)
             if diagram_render_type == "mermaid":
                 mermaid_code = st.session_state[diagram_key]
                 if "Diagram Generation Error" in mermaid_code:
-                    st.warning("""
+                    error_message = """
                     **Diagram Generation Issue Detected**
                     
                     The LLM generated a diagram with formatting issues. This can happen with certain providers or complex tech stacks.
@@ -2847,16 +3249,40 @@ class AutomatedAIAssessmentUI:
                     - Try generating the diagram again (click the Generate button)
                     - Switch to a different LLM provider (OpenAI usually works best for diagrams)
                     - Use the fake provider for a basic diagram structure
-                    """)
+                    """
+                    
+                    # Add C4-specific guidance
+                    if diagram_type == "C4 Diagram":
+                        error_message += """
+                    
+                    **C4 Diagram Specific Tips:**
+                    - C4 diagrams use specialized syntax (Person, System, Container, Rel)
+                    - Some providers may struggle with C4 syntax - try OpenAI or Claude
+                    - The fake provider provides a valid C4 diagram structure as fallback
+                        """
+                    
+                    st.warning(error_message)
                 elif "generation failed" in mermaid_code.lower():
-                    st.error("""
+                    error_message = """
                     **Diagram Generation Failed**
                     
                     There was an error generating the diagram. Please check:
                     - Your LLM provider is properly configured
                     - You have a valid API key
                     - Try switching providers or generating again
-                    """)
+                    """
+                    
+                    # Add C4-specific guidance
+                    if diagram_type == "C4 Diagram":
+                        error_message += """
+                    
+                    **For C4 Diagrams:**
+                    - Ensure your provider supports Mermaid C4 syntax
+                    - Try the fake provider for a working C4 example
+                    - C4 diagrams require specific element types (Person, System, Container)
+                        """
+                    
+                    st.error(error_message)
                 
                 # Show code
                 with st.expander("View Mermaid Code"):

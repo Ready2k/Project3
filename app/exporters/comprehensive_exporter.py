@@ -455,31 +455,61 @@ class ComprehensiveExporter(BaseExporter):
                 lines.append("#### 🛠️ Recommended Technology Stack")
                 lines.append("")
                 
-                # Generate enhanced tech stack and explanation
-                try:
-                    enhanced_tech_stack, architecture_explanation = await self._generate_tech_stack_analysis(rec.tech_stack, session)
+                # Use stored enhanced data if available, otherwise generate new
+                enhanced_tech_stack = getattr(rec, 'enhanced_tech_stack', None) or rec.tech_stack
+                architecture_explanation = getattr(rec, 'architecture_explanation', None)
+                
+                # If no stored explanation, try to generate one
+                if not architecture_explanation:
+                    try:
+                        enhanced_tech_stack, architecture_explanation = await self._generate_comprehensive_tech_stack_analysis(rec.tech_stack, session)
+                        app_logger.info(f"Generated new architecture explanation ({len(architecture_explanation)} chars)")
+                    except Exception as e:
+                        app_logger.error(f"Failed to generate tech stack analysis: {e}")
+                        architecture_explanation = self._generate_detailed_fallback_explanation(rec.tech_stack, session)
+                else:
+                    app_logger.info(f"Using stored architecture explanation ({len(architecture_explanation)} chars)")
+                
+                # Categorized tech stack with detailed descriptions
+                categorized_stack = self._categorize_tech_stack_with_descriptions(enhanced_tech_stack)
+                
+                for category, technologies in categorized_stack.items():
+                    if technologies:
+                        lines.append(f"**{category}:**")
+                        for tech_info in technologies:
+                            if isinstance(tech_info, dict):
+                                tech_name = tech_info.get('name', tech_info.get('technology', str(tech_info)))
+                                tech_desc = tech_info.get('description', '')
+                                if tech_desc:
+                                    lines.append(f"- **{tech_name}**: {tech_desc}")
+                                else:
+                                    lines.append(f"- `{tech_name}`")
+                            else:
+                                lines.append(f"- `{tech_info}`")
+                        lines.append("")
+                
+                # Architecture explanation - use the stored or generated content
+                lines.append("#### 🏗️ How It All Works Together")
+                lines.append("")
+                
+                if architecture_explanation and architecture_explanation.strip():
+                    # Clean up the explanation and format it properly
+                    explanation_text = architecture_explanation.strip()
                     
-                    # Categorized tech stack
-                    categorized_stack = self._categorize_tech_stack(enhanced_tech_stack)
+                    # Split into paragraphs and add proper spacing
+                    paragraphs = [p.strip() for p in explanation_text.split('\n\n') if p.strip()]
+                    if not paragraphs:
+                        # If no double newlines, split on single newlines but group sentences
+                        sentences = [s.strip() for s in explanation_text.split('\n') if s.strip()]
+                        paragraphs = [' '.join(sentences)]
                     
-                    for category, technologies in categorized_stack.items():
-                        if technologies:
-                            lines.append(f"**{category}:**")
-                            for tech in technologies:
-                                lines.append(f"- `{tech}`")
-                            lines.append("")
-                    
-                    # Architecture explanation
-                    lines.append("#### 🏗️ How It All Works Together")
-                    lines.append("")
-                    lines.append(architecture_explanation)
-                    lines.append("")
-                    
-                except Exception as e:
-                    app_logger.error(f"Failed to generate tech stack analysis: {e}")
-                    # Fallback to basic tech stack
-                    for tech in rec.tech_stack:
-                        lines.append(f"- `{tech}`")
+                    for paragraph in paragraphs:
+                        lines.append(paragraph)
+                        lines.append("")
+                else:
+                    # Final fallback
+                    fallback_explanation = self._generate_detailed_fallback_explanation(enhanced_tech_stack, session)
+                    lines.append(fallback_explanation)
                     lines.append("")
             
             # Detailed reasoning
@@ -710,6 +740,32 @@ class ComprehensiveExporter(BaseExporter):
         explanation = self._generate_fallback_architecture_explanation(tech_stack)
         return tech_stack, explanation
     
+    async def _generate_comprehensive_tech_stack_analysis(self, tech_stack: List[str], session: SessionState) -> Tuple[List[str], str]:
+        """Generate comprehensive tech stack analysis with detailed explanations (same as UI)."""
+        if self.llm_provider:
+            try:
+                explainer = ArchitectureExplainer(self.llm_provider)
+                requirements = session.requirements
+                session_id = session.session_id
+                
+                app_logger.info(f"Generating comprehensive tech stack analysis for {len(tech_stack)} technologies")
+                
+                # Use the same method as the UI to ensure consistency
+                enhanced_tech_stack, explanation = await explainer.explain_architecture(
+                    tech_stack, requirements, session_id
+                )
+                
+                app_logger.info(f"Generated comprehensive explanation ({len(explanation)} chars)")
+                return enhanced_tech_stack, explanation
+                
+            except Exception as e:
+                app_logger.error(f"Failed to generate comprehensive LLM tech stack analysis: {e}")
+        
+        # Enhanced fallback with more detail than basic version
+        app_logger.info("Using enhanced fallback for tech stack analysis")
+        explanation = self._generate_detailed_fallback_explanation(tech_stack, session)
+        return tech_stack, explanation
+    
     def _categorize_tech_stack(self, tech_stack: List[str]) -> Dict[str, List[str]]:
         """Categorize technologies by type."""
         categories = {
@@ -799,8 +855,120 @@ class ComprehensiveExporter(BaseExporter):
         for tech in tech_stack:
             category = category_mapping.get(tech, "Other Technologies")
             if category not in categories:
-                categories[category] = []
+                categories["Other Technologies"] = []
             categories[category].append(tech)
+        
+        # Remove empty categories
+        return {k: v for k, v in categories.items() if v}
+    
+    def _categorize_tech_stack_with_descriptions(self, tech_stack: List[str]) -> Dict[str, List[Dict[str, str]]]:
+        """Categorize technologies by type with detailed descriptions."""
+        categories = {
+            "Programming Languages": [],
+            "Web Frameworks & APIs": [],
+            "Databases & Storage": [],
+            "Cloud & Infrastructure": [],
+            "Communication & Integration": [],
+            "Testing & Development Tools": [],
+            "Data Processing & Analytics": [],
+            "Monitoring & Operations": [],
+            "Message Queues & Processing": [],
+            "Other Technologies": []
+        }
+        
+        # Technology categorization mapping with descriptions
+        tech_info = {
+            # Programming Languages
+            "Python": {"category": "Programming Languages", "description": "High-level programming language ideal for automation, data processing, and AI applications"},
+            "JavaScript": {"category": "Programming Languages", "description": "Versatile programming language for web development and server-side applications"},
+            "TypeScript": {"category": "Programming Languages", "description": "Typed superset of JavaScript that compiles to plain JavaScript"},
+            "Java": {"category": "Programming Languages", "description": "Enterprise-grade programming language with strong typing and cross-platform compatibility"},
+            "C#": {"category": "Programming Languages", "description": "Microsoft's object-oriented programming language for .NET applications"},
+            "Go": {"category": "Programming Languages", "description": "Fast, compiled language designed for concurrent programming and microservices"},
+            "Rust": {"category": "Programming Languages", "description": "Systems programming language focused on safety, speed, and concurrency"},
+            
+            # Web Frameworks & APIs
+            "FastAPI": {"category": "Web Frameworks & APIs", "description": "Modern, fast web framework for building APIs with Python based on standard Python type hints"},
+            "Django": {"category": "Web Frameworks & APIs", "description": "High-level Python web framework that encourages rapid development and clean design"},
+            "Flask": {"category": "Web Frameworks & APIs", "description": "Lightweight WSGI web application framework for Python"},
+            "Express.js": {"category": "Web Frameworks & APIs", "description": "Fast, unopinionated, minimalist web framework for Node.js"},
+            "React": {"category": "Web Frameworks & APIs", "description": "JavaScript library for building user interfaces with component-based architecture"},
+            "Vue.js": {"category": "Web Frameworks & APIs", "description": "Progressive JavaScript framework for building user interfaces"},
+            "Angular": {"category": "Web Frameworks & APIs", "description": "Platform and framework for building single-page client applications using HTML and TypeScript"},
+            "REST API": {"category": "Web Frameworks & APIs", "description": "Architectural style for designing networked applications using HTTP methods"},
+            "GraphQL": {"category": "Web Frameworks & APIs", "description": "Query language and runtime for APIs that provides a complete description of data"},
+            
+            # Databases & Storage
+            "PostgreSQL": {"category": "Databases & Storage", "description": "Advanced open-source relational database with strong ACID compliance and extensibility"},
+            "MySQL": {"category": "Databases & Storage", "description": "Popular open-source relational database management system"},
+            "MongoDB": {"category": "Databases & Storage", "description": "Document-oriented NoSQL database designed for scalability and flexibility"},
+            "Redis": {"category": "Databases & Storage", "description": "In-memory data structure store used as database, cache, and message broker"},
+            "Elasticsearch": {"category": "Databases & Storage", "description": "Distributed search and analytics engine built on Apache Lucene"},
+            "DynamoDB": {"category": "Databases & Storage", "description": "Amazon's fully managed NoSQL database service with fast performance"},
+            "Cassandra": {"category": "Databases & Storage", "description": "Distributed NoSQL database designed for handling large amounts of data across commodity servers"},
+            "SQLite": {"category": "Databases & Storage", "description": "Lightweight, serverless, self-contained SQL database engine"},
+            
+            # Cloud & Infrastructure
+            "AWS": {"category": "Cloud & Infrastructure", "description": "Amazon Web Services - comprehensive cloud computing platform"},
+            "AWS Lambda": {"category": "Cloud & Infrastructure", "description": "Serverless compute service that runs code in response to events"},
+            "Azure": {"category": "Cloud & Infrastructure", "description": "Microsoft's cloud computing platform and infrastructure"},
+            "GCP": {"category": "Cloud & Infrastructure", "description": "Google Cloud Platform - suite of cloud computing services"},
+            "Docker": {"category": "Cloud & Infrastructure", "description": "Platform for developing, shipping, and running applications in containers"},
+            "Kubernetes": {"category": "Cloud & Infrastructure", "description": "Container orchestration platform for automating deployment, scaling, and management"},
+            "Terraform": {"category": "Cloud & Infrastructure", "description": "Infrastructure as code tool for building, changing, and versioning infrastructure"},
+            "Lambda": {"category": "Cloud & Infrastructure", "description": "Serverless compute service for running code without managing servers"},
+            "EC2": {"category": "Cloud & Infrastructure", "description": "Amazon Elastic Compute Cloud - scalable virtual servers in the cloud"},
+            
+            # Communication & Integration
+            "RabbitMQ": {"category": "Communication & Integration", "description": "Message broker software that implements Advanced Message Queuing Protocol"},
+            "Apache Kafka": {"category": "Communication & Integration", "description": "Distributed streaming platform for building real-time data pipelines"},
+            "WebSocket": {"category": "Communication & Integration", "description": "Protocol for full-duplex communication channels over a single TCP connection"},
+            "gRPC": {"category": "Communication & Integration", "description": "High-performance RPC framework that can run in any environment"},
+            "MQTT": {"category": "Communication & Integration", "description": "Lightweight messaging protocol for small sensors and mobile devices"},
+            "Twilio": {"category": "Communication & Integration", "description": "Cloud communications platform for SMS, voice, and messaging APIs"},
+            
+            # AI & Machine Learning
+            "AWS Comprehend": {"category": "Data Processing & Analytics", "description": "Natural language processing service that uses machine learning to find insights in text"},
+            "OpenAI": {"category": "Data Processing & Analytics", "description": "AI research company providing GPT models and APIs for natural language processing"},
+            "Anthropic": {"category": "Data Processing & Analytics", "description": "AI safety company providing Claude models for conversational AI"},
+            
+            # Testing & Development Tools
+            "pytest": {"category": "Testing & Development Tools", "description": "Testing framework for Python that makes it easy to write simple and scalable tests"},
+            "Jest": {"category": "Testing & Development Tools", "description": "JavaScript testing framework with a focus on simplicity"},
+            "Selenium": {"category": "Testing & Development Tools", "description": "Web browser automation tool for testing web applications"},
+            "Git": {"category": "Testing & Development Tools", "description": "Distributed version control system for tracking changes in source code"},
+            "Jenkins": {"category": "Testing & Development Tools", "description": "Open-source automation server for continuous integration and deployment"},
+            "GitHub Actions": {"category": "Testing & Development Tools", "description": "CI/CD platform that allows automation of build, test, and deployment workflows"},
+            
+            # Data Processing & Analytics
+            "Apache Spark": {"category": "Data Processing & Analytics", "description": "Unified analytics engine for large-scale data processing"},
+            "Pandas": {"category": "Data Processing & Analytics", "description": "Data manipulation and analysis library for Python"},
+            "NumPy": {"category": "Data Processing & Analytics", "description": "Fundamental package for scientific computing with Python"},
+            "Apache Airflow": {"category": "Data Processing & Analytics", "description": "Platform to programmatically author, schedule, and monitor workflows"},
+            "Jupyter": {"category": "Data Processing & Analytics", "description": "Interactive computing environment for creating and sharing documents with code and visualizations"},
+            
+            # Monitoring & Operations
+            "Prometheus": {"category": "Monitoring & Operations", "description": "Open-source monitoring and alerting toolkit"},
+            "Grafana": {"category": "Monitoring & Operations", "description": "Analytics and interactive visualization web application"},
+            "ELK Stack": {"category": "Monitoring & Operations", "description": "Elasticsearch, Logstash, and Kibana for search, logging, and analytics"},
+            "New Relic": {"category": "Monitoring & Operations", "description": "Application performance monitoring and observability platform"},
+            "DataDog": {"category": "Monitoring & Operations", "description": "Monitoring and analytics platform for cloud applications"}
+        }
+        
+        for tech in tech_stack:
+            tech_data = tech_info.get(tech, {
+                "category": "Other Technologies", 
+                "description": f"Technology component for system implementation"
+            })
+            
+            category = tech_data["category"]
+            if category not in categories:
+                categories[category] = []
+            
+            categories[category].append({
+                "name": tech,
+                "description": tech_data["description"]
+            })
         
         # Remove empty categories
         return {k: v for k, v in categories.items() if v}
@@ -1226,27 +1394,81 @@ class ComprehensiveExporter(BaseExporter):
             lines.append(f"**Confidence:** {rec.confidence:.1%} {confidence_bar}")
             lines.append("")
             
-            # Tech stack
+            # Tech stack with detailed descriptions
             if rec.tech_stack:
                 lines.append("#### 🛠️ Recommended Technology Stack")
                 lines.append("")
                 
-                # Categorized tech stack
-                categorized_stack = self._categorize_tech_stack(rec.tech_stack)
+                # Use stored enhanced data if available, otherwise use original
+                enhanced_tech_stack = getattr(rec, 'enhanced_tech_stack', None) or rec.tech_stack
+                architecture_explanation = getattr(rec, 'architecture_explanation', None)
+                
+                # Categorized tech stack with descriptions
+                categorized_stack = self._categorize_tech_stack_with_descriptions(enhanced_tech_stack)
                 
                 for category, technologies in categorized_stack.items():
                     if technologies:
                         lines.append(f"**{category}:**")
-                        for tech in technologies:
-                            lines.append(f"- `{tech}`")
+                        for tech_info in technologies:
+                            if isinstance(tech_info, dict):
+                                tech_name = tech_info.get('name', tech_info.get('technology', str(tech_info)))
+                                tech_desc = tech_info.get('description', '')
+                                if tech_desc:
+                                    lines.append(f"- **{tech_name}**: {tech_desc}")
+                                else:
+                                    lines.append(f"- `{tech_name}`")
+                            else:
+                                lines.append(f"- `{tech_info}`")
                         lines.append("")
                 
-                # Basic architecture explanation
+                # Architecture explanation - use stored data if available
                 lines.append("#### 🏗️ How It All Works Together")
                 lines.append("")
-                explanation = self._generate_fallback_architecture_explanation(rec.tech_stack)
-                lines.append(explanation)
-                lines.append("")
+                
+                if architecture_explanation and architecture_explanation.strip():
+                    app_logger.info(f"Using stored architecture explanation in sync export ({len(architecture_explanation)} chars)")
+                    explanation_text = architecture_explanation.strip()
+                    
+                    # Split into paragraphs and add proper spacing
+                    paragraphs = [p.strip() for p in explanation_text.split('\n\n') if p.strip()]
+                    if not paragraphs:
+                        # If no double newlines, split on single newlines but group sentences
+                        sentences = [s.strip() for s in explanation_text.split('\n') if s.strip()]
+                        paragraphs = [' '.join(sentences)]
+                    
+                    for paragraph in paragraphs:
+                        lines.append(paragraph)
+                        lines.append("")
+                else:
+                    # Generate detailed fallback explanation
+                    app_logger.info("No stored explanation found, generating detailed fallback")
+                    explanation = self._generate_detailed_fallback_explanation(enhanced_tech_stack, session)
+                    
+                    # Split explanation into paragraphs for better formatting
+                    if explanation and explanation.strip():
+                        # Split into paragraphs and add proper spacing
+                        paragraphs = [p.strip() for p in explanation.split('. ') if p.strip()]
+                        
+                        # Group sentences into paragraphs (every 2-3 sentences)
+                        current_paragraph = []
+                        for i, sentence in enumerate(paragraphs):
+                            current_paragraph.append(sentence if sentence.endswith('.') else sentence + '.')
+                            
+                            # Create paragraph break every 2-3 sentences or at logical breaks
+                            if (len(current_paragraph) >= 2 and 
+                                (i == len(paragraphs) - 1 or 
+                                 any(keyword in sentence.lower() for keyword in ['workflow', 'components', 'architecture', 'system']))):
+                                lines.append(' '.join(current_paragraph))
+                                lines.append("")
+                                current_paragraph = []
+                        
+                        # Add any remaining sentences
+                        if current_paragraph:
+                            lines.append(' '.join(current_paragraph))
+                            lines.append("")
+                    else:
+                        lines.append("Technology components work together to provide a comprehensive automation solution.")
+                        lines.append("")
             
             # Detailed reasoning
             lines.append("#### 💭 Reasoning & Analysis")
@@ -1725,3 +1947,72 @@ class ComprehensiveExporter(BaseExporter):
             lines.append("")
         
         return lines
+    
+    def _generate_detailed_fallback_explanation(self, tech_stack: List[str], session: SessionState) -> str:
+        """Generate detailed fallback architecture explanation with specific technology roles."""
+        if not tech_stack:
+            return "No technology stack specified for this recommendation."
+        
+        # Categorize technologies to understand the architecture
+        categorized = self._categorize_tech_stack_with_descriptions(tech_stack)
+        
+        explanation_parts = []
+        
+        # Analyze the requirements to provide context
+        requirements = session.requirements
+        domain = requirements.get('domain', '').lower()
+        description = requirements.get('description', '')
+        
+        # Introduction based on domain
+        if 'communication' in domain or 'messaging' in domain or 'sms' in description.lower():
+            explanation_parts.append("This communication automation solution is architected to handle message processing, delivery, and analysis at scale.")
+        elif 'data' in domain or 'analytics' in domain:
+            explanation_parts.append("This data processing solution is designed to handle large-scale data ingestion, analysis, and reporting workflows.")
+        elif 'api' in domain or 'integration' in domain:
+            explanation_parts.append("This integration solution provides a robust API-first architecture for connecting systems and automating workflows.")
+        else:
+            explanation_parts.append("This automation solution is architected to provide scalable, reliable, and maintainable system integration.")
+        
+        # Explain each technology category's role
+        if categorized.get("Cloud & Infrastructure"):
+            cloud_techs = [tech["name"] for tech in categorized["Cloud & Infrastructure"]]
+            if "AWS Lambda" in cloud_techs or "Lambda" in cloud_techs:
+                explanation_parts.append(f"The serverless architecture leverages {', '.join(cloud_techs)} to provide automatic scaling and cost-effective execution without server management overhead.")
+            else:
+                explanation_parts.append(f"The cloud infrastructure utilizes {', '.join(cloud_techs)} to provide scalable, reliable hosting and deployment capabilities.")
+        
+        if categorized.get("Communication & Integration"):
+            comm_techs = [tech["name"] for tech in categorized["Communication & Integration"]]
+            if "Twilio" in comm_techs:
+                explanation_parts.append(f"Communication services are handled by {', '.join(comm_techs)}, enabling reliable SMS, voice, and messaging capabilities with robust delivery tracking and error handling.")
+            else:
+                explanation_parts.append(f"System integration and communication is managed through {', '.join(comm_techs)}, enabling seamless data exchange between components.")
+        
+        if categorized.get("Data Processing & Analytics"):
+            data_techs = [tech["name"] for tech in categorized["Data Processing & Analytics"]]
+            if "AWS Comprehend" in data_techs:
+                explanation_parts.append(f"Natural language processing and sentiment analysis are powered by {', '.join(data_techs)}, providing intelligent text analysis and insights extraction from communication data.")
+            else:
+                explanation_parts.append(f"Data processing and analytics are handled by {', '.join(data_techs)}, enabling intelligent analysis and insights generation.")
+        
+        if categorized.get("Databases & Storage"):
+            db_techs = [tech["name"] for tech in categorized["Databases & Storage"]]
+            explanation_parts.append(f"Data persistence and retrieval are managed by {', '.join(db_techs)}, ensuring reliable storage, fast access, and data integrity throughout the system.")
+        
+        if categorized.get("Programming Languages"):
+            lang_techs = [tech["name"] for tech in categorized["Programming Languages"]]
+            explanation_parts.append(f"The core application logic is implemented in {', '.join(lang_techs)}, providing robust, maintainable code with excellent library ecosystem support.")
+        
+        if categorized.get("Web Frameworks & APIs"):
+            api_techs = [tech["name"] for tech in categorized["Web Frameworks & APIs"]]
+            explanation_parts.append(f"API endpoints and web services are built using {', '.join(api_techs)}, providing fast, secure, and well-documented interfaces for system interaction.")
+        
+        # Add workflow description
+        if 'communication' in domain or 'sms' in description.lower():
+            explanation_parts.append("The typical workflow involves message ingestion, content analysis, processing through business rules, delivery via communication channels, and comprehensive monitoring of delivery status and system performance.")
+        elif 'data' in domain:
+            explanation_parts.append("The data flow follows an ETL pattern: extraction from various sources, transformation and validation, intelligent analysis, and loading into storage systems with real-time monitoring and alerting.")
+        else:
+            explanation_parts.append("The system components work together in a coordinated workflow, with each technology handling its specialized function while maintaining high availability, security, and performance standards.")
+        
+        return " ".join(explanation_parts)
