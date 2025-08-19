@@ -404,13 +404,32 @@ def _clean_mermaid_code(mermaid_code: str) -> str:
     
     return result
 
-async def build_context_diagram(requirement: str, recommendations: List[Dict]) -> str:
+async def build_context_diagram(requirement: str, recommendations: List[Dict],
+                               enhanced_tech_stack: Optional[List[str]] = None,
+                               architecture_explanation: Optional[str] = None) -> str:
     """Build a context diagram using LLM based on the specific requirement."""
+    # Get tech stack for context (enhanced takes priority)
+    tech_stack_context = ""
+    if enhanced_tech_stack:
+        app_logger.info(f"Using enhanced tech stack context for context diagram: {len(enhanced_tech_stack)} technologies")
+        tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(enhanced_tech_stack)}"
+    elif recommendations and recommendations[0].get('tech_stack'):
+        tech_stack = recommendations[0]['tech_stack']
+        app_logger.info(f"Using recommendation tech stack context for context diagram: {len(tech_stack)} technologies")
+        tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(tech_stack)}"
+    
     prompt = f"""Generate a Mermaid context diagram (C4 Level 1) for this automation requirement:
 
 REQUIREMENT: {requirement}
 
 RECOMMENDATIONS: {recommendations[0].get('reasoning', 'No recommendations available') if recommendations else 'No recommendations available'}
+
+{tech_stack_context}
+
+{f'''
+ARCHITECTURE EXPLANATION: {architecture_explanation}
+
+Use the architecture explanation above to understand system boundaries and external integrations.''' if architecture_explanation else ''}
 
 Create a context diagram showing:
 - The user/actor who will use the system
@@ -469,13 +488,32 @@ CRITICAL FORMATTING REQUIREMENTS:
   user --> system
   system --> note"""
 
-async def build_container_diagram(requirement: str, recommendations: List[Dict]) -> str:
+async def build_container_diagram(requirement: str, recommendations: List[Dict],
+                                 enhanced_tech_stack: Optional[List[str]] = None,
+                                 architecture_explanation: Optional[str] = None) -> str:
     """Build a container diagram using LLM based on the specific requirement."""
+    # Get tech stack for context (enhanced takes priority)
+    tech_stack_context = ""
+    if enhanced_tech_stack:
+        app_logger.info(f"Using enhanced tech stack context for container diagram: {len(enhanced_tech_stack)} technologies")
+        tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(enhanced_tech_stack)}"
+    elif recommendations and recommendations[0].get('tech_stack'):
+        tech_stack = recommendations[0]['tech_stack']
+        app_logger.info(f"Using recommendation tech stack context for container diagram: {len(tech_stack)} technologies")
+        tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(tech_stack)}"
+    
     prompt = f"""Generate a Mermaid container diagram (C4 Level 2) for this automation requirement:
 
 REQUIREMENT: {requirement}
 
 RECOMMENDATIONS: {recommendations[0].get('reasoning', 'No recommendations available') if recommendations else 'No recommendations available'}
+
+{tech_stack_context}
+
+{f'''
+ARCHITECTURE EXPLANATION: {architecture_explanation}
+
+Use the architecture explanation above to understand component relationships and ensure the diagram reflects the same architectural insights.''' if architecture_explanation else ''}
 
 Create a container diagram showing the internal components and how they interact:
 - Web/mobile interfaces
@@ -542,33 +580,54 @@ CRITICAL FORMATTING REQUIREMENTS:
   
   system --> error"""
 
-async def build_tech_stack_wiring_diagram(requirement: str, recommendations: List[Dict]) -> str:
+async def build_tech_stack_wiring_diagram(requirement: str, recommendations: List[Dict], 
+                                         enhanced_tech_stack: Optional[List[str]] = None,
+                                         architecture_explanation: Optional[str] = None) -> str:
     """Build a technical wiring diagram showing how tech stack components connect and interact."""
     
-    # Extract tech stack from recommendations
-    tech_stack = []
-    if recommendations:
-        for rec in recommendations:
-            if isinstance(rec, dict) and 'tech_stack' in rec:
-                tech_stack.extend(rec['tech_stack'])
-            elif hasattr(rec, 'tech_stack'):
-                tech_stack.extend(rec.tech_stack)
-    
-    # Remove duplicates while preserving order
-    seen = set()
-    unique_tech_stack = []
-    for tech in tech_stack:
-        if tech not in seen:
-            seen.add(tech)
-            unique_tech_stack.append(tech)
-    
-    tech_stack_str = ', '.join(unique_tech_stack) if unique_tech_stack else 'Python, FastAPI, PostgreSQL, Redis'
+    # Implement tech stack priority logic: enhanced > recommendations > default
+    if enhanced_tech_stack:
+        app_logger.info(f"Using enhanced tech stack for wiring diagram: {len(enhanced_tech_stack)} technologies")
+        unique_tech_stack = enhanced_tech_stack
+        tech_stack_str = ', '.join(unique_tech_stack)
+    else:
+        app_logger.info("No enhanced tech stack available, extracting from recommendations")
+        # Extract tech stack from recommendations (fallback)
+        tech_stack = []
+        if recommendations:
+            for rec in recommendations:
+                if isinstance(rec, dict) and 'tech_stack' in rec:
+                    tech_stack.extend(rec['tech_stack'])
+                elif hasattr(rec, 'tech_stack'):
+                    tech_stack.extend(rec.tech_stack)
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_tech_stack = []
+        for tech in tech_stack:
+            if tech not in seen:
+                seen.add(tech)
+                unique_tech_stack.append(tech)
+        
+        tech_stack_str = ', '.join(unique_tech_stack) if unique_tech_stack else 'Python, FastAPI, PostgreSQL, Redis'
+        app_logger.info(f"Using recommendation tech stack for wiring diagram: {len(unique_tech_stack)} technologies")
+
+    # Add architecture explanation context if available
+    architecture_context = ""
+    if architecture_explanation:
+        app_logger.info(f"Including architecture explanation in wiring diagram context: {len(architecture_explanation)} chars")
+        architecture_context = f"""
+ARCHITECTURE EXPLANATION: {architecture_explanation}
+
+Use the architecture explanation above to understand how components interact and ensure the diagram reflects the same architectural insights."""
+    else:
+        app_logger.info("No architecture explanation available for wiring diagram")
 
     prompt = f"""Generate a Mermaid technical wiring diagram showing how technology components connect and interact for this automation requirement:
 
 REQUIREMENT: {requirement}
 
-TECHNOLOGY STACK: {tech_stack_str}
+TECHNOLOGY STACK: {tech_stack_str}{architecture_context}
 
 Create a technical wiring diagram that shows:
 1. Data flow between components (arrows with labels)
@@ -717,13 +776,32 @@ Ensure each line is properly separated and indented."""
         """ + tech_stack_str.replace(', ', '\n        ') + """
     end"""
 
-async def build_sequence_diagram(requirement: str, recommendations: List[Dict]) -> str:
+async def build_sequence_diagram(requirement: str, recommendations: List[Dict],
+                                enhanced_tech_stack: Optional[List[str]] = None,
+                                architecture_explanation: Optional[str] = None) -> str:
     """Build a sequence diagram using LLM based on the specific requirement."""
+    # Get tech stack for context (enhanced takes priority)
+    tech_stack_context = ""
+    if enhanced_tech_stack:
+        app_logger.info(f"Using enhanced tech stack context for sequence diagram: {len(enhanced_tech_stack)} technologies")
+        tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(enhanced_tech_stack)}"
+    elif recommendations and recommendations[0].get('tech_stack'):
+        tech_stack = recommendations[0]['tech_stack']
+        app_logger.info(f"Using recommendation tech stack context for sequence diagram: {len(tech_stack)} technologies")
+        tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(tech_stack)}"
+    
     prompt = f"""Generate a Mermaid sequence diagram for this automation requirement:
 
 REQUIREMENT: {requirement}
 
 RECOMMENDATIONS: {recommendations[0].get('reasoning', 'No recommendations available') if recommendations else 'No recommendations available'}
+
+{tech_stack_context}
+
+{f'''
+ARCHITECTURE EXPLANATION: {architecture_explanation}
+
+Use the architecture explanation above to understand the data flow and component interactions for the sequence.''' if architecture_explanation else ''}
 
 Create a sequence diagram showing the step-by-step flow of the automated process:
 - User interactions
@@ -792,13 +870,32 @@ CRITICAL FORMATTING REQUIREMENTS:
   U->>E: Sequence diagram generation failed: {str(e)}"""
 
 
-async def build_infrastructure_diagram(requirement: str, recommendations: List[Dict]) -> Dict[str, Any]:
+async def build_infrastructure_diagram(requirement: str, recommendations: List[Dict],
+                                      enhanced_tech_stack: Optional[List[str]] = None,
+                                      architecture_explanation: Optional[str] = None) -> Dict[str, Any]:
     """Build an infrastructure diagram specification using LLM based on the specific requirement."""
-    prompt = f"""Generate an infrastructure diagram specification for this automation requirement:
+    # Get tech stack for context (enhanced takes priority)
+    tech_stack_context = ""
+    if enhanced_tech_stack:
+        app_logger.info(f"Using enhanced tech stack context for infrastructure diagram: {len(enhanced_tech_stack)} technologies")
+        tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(enhanced_tech_stack)}"
+    elif recommendations and recommendations[0].get('tech_stack'):
+        tech_stack = recommendations[0]['tech_stack']
+        app_logger.info(f"Using recommendation tech stack context for infrastructure diagram: {len(tech_stack)} technologies")
+        tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(tech_stack)}"
+    
+    prompt = f"""Generate a detailed and indepth infrastructure diagram specification for this automation requirement:
 
 REQUIREMENT: {requirement}
 
 RECOMMENDATIONS: {recommendations[0].get('reasoning', 'No recommendations available') if recommendations else 'No recommendations available'}
+
+{tech_stack_context}
+
+{f'''
+ARCHITECTURE EXPLANATION: {architecture_explanation}
+
+Use the architecture explanation above to understand infrastructure requirements and component deployment.''' if architecture_explanation else ''}
 
 Create a JSON specification for an infrastructure diagram showing:
 - Cloud providers (AWS, GCP, Azure) or on-premises components
@@ -915,13 +1012,32 @@ IMPORTANT: Return ONLY valid JSON without markdown formatting."""
             "edges": []
         }
 
-async def build_c4_diagram(requirement: str, recommendations: List[Dict]) -> str:
+async def build_c4_diagram(requirement: str, recommendations: List[Dict],
+                          enhanced_tech_stack: Optional[List[str]] = None,
+                          architecture_explanation: Optional[str] = None) -> str:
     """Build a C4 diagram using LLM with proper Mermaid C4 syntax."""
+    # Get tech stack for context (enhanced takes priority)
+    tech_stack_context = ""
+    if enhanced_tech_stack:
+        app_logger.info(f"Using enhanced tech stack context for C4 diagram: {len(enhanced_tech_stack)} technologies")
+        tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(enhanced_tech_stack)}"
+    elif recommendations and recommendations[0].get('tech_stack'):
+        tech_stack = recommendations[0]['tech_stack']
+        app_logger.info(f"Using recommendation tech stack context for C4 diagram: {len(tech_stack)} technologies")
+        tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(tech_stack)}"
+    
     prompt = f"""Generate a proper C4 diagram using Mermaid's C4 syntax for this automation requirement:
 
 REQUIREMENT: {requirement}
 
 RECOMMENDATIONS: {recommendations[0].get('reasoning', 'No recommendations available') if recommendations else 'No recommendations available'}
+
+{tech_stack_context}
+
+{f'''
+ARCHITECTURE EXPLANATION: {architecture_explanation}
+
+Use the architecture explanation above to understand system architecture and component relationships.''' if architecture_explanation else ''}
 
 Create a C4 Context or Container diagram using proper Mermaid C4 syntax. Choose the appropriate level:
 - C4Context for high-level system overview showing external actors and systems
@@ -3102,6 +3218,41 @@ class AutomatedAIAssessmentUI:
             if format_type == "comprehensive":
                 st.info("💡 If comprehensive export fails, try the basic Markdown or JSON export options.")
     
+    def get_enhanced_analysis_data(self) -> Dict[str, Any]:
+        """Retrieve enhanced tech stack and architecture explanation from session state.
+        
+        Returns:
+            Dictionary containing enhanced analysis data with fallback handling
+        """
+        try:
+            recommendations = st.session_state.get('recommendations', {})
+            enhanced_tech_stack = recommendations.get('enhanced_tech_stack')
+            architecture_explanation = recommendations.get('architecture_explanation')
+            
+            # Log enhanced data availability
+            if enhanced_tech_stack:
+                app_logger.info(f"Enhanced tech stack available for diagrams: {len(enhanced_tech_stack)} technologies")
+            else:
+                app_logger.info("No enhanced tech stack available, will use recommendation tech stack")
+                
+            if architecture_explanation:
+                app_logger.info(f"Architecture explanation available for diagrams: {len(architecture_explanation)} chars")
+            else:
+                app_logger.info("No architecture explanation available")
+            
+            return {
+                'enhanced_tech_stack': enhanced_tech_stack,
+                'architecture_explanation': architecture_explanation,
+                'has_enhanced_data': bool(enhanced_tech_stack or architecture_explanation)
+            }
+        except Exception as e:
+            app_logger.error(f"Error retrieving enhanced analysis data: {e}")
+            return {
+                'enhanced_tech_stack': None,
+                'architecture_explanation': None,
+                'has_enhanced_data': False
+            }
+
     def render_mermaid_diagrams(self):
         """Render Mermaid diagrams panel."""
         st.header("📊 System Diagrams")
@@ -3160,38 +3311,96 @@ class AutomatedAIAssessmentUI:
                 
                 st.write(f"**Generating diagram for:** {requirement_text[:100]}...")
                 
+                # Get enhanced analysis data for diagram generation
+                enhanced_data = self.get_enhanced_analysis_data()
+                enhanced_tech_stack = enhanced_data.get('enhanced_tech_stack')
+                architecture_explanation = enhanced_data.get('architecture_explanation')
+                
+                # Validate enhanced data
+                if enhanced_tech_stack and not isinstance(enhanced_tech_stack, list):
+                    app_logger.warning(f"Enhanced tech stack is not a list: {type(enhanced_tech_stack)}, ignoring")
+                    enhanced_tech_stack = None
+                
+                if architecture_explanation and not isinstance(architecture_explanation, str):
+                    app_logger.warning(f"Architecture explanation is not a string: {type(architecture_explanation)}, ignoring")
+                    architecture_explanation = None
+                
+                if enhanced_data.get('has_enhanced_data'):
+                    st.info("✨ Using enhanced analysis data for more accurate diagrams")
+                
                 with st.spinner(f"🤖 Generating {diagram_type.lower()} using AI..."):
                     if diagram_type == "Context Diagram":
-                        mermaid_code = asyncio.run(build_context_diagram(requirement_text, recommendations))
+                        mermaid_code = asyncio.run(build_context_diagram(requirement_text, recommendations, enhanced_tech_stack, architecture_explanation))
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
                     elif diagram_type == "Container Diagram":
-                        mermaid_code = asyncio.run(build_container_diagram(requirement_text, recommendations))
+                        mermaid_code = asyncio.run(build_container_diagram(requirement_text, recommendations, enhanced_tech_stack, architecture_explanation))
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
                     elif diagram_type == "Sequence Diagram":
-                        mermaid_code = asyncio.run(build_sequence_diagram(requirement_text, recommendations))
+                        mermaid_code = asyncio.run(build_sequence_diagram(requirement_text, recommendations, enhanced_tech_stack, architecture_explanation))
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
                     elif diagram_type == "Tech Stack Wiring Diagram":
-                        mermaid_code = asyncio.run(build_tech_stack_wiring_diagram(requirement_text, recommendations))
+                        mermaid_code = asyncio.run(build_tech_stack_wiring_diagram(requirement_text, recommendations, enhanced_tech_stack, architecture_explanation))
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
                     elif diagram_type == "C4 Diagram":
-                        mermaid_code = asyncio.run(build_c4_diagram(requirement_text, recommendations))
+                        mermaid_code = asyncio.run(build_c4_diagram(requirement_text, recommendations, enhanced_tech_stack, architecture_explanation))
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
                     else:  # Infrastructure Diagram
-                        infrastructure_spec = asyncio.run(build_infrastructure_diagram(requirement_text, recommendations))
+                        infrastructure_spec = asyncio.run(build_infrastructure_diagram(requirement_text, recommendations, enhanced_tech_stack, architecture_explanation))
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_spec'] = infrastructure_spec
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "infrastructure"
                     
                     st.success("✅ Diagram generated successfully!")
                     
             except Exception as e:
-                st.error(f"❌ Error generating diagram: {str(e)}")
-                st.write(f"**Error details:** {type(e).__name__}: {str(e)}")
-                return
+                # If enhanced data was used and generation failed, try without enhanced data
+                if enhanced_data.get('has_enhanced_data'):
+                    st.warning(f"⚠️ Diagram generation failed with enhanced data. Retrying with basic data...")
+                    app_logger.warning(f"Diagram generation failed with enhanced data: {e}. Retrying without enhanced data.")
+                    
+                    try:
+                        with st.spinner(f"🔄 Retrying {diagram_type.lower()} generation..."):
+                            if diagram_type == "Context Diagram":
+                                mermaid_code = asyncio.run(build_context_diagram(requirement_text, recommendations))
+                                st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
+                                st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
+                            elif diagram_type == "Container Diagram":
+                                mermaid_code = asyncio.run(build_container_diagram(requirement_text, recommendations))
+                                st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
+                                st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
+                            elif diagram_type == "Sequence Diagram":
+                                mermaid_code = asyncio.run(build_sequence_diagram(requirement_text, recommendations))
+                                st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
+                                st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
+                            elif diagram_type == "Tech Stack Wiring Diagram":
+                                mermaid_code = asyncio.run(build_tech_stack_wiring_diagram(requirement_text, recommendations))
+                                st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
+                                st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
+                            elif diagram_type == "C4 Diagram":
+                                mermaid_code = asyncio.run(build_c4_diagram(requirement_text, recommendations))
+                                st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
+                                st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
+                            else:  # Infrastructure Diagram
+                                infrastructure_spec = asyncio.run(build_infrastructure_diagram(requirement_text, recommendations))
+                                st.session_state[f'{diagram_type.lower().replace(" ", "_")}_spec'] = infrastructure_spec
+                                st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "infrastructure"
+                            
+                            st.success("✅ Diagram generated successfully (using basic data)!")
+                            
+                    except Exception as retry_e:
+                        st.error(f"❌ Error generating diagram (retry also failed): {str(retry_e)}")
+                        st.write(f"**Error details:** {type(retry_e).__name__}: {str(retry_e)}")
+                        app_logger.error(f"Diagram generation failed even without enhanced data: {retry_e}")
+                        return
+                else:
+                    st.error(f"❌ Error generating diagram: {str(e)}")
+                    st.write(f"**Error details:** {type(e).__name__}: {str(e)}")
+                    app_logger.error(f"Diagram generation failed: {e}")
+                    return
         
         # Display the diagram if we have one
         diagram_key = f'{diagram_type.lower().replace(" ", "_")}_code'
