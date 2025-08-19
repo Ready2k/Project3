@@ -21,6 +21,7 @@ class PatternLoader:
     def __init__(self, pattern_library_path: str):
         self.pattern_library_path = Path(pattern_library_path)
         self.schema = self._load_schema()
+        self.agentic_schema = self._load_agentic_schema()
         self._patterns_cache: Optional[List[Dict[str, Any]]] = None
         self.pattern_sanitizer = PatternSanitizer()
     
@@ -33,14 +34,35 @@ class PatternLoader:
         except Exception as e:
             raise RuntimeError(f"Failed to load pattern schema: {e}")
     
-    def _validate_pattern(self, pattern: Dict[str, Any]) -> None:
-        """Validate a pattern against the schema."""
+    def _load_agentic_schema(self) -> Dict[str, Any]:
+        """Load the agentic pattern JSON schema."""
+        agentic_schema_path = Path(__file__).parent / "agentic_schema.json"
         try:
-            jsonschema.validate(pattern, self.schema)
-        except jsonschema.ValidationError as e:
-            raise PatternValidationError(f"Pattern validation failed: {e.message}")
+            with open(agentic_schema_path, 'r') as f:
+                return json.load(f)
         except Exception as e:
-            raise PatternValidationError(f"Pattern validation error: {e}")
+            app_logger.warning(f"Failed to load agentic schema, using traditional schema: {e}")
+            return self.schema
+    
+    def _validate_pattern(self, pattern: Dict[str, Any]) -> None:
+        """Validate a pattern against the appropriate schema."""
+        pattern_id = pattern.get("pattern_id", "")
+        
+        # Use agentic schema for APAT patterns, traditional schema for PAT patterns
+        if pattern_id.startswith("APAT-"):
+            schema_to_use = self.agentic_schema
+            schema_type = "agentic"
+        else:
+            schema_to_use = self.schema
+            schema_type = "traditional"
+        
+        try:
+            jsonschema.validate(pattern, schema_to_use)
+            app_logger.debug(f"Pattern {pattern_id} validated successfully using {schema_type} schema")
+        except jsonschema.ValidationError as e:
+            raise PatternValidationError(f"Pattern validation failed ({schema_type} schema): {e.message}")
+        except Exception as e:
+            raise PatternValidationError(f"Pattern validation error ({schema_type} schema): {e}")
     
     def load_patterns(self) -> List[Dict[str, Any]]:
         """Load all patterns from the library directory."""
@@ -60,8 +82,8 @@ class PatternLoader:
                 app_logger.debug(f"Skipping deleted pattern file: {pattern_file.name}")
                 continue
             
-            # Only load files that match the PAT-* pattern
-            if not pattern_file.name.startswith('PAT-'):
+            # Only load files that match the PAT-* or APAT-* pattern
+            if not (pattern_file.name.startswith('PAT-') or pattern_file.name.startswith('APAT-')):
                 app_logger.debug(f"Skipping non-pattern file: {pattern_file.name}")
                 continue
             

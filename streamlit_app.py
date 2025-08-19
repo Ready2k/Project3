@@ -86,7 +86,7 @@ def _validate_mermaid_syntax(mermaid_code: str) -> tuple[bool, str]:
     
     # Check for valid diagram type
     first_line = lines[0].lower()
-    valid_starts = ['flowchart', 'graph', 'sequencediagram', 'classDiagram', 'stateDiagram', 
+    valid_starts = ['flowchart', 'graph', 'sequencediagram', 'classdiagram', 'statediagram', 
                    'c4context', 'c4container', 'c4component', 'c4dynamic']
     if not any(first_line.startswith(start) for start in valid_starts):
         valid_starts_str = ', '.join(valid_starts)
@@ -99,7 +99,10 @@ def _validate_mermaid_syntax(mermaid_code: str) -> tuple[bool, str]:
             return False, f"Unmatched square brackets on line {i+1}: {line}"
         if line.count('(') != line.count(')'):
             return False, f"Unmatched parentheses on line {i+1}: {line}"
-        if line.count('{') != line.count('}'):
+        
+        # For C4 diagrams, skip curly brace validation on individual lines since System_Boundary spans multiple lines
+        is_c4_diagram = any(first_line.startswith(c4_type) for c4_type in ['c4context', 'c4container', 'c4component', 'c4dynamic'])
+        if not is_c4_diagram and line.count('{') != line.count('}'):
             return False, f"Unmatched curly braces on line {i+1}: {line}"
         
         # Skip arrow validation as Mermaid has many valid arrow syntaxes
@@ -124,8 +127,13 @@ def _validate_mermaid_syntax(mermaid_code: str) -> tuple[bool, str]:
     
     # For C4 diagrams, validate C4-specific syntax
     elif any(first_line.startswith(c4_type) for c4_type in ['c4context', 'c4container', 'c4component', 'c4dynamic']):
+        # Check for balanced curly braces across the entire C4 diagram
+        total_open_braces = sum(line.count('{') for line in lines)
+        total_close_braces = sum(line.count('}') for line in lines)
+        if total_open_braces != total_close_braces:
+            return False, f"Unmatched curly braces in C4 diagram: {total_open_braces} opening, {total_close_braces} closing"
         # Validate C4-specific elements
-        valid_c4_elements = ['person', 'system', 'container', 'component', 'rel', 'relnote', 
+        valid_c4_elements = ['person', 'system', 'container', 'containerdb', 'component', 'rel', 'relnote', 
                            'system_ext', 'container_ext', 'component_ext', 'person_ext',
                            'enterprise_boundary', 'system_boundary', 'container_boundary',
                            'title', 'updatelayout']
@@ -643,7 +651,7 @@ Use Mermaid flowchart syntax with:
 - Cylinders for databases: db[(Database)]
 - Diamonds for decision points: decision{{Decision}}
 - Circles for external systems: external((External API))
-- Hexagons for queues: queue{{{{Message Queue}}}}
+- Hexagons for queues: queue{{Message Queue}}
 
 Show technical details like:
 - HTTP/REST connections: A -->|REST API| B
@@ -658,7 +666,7 @@ flowchart TB
     api[FastAPI Server]
     db[(PostgreSQL)]
     redis[(Redis Cache)]
-    queue{{{{Message Queue}}}}
+    queue{{Message Queue}}
     external((External API))
     monitor[Monitoring]
     
@@ -828,7 +836,7 @@ sequenceDiagram
     API->>DB: GET inventory, reorder_threshold, supplier
     API-->>API: Apply rules (seasonality, high-value gate)
     alt Below threshold & not seasonal
-        API->>ERP: Create purchase order (sku, qty, supplier)
+        API->>ERP: Create purchase order {{sku, qty, supplier}}
         ERP-->>API: PO ID
     else High-value item
         API-->>W: Event (Approval required)
@@ -1047,9 +1055,13 @@ Use proper Mermaid C4 syntax with these elements:
 - Person(id, "Name", "Description") for users/actors
 - System(id, "Name", "Description") for internal systems
 - System_Ext(id, "Name", "Description") for external systems
-- Container(id, "Name", "Description", "Technology") for containers (if using C4Container)
+- Container(id, "Name", "Technology", "Description") for containers (if using C4Container)
 - Rel(from, to, "Label") for relationships
 - Rel(from, to, "Label", "Technology") for relationships with technology details
+- ContainerDb(id, "Name", "Technology", "Description") for data stores
+
+Relationships must be between elements (Person/System/Container). Do not use Rel() with System_Boundary.
+Model cloud/platforms as System_Ext(...) and relate containers to them, or omit and use a C4Deployment diagram for runtime placement.
 
 Example C4Context format:
 C4Context
@@ -1069,23 +1081,63 @@ C4Container
     title Container Diagram for [System Name]
     
     Person(user, "End User", "Person using the system")
+    Person_Ext(agent, "Support Agent", "Back-office user (if applicable)")
     
     System_Boundary(system, "Automation System") {{
-        Container(web_app, "Web Application", "User Interface", "React/Angular")
-        Container(api, "API Gateway", "REST API", "Node.js/Python")
-        Container(processor, "Business Logic", "Core Processing", "Python/Java")
-        Container(queue, "Message Queue", "Async Processing", "RabbitMQ/SQS")
+        Container(web_app, "Web Application", "React/Angular", "User interface")
+        Container(api, "API Service", "Node.js/Python", "REST API and business logic")
+        Container(queue, "Message Queue", "RabbitMQ/SQS", "Async processing")
+        ContainerDb(database, "Database", "PostgreSQL/MongoDB", "Transactional data")
+        Container(indexer_worker, "Indexer Worker", "Python", "Consumes messages and updates search index")
+        Container(search, "Search Engine", "Elasticsearch", "Full-text search")
     }}
     
+    System_Ext(identity_provider, "Identity Provider", "OIDC/OAuth2 (e.g., Active Directory/Azure AD)")
     System_Ext(external_api, "External Service", "Third-party integration")
-    ContainerDb(database, "Database", "Data Storage", "PostgreSQL/MongoDB")
+    System_Ext(cloud, "Cloud Platform", "e.g., AWS/Azure/GCP")
     
     Rel(user, web_app, "Uses", "HTTPS")
     Rel(web_app, api, "Makes API calls", "REST/JSON")
-    Rel(api, processor, "Delegates to", "Internal")
-    Rel(processor, queue, "Sends messages", "AMQP")
-    Rel(processor, database, "Reads/Writes", "SQL/NoSQL")
-    Rel(processor, external_api, "Integrates", "REST API")
+    Rel(web_app, api, "Sends JWT/OIDC token", "HTTPS")
+    Rel(api, identity_provider, "Validates tokens", "OIDC/OAuth2/LDAP")
+    Rel(api, queue, "Publishes messages", "AMQP")
+    Rel(queue, indexer_worker, "Delivers messages", "AMQP")
+    Rel(indexer_worker, search, "Indexes/updates", "Elasticsearch API")
+    Rel(api, search, "Queries search index", "Elasticsearch API")
+    Rel(api, database, "Reads/Writes", "SQL")
+    Rel(api, external_api, "Integrates", "REST API")
+    
+    Rel(web_app, cloud, "Hosted on")
+    Rel(api, cloud, "Runs on")
+    Rel(database, cloud, "Managed database")
+    Rel(queue, cloud, "Managed broker")
+Make the diagram tight and realistic. Apply ALL of these rules:
+
+TIGHTNESS RULES (enforced):
+- Minimality: Only include elements explicitly present in REQUIREMENT, RECOMMENDATIONS, TECHNOLOGY CONTEXT, or ARCHITECTURE EXPLANATION. Do not invent extra systems.
+- Diagram level: If ≥2 internal components/technologies are mentioned, use C4Container; otherwise use C4Context.
+- IDs & params: Element IDs must be lowercase_snake_case and unique. Person/System/System_Ext use exactly 3 params. Container/ContainerDb use exactly 4 params in this order: ("Technology", "Description").
+- Data stores: Use ContainerDb for databases only. Do not model databases as System_Ext unless clearly external/managed outside the solution boundary.
+- Auth pattern: Frontend never talks LDAP. Use OIDC/OAuth2:
+  Rel(frontend, backend, "Sends JWT/OIDC token", "HTTPS")
+  Rel(backend, identity_provider, "Validates tokens", "OIDC/OAuth2/LDAP")
+  Model the IdP as System_Ext(identity_provider, "Identity Provider", "Authentication and authorization").
+- Messaging + search: If BOTH a message broker and Elasticsearch appear, add a dedicated worker that consumes from the broker and writes to Elasticsearch. Do NOT create Rel(queue, elasticsearch, ...).
+  Example containers (names may vary):
+  Container(indexer_worker, "Indexer Worker", "Python", "Consumes messages and updates search index")
+- Cloud hosting: If a cloud is present, only create relations from containers TO the cloud (e.g., "Hosted on", "Runs on", "Managed"). Never from the cloud to containers.
+- Relationship verbs: Prefer these labels where sensible—"Uses", "Reads/Writes", "Publishes", "Consumes", "Integrates", "Queries", "Indexes".
+- No boundary relations: Never use Rel() with System_Boundary.
+- De-duplication: No duplicate or contradictory relationships. Avoid cycles unless essential.
+- Size cap (readability): Max 2 Person/Person_Ext, max 6 containers inside the boundary, max 5 System_Ext.
+
+Validate before returning:
+1) No Rel involving System_Boundary
+2) Every Container/ContainerDb has 4 params with correct order
+3) No direct Rel(queue, elasticsearch, ...) if both exist
+4) No Rel(frontend, ldap, ...) or LDAP directly from frontend
+5) All IDs are unique lowercase_snake_case
+6) Output ONLY raw Mermaid C4 code (no backticks, no prose)
 
 CRITICAL FORMATTING REQUIREMENTS:
 1. Start with either "C4Context" or "C4Container" (choose based on detail level needed)
@@ -1094,8 +1146,9 @@ CRITICAL FORMATTING REQUIREMENTS:
 4. Use proper C4 element syntax with parentheses and quotes
 5. Relationships use Rel(from, to, "label") or Rel(from, to, "label", "technology")
 6. For Container diagrams, use System_Boundary for grouping containers
-7. Return ONLY the raw Mermaid C4 code without markdown formatting (no ```mermaid blocks)
-8. Ensure all element IDs are unique and referenced correctly in relationships"""
+7. System_Boundary must have matching curly braces: System_Boundary(id, "Name") { ... }
+8. Return ONLY the raw Mermaid C4 code without markdown formatting (no ```mermaid blocks)
+9. Ensure all element IDs are unique and referenced correctly in relationships"""
 
     try:
         # Use the current provider config to generate the diagram
@@ -1196,6 +1249,8 @@ class AutomatedAIAssessmentUI:
                 response = await client.get(url)
             elif method.upper() == "POST":
                 response = await client.post(url, json=data)
+            elif method.upper() == "PUT":
+                response = await client.put(url, json=data)
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
             
@@ -2687,13 +2742,52 @@ class AutomatedAIAssessmentUI:
             "No": {"color": "🔴", "label": "Not Automatable", "desc": "This requirement is not suitable for automation at this time."},
             "Automatable": {"color": "🟢", "label": "Fully Automatable", "desc": "This requirement can be completely automated with high confidence."},
             "Partially Automatable": {"color": "🟡", "label": "Partially Automatable", "desc": "This requirement can be mostly automated, but may need human oversight for some steps."},
-            "Not Automatable": {"color": "🔴", "label": "Not Automatable", "desc": "This requirement is not suitable for automation at this time."}
+            "Not Automatable": {"color": "🔴", "label": "Not Automatable", "desc": "This requirement is not suitable for automation at this time."},
+            "Fully Automatable": {"color": "🟢", "label": "Fully Automatable", "desc": "This requirement can be completely automated with high confidence."}
         }
         
         feas_info = feasibility_info.get(feasibility, {"color": "⚪", "label": feasibility, "desc": "Assessment pending."})
         
         st.subheader(f"{feas_info['color']} Feasibility: {feas_info['label']}")
         st.write(feas_info['desc'])
+        
+        # Enhanced LLM Analysis Display
+        session_requirements = st.session_state.get('requirements', {})
+        if session_requirements:
+            # Key Insights
+            key_insights = session_requirements.get('llm_analysis_key_insights', [])
+            if key_insights:
+                st.markdown("**🔍 Key Insights:**")
+                for insight in key_insights:
+                    st.markdown(f"• {insight}")
+            
+            # Automation Challenges
+            automation_challenges = session_requirements.get('llm_analysis_automation_challenges', [])
+            if automation_challenges:
+                st.markdown("**⚠️ Automation Challenges:**")
+                for challenge in automation_challenges:
+                    st.markdown(f"• {challenge}")
+            
+            # Recommended Approach
+            recommended_approach = session_requirements.get('llm_analysis_recommended_approach', '')
+            if recommended_approach:
+                st.markdown("**🎯 Recommended Approach:**")
+                st.markdown(recommended_approach)
+            
+            # Next Steps
+            next_steps = session_requirements.get('llm_analysis_next_steps', [])
+            if next_steps:
+                st.markdown("**📋 Next Steps:**")
+                for step in next_steps:
+                    st.markdown(f"• {step}")
+            
+            # Confidence Level
+            confidence_level = session_requirements.get('llm_analysis_confidence_level')
+            if confidence_level:
+                confidence_pct = int(float(confidence_level) * 100) if isinstance(confidence_level, (int, float)) else confidence_level
+                st.markdown(f"**📊 Confidence Level:** {confidence_pct}%")
+        
+        st.markdown("---")
         
         # Solution Overview
         if rec.get('recommendations') and len(rec['recommendations']) > 0:
@@ -2706,14 +2800,7 @@ class AutomatedAIAssessmentUI:
             solution_explanation = self._generate_solution_explanation(best_rec, rec)
             st.write(solution_explanation)
             
-            # Debug: Show what LLM analysis we have (hidden by default)
-            if st.session_state.get('show_llm_debug', False):
-                session_requirements = st.session_state.get('requirements', {})
-                if session_requirements.get('llm_analysis_automation_feasibility'):
-                    with st.expander("🔍 Debug: LLM Analysis", expanded=False):
-                        st.write("**LLM Feasibility:**", session_requirements.get('llm_analysis_automation_feasibility'))
-                        st.write("**LLM Reasoning:**", session_requirements.get('llm_analysis_feasibility_reasoning'))
-                        st.write("**LLM Confidence:**", session_requirements.get('llm_analysis_confidence_level'))
+
         
         # Tech stack with explanations
         if rec.get('tech_stack'):
@@ -4952,7 +5039,7 @@ class AutomatedAIAssessmentUI:
             - **Name**: Descriptive title of the automation pattern
             - **Description**: Detailed explanation of what the pattern automates
             - **Domain**: Business area (e.g., legal_compliance, finance, customer_service)
-            - **Feasibility**: Automation potential (Automatable, Partially Automatable, Not Automatable)
+            - **Feasibility**: Automation potential (Automatable, Fully Automatable, Partially Automatable, Not Automatable)
             - **Pattern Types**: Tags/categories describing the automation approach (e.g., api_integration, nlp_processing, human_in_loop)
             - **Tech Stack**: Technologies typically used to implement this pattern
             - **Complexity**: Implementation difficulty (Low, Medium, High)
@@ -5295,10 +5382,22 @@ class AutomatedAIAssessmentUI:
             with col1:
                 name = st.text_input("Pattern Name", value=selected_pattern.get('name', ''))
                 domain = st.text_input("Domain", value=selected_pattern.get('domain', ''))
+                # Support both traditional and agentic feasibility values
+                feasibility_options = ["Automatable", "Fully Automatable", "Partially Automatable", "Not Automatable"]
+                current_feasibility = selected_pattern.get('feasibility', 'Automatable')
+                
+                # Handle legacy values
+                if current_feasibility not in feasibility_options:
+                    if current_feasibility == "Yes":
+                        current_feasibility = "Automatable"
+                    elif current_feasibility == "Partial":
+                        current_feasibility = "Partially Automatable"
+                    elif current_feasibility == "No":
+                        current_feasibility = "Not Automatable"
+                
                 feasibility = st.selectbox("Feasibility", 
-                                         ["Automatable", "Partially Automatable", "Not Automatable"],
-                                         index=["Automatable", "Partially Automatable", "Not Automatable"].index(
-                                             selected_pattern.get('feasibility', 'Automatable')))
+                                         feasibility_options,
+                                         index=feasibility_options.index(current_feasibility))
             
             with col2:
                 complexity = st.selectbox("Complexity", ["Low", "Medium", "High"],
@@ -5367,15 +5466,37 @@ class AutomatedAIAssessmentUI:
         except Exception:
             next_pattern_id = "PAT-001"
         
+        # Pattern type selection
+        pattern_category = st.radio(
+            "Pattern Category:",
+            ["Traditional Pattern (PAT-*)", "Agentic Pattern (APAT-*)"],
+            help="Traditional patterns focus on standard automation. Agentic patterns emphasize autonomous AI agents with reasoning capabilities."
+        )
+        
+        # Adjust pattern ID based on selection
+        if pattern_category.startswith("Agentic"):
+            # Generate APAT ID
+            agentic_numbers = []
+            for pid in existing_ids:
+                if pid.startswith('APAT-'):
+                    try:
+                        agentic_numbers.append(int(pid.split('-')[1]))
+                    except (IndexError, ValueError):
+                        continue
+            next_agentic_number = max(agentic_numbers) + 1 if agentic_numbers else 1
+            display_pattern_id = f"APAT-{next_agentic_number:03d}"
+        else:
+            display_pattern_id = next_pattern_id
+
         with st.form(key="create_pattern_form"):
-            st.write(f"**Creating New Pattern: {next_pattern_id}**")
+            st.write(f"**Creating New Pattern: {display_pattern_id}**")
             
             # Basic information
             col1, col2 = st.columns(2)
             with col1:
                 name = st.text_input("Pattern Name", placeholder="Enter pattern name")
                 domain = st.text_input("Domain", placeholder="e.g., legal_compliance, finance")
-                feasibility = st.selectbox("Feasibility", ["Automatable", "Partially Automatable", "Not Automatable"])
+                feasibility = st.selectbox("Feasibility", ["Automatable", "Fully Automatable", "Partially Automatable", "Not Automatable"])
             
             with col2:
                 complexity = st.selectbox("Complexity", ["Low", "Medium", "High"])
@@ -5384,6 +5505,32 @@ class AutomatedAIAssessmentUI:
             
             # Description
             description = st.text_area("Description", placeholder="Describe what this pattern does and when to use it", height=100)
+            
+            # Agentic-specific fields
+            if pattern_category.startswith("Agentic"):
+                st.write("### 🤖 Agentic Capabilities")
+                
+                col3, col4 = st.columns(2)
+                with col3:
+                    autonomy_level = st.number_input("Autonomy Level", min_value=0.0, max_value=1.0, value=0.8, step=0.01,
+                                                   help="Level of autonomous operation (0.0 = fully human-dependent, 1.0 = fully autonomous)")
+                    agent_architecture = st.selectbox("Agent Architecture", 
+                                                    ["single_agent", "multi_agent_collaborative", "hierarchical_agents", "swarm_intelligence"])
+                
+                with col4:
+                    decision_authority = st.selectbox("Decision Authority Level", ["low", "medium", "high", "full"])
+                    
+                reasoning_types = st.multiselect("Reasoning Types", 
+                                               ["logical", "causal", "temporal", "spatial", "analogical", "case_based", "probabilistic", "strategic"],
+                                               default=["logical", "causal"])
+                
+                agentic_frameworks = st.multiselect("Agentic Frameworks",
+                                                  ["LangChain", "AutoGPT", "CrewAI", "Microsoft Semantic Kernel", "OpenAI Assistants API", "LlamaIndex"],
+                                                  default=["LangChain"])
+                
+                learning_mechanisms = st.multiselect("Learning Mechanisms",
+                                                   ["feedback_incorporation", "pattern_recognition", "performance_optimization", "strategy_adaptation", "continuous_improvement"],
+                                                   default=["feedback_incorporation", "performance_optimization"])
             
             # Tech stack
             tech_stack_text = st.text_area("Tech Stack (one per line)", 
@@ -5434,8 +5581,8 @@ class AutomatedAIAssessmentUI:
                 if not name or not description:
                     st.error("❌ Pattern name and description are required!")
                 else:
-                    self.create_new_pattern({
-                        'pattern_id': next_pattern_id,
+                    pattern_data = {
+                        'pattern_id': display_pattern_id,
                         'name': name,
                         'domain': domain,
                         'feasibility': feasibility,
@@ -5446,7 +5593,32 @@ class AutomatedAIAssessmentUI:
                         'tech_stack': [t.strip() for t in tech_stack_text.split('\n') if t.strip()],
                         'pattern_type': [t.strip() for t in pattern_types_text.split('\n') if t.strip()],
                         'input_requirements': [t.strip() for t in input_requirements_text.split('\n') if t.strip()]
-                    }, pattern_loader)
+                    }
+                    
+                    # Add agentic-specific fields if creating an agentic pattern
+                    if pattern_category.startswith("Agentic"):
+                        pattern_data.update({
+                            'autonomy_level': autonomy_level,
+                            'reasoning_types': reasoning_types,
+                            'decision_boundaries': {
+                                'decision_authority_level': decision_authority,
+                                'autonomous_decisions': [],
+                                'escalation_triggers': []
+                            },
+                            'exception_handling_strategy': {
+                                'autonomous_resolution_approaches': [],
+                                'reasoning_fallbacks': [],
+                                'escalation_criteria': []
+                            },
+                            'learning_mechanisms': learning_mechanisms,
+                            'self_monitoring_capabilities': [],
+                            'agent_architecture': agent_architecture,
+                            'coordination_requirements': None,
+                            'agentic_frameworks': agentic_frameworks,
+                            'reasoning_engines': []
+                        })
+                    
+                    self.create_new_pattern(pattern_data, pattern_loader)
     
     def save_pattern_changes(self, original_pattern: dict, changes: dict, pattern_loader):
         """Save changes to an existing pattern with validation."""
@@ -6245,7 +6417,7 @@ class AutomatedAIAssessmentUI:
             - ❓ **LLM-Powered Q&A System**: AI-generated clarifying questions with caching
             - 🛠️ **LLM-Driven Tech Stack Generation**: Contextual technology recommendations
             - 🏗️ **AI-Generated Architecture Explanations**: How components work together
-            - 📊 **Feasibility Assessment**: Automatable, Partially Automatable, or Not Automatable
+            - 📊 **Feasibility Assessment**: Automatable, Fully Automatable, Partially Automatable, or Not Automatable
             - 📈 **AI-Generated Architecture Diagrams**: Context, Container, and Sequence diagrams
             - 📤 **Multi-Format Export**: JSON, Markdown, and interactive HTML
             - 🎯 **Constraint-Aware**: Filters banned tools and applies business constraints

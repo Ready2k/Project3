@@ -28,7 +28,7 @@ from app.llm.model_discovery import model_discovery
 from app.pattern.loader import PatternLoader
 from app.pattern.matcher import PatternMatcher
 from app.qa.question_loop import QuestionLoop, TemplateLoader
-from app.services.recommendation import RecommendationService
+from app.services.agentic_recommendation_service import AgenticRecommendationService
 from app.services.jira import JiraService, JiraError, JiraConnectionError, JiraTicketNotFoundError
 from app.state.store import SessionState, Phase, DiskCacheStore
 from app.utils.logger import app_logger
@@ -118,7 +118,7 @@ settings: Optional[Settings] = None
 session_store: Optional[DiskCacheStore] = None
 pattern_matcher: Optional[PatternMatcher] = None
 question_loop: Optional[QuestionLoop] = None
-recommendation_service: Optional[RecommendationService] = None
+# recommendation_service is now created per request with LLM provider
 export_service: Optional[ExportService] = None
 jira_service: Optional[JiraService] = None
 
@@ -258,7 +258,13 @@ def create_llm_provider(provider_config: Optional[ProviderConfig] = None, sessio
             if settings.disable_fake_llm:
                 raise ValueError("No valid LLM provider configuration found and FakeLLM is disabled")
             app_logger.warning("⚠️ No provider configuration found, using FakeLLM")
-            base_provider = FakeLLM({}, seed=42)
+            # Create FakeLLM with default responses for agentic operations
+            default_responses = {
+                "12345678": '{"overall_complexity": "moderate", "autonomy_potential": 0.8, "reasoning_analysis": {"logical": "high", "causal": "medium"}, "required_types": ["logical", "causal"], "challenges": ["Integration complexity"], "frameworks": ["LangChain"]}',
+                "87654321": '{"independence_level": "high", "independence_score": 0.8, "autonomous_decisions": ["Process standard requests", "Apply business rules"], "escalation_triggers": ["Complex edge cases"], "risk_factors": ["Data sensitivity"]}',
+                "abcdef12": '{"coverage_percentage": 0.85, "exception_handling_score": 0.8, "learning_potential": 0.7, "self_monitoring_capability": 0.7, "automation_gaps": ["Complex edge cases"]}'
+            }
+            base_provider = FakeLLM(default_responses, seed=42)
     
     else:
         app_logger.info(f"Using provider config: {provider_config.provider}/{provider_config.model}")
@@ -330,17 +336,14 @@ def get_question_loop(provider_config: Optional[ProviderConfig] = None, session_
     )
 
 
-def get_recommendation_service() -> RecommendationService:
-    """Get recommendation service instance."""
-    global recommendation_service
-    if recommendation_service is None:
-        settings = get_settings()
-        # Create with pattern creation capability
-        recommendation_service = RecommendationService(
-            pattern_library_path=settings.pattern_library_path,
-            llm_provider=None  # Will be set per request if needed
-        )
-    return recommendation_service
+def get_recommendation_service(llm_provider=None) -> AgenticRecommendationService:
+    """Get recommendation service instance with LLM provider."""
+    settings = get_settings()
+    # Create agentic service with LLM provider (required for initialization)
+    return AgenticRecommendationService(
+        llm_provider=llm_provider,
+        pattern_library_path=settings.pattern_library_path
+    )
 
 
 def get_export_service(llm_provider=None) -> ExportService:
@@ -1193,21 +1196,18 @@ async def generate_recommendations(request: RecommendRequest, response: Response
                 )
                 matches.append(match_result)
         
-        # Generate recommendations (now async)
-        rec_service = get_recommendation_service()
+        # Get provider config from session and create LLM provider
+        provider_config = None
+        if session.provider_config:
+            provider_config = ProviderConfig(**session.provider_config)
         
-        # Set LLM provider for pattern creation if available
-        if hasattr(rec_service, 'pattern_creator') and rec_service.pattern_creator:
-            # Get provider config from session
-            provider_config = None
-            if session.provider_config:
-                provider_config = ProviderConfig(**session.provider_config)
-            
-            # Create LLM provider for pattern creation
-            llm_provider = create_llm_provider(provider_config, request.session_id)
-            rec_service.pattern_creator.llm_provider = llm_provider
+        # Create LLM provider for agentic recommendation service
+        llm_provider = create_llm_provider(provider_config, request.session_id)
         
-        recommendations = await rec_service.generate_recommendations(matches, session.requirements, request.session_id)
+        # Generate recommendations with LLM provider
+        rec_service = get_recommendation_service(llm_provider)
+        
+        recommendations = await rec_service.generate_agentic_recommendations(session.requirements, request.session_id)
         
         # Update session
         session.recommendations = recommendations
