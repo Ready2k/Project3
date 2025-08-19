@@ -10,7 +10,7 @@ Interactive GUI + API system that judges if user stories/requirements are automa
 - 📊 **Feasibility Assessment**: Automatable, Partially Automatable, or Not Automatable with confidence scores
 - 🛠️ **LLM-Driven Tech Stack Generation**: Intelligent technology recommendations from 55+ catalog technologies
 - 🏗️ **AI-Generated Architecture Explanations**: LLM explains how technology components work together for your specific use case
-- 📈 **AI-Generated Architecture Diagrams**: Context, Container, Sequence, and Tech Stack Wiring diagrams using Mermaid with enhanced viewing options
+- 📈 **AI-Generated Architecture Diagrams**: Context, Container, Sequence, C4 Architecture, and Tech Stack Wiring diagrams using Mermaid with enhanced viewing options
 - 🏗️ **Infrastructure Diagrams**: Cloud architecture diagrams with vendor-specific icons (AWS, GCP, Azure) using mingrammer/diagrams
 - 🛡️ **Advanced Prompt Defense System**: Multi-layered security against prompt injection, data egress, and business logic attacks
 - 📚 **Technology Catalog Management**: Complete CRUD interface for managing 55+ technologies across 17 categories
@@ -127,6 +127,7 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
    - Context Diagram: System boundaries and external integrations
    - Container Diagram: Internal components and data flow
    - Sequence Diagram: Step-by-step process flow with decision points
+   - C4 Diagram: Proper C4 architecture model using standardized C4 syntax and conventions
    - Infrastructure Diagram: Cloud architecture with vendor-specific icons (AWS, GCP, Azure)
    - Tech Stack Wiring Diagram: Technical component connections and data flows
 
@@ -227,6 +228,82 @@ All tech stack generation prompts and responses are logged and visible in the **
 - **Adaptive**: Learns from patterns while adapting to new requirements
 - **Transparent**: Full visibility into the decision-making process
 
+## C4 Architecture Diagrams
+
+The system supports proper C4 architecture diagrams using Mermaid's native C4 syntax. C4 diagrams follow the C4 model hierarchy (Context, Container, Component, Code) and provide standardized architectural documentation.
+
+### C4 vs Traditional Diagrams
+
+- **Traditional Context/Container Diagrams**: Use flowchart syntax with manual styling
+- **C4 Diagrams**: Use proper C4 syntax with built-in C4 styling and conventions
+- **Benefits**: Standardized notation, automatic styling, proper boundaries, official C4 model compliance
+
+### Example C4 Context Diagram
+
+```mermaid
+C4Context
+    title System Context diagram for Customer Support Automation
+    
+    Person(customer, "Customer", "A customer needing support")
+    Person(agent, "Support Agent", "Customer support team member")
+    
+    System(support_system, "Support Automation System", "Processes and routes customer inquiries using AI")
+    
+    System_Ext(email_system, "Email System", "Corporate email infrastructure")
+    System_Ext(crm_system, "CRM System", "Customer relationship management")
+    System_Ext(knowledge_base, "Knowledge Base", "Internal documentation and FAQs")
+    
+    Rel(customer, support_system, "Submits support requests")
+    Rel(agent, support_system, "Reviews and responds to tickets")
+    Rel(support_system, email_system, "Sends notifications", "SMTP")
+    Rel(support_system, crm_system, "Updates customer records", "REST API")
+    Rel(support_system, knowledge_base, "Searches for solutions", "HTTP")
+```
+
+### Example C4 Container Diagram
+
+```mermaid
+C4Container
+    title Container Diagram for Support Automation System
+    
+    Person(customer, "Customer", "Submits support requests")
+    Person(agent, "Support Agent", "Handles escalated tickets")
+    
+    System_Boundary(c1, "Support Automation System") {
+        Container(web_app, "Web Application", "React", "Customer-facing support portal")
+        Container(api_gateway, "API Gateway", "FastAPI", "Routes requests and handles authentication")
+        Container(ai_processor, "AI Processor", "Python/OpenAI", "Analyzes and categorizes support requests")
+        Container(ticket_db, "Ticket Database", "PostgreSQL", "Stores support tickets and history")
+        Container(cache, "Cache", "Redis", "Caches AI responses and session data")
+    }
+    
+    System_Ext(email_system, "Email System", "Sends notifications")
+    System_Ext(crm_system, "CRM System", "Customer data")
+    
+    Rel(customer, web_app, "Submits requests", "HTTPS")
+    Rel(web_app, api_gateway, "API calls", "JSON/HTTPS")
+    Rel(api_gateway, ai_processor, "Process request", "Internal API")
+    Rel(ai_processor, ticket_db, "Store/retrieve tickets", "SQL")
+    Rel(ai_processor, cache, "Cache responses", "Redis Protocol")
+    Rel(api_gateway, email_system, "Send notifications", "SMTP")
+    Rel(api_gateway, crm_system, "Update records", "REST API")
+```
+
+### When to Use C4 Diagrams
+
+**Use C4 Diagrams when:**
+- You need standardized architectural documentation
+- Following C4 modeling practices in your organization
+- Want automatic C4 styling and conventions
+- Need proper system boundaries and relationship notation
+- Creating formal architecture documentation
+
+**Use Traditional Context/Container Diagrams when:**
+- You prefer flowchart-style visualization
+- Need custom styling and layout control
+- Want simpler, less formal documentation
+- Working with teams unfamiliar with C4 notation
+
 ## Enterprise Technology Constraints
 
 The system supports comprehensive technology constraints for enterprise environments:
@@ -281,8 +358,12 @@ Create a `.env` file (see `.env.example`):
 # LLM Provider API Keys
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=...
+
+# AWS Bedrock credentials
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
+AWS_SESSION_TOKEN=...  # Optional for temporary credentials
+BEDROCK_REGION=us-east-1  # Optional, defaults to config.yaml setting
 
 # Jira Integration (optional)
 # For Jira Cloud
@@ -320,6 +401,10 @@ logging:
   redact_pii: true
 bedrock:
   region: eu-west-2
+  # AWS credentials (can also be set via environment variables)
+  # aws_access_key_id: your_access_key_id
+  # aws_secret_access_key: your_secret_access_key
+  # aws_session_token: your_session_token  # Optional for temporary credentials
 ```
 
 ## Development
@@ -512,6 +597,15 @@ See [TROUBLESHOOTING.md](documents/TROUBLESHOOTING.md) for comprehensive debuggi
 - Application logs: Configured via `config.yaml` logging section
 
 ## Changelog
+
+### v2.4.0 - C4 Architecture Diagram Support (2025-08-18)
+
+**New Features:**
+- 🏛️ **C4 Architecture Diagrams**: Added proper C4 diagram support using Mermaid's native C4 syntax
+- 📐 **Standardized Architecture Documentation**: Generate C4 Context and Container diagrams following official C4 model conventions
+- 🎨 **Automatic C4 Styling**: Built-in C4 visual styling, boundaries, and relationship formatting
+- 📋 **Enhanced Diagram Options**: C4 diagrams now available alongside existing Context, Container, Sequence, and Infrastructure diagrams
+- 📚 **Comprehensive Documentation**: Updated documentation with C4 examples and usage guidelines
 
 ### v2.3.0 - Advanced Prompt Defense System (2025-08-16)
 

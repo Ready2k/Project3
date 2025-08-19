@@ -161,10 +161,23 @@ class ModelDiscoveryService:
             app_logger.error(f"Failed to discover Claude models: {e}")
             return []
     
-    async def discover_bedrock_models(self, region: str = "us-east-1") -> List[ModelInfo]:
+    async def discover_bedrock_models(self, region: str = "us-east-1", 
+                                     aws_access_key_id: str = None,
+                                     aws_secret_access_key: str = None,
+                                     aws_session_token: str = None) -> List[ModelInfo]:
         """Discover available AWS Bedrock models."""
         try:
-            client = boto3.client("bedrock", region_name=region)
+            # Create boto3 client with credentials if provided
+            client_kwargs = {"region_name": region}
+            if aws_access_key_id and aws_secret_access_key:
+                client_kwargs.update({
+                    "aws_access_key_id": aws_access_key_id,
+                    "aws_secret_access_key": aws_secret_access_key
+                })
+                if aws_session_token:
+                    client_kwargs["aws_session_token"] = aws_session_token
+            
+            client = boto3.client("bedrock", **client_kwargs)
             
             # List foundation models
             response = await asyncio.to_thread(
@@ -292,7 +305,12 @@ class ModelDiscoveryService:
             
             elif provider == "bedrock":
                 region = kwargs.get('region', 'us-east-1')
-                models = await self.discover_bedrock_models(region)
+                aws_access_key_id = kwargs.get('aws_access_key_id')
+                aws_secret_access_key = kwargs.get('aws_secret_access_key')
+                aws_session_token = kwargs.get('aws_session_token')
+                models = await self.discover_bedrock_models(
+                    region, aws_access_key_id, aws_secret_access_key, aws_session_token
+                )
             
             elif provider == "internal":
                 endpoint_url = kwargs.get('endpoint_url')

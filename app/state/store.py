@@ -72,6 +72,8 @@ class Recommendation:
     confidence: float
     tech_stack: List[str]
     reasoning: str
+    enhanced_tech_stack: Optional[List[str]] = None
+    architecture_explanation: Optional[str] = None
     
     def dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""

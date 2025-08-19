@@ -6,7 +6,7 @@ This guide explains the new Infrastructure Diagram feature that supports both Me
 
 The AAA system now supports two types of diagram rendering:
 
-1. **Mermaid Diagrams** (existing): Fast text-based diagrams for Context, Container, Sequence, and Tech Stack Wiring
+1. **Mermaid Diagrams** (existing): Fast text-based diagrams for Context, Container, Sequence, C4 Architecture, and Tech Stack Wiring
 2. **Infrastructure Diagrams** (new): Cloud architecture diagrams with vendor-specific icons using mingrammer/diagrams
 
 ## Features

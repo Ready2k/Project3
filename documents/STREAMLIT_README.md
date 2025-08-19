@@ -42,7 +42,7 @@ This is the Streamlit web interface for the Automated AI Assessment (AAA) applic
 - **Context Diagrams**: System boundaries and external integrations tailored to your requirement
 - **Container Diagrams**: Internal components and data flow specific to your solution
 - **Sequence Diagrams**: Step-by-step process flow with decision points and alternatives
-- **C4 Architecture Patterns**: Proper architectural modeling using industry standards
+- **C4 Diagrams**: Proper C4 architecture model using standardized C4 syntax, boundaries, and relationship conventions following the official C4 modeling approach
 - **Enhanced Viewing**: Browser export, interactive controls, SVG download
 - **Mermaid Integration**: Interactive diagram rendering with code viewing and editing
 
@@ -127,7 +127,9 @@ make dev
 #### AWS Bedrock
 - **Region**: AWS region (us-east-1, us-west-2, eu-west-1)
 - **Models**: claude-3-sonnet, claude-3-haiku
-- **Authentication**: Uses AWS credentials from environment
+- **Authentication**: AWS credentials via UI (individual fields or combined format) or environment variables
+- **Credentials**: AWS Access Key ID, Secret Access Key, and optional Session Token
+- **Environment Variables**: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN
 
 #### Anthropic Claude
 - **API Key**: Your Anthropic API key
@@ -235,12 +237,72 @@ For better performance:
 
 ## Development
 
+## C4 Architecture Diagrams
+
+The Streamlit UI supports generating proper C4 architecture diagrams using Mermaid's native C4 syntax.
+
+### What are C4 Diagrams?
+
+C4 diagrams follow the C4 model (Context, Container, Component, Code) for software architecture visualization:
+
+- **Context Level**: Shows the system in its environment with users and external systems
+- **Container Level**: Shows the high-level technology choices and how containers communicate
+- **Component Level**: Shows how containers are made up of components
+- **Code Level**: Shows how components are implemented (class diagrams, etc.)
+
+### C4 vs Other Diagram Types
+
+| Diagram Type | Purpose | Syntax | Styling |
+|--------------|---------|---------|---------|
+| Context Diagram | System boundaries | Flowchart | Manual |
+| Container Diagram | Internal components | Flowchart | Manual |
+| **C4 Diagram** | **Standardized architecture** | **C4-specific** | **Automatic C4** |
+| Sequence Diagram | Process flow | Sequence | Automatic |
+
+### Using C4 Diagrams
+
+1. **Navigate to Diagrams Tab**
+2. **Select "C4 Diagram"** from the dropdown
+3. **Click "Generate Diagram"**
+4. **View Results**: The system will generate either:
+   - **C4Context**: High-level system overview
+   - **C4Container**: Detailed container view
+
+### C4 Diagram Features
+
+- **Proper C4 Syntax**: Uses official Mermaid C4 notation
+- **Automatic Styling**: Built-in C4 visual styling and colors
+- **System Boundaries**: Proper boundary grouping for containers
+- **Standardized Elements**: Person, System, Container, Component elements
+- **Relationship Labels**: Clear relationship descriptions with technology details
+- **Enhanced Viewing**: Same browser export and interactive features as other diagrams
+
+### Example C4 Output
+
+The system generates diagrams like:
+
+```mermaid
+C4Context
+    title System Context for Document Processing Automation
+    
+    Person(user, "Business User", "Uploads documents for processing")
+    
+    System(doc_system, "Document Processing System", "Automates document analysis and extraction")
+    
+    System_Ext(storage, "Cloud Storage", "Document repository")
+    System_Ext(ocr_service, "OCR Service", "Text extraction API")
+    
+    Rel(user, doc_system, "Uploads documents")
+    Rel(doc_system, storage, "Stores processed documents", "REST API")
+    Rel(doc_system, ocr_service, "Extracts text", "HTTP API")
+```
+
 ### Adding New Features
 
 1. **New Input Method**: Extend `render_input_methods()`
 2. **New Provider**: Add to provider options and configuration
 3. **New Export Format**: Extend export functionality
-4. **New Diagram Type**: Add to Mermaid diagram options
+4. **New Diagram Type**: Add to Mermaid diagram options (like C4 was added)
 
 ### Code Structure
 

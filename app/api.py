@@ -51,6 +51,9 @@ class ProviderConfig(BaseModel):
     api_key: Optional[str] = None
     endpoint_url: Optional[str] = None
     region: Optional[str] = None
+    aws_access_key_id: Optional[str] = None
+    aws_secret_access_key: Optional[str] = None
+    aws_session_token: Optional[str] = None
     
     @field_validator('provider')
     @classmethod
@@ -236,7 +239,10 @@ def create_llm_provider(provider_config: Optional[ProviderConfig] = None, sessio
         elif settings.provider == "bedrock":
             base_provider = BedrockProvider(
                 model=settings.model,
-                region=settings.bedrock.region
+                region=settings.bedrock.region,
+                aws_access_key_id=settings.bedrock.aws_access_key_id,
+                aws_secret_access_key=settings.bedrock.aws_secret_access_key,
+                aws_session_token=settings.bedrock.aws_session_token
             )
             app_logger.info(f"✅ Using Bedrock provider from environment: {settings.model}")
         
@@ -279,7 +285,10 @@ def create_llm_provider(provider_config: Optional[ProviderConfig] = None, sessio
             region = provider_config.region or settings.bedrock.region
             base_provider = BedrockProvider(
                 model=provider_config.model,
-                region=region
+                region=region,
+                aws_access_key_id=provider_config.aws_access_key_id,
+                aws_secret_access_key=provider_config.aws_secret_access_key,
+                aws_session_token=provider_config.aws_session_token
             )
             app_logger.info(f"✅ Using Bedrock provider from config: {provider_config.model} in {region}")
         
@@ -483,6 +492,9 @@ class ProviderTestRequest(BaseModel):
     api_key: Optional[str] = None
     endpoint_url: Optional[str] = None
     region: Optional[str] = None
+    aws_access_key_id: Optional[str] = None
+    aws_secret_access_key: Optional[str] = None
+    aws_session_token: Optional[str] = None
 
 
 class ProviderTestResponse(BaseModel):
@@ -496,6 +508,9 @@ class ModelDiscoveryRequest(BaseModel):
     api_key: Optional[str] = None
     endpoint_url: Optional[str] = None
     region: Optional[str] = None
+    aws_access_key_id: Optional[str] = None
+    aws_secret_access_key: Optional[str] = None
+    aws_session_token: Optional[str] = None
     
     @field_validator('provider')
     @classmethod
@@ -1034,6 +1049,38 @@ async def process_qa(session_id: str, request: QARequest, response: Response):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.put("/sessions/{session_id}/enhanced_data")
+async def update_session_enhanced_data(session_id: str, enhanced_data: dict, response: Response):
+    """Update session recommendations with enhanced tech stack and architecture explanation."""
+    try:
+        store = get_session_store()
+        session = await store.get_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        # Update recommendations with enhanced data
+        enhanced_tech_stack = enhanced_data.get('enhanced_tech_stack', [])
+        architecture_explanation = enhanced_data.get('architecture_explanation', '')
+        
+        if enhanced_tech_stack or architecture_explanation:
+            for recommendation in session.recommendations:
+                recommendation.enhanced_tech_stack = enhanced_tech_stack
+                recommendation.architecture_explanation = architecture_explanation
+        
+        session.updated_at = datetime.now()
+        await store.update_session(session_id, session)
+        
+        app_logger.info(f"Updated session {session_id} with enhanced data: {len(enhanced_tech_stack)} tech items, {len(architecture_explanation)} chars explanation")
+        
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        
+        return {"status": "success", "message": "Enhanced data updated"}
+    except Exception as e:
+        app_logger.error(f"Failed to update enhanced data for session {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/match", response_model=MatchResponse)
 async def match_patterns(request: MatchRequest, response: Response):
     """Match patterns against requirements."""
@@ -1302,7 +1349,13 @@ async def test_provider(request: ProviderTestRequest, response: Response):
             
         elif request.provider == "bedrock":
             region = request.region or "us-east-1"
-            provider = BedrockProvider(model=request.model, region=region)
+            provider = BedrockProvider(
+                model=request.model, 
+                region=region,
+                aws_access_key_id=request.aws_access_key_id,
+                aws_secret_access_key=request.aws_secret_access_key,
+                aws_session_token=request.aws_session_token
+            )
             success = await provider.test_connection()
             
             return ProviderTestResponse(
@@ -1407,7 +1460,10 @@ async def discover_models(request: ModelDiscoveryRequest, response: Response):
             region = request.region or "us-east-1"
             discovered_models = await model_discovery.get_available_models(
                 "bedrock", 
-                region=region
+                region=region,
+                aws_access_key_id=request.aws_access_key_id,
+                aws_secret_access_key=request.aws_secret_access_key,
+                aws_session_token=request.aws_session_token
             )
             
             models = [

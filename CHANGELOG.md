@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tech Stack Wiring Diagram**: New diagram type showing technical component connections
 - **Comprehensive Technology Constraints**: Banned technologies, compliance requirements, budget constraints
 - **Robust Mermaid Error Handling**: Improved diagram generation with fallbacks and user guidance
+- **AWS Bedrock Credentials Configuration**: Full support for AWS credentials in Streamlit UI and API
+  - Individual field input and combined format options
+  - Environment variable support (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN)
+  - Secure credential handling with password-masked inputs
+  - Backward compatibility with existing AWS credential methods
 
 ### Changed
 - Q&A input fields changed from `text_input` to `text_area` to prevent password manager interference
