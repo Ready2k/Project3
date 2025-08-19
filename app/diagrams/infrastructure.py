@@ -256,6 +256,8 @@ class InfrastructureDiagramGenerator:
             
             # Generate nodes within cluster
             nodes = cluster.get("nodes", [])
+            cluster_has_nodes = False
+            
             for node in nodes:
                 node_id = node.get("id")
                 node_type = node.get("type")
@@ -266,8 +268,13 @@ class InfrastructureDiagramGenerator:
                 if component_class:
                     lines.append(f'        {node_id} = {component_class}("{label}")')
                     all_nodes[node_id] = node_id
+                    cluster_has_nodes = True
                 else:
                     logger.warning(f"Unknown component type: {provider}.{node_type}")
+            
+            # Add pass statement if cluster has no valid nodes
+            if not cluster_has_nodes:
+                lines.append('        pass  # Empty cluster')
         
         # Generate standalone nodes (not in clusters)
         standalone_nodes = spec.get("nodes", [])
@@ -295,6 +302,10 @@ class InfrastructureDiagramGenerator:
                         lines.append(f'    {source} >> Edge(label="{label}") >> {target}')
                     else:
                         lines.append(f'    {source} >> {target}')
+        
+        # Ensure the diagram block has content
+        if len([line for line in lines if line.startswith('    ') and not line.strip().startswith('with Diagram')]) == 0:
+            lines.append('    pass  # Empty diagram')
         
         return "\n".join(lines)
     
