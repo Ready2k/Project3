@@ -1,126 +1,128 @@
-# Mermaid Diagram Syntax Error Fixes
+# Mermaid Diagram Rendering Fixes Summary
 
-## Problem
-The system was generating Mermaid diagrams with syntax errors, specifically:
-- All diagram code concatenated on a single line without proper line breaks
-- Missing spaces around arrows (`-->`)
-- Malformed node definitions and connections
-- No proper indentation or formatting
+## Issue Description
+The Agent Interaction Flow Mermaid diagrams were not rendering correctly, showing "Syntax error in text" with "mermaid version 10.2.4". The code worked fine when copied to mermaid.live but failed in the Streamlit application.
 
-Example error: `flowchart LRuser([Accounts Payable Clerk])invoiceSystem[Invoice Processing Automation System]...`
+## Root Causes Identified
 
-## Root Cause
-The LLM providers were generating Mermaid code without proper formatting, likely due to:
-1. Insufficient formatting instructions in prompts
-2. Model limitations in maintaining proper syntax structure
-3. Missing validation and error handling for malformed output
+### 1. Unicode/Emoji Characters
+- **Problem**: Mermaid v10.2.4 has issues with certain Unicode characters and emojis in node labels and edge labels
+- **Symptoms**: Syntax errors when rendering diagrams with emojis like 👤, 🤖, 🎯, etc.
 
-## Solutions Implemented
+### 2. Height Parameter Inconsistency
+- **Problem**: streamlit-mermaid library expects consistent height parameter format
+- **Symptoms**: Some calls used string format ("700px") while others used integer format (400)
 
-### 1. Fixed Arrow Validation (Critical Fix)
-**Problem**: The validation function was incorrectly flagging valid Mermaid arrow syntax as errors:
-- Sequence diagrams use `A->>B:` and `A-->>B:` syntax (valid)
-- Flowcharts can use `A -->|label| B` syntax (valid)
-- The validator was requiring spaces around all arrows (incorrect)
+### 3. Complex Label Sanitization
+- **Problem**: Agent names and labels contained special characters that weren't properly sanitized
+- **Symptoms**: Mermaid syntax errors due to unsupported characters in node IDs
 
-**Solution**: Removed overly restrictive arrow validation that was causing false positives. Mermaid supports many valid arrow syntaxes and the validation was too strict.
+## Fixes Implemented
 
-### 2. Fixed Sequence Diagram End Statement Validation (Critical Fix)
-**Problem**: The validation was incorrectly applying flowchart subgraph/end matching rules to sequence diagrams:
-- Sequence diagrams use `end` statements to close `alt/else` blocks, not subgraphs
-- The validator was flagging valid sequence diagrams as having "mismatched subgraph/end statements"
-
-**Solution**: 
-- Separated validation logic by diagram type (flowchart vs sequence)
-- Added proper alt/else/end matching for sequence diagrams
-- Enhanced cleaning function to remove stray `end` statements from malformed sequence diagrams
-
-### 3. Enhanced LLM Prompts
-Updated all diagram generation prompts with explicit formatting requirements:
-
-```
-CRITICAL FORMATTING REQUIREMENTS:
-1. Each line must be on a separate line with proper line breaks
-2. Use 4 spaces for indentation of nodes and connections
-3. Put each node definition and connection on its own line
-4. IMPORTANT: Only use "end" to close "alt" blocks in sequence diagrams
-5. Return ONLY the raw Mermaid code without markdown formatting
-6. Ensure proper spacing and line breaks between elements
-```
-
-### 4. Improved Code Cleaning Function (`_clean_mermaid_code`)
-- **Malformed Code Detection**: Identifies severely malformed code (all on one line, >200 chars)
-- **Fallback Strategy**: Instead of trying to fix unfixable code, returns a helpful error diagram
-- **Sequence Diagram Cleaning**: Removes stray `end` statements that don't belong to `alt` blocks
-- **Proper Indentation**: Ensures correct 4-space indentation for diagram elements
-- **Markdown Removal**: Strips markdown code blocks if present
-
-### 5. Comprehensive Syntax Validation (`_validate_mermaid_syntax`)
-- **Diagram Type Validation**: Ensures diagrams start with valid types (flowchart, sequenceDiagram, etc.)
-- **Bracket Matching**: Validates matching brackets, parentheses, and braces
-- **Flowchart Subgraph Validation**: Ensures subgraph/end statement matching for flowcharts only
-- **Sequence Diagram Alt/End Validation**: Ensures proper alt/else/end matching for sequence diagrams
-- **Removed Arrow Validation**: No longer validates arrow spacing (too restrictive)
-- **Malformed Detection**: Catches severely malformed single-line code
-
-### 6. Enhanced Error Handling in UI
-- **Pre-render Validation**: Validates Mermaid syntax before attempting to render
-- **User-friendly Error Messages**: Provides clear guidance when diagrams fail
-- **Actionable Suggestions**: Recommends specific solutions (retry, switch provider, simplify)
-- **Graceful Degradation**: Shows helpful error diagrams instead of breaking
-
-### 7. Provider-Specific Handling
-- **Fake Provider Fallbacks**: Improved fake diagrams for testing/demo scenarios
-- **OpenAI Recommendations**: Suggests OpenAI for better Mermaid syntax generation
-- **Error Recovery**: Automatic fallback to error diagrams when generation fails
-
-## Key Improvements
-
-### Before
-```mermaid
-flowchart LRuser([User])system[System]db[(Database)]user --> systemsystem --> db
-```
-**Result**: Syntax error, rendering failure
-
-### After
-```mermaid
-flowchart LR
-    user([User])
-    system[System]
-    db[(Database)]
+### 1. Enhanced Label Sanitization (`_sanitize` function)
+```python
+def _sanitize(label: str) -> str:
+    """Sanitize labels for Mermaid diagrams."""
+    if not label:
+        return 'unknown'
     
-    user --> system
-    system --> db
+    # Remove emojis and special Unicode characters
+    import re
+    label = re.sub(r'[^\w\s\-_.:()[\]{}]', '', label)
+    
+    # Keep only safe characters for Mermaid
+    allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_.:()")
+    sanitized = ''.join(ch if ch in allowed else '_' for ch in label)
+    
+    # Clean up multiple underscores and spaces
+    sanitized = re.sub(r'[_\s]+', '_', sanitized).strip('_')
+    
+    return sanitized or 'unknown'
 ```
-**Result**: Valid syntax, proper rendering
 
-## Error Handling Strategy
+### 2. Unicode Character Cleaning (`_clean_mermaid_code` function)
+- Added Unicode character replacement mapping for common emojis
+- Removes all non-ASCII characters that can cause Mermaid v10.2.4 issues
+- Provides safe text alternatives for visual elements
 
-1. **Detection**: Identify malformed code early through validation
-2. **Fallback**: Provide helpful error diagrams instead of breaking
-3. **Guidance**: Give users clear steps to resolve issues
-4. **Recovery**: Allow easy retry with different providers/settings
+```python
+unicode_replacements = {
+    '👤': 'User',
+    '🤖': 'Agent', 
+    '🎯': 'Target',
+    '🔬': 'Specialist',
+    '📋': 'Task',
+    '💬': 'Comm',
+    '🔄': 'Loop',
+    # ... more mappings
+}
+```
 
-## User Experience Improvements
+### 3. Height Parameter Compatibility
+- Added fallback logic to handle both integer and string height formats
+- Tries integer format first, falls back to string format if TypeError occurs
 
-- **Clear Error Messages**: Users understand what went wrong and how to fix it
-- **Actionable Guidance**: Specific suggestions (switch provider, retry, simplify)
-- **Graceful Degradation**: System continues working even with diagram failures
-- **Professional Appearance**: Error diagrams look intentional, not broken
+```python
+try:
+    stmd.st_mermaid(mermaid_code, height=500)
+except TypeError:
+    # Fallback to string format if integer doesn't work
+    stmd.st_mermaid(mermaid_code, height="500px")
+```
 
-## Testing Results
+### 4. Improved Agent Architecture Generation
+- **Two-agent diagrams**: Removed emojis from node labels, simplified edge labels
+- **Three-agent diagrams**: Clean agent names, simplified communication labels  
+- **Multi-agent diagrams**: Safer syntax for complex hierarchies
+- **Single-agent diagrams**: Removed problematic Unicode characters
 
-✅ **Malformed Code**: Properly detected and handled with fallback diagrams  
-✅ **Good Code**: Passes through unchanged with proper validation  
-✅ **Arrow Syntax**: All valid Mermaid arrow types now accepted (-->, ->>, -->>:, -->|label|)  
-✅ **Sequence Diagrams**: Proper validation for sequence diagram syntax  
-✅ **Flowchart Diagrams**: Proper validation for flowchart syntax with labels  
-✅ **Edge Cases**: Empty code, invalid types, unmatched brackets all handled  
-✅ **User Experience**: Clear error messages and actionable guidance  
+### 5. Enhanced Error Handling and Debugging
+- Added better error messages with specific guidance
+- Included debug mode information for troubleshooting
+- Provided fallback to mermaid.live for manual testing
+- Added comprehensive validation warnings
 
-## Future Considerations
+### 6. Validation Improvements
+- Enhanced `_validate_mermaid_syntax` to detect Unicode issues
+- Added warnings for non-ASCII characters
+- Better error messages for different types of syntax issues
 
-1. **Provider Optimization**: Fine-tune prompts for specific LLM providers
-2. **Advanced Recovery**: Attempt intelligent parsing/fixing of common errors
-3. **User Preferences**: Allow users to choose error handling strategies
-4. **Monitoring**: Track diagram generation success rates by provider
+## Files Modified
+
+### Primary Files
+- `streamlit_app.py`: Main diagram generation and rendering logic
+- `app/ui/analysis_display.py`: Agent coordination diagram rendering
+
+### Key Functions Updated
+- `_sanitize()`: Enhanced label sanitization
+- `_clean_mermaid_code()`: Unicode character cleaning
+- `_validate_mermaid_syntax()`: Better validation
+- `_create_agent_architecture_mermaid()`: Safer diagram generation
+- `_create_single_agent_mermaid()`: Clean single-agent diagrams
+- `render_mermaid()`: Improved error handling
+
+## Testing
+Created `test_mermaid_fix.py` to validate:
+- Label sanitization functionality
+- Diagram syntax validation
+- Unicode character cleaning
+- Complex diagram structure validation
+
+## Results
+- ✅ Diagrams now render correctly in Streamlit
+- ✅ Compatible with Mermaid v10.2.4
+- ✅ Maintains visual clarity without emojis
+- ✅ Robust error handling and fallbacks
+- ✅ Better user guidance when issues occur
+
+## Usage Notes
+- Diagrams will appear cleaner without emojis but maintain full functionality
+- Users can still copy code to mermaid.live for enhanced viewing
+- Debug mode provides additional troubleshooting information
+- All existing diagram features (download, browser view, etc.) remain functional
+
+## Compatibility
+- ✅ Mermaid v10.2.4
+- ✅ streamlit-mermaid library (all versions)
+- ✅ All agent architecture types (single, two-agent, three-agent, multi-agent)
+- ✅ All diagram viewing modes (regular, large view, browser export)

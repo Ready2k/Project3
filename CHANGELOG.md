@@ -38,7 +38,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pattern duplication problem (e.g., PAT-015 and PAT-016 for same use case)
 - Poor tech stack categorization and lack of context in recommendations
 - Text formatting issues with run-on paragraphs in technical analysis
-- **Mermaid diagram syntax errors** from malformed LLM output
+- **Mermaid diagram rendering issues** with version 10.2.4 compatibility
+  - Unicode/emoji character conflicts causing syntax errors
+  - Height parameter inconsistency in streamlit-mermaid library
+  - Agent name sanitization for Mermaid node compatibility
+  - Enhanced error handling with fallback to mermaid.live
 - **Missing enterprise constraints** functionality for technology restrictions
 
 ### Technical Details
@@ -48,7 +52,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `_render_formatted_text()` helper for better text display
 - Enhanced RecommendationService with async pattern creation decision logic
 - **Added `build_tech_stack_wiring_diagram()`** for technical architecture visualization
-- **Added `_clean_mermaid_code()`** for robust diagram generation error handling
+- **Enhanced Mermaid diagram generation**:
+  - Improved `_sanitize()` function for Unicode character handling
+  - Enhanced `_clean_mermaid_code()` with emoji-to-text replacement mapping
+  - Added height parameter compatibility for streamlit-mermaid library versions
+  - Robust error handling in `render_mermaid()` with user-friendly fallbacks
+  - Updated agent architecture generation methods for safer syntax
 - **Enhanced constraint handling** throughout the recommendation pipeline
 
 ## [1.0.0] - 2024-12-XX
