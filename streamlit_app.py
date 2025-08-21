@@ -70,8 +70,22 @@ async def make_llm_request(prompt: str, provider_config: Dict, purpose: str = "d
 
 def _sanitize(label: str) -> str:
     """Sanitize labels for Mermaid diagrams."""
-    allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_.:")
-    return ''.join(ch if ch in allowed else '_' for ch in (label or '')) or 'unknown'
+    if not label:
+        return 'unknown'
+    
+    # Remove emojis and special Unicode characters that can cause Mermaid issues
+    import re
+    # Remove emojis and other problematic Unicode characters
+    label = re.sub(r'[^\w\s\-_.:()[\]{}]', '', label)
+    
+    # Keep only safe characters for Mermaid
+    allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_.:()")
+    sanitized = ''.join(ch if ch in allowed else '_' for ch in label)
+    
+    # Clean up multiple underscores and spaces
+    sanitized = re.sub(r'[_\s]+', '_', sanitized).strip('_')
+    
+    return sanitized or 'unknown'
 
 def _validate_mermaid_syntax(mermaid_code: str) -> tuple[bool, str]:
     """Validate basic Mermaid syntax and return (is_valid, error_message)."""
@@ -81,6 +95,13 @@ def _validate_mermaid_syntax(mermaid_code: str) -> tuple[bool, str]:
     # Check for severely malformed code (all on one line with no spaces around arrows)
     if '\n' not in mermaid_code and len(mermaid_code) > 200:
         return False, "Diagram code appears to be malformed (all on one line). This usually indicates an LLM formatting error."
+    
+    # Check for problematic Unicode characters that can cause Mermaid v10.2.4 issues
+    import re
+    if re.search(r'[^\x00-\x7F]', mermaid_code):
+        # Contains non-ASCII characters - clean them
+        app_logger.warning("Mermaid code contains non-ASCII characters that may cause rendering issues")
+        # This is a warning, not an error - let the cleaning function handle it
     
     lines = [line.strip() for line in mermaid_code.split('\n') if line.strip()]
     
@@ -187,6 +208,29 @@ def _clean_mermaid_code(mermaid_code: str) -> str:
         code = code.replace('```mermaid', '').replace('```', '').strip()
     elif code.startswith('```'):
         code = code.replace('```', '').strip()
+    
+    # Clean problematic Unicode characters that can cause Mermaid v10.2.4 issues
+    import re
+    # Replace common problematic Unicode characters with safe alternatives
+    unicode_replacements = {
+        '👤': 'User',
+        '🤖': 'Agent',
+        '🎯': 'Target',
+        '🔬': 'Specialist',
+        '📋': 'Task',
+        '💬': 'Comm',
+        '🔄': 'Loop',
+        '⚡': 'Action',
+        '🧠': 'Brain',
+        '📊': 'Monitor',
+        '🔍': 'Process'
+    }
+    
+    for emoji, replacement in unicode_replacements.items():
+        code = code.replace(emoji, replacement)
+    
+    # Remove any remaining non-ASCII characters
+    code = re.sub(r'[^\x00-\x7F]+', '', code)
     
     # Detect diagram type early for better handling
     first_line = code.split('\n')[0].lower().strip() if code else ""
@@ -876,6 +920,76 @@ CRITICAL FORMATTING REQUIREMENTS:
   participant E as Error
   
   U->>E: Sequence diagram generation failed: {str(e)}"""
+
+
+async def build_agent_interaction_diagram(requirement: str, recommendations: List[Dict],
+                                        enhanced_tech_stack: Optional[List[str]] = None,
+                                        architecture_explanation: Optional[str] = None) -> str:
+    """Build an agent interaction diagram showing how AI agents collaborate and make decisions."""
+    try:
+        # Get tech stack for context (enhanced takes priority)
+        tech_stack_context = ""
+        if enhanced_tech_stack:
+            app_logger.info(f"Using enhanced tech stack context for agent interaction diagram: {len(enhanced_tech_stack)} technologies")
+            tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(enhanced_tech_stack)}"
+        elif recommendations and recommendations[0].get('tech_stack'):
+            tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(recommendations[0]['tech_stack'])}"
+        
+        # Get architecture explanation for context
+        architecture_context = ""
+        if architecture_explanation:
+            app_logger.info("Using architecture explanation context for agent interaction diagram")
+            architecture_context = f"ARCHITECTURE CONTEXT: {architecture_explanation}"
+        
+        # Extract agent roles from recommendations
+        agent_roles_context = ""
+        agent_roles = []
+        for rec in recommendations:
+            if rec.get('agent_roles'):
+                agent_roles.extend(rec['agent_roles'])
+        
+        if agent_roles:
+            agent_roles_context = f"AGENT ROLES: {agent_roles}"
+        
+        prompt = f"""Create a Mermaid flowchart diagram showing how autonomous AI agents interact, coordinate, and make decisions for this requirement:
+
+REQUIREMENT: {requirement}
+
+{tech_stack_context}
+{architecture_context}
+{agent_roles_context}
+
+Create a flowchart that shows:
+1. Different AI agents as distinct nodes (use descriptive names like "DataAgent", "DecisionAgent", "CoordinatorAgent")
+2. How agents communicate and coordinate with each other
+3. Decision points where agents make autonomous choices
+4. Data flow between agents
+5. External systems or APIs that agents interact with
+6. Feedback loops and learning mechanisms
+
+Use Mermaid flowchart syntax with:
+- Rectangular nodes for agents: A[Agent Name]
+- Diamond nodes for decision points: D{{Decision Point}}
+- Circular nodes for external systems: E((External System))
+- Arrows showing communication: A --> B
+- Labels on arrows showing data/messages: A -->|"data"| B
+
+Make it clear how the multi-agent system achieves autonomy and handles complex reasoning.
+
+Return ONLY the Mermaid code, starting with 'flowchart TD' or 'flowchart LR'."""
+
+        provider_config = get_provider_config()
+        response = await make_llm_request(prompt, provider_config)
+        return _clean_mermaid_code(response.strip())
+    except Exception as e:
+        return f"""flowchart TD
+  A[Coordinator Agent] --> B[Data Processing Agent]
+  A --> C[Decision Making Agent]
+  B -->|"processed data"| C
+  C -->|"decisions"| D[Action Agent]
+  D --> E((External System))
+  
+  note[Agent interaction diagram generation failed: {str(e)}]"""
 
 
 async def build_infrastructure_diagram(requirement: str, recommendations: List[Dict],
@@ -1576,6 +1690,11 @@ class AutomatedAIAssessmentUI:
                 "Show Q&A answer status",
                 value=st.session_state.get('debug_qa', False),
                 help="Show detailed answer status for each Q&A question"
+            )
+            st.session_state.debug_mode = st.checkbox(
+                "Show agent role debug info",
+                value=st.session_state.get('debug_mode', False),
+                help="Show raw agent role data structure for debugging"
             )
             st.session_state.show_llm_debug = st.checkbox(
                 "Show LLM analysis debug",
@@ -2789,25 +2908,328 @@ class AutomatedAIAssessmentUI:
         
         st.markdown("---")
         
-        # Solution Overview
+        # Solution Overview - Both Traditional and Agentic
         if rec.get('recommendations') and len(rec['recommendations']) > 0:
-            st.subheader("💡 Recommended Solution")
+            # Check if this is suitable for agentic AI
+            reasoning = rec.get("reasoning", "").lower()
+            agentic_keywords = ["agent", "autonomous", "agentic", "multi-agent", "reasoning", "decision-making"]
+            is_agentic = any(keyword in reasoning for keyword in agentic_keywords)
+            
+            # Also check recommendations for agent_roles
+            agent_roles_found = []
+            for recommendation in rec['recommendations']:
+                agent_roles_data = recommendation.get("agent_roles", [])
+                if agent_roles_data:
+                    agent_roles_found.extend(agent_roles_data)
+                    is_agentic = True
+            
+            # Display solution type and overview
+            if is_agentic:
+                st.subheader("🤖 Agentic AI Solution")
+                st.success("🎉 This requirement is suitable for autonomous AI agent implementation!")
+                
+                # Agentic solution explanation
+                st.markdown("""
+                **Agentic AI Approach:** Your solution will use autonomous AI agents that can make decisions, 
+                reason through problems, and handle exceptions without constant human intervention. This provides 
+                higher autonomy and adaptability compared to traditional automation.
+                """)
+                
+                # Agent Roles & Responsibilities - Enhanced Interactive Display
+                if agent_roles_found:
+                    with st.expander("🤖 Agent Team & Interaction Flow", expanded=True):
+                        st.markdown("""
+                        **Your Multi-Agent System:** These specialized AI agents work together autonomously to handle your requirements.
+                        """)
+                        
+                        # Debug info (can be removed later)
+                        if st.session_state.get('debug_mode', False):
+                            with st.expander("🔍 Debug: Agent Role Data", expanded=False):
+                                st.json(agent_roles_found)
+                        
+                        # Create agent interaction flow diagram first
+                        if len(agent_roles_found) > 1:
+                            st.markdown("### 🔄 Agent Interaction Flow")
+                            self._render_agent_interaction_flow(agent_roles_found)
+                            st.markdown("---")
+                        
+                        # Display agents in an organized, visual way
+                        st.markdown("### 👥 Meet Your Agent Team")
+                        
+                        # Organize agents by type/hierarchy
+                        coordinator_agents = []
+                        specialist_agents = []
+                        support_agents = []
+                        
+                        for role in agent_roles_found:
+                            role_name = self._extract_agent_name(role)
+                            role_lower = role_name.lower()
+                            
+                            if any(keyword in role_lower for keyword in ['coordinator', 'manager', 'orchestrator', 'supervisor']):
+                                coordinator_agents.append(role)
+                            elif any(keyword in role_lower for keyword in ['specialist', 'expert', 'analyst', 'negotiator']):
+                                specialist_agents.append(role)
+                            else:
+                                support_agents.append(role)
+                        
+                        # Team composition summary
+                        total_agents = len(agent_roles_found)
+                        coord_count = len(coordinator_agents)
+                        spec_count = len(specialist_agents) 
+                        supp_count = len(support_agents)
+                        
+                        st.markdown(f"""
+                        **🏢 Team Composition:** {total_agents} agents total
+                        • {coord_count} Coordinator{'s' if coord_count != 1 else ''} • {spec_count} Specialist{'s' if spec_count != 1 else ''} • {supp_count} Support Agent{'s' if supp_count != 1 else ''}
+                        """)
+                        st.markdown("---")
+                        
+                        # Display agents by hierarchy
+                        if coordinator_agents:
+                            st.markdown("#### 🎯 **Coordination Layer**")
+                            st.markdown("*These agents orchestrate the overall workflow and make high-level decisions*")
+                            for role in coordinator_agents:
+                                self._render_agent_card(role, "coordinator")
+                            st.markdown("")
+                        
+                        if specialist_agents:
+                            st.markdown("#### 🔬 **Specialist Layer**") 
+                            st.markdown("*These agents provide domain expertise and handle specialized tasks*")
+                            cols = st.columns(min(len(specialist_agents), 2))
+                            for i, role in enumerate(specialist_agents):
+                                with cols[i % len(cols)]:
+                                    self._render_agent_card(role, "specialist")
+                            st.markdown("")
+                        
+                        if support_agents:
+                            st.markdown("#### 🛠️ **Support Layer**")
+                            st.markdown("*These agents handle supporting functions and monitoring*")
+                            for role in support_agents:
+                                self._render_agent_card(role, "support")
+                        
+                        # Show collaboration patterns
+                        if len(agent_roles_found) > 1:
+                            st.markdown("---")
+                            st.markdown("### 🤝 Collaboration & Workflow")
+                            
+                            # Interactive workflow selector
+                            workflow_view = st.radio(
+                                "Choose workflow view:",
+                                ["Communication Patterns", "Decision Flow", "Error Handling"],
+                                horizontal=True
+                            )
+                            
+                            if workflow_view == "Communication Patterns":
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.markdown("""
+                                    **🔄 Inter-Agent Communication:**
+                                    • **Event-driven messaging** between agents
+                                    • **Shared context** and state management  
+                                    • **Real-time status updates** and progress tracking
+                                    • **Conflict resolution** protocols
+                                    """)
+                                
+                                with col2:
+                                    st.markdown("""
+                                    **📡 Message Types:**
+                                    • **Task requests** and assignments
+                                    • **Status updates** and progress reports
+                                    • **Data sharing** and context updates
+                                    • **Alert notifications** and escalations
+                                    """)
+                            
+                            elif workflow_view == "Decision Flow":
+                                st.markdown("""
+                                **🧠 Decision-Making Process:**
+                                
+                                1. **Input Analysis** → Each agent evaluates incoming requests within their domain
+                                2. **Autonomous Processing** → Agents make independent decisions for routine tasks
+                                3. **Collaboration** → Complex decisions trigger inter-agent consultation
+                                4. **Consensus Building** → Agents coordinate to reach optimal solutions
+                                5. **Execution** → Coordinated action with real-time monitoring
+                                """)
+                            
+                            else:  # Error Handling
+                                st.markdown("""
+                                **🛡️ Error Handling & Recovery:**
+                                
+                                **Agent-Level Recovery:**
+                                • Self-diagnosis and automatic retry mechanisms
+                                • Graceful degradation when capabilities are limited
+                                • Alternative approach selection
+                                
+                                **System-Level Resilience:**
+                                • Task redistribution when agents are unavailable
+                                • Backup agent activation for critical functions
+                                • Human escalation for unresolvable issues
+                                """)
+                
+                # Multi-Agent Architecture - Enhanced Visual Display
+                with st.expander("🏗️ System Architecture & Design Patterns", expanded=False):
+                    st.markdown("### 🎯 Architecture Overview")
+                    
+                    # Architecture type indicator
+                    if len(agent_roles_found) > 1:
+                        arch_type = "Multi-Agent Collaborative System"
+                        complexity = "High" if len(agent_roles_found) > 3 else "Medium"
+                    else:
+                        arch_type = "Single Agent Autonomous System"
+                        complexity = "Low"
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Architecture Type", arch_type)
+                    with col2:
+                        st.metric("Agent Count", len(agent_roles_found))
+                    with col3:
+                        st.metric("Complexity", complexity)
+                    
+                    st.markdown("---")
+                    
+                    # Visual architecture representation with Mermaid
+                    if len(agent_roles_found) > 1:
+                        st.markdown("**🔗 Agent Interaction Flow:**")
+                        st.info("💡 **Interactive Diagram:** This shows how your agents communicate and coordinate. Each colored box represents a different agent with specialized capabilities.")
+                        
+                        # Create interactive Mermaid diagram
+                        architecture_mermaid = self._create_agent_architecture_mermaid(agent_roles_found)
+                        
+                        # Debug mode: show raw Mermaid code
+                        if st.session_state.get('debug_mode', False):
+                            with st.expander("🔍 Debug: Mermaid Code", expanded=False):
+                                st.code(architecture_mermaid, language="mermaid")
+                                st.markdown("**Copy this code to [mermaid.live](https://mermaid.live) to test**")
+                        
+                        # Try to render the diagram
+                        try:
+                            # Add debug information
+                            if st.session_state.get('debug_mode', False):
+                                st.write(f"**Debug Info:** Generated {len(architecture_mermaid)} characters of Mermaid code")
+                                st.write(f"**First line:** {architecture_mermaid.split(chr(10))[0] if architecture_mermaid else 'Empty'}")
+                            
+                            self.render_mermaid(architecture_mermaid)
+                        except Exception as e:
+                            st.error(f"Error rendering Mermaid diagram: {e}")
+                            st.info("The diagram code above should work in mermaid.live - there may be a rendering issue in our tool.")
+                            
+                            # Show additional debug info
+                            if st.session_state.get('debug_mode', False):
+                                st.write("**Debug - Full error details:**")
+                                import traceback
+                                st.code(traceback.format_exc())
+                        
+                        # Add diagram legend
+                        with st.expander("📖 Diagram Legend", expanded=False):
+                            st.markdown("""
+                            **🎨 Color Coding:**
+                            - 🔴 **Red**: User interactions and requests
+                            - 🟠 **Orange/Red**: Coordinator agents (orchestrate workflow)
+                            - 🔵 **Blue**: Specialist agents (domain expertise)
+                            - 🟢 **Green**: Results and responses
+                            - 🟡 **Yellow**: Supporting agents and processes
+                            
+                            **➡️ Arrow Types:**
+                            - **Solid arrows**: Direct task delegation or data flow
+                            - **Double arrows (↔)**: Bidirectional communication and collaboration
+                            - **Dashed lines**: Monitoring or feedback loops
+                            """)
+                        
+                        st.markdown("---")
+                    elif len(agent_roles_found) == 1:
+                        st.markdown("**🤖 Single Agent Workflow:**")
+                        st.info("💡 **Autonomous Loop:** This shows how your single agent processes requests through continuous learning and adaptation.")
+                        
+                        single_agent_mermaid = self._create_single_agent_mermaid(agent_roles_found[0])
+                        self.render_mermaid(single_agent_mermaid)
+                        st.markdown("---")
+                    
+                    # Architecture principles in columns
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("""
+                        #### 🔧 **Core Principles**
+                        
+                        **🎯 Specialization**  
+                        Each agent has a focused domain of expertise
+                        
+                        **🤝 Coordination**  
+                        Agents communicate and collaborate seamlessly
+                        
+                        **🧠 Autonomy**  
+                        Independent decision-making within defined scope
+                        """)
+                    
+                    with col2:
+                        st.markdown("""
+                        #### ⚡ **System Benefits**
+                        
+                        **🛡️ Resilience**  
+                        System continues if individual agents have issues
+                        
+                        **📈 Scalability**  
+                        New agents can be added as needs grow
+                        
+                        **🔄 Adaptability**  
+                        Agents learn and improve over time
+                        """)
+                    
+                    st.markdown("---")
+                    
+                    # Technical implementation details
+                    with st.expander("🔧 Technical Implementation Details"):
+                        st.markdown("""
+                        **Communication Protocol:**
+                        - Event-driven messaging system
+                        - Asynchronous task processing
+                        - Shared state management with conflict resolution
+                        
+                        **Decision Framework:**
+                        - Hierarchical decision trees
+                        - Consensus mechanisms for complex decisions
+                        - Escalation paths for edge cases
+                        
+                        **Monitoring & Control:**
+                        - Real-time performance metrics
+                        - Automated health checks
+                        - Human oversight interfaces
+                        """)
+            else:
+                st.subheader("⚙️ Traditional Automation Solution")
+                st.info("This requirement is best suited for traditional automation approaches.")
             
             # Get the best recommendation for solution overview
             best_rec = rec['recommendations'][0]
             
             # Generate solution explanation
             solution_explanation = self._generate_solution_explanation(best_rec, rec)
-            st.write(solution_explanation)
+            
+            with st.expander("📋 Detailed Solution Analysis", expanded=True):
+                st.write(solution_explanation)
             
 
         
         # Tech stack with explanations
         if rec.get('tech_stack'):
-            st.subheader("🛠️ Recommended Tech Stack")
+            # Check again for agentic solution to show appropriate tech stack
+            reasoning = rec.get("reasoning", "").lower()
+            agentic_keywords = ["agent", "autonomous", "agentic", "multi-agent", "reasoning", "decision-making"]
+            is_agentic = any(keyword in reasoning for keyword in agentic_keywords)
+            
+            if is_agentic:
+                st.subheader("🤖 Agentic AI Tech Stack")
+                st.markdown("**Specialized technologies for autonomous AI agent development:**")
+                st.info("💡 **Agentic frameworks automatically added:** LangChain, CrewAI, LangGraph, and OpenAI Assistants API have been included to support autonomous agent functionality.")
+            else:
+                st.subheader("🛠️ Recommended Tech Stack")
             
             # Generate and show LLM-enhanced tech stack with explanations
             enhanced_tech_stack, architecture_explanation = asyncio.run(self._generate_llm_tech_stack_and_explanation(rec['tech_stack']))
+            
+            # If this is an agentic solution, ensure agentic frameworks are included
+            if is_agentic:
+                enhanced_tech_stack = self._ensure_agentic_frameworks(enhanced_tech_stack)
             
             # Store the enhanced data back to session state for export
             self._update_recommendations_with_enhanced_data(enhanced_tech_stack, architecture_explanation)
@@ -2815,7 +3237,12 @@ class AutomatedAIAssessmentUI:
             self._render_tech_stack_explanation(enhanced_tech_stack)
             
             # Show architecture explanation
-            st.subheader("🏗️ How It All Works Together")
+            if is_agentic:
+                st.subheader("🏗️ Agentic Architecture Flow")
+                st.markdown("**How your AI agents will work together:**")
+            else:
+                st.subheader("🏗️ How It All Works Together")
+            
             self._render_formatted_text(architecture_explanation)
         
         # Detailed reasoning
@@ -3130,6 +3557,404 @@ class AutomatedAIAssessmentUI:
             from app.utils.logger import app_logger
             app_logger.error(f"Failed to update recommendations with enhanced data: {e}")
     
+    def _ensure_agentic_frameworks(self, tech_stack: List[str]) -> List[str]:
+        """Ensure agentic AI frameworks are included in the tech stack for agentic solutions."""
+        # Convert to lowercase for comparison
+        tech_stack_lower = [tech.lower() for tech in tech_stack]
+        
+        # Define essential agentic frameworks
+        agentic_frameworks = {
+            'langchain': 'LangChain',
+            'crewai': 'CrewAI', 
+            'autogen': 'AutoGen',
+            'langgraph': 'LangGraph',
+            'semantic kernel': 'Microsoft Semantic Kernel',
+            'openai assistants': 'OpenAI Assistants API'
+        }
+        
+        # Check if any agentic frameworks are already present
+        has_agentic_framework = any(
+            framework in ' '.join(tech_stack_lower) 
+            for framework in agentic_frameworks.keys()
+        )
+        
+        # If no agentic frameworks found, add recommended ones
+        if not has_agentic_framework:
+            enhanced_stack = tech_stack.copy()
+            
+            # Add core agentic frameworks based on use case
+            enhanced_stack.extend([
+                'LangChain',  # Most versatile
+                'CrewAI',     # Multi-agent coordination
+                'LangGraph',  # Complex workflows
+                'OpenAI Assistants API'  # Easy integration
+            ])
+            
+            # Add supporting technologies for agentic systems
+            supporting_tech = {
+                'vector database': 'FAISS Vector Database',
+                'redis': 'Redis',
+                'postgresql': 'PostgreSQL'
+            }
+            
+            for tech_key, tech_name in supporting_tech.items():
+                if not any(tech_key in tech.lower() for tech in tech_stack_lower):
+                    enhanced_stack.append(tech_name)
+            
+            return enhanced_stack
+        
+        return tech_stack
+    
+    def _extract_agent_name(self, role) -> str:
+        """Extract agent name from role data."""
+        if isinstance(role, dict):
+            return role.get('name') or role.get('role') or role.get('title') or 'Agent'
+        elif isinstance(role, str):
+            return role
+        else:
+            return 'Agent'
+    
+    def _render_agent_card(self, role, agent_type: str):
+        """Render an individual agent card with visual styling."""
+        # Extract agent information
+        if isinstance(role, dict):
+            role_name = role.get('name') or role.get('role') or role.get('title') or 'Agent'
+            role_desc = (role.get('description') or 
+                        role.get('responsibility') or 
+                        role.get('purpose') or 
+                        role.get('role_description') or
+                        f"Specialized agent responsible for {role_name.lower()} tasks")
+            responsibilities = (role.get('responsibilities') or 
+                              role.get('tasks') or 
+                              role.get('capabilities') or 
+                              role.get('duties') or [])
+            autonomy_level = role.get('autonomy_level', 0.8)
+        elif isinstance(role, str):
+            role_name = role
+            role_desc = self._get_intelligent_description(role)
+            responsibilities = []
+            autonomy_level = 0.8
+        else:
+            role_name = 'Agent'
+            role_desc = str(role)
+            responsibilities = []
+            autonomy_level = 0.8
+        
+        # Choose icon and color based on agent type and name
+        icon, color = self._get_agent_icon_and_color(role_name, agent_type)
+        
+        # Create styled container
+        with st.container():
+            # Agent header with icon and name
+            st.markdown(f"""
+            <div style="
+                background: linear-gradient(135deg, {color}20, {color}10);
+                border-left: 4px solid {color};
+                padding: 15px;
+                border-radius: 8px;
+                margin: 10px 0;
+            ">
+                <h4 style="margin: 0; color: {color};">{icon} {role_name}</h4>
+                <p style="margin: 5px 0; color: #666; font-style: italic;">{role_desc}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Agent details in columns
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                if responsibilities:
+                    st.markdown("**🎯 Key Capabilities:**")
+                    for resp in responsibilities[:3]:  # Show top 3 to keep it clean
+                        st.markdown(f"• {resp}")
+                    if len(responsibilities) > 3:
+                        with st.expander(f"View all {len(responsibilities)} capabilities"):
+                            for resp in responsibilities[3:]:
+                                st.markdown(f"• {resp}")
+            
+            with col2:
+                # Autonomy level visualization
+                st.markdown("**🤖 Autonomy Level**")
+                autonomy_pct = autonomy_level if isinstance(autonomy_level, float) else 0.8
+                st.progress(autonomy_pct)
+                
+                if autonomy_pct >= 0.9:
+                    st.success("Fully Autonomous")
+                elif autonomy_pct >= 0.7:
+                    st.info("Highly Autonomous") 
+                elif autonomy_pct >= 0.5:
+                    st.warning("Semi-Autonomous")
+                else:
+                    st.error("Requires Oversight")
+    
+    def _get_intelligent_description(self, role_name: str) -> str:
+        """Generate intelligent descriptions for string-based roles."""
+        role_descriptions = {
+            'procurement': 'Handles vendor negotiations, contract analysis, and purchasing decisions',
+            'negotiation': 'Manages contract negotiations, pricing discussions, and deal structuring',
+            'specialist': 'Provides domain expertise and specialized knowledge for complex decisions',
+            'coordinator': 'Orchestrates multi-agent workflows and manages task distribution',
+            'analyst': 'Performs data analysis, risk assessment, and decision support',
+            'monitor': 'Tracks system performance, compliance, and quality metrics',
+            'manager': 'Oversees agent coordination and strategic decision-making',
+            'expert': 'Provides specialized knowledge and technical expertise',
+            'advisor': 'Offers strategic guidance and recommendations',
+            'executor': 'Handles task execution and implementation'
+        }
+        
+        role_lower = role_name.lower()
+        for key, desc in role_descriptions.items():
+            if key in role_lower:
+                return desc
+        
+        return f"Specialized autonomous agent responsible for {role_name.lower()} operations and decision-making"
+    
+    def _get_agent_icon_and_color(self, role_name: str, agent_type: str) -> tuple[str, str]:
+        """Get appropriate icon and color for agent based on role and type."""
+        role_lower = role_name.lower()
+        
+        # Icon mapping based on role keywords
+        if any(keyword in role_lower for keyword in ['coordinator', 'manager', 'orchestrator']):
+            return "🎯", "#FF6B6B"
+        elif any(keyword in role_lower for keyword in ['negotiation', 'procurement', 'contract']):
+            return "🤝", "#4ECDC4"
+        elif any(keyword in role_lower for keyword in ['analyst', 'analysis', 'data']):
+            return "📊", "#45B7D1"
+        elif any(keyword in role_lower for keyword in ['specialist', 'expert']):
+            return "🔬", "#96CEB4"
+        elif any(keyword in role_lower for keyword in ['monitor', 'tracking', 'compliance']):
+            return "👁️", "#FECA57"
+        elif any(keyword in role_lower for keyword in ['advisor', 'consultant']):
+            return "💡", "#FF9FF3"
+        else:
+            # Default based on agent type
+            type_mapping = {
+                "coordinator": ("🎯", "#FF6B6B"),
+                "specialist": ("🔬", "#4ECDC4"), 
+                "support": ("🛠️", "#96CEB4")
+            }
+            return type_mapping.get(agent_type, ("🤖", "#45B7D1"))
+    
+    def _render_agent_interaction_flow(self, agent_roles_found):
+        """Render a visual flow showing how agents interact."""
+        st.markdown("""
+        <div style="
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+            text-align: center;
+        ">
+        """, unsafe_allow_html=True)
+        
+        # Create flow based on number of agents
+        if len(agent_roles_found) == 2:
+            agent1 = self._extract_agent_name(agent_roles_found[0])
+            agent2 = self._extract_agent_name(agent_roles_found[1])
+            
+            st.markdown(f"""
+            **Workflow:** `User Request` → **{agent1}** ↔️ **{agent2}** → `Coordinated Response`
+            
+            *The agents collaborate directly, sharing information and coordinating their specialized capabilities.*
+            """)
+            
+        elif len(agent_roles_found) == 3:
+            agents = [self._extract_agent_name(role) for role in agent_roles_found]
+            
+            st.markdown(f"""
+            **Workflow:** `User Request` → **{agents[0]}** → **{agents[1]}** → **{agents[2]}** → `Final Result`
+            
+            *Sequential collaboration with feedback loops and cross-agent communication.*
+            """)
+            
+        else:
+            st.markdown(f"""
+            **Complex Multi-Agent Workflow** ({len(agent_roles_found)} agents)
+            
+            `User Request` → **Coordinator** → **Specialist Agents** → **Integration** → `Comprehensive Solution`
+            
+            *Hierarchical coordination with parallel processing and intelligent task distribution.*
+            """)
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    def _create_agent_architecture_mermaid(self, agent_roles_found) -> str:
+        """Create a Mermaid diagram showing agent architecture and interactions."""
+        agents = []
+        used_names = set()
+        
+        # Extract agent information and create unique, clean names for diagram
+        for i, role in enumerate(agent_roles_found):
+            agent_name = self._extract_agent_name(role)
+            # Clean name for Mermaid (remove special characters, limit length)
+            clean_name = ''.join(c for c in agent_name if c.isalnum() or c in ' -_')[:15]
+            
+            # Ensure unique names by adding numbers if needed
+            original_clean_name = clean_name
+            counter = 1
+            while clean_name in used_names:
+                clean_name = f"{original_clean_name}{counter}"
+                counter += 1
+            used_names.add(clean_name)
+            
+            agent_id = f"A{i+1}"
+            agents.append((agent_id, clean_name, role))
+        
+        if len(agents) == 2:
+            # Two-agent collaboration - use safer syntax without emojis in node IDs
+            agent1_clean = _sanitize(agents[0][1])
+            agent2_clean = _sanitize(agents[1][1])
+            
+            return f"""flowchart TD
+    U[User Request] --> {agents[0][0]}[{agent1_clean}]
+    U --> {agents[1][0]}[{agent2_clean}]
+    {agents[0][0]} <-->|Collaborate| {agents[1][0]}
+    {agents[0][0]} --> R[Coordinated Response]
+    {agents[1][0]} --> R
+    R --> U
+    
+    style {agents[0][0]} fill:#4ECDC4,stroke:#38B2AC,stroke-width:3px
+    style {agents[1][0]} fill:#45B7D1,stroke:#3182CE,stroke-width:3px
+    style R fill:#96CEB4,stroke:#68D391,stroke-width:2px
+    style U fill:#FED7D7,stroke:#E53E3E,stroke-width:2px"""
+        
+        elif len(agents) == 3:
+            # Three-agent hierarchy - use safer syntax
+            agent1_clean = _sanitize(agents[0][1])
+            agent2_clean = _sanitize(agents[1][1])
+            agent3_clean = _sanitize(agents[2][1])
+            
+            return f"""flowchart TD
+    U[User Request] --> {agents[0][0]}[{agent1_clean}]
+    {agents[0][0]} -->|Delegate| {agents[1][0]}[{agent2_clean}]
+    {agents[0][0]} -->|Delegate| {agents[2][0]}[{agent3_clean}]
+    
+    {agents[1][0]} <-->|Communicate| {agents[2][0]}
+    
+    {agents[1][0]} --> R[Integrated Results]
+    {agents[2][0]} --> R
+    {agents[0][0]} --> R
+    R --> U
+    
+    style {agents[0][0]} fill:#FF6B6B,stroke:#E53E3E,stroke-width:3px
+    style {agents[1][0]} fill:#4ECDC4,stroke:#38B2AC,stroke-width:3px
+    style {agents[2][0]} fill:#45B7D1,stroke:#3182CE,stroke-width:3px
+    style R fill:#96CEB4,stroke:#68D391,stroke-width:2px
+    style U fill:#FED7D7,stroke:#E53E3E,stroke-width:2px"""
+        
+        else:
+            # Complex multi-agent system (4+ agents)
+            # Find coordinator or use first agent
+            coordinator_idx = 0
+            for i, (agent_id, agent_name, role) in enumerate(agents):
+                if any(keyword in agent_name.lower() for keyword in ['coordinator', 'manager', 'orchestrator']):
+                    coordinator_idx = i
+                    break
+            
+            coordinator = agents[coordinator_idx]
+            specialists = [agent for i, agent in enumerate(agents) if i != coordinator_idx]
+            
+            # For large numbers of agents, use a more organized layout
+            if len(specialists) > 8:
+                # Group specialists into logical clusters - use safer syntax
+                coordinator_clean = _sanitize(coordinator[1])
+                diagram = f"""flowchart TD
+    U[User Request] --> {coordinator[0]}[{coordinator_clean}]
+    
+    %% Primary specialists
+"""
+                # Show first 6 specialists directly
+                for i, spec in enumerate(specialists[:6]):
+                    spec_clean = _sanitize(spec[1])
+                    diagram += f"    {coordinator[0]} -->|Task {i+1}| {spec[0]}[{spec_clean}]\n"
+                
+                # Group remaining specialists
+                if len(specialists) > 6:
+                    diagram += f"\n    %% Additional specialists\n"
+                    diagram += f"    {coordinator[0]} --> SG[Additional Specialists]\n"
+                    for spec in specialists[6:]:
+                        spec_clean = _sanitize(spec[1])
+                        diagram += f"    SG --> {spec[0]}[{spec_clean}]\n"
+                
+                diagram += "\n    %% Collaboration patterns\n"
+                # Add some strategic connections
+                for i in range(min(3, len(specialists) - 1)):
+                    diagram += f"    {specialists[i][0]} <-->|Communicate| {specialists[i+1][0]}\n"
+                
+                diagram += "\n    %% Results aggregation\n"
+                for spec in specialists:
+                    diagram += f"    {spec[0]} --> R[Coordinated Solution]\n"
+                
+                diagram += f"    {coordinator[0]} --> R\n    R --> U\n\n"
+                
+            else:
+                # Standard layout for smaller numbers - use safer syntax
+                coordinator_clean = _sanitize(coordinator[1])
+                diagram = f"""flowchart TD
+    U[User Request] --> {coordinator[0]}[{coordinator_clean}]
+    
+"""
+                
+                # Add ALL specialist nodes
+                for spec in specialists:
+                    spec_clean = _sanitize(spec[1])
+                    diagram += f"    {coordinator[0]} -->|Delegate| {spec[0]}[{spec_clean}]\n"
+                
+                diagram += "\n"
+                
+                # Add strategic cross-communication
+                for i in range(min(4, len(specialists) - 1)):
+                    diagram += f"    {specialists[i][0]} <-->|Communicate| {specialists[i+1][0]}\n"
+                
+                diagram += "\n"
+                
+                # Results aggregation
+                for spec in specialists:
+                    diagram += f"    {spec[0]} --> R[Coordinated Solution]\n"
+                
+                diagram += f"    {coordinator[0]} --> R\n    R --> U\n\n"
+            
+            # Add styling for ALL agents
+            diagram += f"    style {coordinator[0]} fill:#FF6B6B,stroke:#E53E3E,stroke-width:4px\n"
+            
+            colors = ["#4ECDC4,stroke:#38B2AC", "#45B7D1,stroke:#3182CE", "#F7DC6F,stroke:#F1C40F", "#DDA0DD,stroke:#9932CC", "#96CEB4,stroke:#68D391", "#FFA07A,stroke:#FF6347", "#20B2AA,stroke:#008B8B", "#9370DB,stroke:#8A2BE2"]
+            for i, spec in enumerate(specialists):
+                color = colors[i % len(colors)]
+                diagram += f"    style {spec[0]} fill:{color},stroke-width:3px\n"
+            
+            diagram += "    style R fill:#96CEB4,stroke:#68D391,stroke-width:2px\n"
+            diagram += "    style U fill:#FED7D7,stroke:#E53E3E,stroke-width:2px"
+            
+            # Debug: Add line breaks for better readability
+            diagram = diagram.replace('\n\n', '\n').strip()
+            
+            return diagram
+    
+    def _create_single_agent_mermaid(self, agent_role) -> str:
+        """Create a Mermaid diagram for single agent architecture."""
+        agent_name = self._extract_agent_name(agent_role)
+        clean_name = _sanitize(agent_name)
+        
+        return f"""flowchart TD
+    U[User Request] --> A[{clean_name}]
+    A --> P[Processing and Analysis]
+    P --> D[Decision Making]
+    D --> E[Action Execution]
+    E --> M[Monitoring and Feedback]
+    M --> R[Response and Results]
+    R --> U
+    
+    %% Self-improvement loop
+    M -->|Learn and Adapt| A
+    
+    style A fill:#4CAF50,stroke:#2E7D32,stroke-width:4px
+    style P fill:#2196F3,stroke:#1565C0,stroke-width:2px
+    style D fill:#FF9800,stroke:#E65100,stroke-width:2px
+    style E fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px
+    style M fill:#607D8B,stroke:#37474F,stroke-width:2px
+    style R fill:#96CEB4,stroke:#68D391,stroke-width:2px
+    style U fill:#FED7D7,stroke:#E53E3E,stroke-width:2px"""
+    
     async def _update_persistent_session_state(self):
         """Update the persistent session state with enhanced recommendation data."""
         try:
@@ -3349,9 +4174,20 @@ class AutomatedAIAssessmentUI:
             st.info("Please submit a requirement first to generate diagrams.")
             return
         
+        # Check if this is an agentic solution to show appropriate diagram options
+        rec = st.session_state.recommendations
+        reasoning = rec.get("reasoning", "").lower() if rec else ""
+        agentic_keywords = ["agent", "autonomous", "agentic", "multi-agent", "reasoning", "decision-making"]
+        is_agentic = any(keyword in reasoning for keyword in agentic_keywords)
+        
+        # Add agentic-specific diagram option if applicable
+        diagram_options = ["Context Diagram", "Container Diagram", "Sequence Diagram", "Tech Stack Wiring Diagram", "Infrastructure Diagram", "C4 Diagram"]
+        if is_agentic:
+            diagram_options.insert(3, "Agent Interaction Diagram")  # Insert after Sequence Diagram
+        
         diagram_type = st.selectbox(
             "Select diagram type:",
-            ["Context Diagram", "Container Diagram", "Sequence Diagram", "Tech Stack Wiring Diagram", "Infrastructure Diagram", "C4 Diagram"]
+            diagram_options
         )
         
         # Show description for selected diagram type
@@ -3359,6 +4195,7 @@ class AutomatedAIAssessmentUI:
             "Context Diagram": "🌐 **System Context**: Shows the system boundaries, users, and external systems it integrates with.",
             "Container Diagram": "📦 **System Containers**: Shows the internal components, services, and how they interact within the system.",
             "Sequence Diagram": "🔄 **Process Flow**: Shows the step-by-step sequence of interactions and decision points in the automation.",
+            "Agent Interaction Diagram": "🤖 **Agent Collaboration**: Shows how autonomous AI agents communicate, coordinate, and make decisions together. Displays agent roles, responsibilities, and interaction patterns in your multi-agent system.",
             "Tech Stack Wiring Diagram": "🔌 **Technical Wiring**: Shows how all the recommended technologies connect, communicate, and pass data between each other. Like a blueprint for developers showing API calls, database connections, authentication flows, and service integrations.",
             "Infrastructure Diagram": "🏗️ **Infrastructure Architecture**: Shows cloud infrastructure components with vendor-specific icons (AWS, GCP, Azure). Displays compute, storage, database, and networking services with realistic cloud architecture patterns.",
             "C4 Diagram": "🏛️ **C4 Architecture Model**: Uses proper C4 syntax to show software architecture following the official C4 model standards. Provides standardized architectural documentation with automatic C4 styling, system boundaries, and relationship conventions. Unlike the Context/Container diagrams above (which use flowchart syntax), C4 diagrams use official C4 notation with built-in styling and follow industry-standard C4 modeling practices."
@@ -3428,6 +4265,10 @@ class AutomatedAIAssessmentUI:
                         mermaid_code = asyncio.run(build_sequence_diagram(requirement_text, recommendations, enhanced_tech_stack, architecture_explanation))
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
+                    elif diagram_type == "Agent Interaction Diagram":
+                        mermaid_code = asyncio.run(build_agent_interaction_diagram(requirement_text, recommendations, enhanced_tech_stack, architecture_explanation))
+                        st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
+                        st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
                     elif diagram_type == "Tech Stack Wiring Diagram":
                         mermaid_code = asyncio.run(build_tech_stack_wiring_diagram(requirement_text, recommendations, enhanced_tech_stack, architecture_explanation))
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
@@ -3461,6 +4302,10 @@ class AutomatedAIAssessmentUI:
                                 st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
                             elif diagram_type == "Sequence Diagram":
                                 mermaid_code = asyncio.run(build_sequence_diagram(requirement_text, recommendations))
+                                st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
+                                st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
+                            elif diagram_type == "Agent Interaction Diagram":
+                                mermaid_code = asyncio.run(build_agent_interaction_diagram(requirement_text, recommendations))
                                 st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
                                 st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
                             elif diagram_type == "Tech Stack Wiring Diagram":
@@ -3658,71 +4503,41 @@ class AutomatedAIAssessmentUI:
         if show_large:
             st.write("**🔍 Large View Mode** - Click 'Large View' again to return to normal size")
             
-            # Use streamlit-mermaid if available, otherwise fallback to HTML
+            # Use streamlit-mermaid for large view too
             try:
                 import streamlit_mermaid as stmd
-                stmd.st_mermaid(mermaid_code, height="800px")
+                # Try different height formats for compatibility
+                try:
+                    stmd.st_mermaid(mermaid_code, height=700)
+                except TypeError:
+                    # Fallback to string format if integer doesn't work
+                    stmd.st_mermaid(mermaid_code, height="700px")
             except ImportError:
-                # Fallback to improved HTML rendering
-                large_html = f"""
-                <div style="width: 100%; height: 800px; border: 2px solid #4CAF50; border-radius: 12px; padding: 20px; background: white; overflow: auto;">
-                    <div class="mermaid" style="width: 100%; height: 100%; font-size: 16px;">
-                        {mermaid_code}
-                    </div>
-                </div>
-                
-                <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-                <script>
-                    mermaid.initialize({{
-                        startOnLoad: true,
-                        theme: 'default',
-                        themeVariables: {{
-                            fontSize: '16px',
-                            fontFamily: 'Arial, sans-serif',
-                            primaryColor: '#4CAF50',
-                            primaryTextColor: '#333',
-                            primaryBorderColor: '#4CAF50'
-                        }},
-                        flowchart: {{
-                            useMaxWidth: false,
-                            htmlLabels: true,
-                            nodeSpacing: 80,
-                            rankSpacing: 80
-                        }},
-                        sequence: {{
-                            useMaxWidth: false,
-                            boxMargin: 20,
-                            actorMargin: 60
-                        }}
-                    }});
-                </script>
-                """
-                html(large_html, height=850)
+                st.error("streamlit-mermaid not available. Please install it.")
+                st.code(mermaid_code, language="mermaid")
+            except Exception as e:
+                st.error(f"Error rendering large view: {e}")
+                st.info("💡 Try copying the code below to [mermaid.live](https://mermaid.live) to view the diagram")
+                st.code(mermaid_code, language="mermaid")
         else:
-            # Regular view with better sizing
+            # Regular view - use streamlit-mermaid like the main Diagrams tab
             try:
                 import streamlit_mermaid as stmd
-                stmd.st_mermaid(mermaid_code, height="400px")
+                # Try different height formats for compatibility
+                try:
+                    stmd.st_mermaid(mermaid_code, height=500)
+                except TypeError:
+                    # Fallback to string format if integer doesn't work
+                    stmd.st_mermaid(mermaid_code, height="500px")
             except ImportError:
-                # Fallback to HTML
-                regular_html = f"""
-                <div style="width: 100%; height: 400px; border: 2px solid #e0e0e0; border-radius: 8px; padding: 15px; background: white; overflow: auto;">
-                    <div class="mermaid" style="width: 100%; height: 100%; font-size: 14px;">
-                        {mermaid_code}
-                    </div>
-                </div>
-                
-                <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-                <script>
-                    mermaid.initialize({{
-                        startOnLoad: true,
-                        theme: 'default',
-                        flowchart: {{ useMaxWidth: true }},
-                        sequence: {{ useMaxWidth: true }}
-                    }});
-                </script>
-                """
-                html(regular_html, height=450)
+                st.error("streamlit-mermaid not available. Please install it.")
+                # Show code as fallback
+                st.code(mermaid_code, language="mermaid")
+            except Exception as e:
+                st.error(f"Error rendering diagram: {e}")
+                st.info("💡 Try copying the code below to [mermaid.live](https://mermaid.live) to view the diagram")
+                # Show code as fallback
+                st.code(mermaid_code, language="mermaid")
         
         # Show code and download options
         if st.session_state.get(f"show_code_{diagram_id}", False):
@@ -6361,6 +7176,8 @@ class AutomatedAIAssessmentUI:
         except Exception as e:
             raise Exception(f"Failed to import technologies: {str(e)}")
     
+
+    
     def run(self):
         """Main application entry point."""
         st.title("🤖 Automated AI Assessment (AAA)")
@@ -6370,7 +7187,7 @@ class AutomatedAIAssessmentUI:
         self.render_provider_panel()
         
         # Main content area
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📝 Analysis", "📊 Diagrams", "📈 Observability", "📚 Pattern Library", "🔧 Technology Catalog", "ℹ️ About"])
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📝 Analysis", "📊 Diagrams", "📈 Observability", "📚 Pattern Library", "� Technology Catalog", "ℹ️ About"])
         
         with tab1:
             # Input methods

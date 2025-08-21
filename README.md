@@ -21,7 +21,7 @@ Interactive GUI + API system that judges if user stories/requirements are automa
 - 🏗️ **AI-Generated Architecture Explanations**: LLM explains how technology components work together for your specific use case
 
 ### � *e*Visualization & Documentation**
-- 📈 **AI-Generated Architecture Diagrams**: Context, Container, Sequence, C4 Architecture, and Tech Stack Wiring diagrams using Mermaid with enhanced viewing options
+- 📈 **AI-Generated Architecture Diagrams**: Context, Container, Sequence, C4 Architecture, and Tech Stack Wiring diagrams using Mermaid with enhanced viewing options and v10.2.4 compatibility
 - 🏗️ **Infrastructure Diagrams**: Cloud architecture diagrams with vendor-specific icons (AWS, GCP, Azure) using mingrammer/diagrams
 - 📚 **Technology Catalog Management**: Complete CRUD interface for managing 55+ technologies across 17 categories
 - 📊 **Pattern Analytics Dashboard**: Real-time analytics showing pattern match frequency, acceptance rates, and quality scores

@@ -4,6 +4,55 @@ This document outlines recent improvements made to the AAA system and best pract
 
 ## Recent Major Improvements
 
+### 11. Mermaid Diagram Rendering Compatibility Fix (August 2025)
+
+**Problem**: Agent Interaction Flow Mermaid diagrams were failing to render with "Syntax error in text" in Mermaid version 10.2.4:
+- Unicode/emoji characters in node labels causing syntax errors
+- Height parameter inconsistency between string and integer formats
+- Insufficient label sanitization for Mermaid node compatibility
+- Poor error handling when diagram generation failed
+- Code worked fine in mermaid.live but failed in Streamlit application
+
+**Solution**: Implemented comprehensive Mermaid compatibility fixes:
+- **Enhanced Unicode Handling**: Improved `_sanitize()` function to remove problematic Unicode characters and emojis
+- **Unicode Character Replacement**: Added mapping system to replace emojis with safe text alternatives (👤 → "User", 🤖 → "Agent")
+- **Height Parameter Compatibility**: Added fallback logic to handle both integer and string height formats for streamlit-mermaid library
+- **Safer Diagram Generation**: Removed emojis from all agent architecture diagrams, simplified edge labels
+- **Robust Error Handling**: Enhanced error messages with specific guidance and fallback to mermaid.live
+- **Comprehensive Validation**: Added Unicode character detection in validation with appropriate warnings
+
+**Technical Implementation**:
+- **Enhanced `_sanitize()` Function**: Removes non-ASCII characters, handles special characters safely
+- **Unicode Replacement Mapping**: Systematic replacement of problematic characters in `_clean_mermaid_code()`
+- **Height Parameter Fallback**: Try integer format first, fallback to string format on TypeError
+- **Agent Architecture Updates**: All diagram generation methods updated for safer syntax
+- **Validation Improvements**: Better detection of Unicode issues with user-friendly error messages
+
+**Files Modified**:
+- `streamlit_app.py`: Main diagram generation and rendering logic
+- `app/ui/analysis_display.py`: Agent coordination diagram rendering
+- Enhanced functions: `_sanitize()`, `_clean_mermaid_code()`, `_validate_mermaid_syntax()`, `render_mermaid()`
+
+**Testing**: Created comprehensive test suite (`test_mermaid_fix.py`) validating:
+- Label sanitization functionality
+- Diagram syntax validation  
+- Unicode character cleaning
+- Complex diagram structure validation
+
+**Results**:
+- ✅ Diagrams now render correctly in Streamlit with Mermaid v10.2.4
+- ✅ Maintains visual clarity and functionality without problematic characters
+- ✅ Robust error handling with clear user guidance
+- ✅ Compatible with all streamlit-mermaid library versions
+- ✅ All existing diagram features remain functional
+
+**Best Practices**:
+- Always test diagram generation with different Mermaid versions
+- Sanitize user-generated content for diagram compatibility
+- Provide fallback mechanisms for rendering failures
+- Use safe character sets for programmatically generated diagrams
+- Include comprehensive error handling with user-friendly guidance
+
 ### 10. Advanced Prompt Defense System (August 2025)
 
 **Problem**: System lacked comprehensive security against prompt injection attacks and malicious inputs:
