@@ -995,13 +995,20 @@ Return ONLY the Mermaid code, starting with 'flowchart TD' or 'flowchart LR'."""
     style E fill:#FED7D7,stroke:#E53E3E,stroke-width:2px"""
         
         response = await make_llm_request(prompt, provider_config)
-        return _clean_mermaid_code(response.strip())
+        cleaned_code = _clean_mermaid_code(response.strip())
+        
+        # Debug logging
+        app_logger.info(f"Agent interaction diagram - Raw response length: {len(response) if response else 0}")
+        app_logger.info(f"Agent interaction diagram - Cleaned code length: {len(cleaned_code) if cleaned_code else 0}")
+        
+        return cleaned_code
     except Exception as e:
+        app_logger.error(f"Agent interaction diagram generation failed: {e}")
         return f"""flowchart TD
   A[Coordinator Agent] --> B[Data Processing Agent]
   A --> C[Decision Making Agent]
-  B -->|"processed data"| C
-  C -->|"decisions"| D[Action Agent]
+  B -->|processed data| C
+  C -->|decisions| D[Action Agent]
   D --> E((External System))
   
   note[Agent interaction diagram generation failed: {str(e)}]"""
@@ -4364,6 +4371,19 @@ class AutomatedAIAssessmentUI:
             else:
                 # Handle Mermaid diagram
                 mermaid_code = st.session_state[diagram_key]
+                
+                # Debug information for Agent Interaction Diagram
+                if diagram_type == "Agent Interaction Diagram":
+                    if st.session_state.get('debug_mode', False):
+                        st.write(f"**Debug - Diagram Key:** {diagram_key}")
+                        st.write(f"**Debug - Code Length:** {len(mermaid_code) if mermaid_code else 0}")
+                        st.write(f"**Debug - First 100 chars:** {mermaid_code[:100] if mermaid_code else 'None'}")
+                    
+                    # Show code preview for Agent Interaction Diagram to help debug rendering issues
+                    with st.expander("🔍 View Mermaid Code", expanded=False):
+                        st.code(mermaid_code, language="mermaid")
+                        st.info("💡 If the diagram above is blank, try copying this code to [mermaid.live](https://mermaid.live) to test it")
+                
                 self.render_mermaid(mermaid_code)
             
             # Add helpful context for the Tech Stack Wiring Diagram
