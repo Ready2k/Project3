@@ -73,11 +73,16 @@ class AgenticRecommendationService:
         
         # Step 4: Design multi-agent system if needed
         multi_agent_design = None
+        
         if (autonomy_assessment.recommended_architecture.value in ["multi_agent_collaborative", "hierarchical_agents"] 
             and agentic_matches):
             multi_agent_design = await self.multi_agent_designer.design_system(
                 requirements, agentic_matches[:3]
             )
+        else:
+            # For single-agent scenarios, we should still create agent roles
+            # Let's create a simple single-agent design
+            multi_agent_design = await self._create_single_agent_design(requirements, autonomy_assessment)
         
         # Step 5: Generate agentic recommendations
         recommendations = []
@@ -168,12 +173,31 @@ class AgenticRecommendationService:
         except Exception as e:
             app_logger.error(f"Failed to log agentic pattern match: {e}")
         
+        # Extract agent roles from multi-agent design if available
+        agent_roles = None
+        if multi_agent_design and multi_agent_design.agent_roles:
+            agent_roles = [
+                {
+                    "name": role.name,
+                    "responsibility": role.responsibility,
+                    "capabilities": role.capabilities,
+                    "autonomy_level": role.autonomy_level,
+                    "decision_authority": role.decision_authority,
+                    "communication_requirements": role.communication_requirements,
+                    "interfaces": role.interfaces,
+                    "exception_handling": role.exception_handling,
+                    "learning_capabilities": role.learning_capabilities
+                }
+                for role in multi_agent_design.agent_roles
+            ]
+        
         return Recommendation(
             pattern_id=match.pattern_id,
             feasibility=feasibility,
             confidence=confidence,
             tech_stack=tech_stack,
-            reasoning=reasoning
+            reasoning=reasoning,
+            agent_roles=agent_roles
         )
     
     def _determine_agentic_feasibility(self, 
@@ -363,12 +387,29 @@ class AgenticRecommendationService:
                     f"Achieves {design.autonomy_score:.0%} system autonomy through collaborative reasoning "
                     f"and distributed decision-making. {design.deployment_strategy}")
         
+        # Extract agent roles from multi-agent design
+        agent_roles = [
+            {
+                "name": role.name,
+                "responsibility": role.responsibility,
+                "capabilities": role.capabilities,
+                "autonomy_level": role.autonomy_level,
+                "decision_authority": role.decision_authority,
+                "communication_requirements": role.communication_requirements,
+                "interfaces": role.interfaces,
+                "exception_handling": role.exception_handling,
+                "learning_capabilities": role.learning_capabilities
+            }
+            for role in design.agent_roles
+        ]
+        
         return Recommendation(
             pattern_id="MULTI_AGENT_SYSTEM",
             feasibility="Fully Automatable",
             confidence=confidence,
             tech_stack=tech_stack,
-            reasoning=reasoning
+            reasoning=reasoning,
+            agent_roles=agent_roles
         )
     
     async def _create_new_agentic_pattern_recommendation(self, 
@@ -407,12 +448,34 @@ class AgenticRecommendationService:
                         f"{', '.join(enhanced_pattern.get('reasoning_types', ['advanced']))} reasoning. "
                         f"Agent can handle: {', '.join(enhanced_pattern.get('decision_boundaries', {}).get('autonomous_decisions', ['standard operations'])[:2])}.")
             
+            # Generate basic agent roles for custom pattern
+            agent_roles = [
+                {
+                    "name": "Primary Agent",
+                    "responsibility": f"Main autonomous agent responsible for {requirements.get('description', 'the task')[:100]}",
+                    "capabilities": enhanced_pattern.get("decision_boundaries", {}).get("autonomous_decisions", ["task_execution", "decision_making"]),
+                    "autonomy_level": enhanced_pattern.get("autonomy_level", 0.8),
+                    "decision_authority": {
+                        "scope": ["operational_decisions", "workflow_management"],
+                        "limitations": ["escalate_critical_errors", "human_approval_for_major_changes"]
+                    },
+                    "communication_requirements": ["status_reporting", "exception_handling"],
+                    "interfaces": {
+                        "input": ["user_requests", "system_data"],
+                        "output": ["task_results", "status_updates"]
+                    },
+                    "exception_handling": "Autonomous resolution with escalation for critical failures",
+                    "learning_capabilities": ["feedback_incorporation", "pattern_recognition"]
+                }
+            ]
+            
             return Recommendation(
                 pattern_id=enhanced_pattern["pattern_id"],
                 feasibility=enhanced_pattern.get("feasibility", "Fully Automatable"),
                 confidence=min(1.0, confidence),
                 tech_stack=tech_stack[:8],
-                reasoning=reasoning
+                reasoning=reasoning,
+                agent_roles=agent_roles
             )
             
         except Exception as e:
@@ -435,15 +498,89 @@ class AgenticRecommendationService:
         # Suggest agentic technologies even for limited scope
         agentic_tech = ["LangChain", "OpenAI Assistants API", "FastAPI", "PostgreSQL"]
         
+        # Create agent roles for digital assistant
+        agent_roles = [
+            {
+                "name": "Digital Assistant Agent",
+                "responsibility": "Autonomous agent handling digital workflow aspects while coordinating with physical processes",
+                "capabilities": ["monitoring", "scheduling", "notifications", "data_tracking", "coordination"],
+                "autonomy_level": autonomy_assessment.overall_score,
+                "decision_authority": {
+                    "scope": ["scheduling_decisions", "notification_management", "data_collection"],
+                    "limitations": ["no_physical_actions", "escalate_critical_issues"]
+                },
+                "communication_requirements": ["user_notifications", "system_integration", "status_reporting"],
+                "interfaces": {
+                    "input": ["user_requests", "system_events", "sensor_data"],
+                    "output": ["notifications", "reports", "scheduling_updates"]
+                },
+                "exception_handling": "Escalate physical task requirements to human operators",
+                "learning_capabilities": ["pattern_recognition", "user_preference_learning"]
+            }
+        ]
+        
         limited_recommendation = Recommendation(
             pattern_id="AGENTIC_DIGITAL_ASSISTANT",
             feasibility="Partially Automatable",
             confidence=0.7,  # Still confident in agentic approach
             tech_stack=agentic_tech,
-            reasoning=reasoning
+            reasoning=reasoning,
+            agent_roles=agent_roles
         )
         
         return [limited_recommendation]
+    
+    async def _create_single_agent_design(self, 
+                                         requirements: Dict[str, Any],
+                                         autonomy_assessment: AutonomyAssessment) -> 'MultiAgentSystemDesign':
+        """Create a single-agent design for scenarios that don't require multi-agent systems."""
+        from app.services.multi_agent_designer import MultiAgentSystemDesign, AgentRole, AgentArchitectureType
+        
+        # Create a single agent role based on the requirements
+        description = requirements.get('description', 'autonomous task')
+        
+        single_agent = AgentRole(
+            name="Primary Autonomous Agent",
+            responsibility=f"Main autonomous agent responsible for {description[:100]}",
+            capabilities=[
+                "task_execution",
+                "decision_making", 
+                "exception_handling",
+                "learning_adaptation",
+                "communication"
+            ],
+            autonomy_level=autonomy_assessment.overall_score,
+            decision_authority={
+                "scope": ["operational_decisions", "workflow_management", "resource_allocation"],
+                "limitations": ["no_financial_decisions", "escalate_critical_errors"]
+            },
+            interfaces={
+                "input": ["user_requests", "system_events"],
+                "output": ["task_results", "status_updates", "exception_reports"]
+            },
+            exception_handling="Autonomous resolution with escalation for critical failures",
+            learning_capabilities=["pattern_recognition", "feedback_incorporation", "performance_optimization"],
+            communication_requirements=[
+                "status_reporting",
+                "exception_escalation",
+                "user_interaction"
+            ]
+        )
+        
+        # Create a minimal multi-agent design with single agent
+        design = MultiAgentSystemDesign(
+            architecture_type=AgentArchitectureType.SINGLE_AGENT,
+            agent_roles=[single_agent],
+            communication_protocols=[],
+            coordination_mechanisms=[],
+            autonomy_score=autonomy_assessment.overall_score,
+            recommended_frameworks=["LangChain", "OpenAI Assistants API"],
+            deployment_strategy="Single autonomous agent deployment with monitoring and feedback loops",
+            scalability_considerations=["Horizontal scaling through task queuing", "Vertical scaling through enhanced reasoning"],
+            monitoring_requirements=["Performance metrics", "Decision accuracy", "Exception rates"]
+        )
+        
+        return design
     
     def _calculate_agentic_score(self, recommendation: Recommendation) -> float:
         """Calculate agentic score for sorting recommendations."""
