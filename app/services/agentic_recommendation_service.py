@@ -404,7 +404,7 @@ class AgenticRecommendationService:
         ]
         
         return Recommendation(
-            pattern_id="MULTI_AGENT_SYSTEM",
+            pattern_id="APAT-00",
             feasibility="Fully Automatable",
             confidence=confidence,
             tech_stack=tech_stack,
