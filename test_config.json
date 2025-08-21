@@ -1,0 +1,38 @@
+{
+  "preferences": {
+    "display_density": "compact",
+    "autonomy_threshold": 0.0,
+    "show_performance_metrics": true,
+    "show_security_details": true,
+    "show_coordination_diagrams": true,
+    "show_deployment_guidance": true,
+    "expand_first_agent": true,
+    "group_by_role": false,
+    "highlight_high_autonomy": true,
+    "show_mock_data": true
+  },
+  "validation_rules": {
+    "required_frameworks": [
+      "LangChain",
+      "CrewAI"
+    ],
+    "required_orchestration": [
+      "Redis",
+      "Celery"
+    ],
+    "required_monitoring": [
+      "Prometheus",
+      "Grafana"
+    ],
+    "minimum_readiness_score": 0.7,
+    "critical_missing_threshold": 2
+  },
+  "templates": {
+    "agent_card_template": "default",
+    "coordination_diagram_style": "mermaid",
+    "performance_chart_type": "metrics",
+    "security_display_format": "detailed"
+  },
+  "custom_metrics": [],
+  "custom_security_requirements": []
+}

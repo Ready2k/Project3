@@ -7,6 +7,16 @@ from typing import Dict, Any
 import requests
 import streamlit as st
 
+# Import logging
+from app.utils.logger import app_logger
+
+# Import agent display components
+from app.ui.agent_formatter import AgentDataFormatter, AgentSystemDisplay, AgentRoleDisplay, AgentCoordinationDisplay
+from app.ui.analysis_display import AgentRolesUIComponent, AgentDisplayErrorHandler
+from app.services.tech_stack_enhancer import TechStackEnhancer
+from app.exporters.agent_exporter import AgentSystemExporter
+from app.services.agent_display_config import get_agent_display_config
+
 # Configure page
 st.set_page_config(
     page_title="Automated AI Assessment (AAA)",
@@ -42,6 +52,383 @@ def call_api(endpoint: str, method: str = "GET", data: Dict[str, Any] = None) ->
         st.error(f"Connection Error: {e}")
         return {}
 
+def _check_if_agentic_solution(rec: Dict[str, Any]) -> bool:
+    """Check if the recommendation is for an agentic solution."""
+    
+    reasoning = rec.get("reasoning", "").lower()
+    agentic_keywords = ["agent", "autonomous", "agentic", "multi-agent", "reasoning", "decision-making"]
+    
+    # Check reasoning for agentic indicators
+    if any(keyword in reasoning for keyword in agentic_keywords):
+        return True
+    
+    # Check recommendations for agentic patterns
+    recommendations = rec.get("recommendations", [])
+    for recommendation in recommendations:
+        rec_reasoning = recommendation.get("reasoning", "").lower()
+        if any(keyword in rec_reasoning for keyword in agentic_keywords):
+            return True
+    
+    return False
+
+def _export_agent_results(session_id: str, export_format: str, rec: Dict[str, Any]):
+    """Export agent system results in specified format."""
+    
+    try:
+        # Initialize components
+        agent_formatter = AgentDataFormatter()
+        agent_exporter = AgentSystemExporter()
+        tech_enhancer = TechStackEnhancer()
+        
+        # Create demonstration agent system (in production, this would come from API)
+        tech_stack = rec.get("tech_stack", [])
+        
+        # Create mock agent system for export
+        from app.ui.agent_formatter import AgentSystemDisplay, AgentRoleDisplay
+        
+        demo_agent_system = AgentSystemDisplay(
+            has_agents=True,
+            system_autonomy_score=0.85,
+            agent_roles=[
+                AgentRoleDisplay(
+                    name="Autonomous Processing Agent",
+                    responsibility="Handle end-to-end processing with autonomous decision-making",
+                    autonomy_level=0.85,
+                    autonomy_description="Highly Autonomous - Makes most decisions independently",
+                    capabilities=["End-to-end processing", "Autonomous decision-making", "Exception handling"],
+                    decision_authority={"scope": "Processing decisions", "limits": [], "escalation_triggers": []},
+                    decision_boundaries=["Authority Scope: Processing decisions"],
+                    learning_capabilities=["Performance optimization", "Pattern recognition"],
+                    exception_handling="Autonomous resolution with multiple fallback strategies",
+                    communication_requirements=["Status reporting", "Alert notifications"],
+                    performance_metrics=["Processing success rate (%)", "Decision accuracy (%)"],
+                    infrastructure_requirements={"cpu": "4-8 cores", "memory": "8-16 GB"},
+                    security_requirements=["Secure API authentication", "Data encryption"]
+                )
+            ],
+            coordination=None,
+            deployment_requirements={"architecture": "single_agent"},
+            tech_stack_validation=tech_enhancer.enhance_tech_stack_for_agents(tech_stack, mock_agent_design),
+            implementation_guidance=[{
+                "type": "framework",
+                "title": "Agent Framework Selection",
+                "content": "Use LangChain for flexible agent orchestration"
+            }]
+        )
+        
+        # Export based on format
+        if export_format == "json":
+            export_data = agent_exporter.export_to_json(demo_agent_system, session_id)
+            st.download_button(
+                label="📄 Download Agent System JSON",
+                data=json.dumps(export_data, indent=2),
+                file_name=f"agent_system_{session_id}.json",
+                mime="application/json"
+            )
+            
+        elif export_format == "markdown":
+            export_data = agent_exporter.export_to_markdown(demo_agent_system, session_id)
+            st.download_button(
+                label="📝 Download Agent System Markdown",
+                data=export_data,
+                file_name=f"agent_system_{session_id}.md",
+                mime="text/markdown"
+            )
+            
+        elif export_format == "html":
+            export_data = agent_exporter.export_to_html(demo_agent_system, session_id)
+            st.download_button(
+                label="🌐 Download Agent System HTML",
+                data=export_data,
+                file_name=f"agent_system_{session_id}.html",
+                mime="text/html"
+            )
+            
+        elif export_format == "blueprint":
+            blueprint_data = agent_exporter.create_deployment_blueprint(demo_agent_system, session_id)
+            st.download_button(
+                label="🏗️ Download Deployment Blueprint",
+                data=json.dumps(blueprint_data, indent=2),
+                file_name=f"agent_deployment_blueprint_{session_id}.json",
+                mime="application/json"
+            )
+        
+        st.success(f"✅ Agent system exported successfully in {export_format.upper()} format!")
+        
+    except Exception as e:
+        st.error(f"❌ Export failed: {str(e)}")
+
+def _track_agent_display_analytics(agent_system: AgentSystemDisplay, session_id: str):
+    """Track analytics for agent display usage."""
+    
+    try:
+        # Track basic metrics
+        analytics_data = {
+            "session_id": session_id,
+            "agent_count": len(agent_system.agent_roles),
+            "system_autonomy_score": agent_system.system_autonomy_score,
+            "architecture_type": agent_system.coordination.architecture_type if agent_system.coordination else "single_agent",
+            "has_coordination": agent_system.coordination is not None,
+            "deployment_ready": agent_system.tech_stack_validation.get("is_agent_ready", False),
+            "timestamp": time.time()
+        }
+        
+        # Calculate agent complexity metrics
+        if agent_system.agent_roles:
+            autonomy_levels = [agent.autonomy_level for agent in agent_system.agent_roles]
+            analytics_data.update({
+                "avg_autonomy_level": sum(autonomy_levels) / len(autonomy_levels),
+                "max_autonomy_level": max(autonomy_levels),
+                "min_autonomy_level": min(autonomy_levels),
+                "high_autonomy_agents": sum(1 for level in autonomy_levels if level > 0.8)
+            })
+        
+        # Store in session state for potential API call
+        if "agent_analytics" not in st.session_state:
+            st.session_state.agent_analytics = []
+        st.session_state.agent_analytics.append(analytics_data)
+        
+        # In production, this would send to analytics API
+        # call_api("/analytics/agent-display", "POST", analytics_data)
+        
+    except Exception as e:
+        app_logger.error(f"Failed to track agent analytics: {e}")
+
+def _render_agentic_solution_display(rec: Dict[str, Any], session_id: str):
+    """Render agentic solution display if applicable."""
+    
+    app_logger.info(f"🔍 _render_agentic_solution_display called for session {session_id}")
+    
+    try:
+        # Check if this is an agentic solution
+        is_agentic = False
+        
+        # Check feasibility and reasoning for agentic indicators
+        feasibility = rec.get("feasibility", "")
+        reasoning = rec.get("reasoning", "").lower()
+        
+        # Look for agentic keywords in reasoning or recommendations
+        agentic_keywords = ["agent", "autonomous", "agentic", "multi-agent", "reasoning", "decision-making"]
+        is_agentic = any(keyword in reasoning for keyword in agentic_keywords)
+        
+        # Also check if any recommendations mention agentic patterns or have agent_roles
+        recommendations = rec.get("recommendations", [])
+        
+        for recommendation in recommendations:
+            rec_reasoning = recommendation.get("reasoning", "").lower()
+            has_agentic_keywords = any(keyword in rec_reasoning for keyword in agentic_keywords)
+            has_agent_roles = bool(recommendation.get("agent_roles"))
+            
+            if has_agentic_keywords or has_agent_roles:
+                is_agentic = True
+                break
+        
+        app_logger.info(f"🔍 is_agentic determined as: {is_agentic}")
+        
+        if is_agentic:
+            app_logger.info("🚀 Rendering agentic solution display")
+            # Initialize components
+            agent_formatter = AgentDataFormatter()
+            agent_ui = AgentRolesUIComponent()
+            tech_enhancer = TechStackEnhancer()
+            
+            # Format agent system data
+            tech_stack = rec.get("tech_stack", [])
+            session_data = {"session_id": session_id}
+            
+            # Import classes are already available from the top-level imports
+            
+            # Extract agent roles from recommendations
+            all_agent_roles = []
+            system_autonomy_score = 0.0
+            
+            for recommendation in recommendations:
+                agent_roles_data = recommendation.get("agent_roles", [])
+                if agent_roles_data:
+                    all_agent_roles.extend(agent_roles_data)
+                    # Use the autonomy score from the first agent role as system score
+                    if not system_autonomy_score and agent_roles_data:
+                        system_autonomy_score = agent_roles_data[0].get("autonomy_level", 0.8)
+            
+            # If no agent roles found, skip display
+            if not all_agent_roles:
+                app_logger.info("⚠️ No agent roles found, skipping agentic display")
+                return
+            
+            app_logger.info(f"✅ Found {len(all_agent_roles)} agent roles, proceeding with display")
+            
+            # Convert agent roles data to display format
+            agent_role_displays = []
+            for agent_role in all_agent_roles:
+                # Get autonomy description
+                autonomy_level = agent_role.get("autonomy_level", 0.8)
+                if autonomy_level >= 0.9:
+                    autonomy_desc = "Fully Autonomous - Operates independently with minimal oversight"
+                elif autonomy_level >= 0.7:
+                    autonomy_desc = "Highly Autonomous - Makes most decisions independently"
+                elif autonomy_level >= 0.5:
+                    autonomy_desc = "Semi-Autonomous - Requires some human guidance"
+                else:
+                    autonomy_desc = "Assisted - Requires significant human oversight"
+                
+                # Format decision authority
+                decision_auth = agent_role.get("decision_authority", {})
+                if isinstance(decision_auth, dict):
+                    scope = decision_auth.get("scope", ["operational_decisions"])
+                    limits = decision_auth.get("limitations", ["escalate_critical_errors"])
+                    decision_boundaries = [
+                        f"Authority Scope: {', '.join(scope) if isinstance(scope, list) else scope}",
+                        f"Escalate when: {', '.join(limits) if isinstance(limits, list) else limits}"
+                    ]
+                else:
+                    decision_boundaries = [f"Authority: {decision_auth}"]
+                
+                agent_role_display = AgentRoleDisplay(
+                    name=agent_role.get("name", "Agent"),
+                    responsibility=agent_role.get("responsibility", "Autonomous task execution"),
+                    autonomy_level=autonomy_level,
+                    autonomy_description=autonomy_desc,
+                    capabilities=agent_role.get("capabilities", ["task_execution"]),
+                    decision_authority=decision_auth,
+                    decision_boundaries=decision_boundaries,
+                    learning_capabilities=agent_role.get("learning_capabilities", ["pattern_recognition"]),
+                    exception_handling=agent_role.get("exception_handling", "Autonomous resolution with escalation"),
+                    communication_requirements=agent_role.get("communication_requirements", ["status_reporting"]),
+                    performance_metrics=["Task completion rate (%)", "Decision accuracy (%)", "Response time (ms)"],
+                    infrastructure_requirements={"cpu": "2-4 cores", "memory": "4-8 GB", "storage": "20-50 GB"},
+                    security_requirements=["Authentication", "Audit logging", "Data encryption"]
+                )
+                agent_role_displays.append(agent_role_display)
+            
+            # Create agent system display
+            if len(all_agent_roles) > 1:
+                # Multi-agent system
+                agent_system = AgentSystemDisplay(
+                    has_agents=True,
+                    system_autonomy_score=system_autonomy_score,
+                    agent_roles=agent_role_displays,
+                    coordination=AgentCoordinationDisplay(
+                        architecture_type="multi_agent",
+                        architecture_description="Multiple specialized agents working together",
+                        communication_protocols=[{
+                            "type": "REST API",
+                            "participants": "All agents",
+                            "format": "JSON",
+                            "reliability": "High",
+                            "latency": "Low"
+                        }],
+                        coordination_mechanisms=[{
+                            "type": "Collaborative",
+                            "participants": "All agents",
+                            "criteria": "Task requirements and agent capabilities",
+                            "conflict_resolution": "Consensus-based decision making",
+                            "metrics": "Task completion rate, coordination efficiency"
+                        }],
+                        interaction_patterns=[{
+                            "type": "Collaborative",
+                            "description": "Agents collaborate and coordinate tasks",
+                            "participants": "All agents"
+                        }],
+                        conflict_resolution="Collaborative consensus with escalation",
+                        workflow_distribution={
+                            "distribution_strategy": "Capability-based allocation",
+                            "load_balancing": "Dynamic load distribution",
+                            "fault_tolerance": "Redundancy and failover",
+                            "scaling_approach": "Horizontal scaling"
+                        }
+                    ),
+                    deployment_requirements={
+                        "architecture": "multi_agent",
+                        "agent_count": len(all_agent_roles),
+                        "estimated_timeline": "3-6 weeks",
+                        "infrastructure_needs": {
+                            "compute": "High - Multiple agents require significant resources",
+                            "memory": "High - Agent state and coordination",
+                            "storage": "Medium - Agent data and logs",
+                            "network": "High - Inter-agent communication"
+                        },
+                        "complexity_factors": [
+                            "Multiple agents require coordination",
+                            "High autonomy requires extensive testing"
+                        ]
+                    },
+                    tech_stack_validation={"status": "compatible", "recommendations": tech_stack[:5]},
+                    implementation_guidance=[
+                        {
+                            "type": "framework",
+                            "title": "Multi-Agent Framework",
+                            "content": "Consider using CrewAI or LangChain for multi-agent coordination"
+                        },
+                        {
+                            "type": "infrastructure",
+                            "title": "Infrastructure Setup",
+                            "content": "Set up container orchestration and monitoring for multiple agents"
+                        }
+                    ]
+                )
+            else:
+                # Single agent system
+                agent_system = AgentSystemDisplay(
+                    has_agents=True,
+                    system_autonomy_score=system_autonomy_score,
+                    agent_roles=agent_role_displays,
+                    coordination=None,
+                    deployment_requirements={
+                        "architecture": "single_agent",
+                        "agent_count": 1,
+                        "estimated_timeline": "1-3 weeks",
+                        "infrastructure_needs": {
+                            "compute": "Medium - Single agent processing",
+                            "memory": "Medium - Agent state storage",
+                            "storage": "Low - Agent logs and data",
+                            "network": "Standard - API communication"
+                        },
+                        "complexity_factors": [
+                            "Single agent simplifies deployment",
+                            "High autonomy requires thorough testing"
+                        ]
+                    },
+                    tech_stack_validation={"status": "compatible", "recommendations": tech_stack[:3]},
+                    implementation_guidance=[
+                        {
+                            "type": "framework",
+                            "title": "Single Agent Framework",
+                            "content": "Consider using LangChain or OpenAI Assistants API for single-agent implementation"
+                        },
+                        {
+                            "type": "infrastructure",
+                            "title": "Infrastructure Setup",
+                            "content": "Set up monitoring and logging for the autonomous agent"
+                        }
+                    ]
+                )
+            
+            # Render the agent system with accessibility features
+            agent_ui.render_agent_system(agent_system)
+            agent_ui.render_accessible_agent_summary(agent_system)
+            
+            # Track agent display analytics
+            _track_agent_display_analytics(agent_system, session_id)
+    
+    except Exception as e:
+        # Handle errors gracefully
+        error_handler = AgentDisplayErrorHandler()
+        error_handler.handle_ui_rendering_error(e, "Agentic Solution Display")
+
+def get_provider_config(provider: str, model: str, api_key: str = None) -> Dict[str, Any]:
+    """Get provider configuration for API calls."""
+    config = {
+        "provider": provider,
+        "model": model,
+        "api_key": api_key or "",
+        "endpoint_url": "",
+        "region": "",
+        "aws_access_key_id": None,
+        "aws_secret_access_key": None,
+        "aws_session_token": None
+    }
+    return config
+
 def main():
     """Main Streamlit application."""
     st.title("🤖 Automated AI Assessment (AAA)")
@@ -72,6 +459,8 @@ def main():
         
         if provider != "fake":
             api_key = st.text_input("API Key", type="password")
+        else:
+            api_key = None
             
             if st.button("Test Connection"):
                 if api_key:
@@ -104,7 +493,7 @@ def main():
                     st.warning("Please enter an API key")
     
     # Main interface
-    tab1, tab2, tab3, tab4 = st.tabs(["📝 Input", "❓ Q&A", "📊 Results", "ℹ️ About"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 Input", "❓ Q&A", "📊 Results", "🤖 Agent Solution", "ℹ️ About"])
     
     with tab1:
         st.header("Requirement Input")
@@ -145,9 +534,13 @@ def main():
                         "pattern_types": pattern_types
                     }
                     
+                    # Get provider configuration
+                    provider_config = get_provider_config(provider, model, api_key if provider != "fake" else None)
+                    
                     result = call_api("/ingest", "POST", {
                         "source": "text",
-                        "payload": payload
+                        "payload": payload,
+                        "provider_config": provider_config
                     })
                     
                     if result.get("session_id"):
@@ -168,12 +561,16 @@ def main():
             if uploaded_file and st.button("🚀 Start Analysis", type="primary"):
                 content = uploaded_file.read().decode("utf-8")
                 
+                # Get provider configuration
+                provider_config = get_provider_config(provider, model, api_key if provider != "fake" else None)
+                
                 result = call_api("/ingest", "POST", {
                     "source": "file",
                     "payload": {
                         "content": content,
                         "filename": uploaded_file.name
-                    }
+                    },
+                    "provider_config": provider_config
                 })
                 
                 if result.get("session_id"):
@@ -305,12 +702,10 @@ def main():
                             "api_token": jira_api_token
                         }
                         
-                        # Add provider config if set
-                        provider_config = None
-                        if st.session_state.get("provider_config"):
-                            provider_config = st.session_state.provider_config
+                        # Get provider configuration
+                        provider_config = get_provider_config(provider, model, api_key if provider != "fake" else None)
                         
-                        result = call_api("/ingest", {
+                        result = call_api("/ingest", "POST", {
                             "source": "jira",
                             "payload": payload,
                             "provider_config": provider_config
@@ -396,6 +791,7 @@ def main():
             st.info("👈 Please start an analysis in the Input tab first")
         else:
             session_id = st.session_state.session_id
+            app_logger.info(f"DEBUG: Using session_id from session_state: {session_id}")
             
             col1, col2 = st.columns(2)
             
@@ -466,25 +862,49 @@ def main():
                 
                 # Export options
                 st.subheader("📤 Export Results")
-                col1, col2 = st.columns(2)
                 
-                with col1:
-                    if st.button("📄 Export JSON"):
-                        result = call_api("/export", "POST", {
-                            "session_id": session_id,
-                            "format": "json"
-                        })
-                        if result.get("download_url"):
-                            st.success(f"✅ Exported to: {result['download_url']}")
+                # Check if this is an agentic solution for enhanced exports
+                is_agentic = _check_if_agentic_solution(rec)
                 
-                with col2:
-                    if st.button("📝 Export Markdown"):
-                        result = call_api("/export", "POST", {
-                            "session_id": session_id,
-                            "format": "md"
-                        })
-                        if result.get("download_url"):
-                            st.success(f"✅ Exported to: {result['download_url']}")
+                if is_agentic:
+                    st.write("**Enhanced Agent Exports Available:**")
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        if st.button("📄 Export JSON"):
+                            _export_agent_results(session_id, "json", rec)
+                    
+                    with col2:
+                        if st.button("📝 Export Markdown"):
+                            _export_agent_results(session_id, "markdown", rec)
+                    
+                    with col3:
+                        if st.button("🌐 Export HTML"):
+                            _export_agent_results(session_id, "html", rec)
+                    
+                    with col4:
+                        if st.button("🏗️ Export Blueprint"):
+                            _export_agent_results(session_id, "blueprint", rec)
+                else:
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        if st.button("📄 Export JSON"):
+                            result = call_api("/export", "POST", {
+                                "session_id": session_id,
+                                "format": "json"
+                            })
+                            if result.get("download_url"):
+                                st.success(f"✅ Exported to: {result['download_url']}")
+                    
+                    with col2:
+                        if st.button("📝 Export Markdown"):
+                            result = call_api("/export", "POST", {
+                                "session_id": session_id,
+                                "format": "md"
+                            })
+                            if result.get("download_url"):
+                                st.success(f"✅ Exported to: {result['download_url']}")
             
             elif "matches" in st.session_state:
                 st.subheader("🔍 Pattern Matches")
@@ -496,6 +916,44 @@ def main():
                         st.write(f"**Rationale:** {match.get('rationale', 'No rationale provided')}")
     
     with tab4:
+        st.header("🤖 Agentic AI Solution Design")
+        
+        if "session_id" not in st.session_state:
+            st.info("👈 Please start an analysis in the Input tab first")
+        elif "recommendations" not in st.session_state:
+            st.info("👈 Please generate recommendations in the Results tab first")
+        else:
+            session_id = st.session_state.session_id
+            rec = st.session_state.recommendations
+            
+            # Always try to render the agentic solution display
+            st.write("**Analyzing your requirements for agentic AI potential...**")
+            
+            try:
+                _render_agentic_solution_display(rec, session_id)
+            except Exception as e:
+                st.error(f"Error displaying agentic solution: {e}")
+                st.write("**Debug Info:**")
+                st.write(f"- Session ID: {session_id}")
+                st.write(f"- Recommendations available: {'Yes' if rec else 'No'}")
+                if rec:
+                    st.write(f"- Number of recommendations: {len(rec.get('recommendations', []))}")
+                    st.write(f"- Has reasoning: {'Yes' if rec.get('reasoning') else 'No'}")
+                    
+                    # Check for agentic indicators
+                    reasoning = rec.get("reasoning", "").lower()
+                    agentic_keywords = ["agent", "autonomous", "agentic", "multi-agent", "reasoning", "decision-making"]
+                    has_agentic_keywords = any(keyword in reasoning for keyword in agentic_keywords)
+                    st.write(f"- Has agentic keywords in reasoning: {has_agentic_keywords}")
+                    
+                    # Check recommendations for agent_roles
+                    recommendations = rec.get("recommendations", [])
+                    agent_roles_count = 0
+                    for recommendation in recommendations:
+                        agent_roles_count += len(recommendation.get("agent_roles", []))
+                    st.write(f"- Total agent roles found: {agent_roles_count}")
+    
+    with tab5:
         st.header("ℹ️ About Automated AI Assessment (AAA)")
         
         st.markdown("""

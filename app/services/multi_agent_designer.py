@@ -11,6 +11,7 @@ from app.utils.logger import app_logger
 
 
 class AgentArchitectureType(Enum):
+    SINGLE_AGENT = "single_agent"
     HIERARCHICAL = "hierarchical"
     PEER_TO_PEER = "peer_to_peer"
     COORDINATOR_BASED = "coordinator_based"

@@ -49,17 +49,27 @@ clean:
 api:
 	python3 -m uvicorn app.api:app --reload --host 0.0.0.0 --port 8000
 
-# Run Streamlit UI only
+# Run Streamlit UI only (NEW interface with Agent Solution tab)
 ui:
 	python3 run_streamlit.py
 
 # Run Streamlit in browser (same as ui)
 streamlit:
-	@echo "🚀 Starting Streamlit UI..."
+	@echo "🚀 Starting NEW Streamlit UI with Agent Solution tab..."
 	@echo "📱 The app will open in your browser at: http://localhost:8501"
 	@echo "🔧 Make sure the FastAPI backend is running at: http://localhost:8000"
+	@echo "🤖 NEW: Includes dedicated Agent Solution tab for agentic AI designs!"
 	@echo ""
 	python3 run_streamlit.py
+
+# Run NEW interface directly (bypass run_streamlit.py)
+new-ui:
+	@echo "🚀 Starting NEW Streamlit UI directly..."
+	@echo "📱 The app will open in your browser at: http://localhost:8501"
+	@echo "🔧 Make sure the FastAPI backend is running at: http://localhost:8000"
+	@echo "🤖 NEW: Includes dedicated Agent Solution tab for agentic AI designs!"
+	@echo ""
+	python3 -m streamlit run app/main.py --server.port 8501 --server.address 0.0.0.0 --browser.serverAddress localhost
 
 # Test coverage
 coverage:
