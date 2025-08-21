@@ -978,7 +978,22 @@ Make it clear how the multi-agent system achieves autonomy and handles complex r
 
 Return ONLY the Mermaid code, starting with 'flowchart TD' or 'flowchart LR'."""
 
-        provider_config = get_provider_config()
+        provider_config = st.session_state.get('provider_config', {})
+        if provider_config.get('provider') == 'fake':
+            # Fallback for fake provider
+            return """flowchart TD
+    A[Coordinator Agent] --> B[Data Processing Agent]
+    A --> C[Decision Making Agent]
+    B -->|processed data| C
+    C -->|decisions| D[Action Agent]
+    D --> E((External System))
+    
+    style A fill:#FF6B6B,stroke:#E53E3E,stroke-width:3px
+    style B fill:#4ECDC4,stroke:#38B2AC,stroke-width:3px
+    style C fill:#45B7D1,stroke:#3182CE,stroke-width:3px
+    style D fill:#96CEB4,stroke:#68D391,stroke-width:3px
+    style E fill:#FED7D7,stroke:#E53E3E,stroke-width:2px"""
+        
         response = await make_llm_request(prompt, provider_config)
         return _clean_mermaid_code(response.strip())
     except Exception as e:
