@@ -1738,8 +1738,8 @@ class AutomatedAIAssessmentUI:
         config_update = {
             'provider': current_provider,
             'model': model,
-            'api_key': api_key,
-            'endpoint_url': endpoint_url,
+            'api_key': api_key if api_key else None,  # Use None instead of empty string
+            'endpoint_url': endpoint_url if endpoint_url else None,
             'region': region
         }
         
