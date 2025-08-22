@@ -2513,6 +2513,19 @@ class AutomatedAIAssessmentUI:
                         help="Uncheck for self-signed certificates (not recommended for production)"
                     )
                     
+                    # Show security warning when SSL verification is disabled
+                    if not verify_ssl:
+                        st.warning("""
+                        ⚠️  **Security Warning: SSL Verification Disabled**
+                        
+                        • Your connection is vulnerable to man-in-the-middle attacks
+                        • Only use this setting for testing with self-signed certificates
+                        • **NEVER disable SSL verification in production environments**
+                        • Consider adding the server's certificate to 'Custom CA Certificate Path' instead
+                        """)
+                    else:
+                        st.success("🔒 SSL verification enabled - connections are secure")
+                    
                     ca_cert_path = st.text_input(
                         "Custom CA Certificate Path",
                         placeholder="/path/to/ca-bundle.crt",
@@ -2631,26 +2644,49 @@ class AutomatedAIAssessmentUI:
                             
                             # Display deployment information if available
                             deployment_info = test_result.get("deployment_info")
-                            if deployment_info:
+                            ssl_config = test_result.get("ssl_configuration")
+                            
+                            if deployment_info or ssl_config:
                                 with st.expander("📋 Connection Details", expanded=True):
                                     col1, col2 = st.columns(2)
                                     
                                     with col1:
-                                        st.write(f"**Deployment Type:** {deployment_info.get('deployment_type', 'Unknown').title()}")
-                                        st.write(f"**Version:** {deployment_info.get('version', 'Unknown')}")
-                                        if deployment_info.get('build_number'):
-                                            st.write(f"**Build:** {deployment_info['build_number']}")
+                                        if deployment_info:
+                                            st.write(f"**Deployment Type:** {deployment_info.get('deployment_type', 'Unknown').title()}")
+                                            st.write(f"**Version:** {deployment_info.get('version', 'Unknown')}")
+                                            if deployment_info.get('build_number'):
+                                                st.write(f"**Build:** {deployment_info['build_number']}")
+                                        
+                                        # SSL Configuration Information
+                                        if ssl_config:
+                                            st.write("**SSL Configuration:**")
+                                            security_level = ssl_config.get('security_level', 'Unknown')
+                                            if security_level == 'HIGH':
+                                                st.write("🔒 Security Level: HIGH (SSL verification enabled)")
+                                            else:
+                                                st.write("⚠️  Security Level: LOW (SSL verification disabled)")
+                                            
+                                            if ssl_config.get('custom_ca_certificate'):
+                                                st.write("📋 Custom CA certificate configured")
                                     
                                     with col2:
-                                        st.write(f"**API Version:** {test_result.get('api_version_detected', 'Unknown')}")
-                                        auth_methods = test_result.get("auth_methods_available", [])
-                                        if auth_methods:
-                                            st.write(f"**Available Auth Methods:** {', '.join(auth_methods)}")
+                                        if deployment_info:
+                                            st.write(f"**API Version:** {test_result.get('api_version_detected', 'Unknown')}")
+                                            auth_methods = test_result.get("auth_methods_available", [])
+                                            if auth_methods:
+                                                st.write(f"**Available Auth Methods:** {', '.join(auth_methods)}")
                                     
-                                    if deployment_info.get('supports_sso'):
-                                        st.info("🔐 This instance supports SSO authentication")
-                                    if deployment_info.get('supports_pat'):
-                                        st.info("🎫 This instance supports Personal Access Tokens")
+                                    # Show SSL warnings if any
+                                    if ssl_config and ssl_config.get('warnings'):
+                                        st.warning("**SSL Security Warnings:**")
+                                        for warning in ssl_config['warnings']:
+                                            st.write(f"• {warning}")
+                                    
+                                    if deployment_info:
+                                        if deployment_info.get('supports_sso'):
+                                            st.info("🔐 This instance supports SSO authentication")
+                                        if deployment_info.get('supports_pat'):
+                                            st.info("🎫 This instance supports Personal Access Tokens")
                         else:
                             error_msg = test_result.get("message", "Unknown error") if test_result else "Connection failed"
                             st.error(f"❌ Connection failed: {error_msg}")
@@ -2658,16 +2694,55 @@ class AutomatedAIAssessmentUI:
                             # Display detailed error information if available
                             error_details = test_result.get("error_details") if test_result else None
                             if error_details:
-                                with st.expander("🔍 Troubleshooting Information", expanded=False):
-                                    st.write(f"**Error Type:** {error_details.get('error_type', 'Unknown')}")
+                                with st.expander("🔍 Troubleshooting Information", expanded=True):
+                                    error_type = error_details.get('error_type', 'Unknown')
+                                    st.write(f"**Error Type:** {error_type}")
+                                    
                                     if error_details.get('error_code'):
                                         st.write(f"**Error Code:** {error_details['error_code']}")
+                                    
+                                    # Show SSL-specific warnings and guidance
+                                    if "ssl" in error_type.lower() or "certificate" in error_type.lower():
+                                        if not verify_ssl:
+                                            st.info("""
+                                            ℹ️  **SSL Configuration Note**
+                                            
+                                            SSL verification is currently disabled. If you're still getting SSL errors, 
+                                            this might indicate a deeper connection issue.
+                                            """)
+                                        else:
+                                            st.warning("""
+                                            🔒 **SSL Certificate Issue Detected**
+                                            
+                                            This appears to be an SSL certificate problem. Consider these options:
+                                            • For self-signed certificates: Add the certificate to 'Custom CA Certificate Path'
+                                            • For testing only: Temporarily disable 'Verify SSL Certificates'
+                                            • For production: Contact your administrator to fix the certificate
+                                            """)
                                     
                                     troubleshooting_steps = error_details.get('troubleshooting_steps', [])
                                     if troubleshooting_steps:
                                         st.write("**Troubleshooting Steps:**")
                                         for step in troubleshooting_steps:
                                             st.write(f"• {step}")
+                                    
+                                    # Show suggested configuration changes for SSL issues
+                                    suggested_config = error_details.get('suggested_config_changes')
+                                    if suggested_config and ("ssl" in error_type.lower() or "certificate" in error_type.lower()):
+                                        st.write("**Suggested Configuration:**")
+                                        if suggested_config.get('verify_ssl') is False:
+                                            st.code(f"""
+# For testing only - disable SSL verification
+verify_ssl = False
+
+# Note: {suggested_config.get('note', 'Use with caution')}
+                                            """)
+                                        if suggested_config.get('ca_cert_path'):
+                                            st.code(f"""
+# Add custom CA certificate
+ca_cert_path = "{suggested_config.get('ca_cert_path')}"
+verify_ssl = True
+                                            """)
                                     
                                     doc_links = error_details.get('documentation_links', [])
                                     if doc_links:
