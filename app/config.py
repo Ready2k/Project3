@@ -12,6 +12,22 @@ from pydantic_settings import BaseSettings
 from app.version import __version__, RELEASE_NAME
 
 
+class EmbeddingProvider(str, Enum):
+    """Enumeration of supported embedding providers."""
+    SENTENCE_TRANSFORMERS = "sentence_transformers"
+    LLM_BASED = "llm_based"
+    HASH_BASED = "hash_based"
+
+
+class EmbeddingConfig(BaseModel):
+    """Configuration for embedding generation."""
+    provider: EmbeddingProvider = EmbeddingProvider.SENTENCE_TRANSFORMERS
+    model_name: str = "all-MiniLM-L6-v2"
+    dimension: int = 384
+    cache_embeddings: bool = True
+    fallback_provider: Optional[EmbeddingProvider] = EmbeddingProvider.HASH_BASED
+
+
 class ConstraintsConfig(BaseModel):
     """Configuration for system constraints."""
     unavailable_tools: List[str] = Field(default_factory=list)
@@ -373,6 +389,7 @@ class Settings(BaseSettings):
     bedrock: BedrockConfig = Field(default_factory=BedrockConfig)
     jira: JiraConfig = Field(default_factory=JiraConfig)
     audit: AuditConfig = Field(default_factory=AuditConfig)
+    embedding: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
     advanced_prompt_defense: AdvancedPromptDefenseConfig = Field(default_factory=AdvancedPromptDefenseConfig)
     deployment: DeploymentConfig = Field(default_factory=lambda: DeploymentConfig(
         last_updated="2025-08-16T00:00:00.000000",
