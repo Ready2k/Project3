@@ -203,13 +203,118 @@ def _validate_mermaid_syntax(mermaid_code: str) -> tuple[bool, str]:
     
     return True, ""
 
+def _extract_mermaid_code(response: str) -> str:
+    """Extract only the Mermaid code from LLM responses that may contain explanations."""
+    if not response:
+        return ""
+    
+    import re
+    
+    # First, try to find code within markdown blocks
+    markdown_pattern = r'```(?:mermaid)?\s*\n?(.*?)\n?```'
+    markdown_match = re.search(markdown_pattern, response, re.DOTALL | re.IGNORECASE)
+    if markdown_match:
+        return markdown_match.group(1).strip()
+    
+    # Define valid Mermaid diagram start patterns
+    diagram_patterns = [
+        r'(flowchart\s+(?:TB|TD|BT|RL|LR).*?)(?=\n\n|\n[A-Z]|\n\*|\nNote:|\nExplanation:|\nThis diagram|\nThe diagram|$)',
+        r'(graph\s+(?:TB|TD|BT|RL|LR).*?)(?=\n\n|\n[A-Z]|\n\*|\nNote:|\nExplanation:|\nThis diagram|\nThe diagram|$)',
+        r'(sequenceDiagram.*?)(?=\n\n|\n[A-Z]|\n\*|\nNote:|\nExplanation:|\nThis diagram|\nThe diagram|$)',
+        r'(C4Context.*?)(?=\n\n|\n[A-Z]|\n\*|\nNote:|\nExplanation:|\nThis diagram|\nThe diagram|$)',
+        r'(C4Container.*?)(?=\n\n|\n[A-Z]|\n\*|\nNote:|\nExplanation:|\nThis diagram|\nThe diagram|$)',
+        r'(C4Component.*?)(?=\n\n|\n[A-Z]|\n\*|\nNote:|\nExplanation:|\nThis diagram|\nThe diagram|$)',
+        r'(C4Dynamic.*?)(?=\n\n|\n[A-Z]|\n\*|\nNote:|\nExplanation:|\nThis diagram|\nThe diagram|$)'
+    ]
+    
+    # Try each pattern to extract the diagram
+    for pattern in diagram_patterns:
+        match = re.search(pattern, response, re.DOTALL | re.IGNORECASE)
+        if match:
+            extracted = match.group(1).strip()
+            # Validate that this looks like actual Mermaid code
+            if _looks_like_mermaid_code(extracted):
+                return extracted
+    
+    # If no patterns match, try to find lines that look like Mermaid code
+    lines = response.split('\n')
+    mermaid_lines = []
+    in_diagram = False
+    
+    for line in lines:
+        line_stripped = line.strip()
+        
+        # Check if this line starts a diagram
+        if any(line_stripped.lower().startswith(start) for start in 
+               ['flowchart', 'graph', 'sequencediagram', 'c4context', 'c4container', 'c4component', 'c4dynamic']):
+            in_diagram = True
+            mermaid_lines = [line]  # Start fresh
+            continue
+        
+        # If we're in a diagram, keep collecting lines
+        if in_diagram:
+            # Stop if we hit explanatory text
+            if (line_stripped.lower().startswith(('this diagram', 'the diagram', 'explanation:', 'note:', 'this shows', 'the above')) or
+                (line_stripped and not line_stripped.startswith(('    ', '\t', '%%')) and 
+                 not any(char in line_stripped for char in ['-->', '---', '(', ')', '[', ']', '{', '}', '|']) and
+                 len(line_stripped.split()) > 5)):  # Likely explanatory text
+                break
+            
+            # Skip empty lines but keep them for formatting
+            if not line_stripped:
+                mermaid_lines.append(line)
+                continue
+            
+            # Keep lines that look like Mermaid syntax
+            if (line_stripped.startswith(('    ', '\t', '%%')) or  # Indented or comments
+                any(char in line_stripped for char in ['-->', '---', '(', ')', '[', ']', '{', '}', '|']) or  # Mermaid syntax
+                any(line_stripped.lower().startswith(keyword) for keyword in 
+                    ['person', 'system', 'container', 'component', 'rel', 'title', 'participant', 'note', 'alt', 'end', 'subgraph'])):
+                mermaid_lines.append(line)
+            else:
+                # If this doesn't look like Mermaid syntax, we might be done
+                break
+    
+    if mermaid_lines:
+        extracted = '\n'.join(mermaid_lines).strip()
+        if _looks_like_mermaid_code(extracted):
+            return extracted
+    
+    # Last resort: return the original response and let the cleaning function handle it
+    return response
+
+def _looks_like_mermaid_code(code: str) -> bool:
+    """Check if the extracted code looks like valid Mermaid syntax."""
+    if not code:
+        return False
+    
+    lines = [line.strip() for line in code.split('\n') if line.strip()]
+    if len(lines) < 2:
+        return False
+    
+    # Check if first line is a valid diagram declaration
+    first_line = lines[0].lower()
+    valid_starts = ['flowchart', 'graph', 'sequencediagram', 'c4context', 'c4container', 'c4component', 'c4dynamic']
+    if not any(first_line.startswith(start) for start in valid_starts):
+        return False
+    
+    # Check if it contains typical Mermaid syntax
+    code_lower = code.lower()
+    mermaid_indicators = ['-->', '---', '(', ')', '[', ']', 'rel(', 'person(', 'system(', 'participant', 'note']
+    if not any(indicator in code_lower for indicator in mermaid_indicators):
+        return False
+    
+    return True
+
 def _clean_mermaid_code(mermaid_code: str) -> str:
     """Clean and format Mermaid code to ensure proper syntax."""
     if not mermaid_code:
         return "flowchart TB\n    error[No diagram generated]"
     
-    # Remove any markdown code blocks
-    code = mermaid_code.strip()
+    # First, extract only the Mermaid code from mixed responses
+    code = _extract_mermaid_code(mermaid_code.strip())
+    
+    # Remove any remaining markdown code blocks
     if code.startswith('```mermaid'):
         code = code.replace('```mermaid', '').replace('```', '').strip()
     elif code.startswith('```'):
@@ -518,6 +623,12 @@ CRITICAL FORMATTING REQUIREMENTS:
 2. Use 4 spaces for indentation of nodes and connections
 3. Put each node definition and connection on its own line
 4. Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)
+5. DO NOT include any explanations, descriptions, or text before/after the Mermaid code
+6. Start your response immediately with the diagram declaration
+7. End your response immediately after the last diagram line
+5. DO NOT include any explanations, descriptions, or text before/after the Mermaid code
+6. Start your response immediately with the diagram declaration (e.g., "flowchart LR")
+7. End your response immediately after the last diagram line
 5. Ensure proper spacing and line breaks between elements"""
 
     try:
@@ -609,7 +720,10 @@ CRITICAL FORMATTING REQUIREMENTS:
 3. Use 8 spaces for indentation inside subgraphs
 4. Put each node definition and connection on its own line
 5. Add blank lines between major sections for readability
-6. Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)"""
+6. Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)
+7. DO NOT include any explanations, descriptions, or text before/after the Mermaid code
+8. Start your response immediately with the diagram declaration
+9. End your response immediately after the last diagram line"""
 
     try:
         provider_config = st.session_state.get('provider_config', {})
@@ -747,6 +861,8 @@ flowchart TB
     api -->|SQL Query| db
 
 IMPORTANT: Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks).
+DO NOT include any explanations, descriptions, or text before/after the Mermaid code.
+Start your response immediately with the diagram declaration and end immediately after the last diagram line.
 Ensure each line is properly separated and indented."""
 
     try:
@@ -900,7 +1016,10 @@ CRITICAL FORMATTING REQUIREMENTS:
 5. IMPORTANT: Only use "end" to close "alt" blocks - each "alt" needs exactly one "end"
 6. Do NOT add extra "end" statements - they are only for closing alt/else blocks
 7. Add blank lines between major sections for readability
-8. Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)"""
+8. Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)
+9. DO NOT include any explanations, descriptions, or text before/after the Mermaid code
+10. Start your response immediately with the diagram declaration
+11. End your response immediately after the last diagram line"""
 
     try:
         provider_config = st.session_state.get('provider_config', {})

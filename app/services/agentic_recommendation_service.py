@@ -449,9 +449,10 @@ class AgenticRecommendationService:
                         f"Agent can handle: {', '.join(enhanced_pattern.get('decision_boundaries', {}).get('autonomous_decisions', ['standard operations'])[:2])}.")
             
             # Generate basic agent roles for custom pattern
+            agent_name = await self._generate_agent_name(requirements)
             agent_roles = [
                 {
-                    "name": "Primary Agent",
+                    "name": agent_name,
                     "responsibility": f"Main autonomous agent responsible for {requirements.get('description', 'the task')[:100]}",
                     "capabilities": enhanced_pattern.get("decision_boundaries", {}).get("autonomous_decisions", ["task_execution", "decision_making"]),
                     "autonomy_level": enhanced_pattern.get("autonomy_level", 0.8),
@@ -499,9 +500,14 @@ class AgenticRecommendationService:
         agentic_tech = ["LangChain", "OpenAI Assistants API", "FastAPI", "PostgreSQL"]
         
         # Create agent roles for digital assistant
+        agent_name = await self._generate_agent_name(requirements)
+        # For scope-limited scenarios, make it clear it's a digital assistant
+        if "Digital" not in agent_name and "Assistant" not in agent_name:
+            agent_name = f"Digital {agent_name}"
+        
         agent_roles = [
             {
-                "name": "Digital Assistant Agent",
+                "name": agent_name,
                 "responsibility": "Autonomous agent handling digital workflow aspects while coordinating with physical processes",
                 "capabilities": ["monitoring", "scheduling", "notifications", "data_tracking", "coordination"],
                 "autonomy_level": autonomy_assessment.overall_score,
@@ -539,8 +545,11 @@ class AgenticRecommendationService:
         # Create a single agent role based on the requirements
         description = requirements.get('description', 'autonomous task')
         
+        # Generate a meaningful agent name based on the requirements
+        agent_name = await self._generate_agent_name(requirements)
+        
         single_agent = AgentRole(
-            name="Primary Autonomous Agent",
+            name=agent_name,
             responsibility=f"Main autonomous agent responsible for {description[:100]}",
             capabilities=[
                 "task_execution",
@@ -601,3 +610,74 @@ class AgenticRecommendationService:
         agentic_boost = min(0.2, agentic_tech_count * 0.05)  # Up to 20% boost
         
         return min(1.0, base_score + agentic_boost)
+    
+    async def _generate_agent_name(self, requirements: Dict[str, Any]) -> str:
+        """Generate a meaningful agent name based on requirements."""
+        
+        description = requirements.get('description', '').lower()
+        
+        # Extract key domain/function words from description
+        domain_keywords = {
+            'user': ['user', 'customer', 'client', 'account'],
+            'data': ['data', 'database', 'information', 'record'],
+            'email': ['email', 'mail', 'notification', 'message'],
+            'report': ['report', 'analytics', 'dashboard', 'metrics'],
+            'workflow': ['workflow', 'process', 'automation', 'task'],
+            'integration': ['integration', 'api', 'sync', 'connect'],
+            'monitoring': ['monitor', 'alert', 'watch', 'track'],
+            'security': ['security', 'auth', 'permission', 'access'],
+            'content': ['content', 'document', 'file', 'media'],
+            'communication': ['chat', 'communication', 'collaboration'],
+            'scheduling': ['schedule', 'calendar', 'appointment', 'booking'],
+            'inventory': ['inventory', 'stock', 'product', 'item'],
+            'financial': ['payment', 'invoice', 'billing', 'financial'],
+            'support': ['support', 'help', 'ticket', 'issue']
+        }
+        
+        # Find matching domain
+        detected_domain = None
+        for domain, keywords in domain_keywords.items():
+            if any(keyword in description for keyword in keywords):
+                detected_domain = domain
+                break
+        
+        # Generate agent name based on domain
+        if detected_domain:
+            domain_names = {
+                'user': 'User Management Agent',
+                'data': 'Data Processing Agent', 
+                'email': 'Communication Agent',
+                'report': 'Analytics Agent',
+                'workflow': 'Workflow Automation Agent',
+                'integration': 'Integration Agent',
+                'monitoring': 'Monitoring Agent',
+                'security': 'Security Agent',
+                'content': 'Content Management Agent',
+                'communication': 'Communication Agent',
+                'scheduling': 'Scheduling Agent',
+                'inventory': 'Inventory Management Agent',
+                'financial': 'Financial Processing Agent',
+                'support': 'Support Agent'
+            }
+            return domain_names.get(detected_domain, 'Task Automation Agent')
+        
+        # Fallback: try to extract action words
+        action_keywords = {
+            'create': 'Creation Agent',
+            'update': 'Update Agent', 
+            'process': 'Processing Agent',
+            'manage': 'Management Agent',
+            'analyze': 'Analysis Agent',
+            'generate': 'Generation Agent',
+            'validate': 'Validation Agent',
+            'transform': 'Transformation Agent',
+            'sync': 'Synchronization Agent',
+            'migrate': 'Migration Agent'
+        }
+        
+        for action, agent_name in action_keywords.items():
+            if action in description:
+                return agent_name
+        
+        # Final fallback
+        return 'Task Automation Agent'
