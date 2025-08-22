@@ -40,6 +40,12 @@ async def make_llm_request(prompt: str, provider_config: Dict, purpose: str = "d
             provider=provider_config.get('provider', 'openai'),
             model=provider_config.get('model', 'gpt-4o'),
             api_key=provider_config.get('api_key', ''),
+            endpoint_url=provider_config.get('endpoint_url'),
+            region=provider_config.get('region'),
+            aws_access_key_id=provider_config.get('aws_access_key_id'),
+            aws_secret_access_key=provider_config.get('aws_secret_access_key'),
+            aws_session_token=provider_config.get('aws_session_token'),
+            bedrock_api_key=provider_config.get('bedrock_api_key'),
             temperature=0.3,
             max_tokens=1000
         )
@@ -951,67 +957,209 @@ async def build_agent_interaction_diagram(requirement: str, recommendations: Lis
         if agent_roles:
             agent_roles_context = f"AGENT ROLES: {agent_roles}"
         
-        prompt = f"""Create a Mermaid flowchart diagram showing how autonomous AI agents interact, coordinate, and make decisions for this requirement:
+        # Extract more specific context from the requirement
+        requirement_lower = requirement.lower()
+        domain_context = ""
+        
+        # Identify the domain/industry for better agent naming
+        if any(word in requirement_lower for word in ['customer', 'support', 'service', 'ticket']):
+            domain_context = "DOMAIN: Customer Service/Support"
+        elif any(word in requirement_lower for word in ['finance', 'payment', 'invoice', 'accounting']):
+            domain_context = "DOMAIN: Finance/Accounting"
+        elif any(word in requirement_lower for word in ['hr', 'employee', 'recruitment', 'hiring']):
+            domain_context = "DOMAIN: Human Resources"
+        elif any(word in requirement_lower for word in ['inventory', 'supply', 'warehouse', 'logistics']):
+            domain_context = "DOMAIN: Supply Chain/Logistics"
+        elif any(word in requirement_lower for word in ['marketing', 'campaign', 'lead', 'sales', 'data', 'analytics', 'report', 'dashboard']):
+            if any(word in requirement_lower for word in ['sales', 'marketing', 'campaign', 'lead']):
+                domain_context = "DOMAIN: Marketing/Sales"
+            else:
+                domain_context = "DOMAIN: Data Analytics"
+        elif any(word in requirement_lower for word in ['security', 'compliance', 'audit', 'risk', 'monitor', 'threat']):
+            domain_context = "DOMAIN: Security/Compliance"
+        elif any(word in requirement_lower for word in ['resume', 'interview', 'candidate', 'hiring', 'recruitment']):
+            domain_context = "DOMAIN: Human Resources"
+        
+        prompt = f"""Create a Mermaid flowchart diagram showing how autonomous AI agents interact, coordinate, and make decisions for this specific requirement:
 
 REQUIREMENT: {requirement}
 
+{domain_context}
 {tech_stack_context}
 {architecture_context}
 {agent_roles_context}
 
+CRITICAL REQUIREMENT: You MUST create agent names that are SPECIFIC to this requirement. DO NOT use generic names like "Primary_Agent", "Agent1", "Primary_Autonom", or similar generic placeholders.
+
+GOOD examples based on requirement context:
+- Customer support: "TicketAnalysisAgent", "CustomerContextAgent", "ResponseGeneratorAgent"
+- Finance: "InvoiceProcessorAgent", "PaymentValidatorAgent", "ComplianceCheckerAgent"  
+- HR: "ResumeScreenerAgent", "InterviewSchedulerAgent", "CandidateRankerAgent"
+- Data: "DataCollectorAgent", "PatternAnalyzerAgent", "ReportGeneratorAgent"
+
+BAD examples (DO NOT USE): "Primary_Agent", "Agent1", "Primary_Autonom", "GenericAgent"
+
 Create a flowchart that shows:
-1. Different AI agents as distinct nodes (use descriptive names like "DataAgent", "DecisionAgent", "CoordinatorAgent")
+1. Specific AI agents with descriptive names based on the requirement (NOT generic names like "Primary_Agent")
 2. How agents communicate and coordinate with each other
 3. Decision points where agents make autonomous choices
-4. Data flow between agents
+4. Data flow between agents with specific data types
 5. External systems or APIs that agents interact with
 6. Feedback loops and learning mechanisms
 
 Use Mermaid flowchart syntax with:
-- Rectangular nodes for agents: A[Agent Name]
+- Rectangular nodes for agents: A[Specific Agent Name]
 - Diamond nodes for decision points: D{{Decision Point}}
 - Circular nodes for external systems: E((External System))
 - Arrows showing communication: A --> B
-- Labels on arrows showing data/messages: A -->|"data"| B
+- Labels on arrows showing specific data/messages: A -->|"specific data type"| B
 
-Make it clear how the multi-agent system achieves autonomy and handles complex reasoning.
+Make the agent names and interactions SPECIFIC to the requirement context, not generic placeholders.
 
 Return ONLY the Mermaid code, starting with 'flowchart TD' or 'flowchart LR'."""
 
         provider_config = st.session_state.get('provider_config', {})
         if provider_config.get('provider') == 'fake':
-            # Fallback for fake provider
-            return """flowchart TD
-    A[Coordinator Agent] --> B[Data Processing Agent]
-    A --> C[Decision Making Agent]
-    B -->|processed data| C
-    C -->|decisions| D[Action Agent]
-    D --> E((External System))
+            # Create a contextual fallback based on the requirement
+            requirement_lower = requirement.lower()
+            if any(word in requirement_lower for word in ['customer', 'support', 'service', 'ticket']):
+                return """flowchart TD
+    U[User Request] --> TA[Ticket Analysis Agent]
+    TA --> CA[Customer Context Agent]
+    TA --> KA[Knowledge Agent]
+    CA -->|customer history| RG[Response Generator Agent]
+    KA -->|relevant solutions| RG
+    RG --> QA[Quality Assurance Agent]
+    QA -->|approved| R[Customer Response]
+    QA -->|needs revision| RG
     
-    style A fill:#FF6B6B,stroke:#E53E3E,stroke-width:3px
-    style B fill:#4ECDC4,stroke:#38B2AC,stroke-width:3px
-    style C fill:#45B7D1,stroke:#3182CE,stroke-width:3px
-    style D fill:#96CEB4,stroke:#68D391,stroke-width:3px
-    style E fill:#FED7D7,stroke:#E53E3E,stroke-width:2px"""
+    style TA fill:#FF6B6B,stroke:#E53E3E,stroke-width:3px
+    style CA fill:#4ECDC4,stroke:#38B2AC,stroke-width:3px
+    style KA fill:#45B7D1,stroke:#3182CE,stroke-width:3px
+    style RG fill:#F7DC6F,stroke:#F1C40F,stroke-width:3px
+    style QA fill:#DDA0DD,stroke:#9932CC,stroke-width:3px"""
+            else:
+                # Generic fallback for other domains
+                return """flowchart TD
+    U[User Request] --> CA[Coordinator Agent]
+    CA --> DA[Data Processing Agent]
+    CA --> AA[Analysis Agent]
+    DA -->|processed data| AA
+    AA -->|insights| EA[Execution Agent]
+    EA --> VA[Validation Agent]
+    VA -->|approved| R[Final Result]
+    VA -->|needs revision| EA
+    
+    style CA fill:#FF6B6B,stroke:#E53E3E,stroke-width:3px
+    style DA fill:#4ECDC4,stroke:#38B2AC,stroke-width:3px
+    style AA fill:#45B7D1,stroke:#3182CE,stroke-width:3px
+    style EA fill:#F7DC6F,stroke:#F1C40F,stroke-width:3px
+    style VA fill:#DDA0DD,stroke:#9932CC,stroke-width:3px"""
         
-        response = await make_llm_request(prompt, provider_config)
-        cleaned_code = _clean_mermaid_code(response.strip())
+        response = await make_llm_request(prompt, provider_config, purpose="agent_interaction_diagram")
         
-        # Debug logging
+        # Debug logging with more detail
         app_logger.info(f"Agent interaction diagram - Raw response length: {len(response) if response else 0}")
+        if response:
+            # Log first 200 characters to see what the LLM is generating
+            app_logger.info(f"Agent interaction diagram - Response preview: {response[:200]}...")
+            
+            # Check if response contains generic agent names
+            if "Primary_Autonom" in response or "Agent1" in response or "Agent2" in response:
+                app_logger.warning("Agent interaction diagram contains generic agent names - LLM may not be following instructions")
+        
+        cleaned_code = _clean_mermaid_code(response.strip())
         app_logger.info(f"Agent interaction diagram - Cleaned code length: {len(cleaned_code) if cleaned_code else 0}")
+        
+        # Additional validation - if we detect generic names, try to improve them
+        if cleaned_code and ("Primary_Autonom" in cleaned_code or "Agent1" in cleaned_code):
+            app_logger.warning("Detected generic agent names in cleaned code, attempting to contextualize")
+            # Try to replace generic names with more contextual ones
+            requirement_lower = requirement.lower()
+            if any(word in requirement_lower for word in ['customer', 'support', 'service', 'ticket']):
+                replacements = {
+                    "Primary_Autonom": "TicketAnalyzer",
+                    "Primary_Autonom1": "CustomerContext", 
+                    "Primary_Autonom2": "ResponseGenerator",
+                    "Primary_Autonom3": "QualityChecker",
+                    "Primary_Autonom4": "EscalationHandler"
+                }
+            elif any(word in requirement_lower for word in ['data', 'analytics', 'report', 'dashboard']):
+                replacements = {
+                    "Primary_Autonom": "DataCollector",
+                    "Primary_Autonom1": "PatternAnalyzer",
+                    "Primary_Autonom2": "ReportGenerator", 
+                    "Primary_Autonom3": "QualityValidator",
+                    "Primary_Autonom4": "InsightExtractor"
+                }
+            elif any(word in requirement_lower for word in ['finance', 'payment', 'invoice', 'accounting']):
+                replacements = {
+                    "Primary_Autonom": "InvoiceProcessor",
+                    "Primary_Autonom1": "PaymentValidator",
+                    "Primary_Autonom2": "ComplianceChecker",
+                    "Primary_Autonom3": "FraudDetector", 
+                    "Primary_Autonom4": "ReportGenerator"
+                }
+            elif any(word in requirement_lower for word in ['resume', 'interview', 'candidate', 'hiring', 'recruitment']):
+                replacements = {
+                    "Primary_Autonom": "ResumeScreener",
+                    "Primary_Autonom1": "CandidateRanker",
+                    "Primary_Autonom2": "InterviewScheduler",
+                    "Primary_Autonom3": "SkillMatcher",
+                    "Primary_Autonom4": "ReferenceChecker"
+                }
+            else:
+                replacements = {
+                    "Primary_Autonom": "CoordinatorAgent",
+                    "Primary_Autonom1": "ProcessorAgent",
+                    "Primary_Autonom2": "DecisionAgent",
+                    "Primary_Autonom3": "ValidatorAgent",
+                    "Primary_Autonom4": "ExecutorAgent"
+                }
+            
+            # Apply replacements in order of specificity (longer names first to avoid partial matches)
+            sorted_replacements = sorted(replacements.items(), key=lambda x: len(x[0]), reverse=True)
+            for generic_name, specific_name in sorted_replacements:
+                cleaned_code = cleaned_code.replace(generic_name, specific_name)
+        
+        # Final check for any remaining generic patterns
+        generic_patterns = ["Agent1", "Agent2", "Agent3", "Agent4", "GenericAgent", "Primary_Agent"]
+        for pattern in generic_patterns:
+            if pattern in cleaned_code:
+                app_logger.warning(f"Still found generic pattern '{pattern}' in agent diagram")
+                # Replace with a contextual fallback
+                cleaned_code = cleaned_code.replace(pattern, "SpecializedAgent")
         
         return cleaned_code
     except Exception as e:
         app_logger.error(f"Agent interaction diagram generation failed: {e}")
+        # Create a contextual error fallback
+        requirement_lower = requirement.lower()
+        if any(word in requirement_lower for word in ['customer', 'support', 'service']):
+            agent_type = "Customer Service"
+            agents = ["Ticket Analyzer", "Customer Context", "Response Generator"]
+        elif any(word in requirement_lower for word in ['finance', 'payment', 'invoice']):
+            agent_type = "Finance"
+            agents = ["Invoice Processor", "Payment Validator", "Compliance Checker"]
+        elif any(word in requirement_lower for word in ['data', 'analytics', 'report']):
+            agent_type = "Data Analytics"
+            agents = ["Data Collector", "Pattern Analyzer", "Report Generator"]
+        else:
+            agent_type = "Generic"
+            agents = ["Coordinator", "Processor", "Decision Maker"]
+        
         return f"""flowchart TD
-  A[Coordinator Agent] --> B[Data Processing Agent]
-  A --> C[Decision Making Agent]
-  B -->|processed data| C
-  C -->|decisions| D[Action Agent]
-  D --> E((External System))
+  U[User Request] --> A[{agents[0]} Agent]
+  A --> B[{agents[1]} Agent]
+  A --> C[{agents[2]} Agent]
+  B -->|data| C
+  C --> R[Result]
   
-  note[Agent interaction diagram generation failed: {str(e)}]"""
+  note[{agent_type} agent interaction diagram - LLM generation failed: {str(e)}]
+  
+  style A fill:#FF6B6B,stroke:#E53E3E,stroke-width:3px
+  style B fill:#4ECDC4,stroke:#38B2AC,stroke-width:3px
+  style C fill:#45B7D1,stroke:#3182CE,stroke-width:3px"""
 
 
 async def build_infrastructure_diagram(requirement: str, recommendations: List[Dict],
@@ -3597,15 +3745,30 @@ class AutomatedAIAssessmentUI:
             # Create LLM provider if available
             llm_provider = None
             provider_config_dict = st.session_state.get('provider_config')
-            if provider_config_dict and provider_config_dict.get('api_key'):
-                try:
-                    from app.api import ProviderConfig
-                    
-                    # Convert dict to ProviderConfig model
-                    provider_config = ProviderConfig(**provider_config_dict)
-                    llm_provider = create_llm_provider(provider_config, session_id)
-                except Exception as e:
-                    st.warning(f"Could not create LLM provider for tech stack generation: {e}")
+            if provider_config_dict:
+                # Check if we have valid authentication for any provider
+                provider = provider_config_dict.get('provider', '')
+                has_auth = False
+                
+                if provider == 'bedrock':
+                    # For Bedrock, check for either API key or AWS credentials
+                    has_bedrock_api_key = bool(provider_config_dict.get('bedrock_api_key'))
+                    has_aws_creds = bool(provider_config_dict.get('aws_access_key_id') and provider_config_dict.get('aws_secret_access_key'))
+                    has_session_creds = bool(provider_config_dict.get('aws_session_token'))
+                    has_auth = has_bedrock_api_key or has_aws_creds or has_session_creds
+                else:
+                    # For other providers, check for API key
+                    has_auth = bool(provider_config_dict.get('api_key'))
+                
+                if has_auth:
+                    try:
+                        from app.api import ProviderConfig
+                        
+                        # Convert dict to ProviderConfig model
+                        provider_config = ProviderConfig(**provider_config_dict)
+                        llm_provider = create_llm_provider(provider_config, session_id)
+                    except Exception as e:
+                        st.warning(f"Could not create LLM provider for tech stack generation: {e}")
             
             # Create architecture explainer
             explainer = ArchitectureExplainer(llm_provider)
@@ -4311,7 +4474,17 @@ class AutomatedAIAssessmentUI:
                 st.write(f"- Requirements keys: {list(requirements.keys()) if requirements else 'None'}")
                 st.write(f"- Recommendations count: {len(recommendations)}")
                 st.write(f"- Provider: {provider_config.get('provider', 'None')}")
-                st.write(f"- API Key present: {bool(provider_config.get('api_key'))}")
+                # Show authentication status based on provider
+                provider = provider_config.get('provider', '')
+                if provider == 'bedrock':
+                    has_bedrock_api_key = bool(provider_config.get('bedrock_api_key'))
+                    has_aws_creds = bool(provider_config.get('aws_access_key_id') and provider_config.get('aws_secret_access_key'))
+                    has_session_creds = bool(provider_config.get('aws_session_token'))
+                    auth_status = has_bedrock_api_key or has_aws_creds or has_session_creds
+                    auth_method = "Bedrock API Key" if has_bedrock_api_key else ("AWS Credentials" if has_aws_creds else ("Session Credentials" if has_session_creds else "None"))
+                    st.write(f"- Authentication: {auth_status} ({auth_method})")
+                else:
+                    st.write(f"- API Key present: {bool(provider_config.get('api_key'))}")
         
         requirement_text = requirements.get('description', 'No requirement available')
         
@@ -4322,9 +4495,22 @@ class AutomatedAIAssessmentUI:
                     st.error("No requirement found. Please submit a requirement first.")
                     return
                 
-                if not provider_config.get('api_key'):
-                    st.error("No API key found. Please configure your provider in the sidebar.")
-                    return
+                # Check for valid authentication based on provider type
+                provider = provider_config.get('provider', '')
+                if provider == 'bedrock':
+                    # For Bedrock, check for either API key or AWS credentials
+                    has_bedrock_api_key = bool(provider_config.get('bedrock_api_key'))
+                    has_aws_creds = bool(provider_config.get('aws_access_key_id') and provider_config.get('aws_secret_access_key'))
+                    has_session_creds = bool(provider_config.get('aws_session_token'))  # Session credentials from AWS CLI/SSO
+                    
+                    if not (has_bedrock_api_key or has_aws_creds or has_session_creds):
+                        st.error("No valid Bedrock authentication found. Please configure AWS credentials or Bedrock API key in the sidebar.")
+                        return
+                else:
+                    # For other providers, check for API key
+                    if not provider_config.get('api_key'):
+                        st.error("No API key found. Please configure your provider in the sidebar.")
+                        return
                 
                 st.write(f"**Generating diagram for:** {requirement_text[:100]}...")
                 

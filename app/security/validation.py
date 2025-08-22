@@ -454,24 +454,55 @@ class InputValidator:
         
         return True, "Valid"
     
-    def validate_jira_credentials(self, base_url: str, email: str, api_token: str) -> tuple[bool, str]:
-        """Validate Jira credentials format."""
-        if not all([base_url, email, api_token]):
-            return False, "All Jira credentials are required"
+    def validate_jira_credentials(self, base_url: str, email: str = None, api_token: str = None, 
+                                 username: str = None, password: str = None, 
+                                 personal_access_token: str = None, auth_type: str = "api_token") -> tuple[bool, str]:
+        """Validate Jira credentials format based on authentication type."""
+        if not base_url:
+            return False, "Base URL is required"
         
         # Validate URL format
         url_pattern = re.compile(r'^https?://[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}(/.*)?$')
         if not url_pattern.match(base_url):
             return False, "Invalid Jira base URL format"
         
-        # Validate email format
-        email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
-        if not email_pattern.match(email):
-            return False, "Invalid email format"
-        
-        # Validate API token (base64-like format with minimum length)
-        if not re.match(r'^[a-zA-Z0-9+/=_-]+$', api_token) or len(api_token) < 10:
-            return False, "Invalid API token format"
+        # Validate credentials based on auth type
+        if auth_type == "api_token":
+            if not all([email, api_token]):
+                return False, "Email and API token are required for API token authentication"
+            
+            # Validate email format
+            email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+            if not email_pattern.match(email):
+                return False, "Invalid email format"
+            
+            # Validate API token (base64-like format with minimum length)
+            if not re.match(r'^[a-zA-Z0-9+/=_-]+$', api_token) or len(api_token) < 10:
+                return False, "Invalid API token format"
+                
+        elif auth_type == "basic":
+            if not all([username, password]):
+                return False, "Username and password are required for basic authentication"
+            
+            # Basic validation for username and password
+            if len(username.strip()) == 0:
+                return False, "Username cannot be empty"
+            if len(password.strip()) == 0:
+                return False, "Password cannot be empty"
+                
+        elif auth_type == "pat":
+            if not personal_access_token:
+                return False, "Personal Access Token is required for PAT authentication"
+            
+            # Validate PAT format (similar to API token)
+            if not re.match(r'^[a-zA-Z0-9+/=_-]+$', personal_access_token) or len(personal_access_token) < 10:
+                return False, "Invalid Personal Access Token format"
+                
+        elif auth_type == "sso":
+            # SSO doesn't require additional credential validation
+            pass
+        else:
+            return False, f"Unsupported authentication type: {auth_type}"
         
         return True, "Valid"
     

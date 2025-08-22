@@ -771,23 +771,50 @@ async def ingest_requirements(request: IngestRequest, http_request: Request, res
             # For Jira source, payload should contain ticket_key and credentials
             ticket_key = request.payload.get("ticket_key")
             base_url = request.payload.get("base_url")
+            auth_type = request.payload.get("auth_type", "api_token")
+            
+            # Extract credentials based on auth type
             email = request.payload.get("email")
             api_token = request.payload.get("api_token")
+            username = request.payload.get("username")
+            password = request.payload.get("password")
+            personal_access_token = request.payload.get("personal_access_token")
             
             if not ticket_key:
                 raise HTTPException(status_code=400, detail="ticket_key is required for Jira source")
             
-            # Validate Jira credentials
-            is_valid, validation_message = input_validator.validate_jira_credentials(base_url, email, api_token)
+            # Validate Jira credentials based on auth type
+            is_valid, validation_message = input_validator.validate_jira_credentials(
+                base_url=base_url,
+                email=email,
+                api_token=api_token,
+                username=username,
+                password=password,
+                personal_access_token=personal_access_token,
+                auth_type=auth_type
+            )
             if not is_valid:
                 raise HTTPException(status_code=400, detail=f"Jira credentials validation failed: {validation_message}")
             
             # Create temporary Jira service with provided credentials
-            from app.config import JiraConfig
+            from app.config import JiraConfig, JiraAuthType
+            
+            # Map string auth type to enum
+            auth_type_mapping = {
+                "api_token": JiraAuthType.API_TOKEN,
+                "pat": JiraAuthType.PERSONAL_ACCESS_TOKEN,
+                "sso": JiraAuthType.SSO,
+                "basic": JiraAuthType.BASIC
+            }
+            
             jira_config = JiraConfig(
                 base_url=base_url,
+                auth_type=auth_type_mapping.get(auth_type, JiraAuthType.API_TOKEN),
                 email=email,
-                api_token=api_token
+                api_token=api_token,
+                username=username,
+                password=password,
+                personal_access_token=personal_access_token
             )
             temp_jira_service = JiraService(jira_config)
             
