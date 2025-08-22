@@ -96,10 +96,13 @@ advanced_prompt_defense:
     sensitivity: medium
 bedrock:
   region: eu-west-2
-  # AWS credentials (can also be set via environment variables)
+  # Authentication options (can also be set via environment variables)
+  # Method 1: AWS credentials
   # aws_access_key_id: your_access_key_id
   # aws_secret_access_key: your_secret_access_key
   # aws_session_token: your_session_token  # Optional for temporary credentials
+  # Method 2: Bedrock API key (long-term)
+  # bedrock_api_key: your_bedrock_api_key
 constraints:
   unavailable_tools: []
 deployment:

@@ -54,6 +54,7 @@ class ProviderConfig(BaseModel):
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
     aws_session_token: Optional[str] = None
+    bedrock_api_key: Optional[str] = None
     
     @field_validator('provider')
     @classmethod
@@ -242,7 +243,8 @@ def create_llm_provider(provider_config: Optional[ProviderConfig] = None, sessio
                 region=settings.bedrock.region,
                 aws_access_key_id=settings.bedrock.aws_access_key_id,
                 aws_secret_access_key=settings.bedrock.aws_secret_access_key,
-                aws_session_token=settings.bedrock.aws_session_token
+                aws_session_token=settings.bedrock.aws_session_token,
+                bedrock_api_key=settings.bedrock.bedrock_api_key
             )
             app_logger.info(f"✅ Using Bedrock provider from environment: {settings.model}")
         
@@ -294,9 +296,11 @@ def create_llm_provider(provider_config: Optional[ProviderConfig] = None, sessio
                 region=region,
                 aws_access_key_id=provider_config.aws_access_key_id,
                 aws_secret_access_key=provider_config.aws_secret_access_key,
-                aws_session_token=provider_config.aws_session_token
+                aws_session_token=provider_config.aws_session_token,
+                bedrock_api_key=getattr(provider_config, 'bedrock_api_key', None)
             )
-            app_logger.info(f"✅ Using Bedrock provider from config: {provider_config.model} in {region}")
+            auth_method = "API key" if getattr(provider_config, 'bedrock_api_key', None) else "AWS credentials"
+            app_logger.info(f"✅ Using Bedrock provider from config: {provider_config.model} in {region} with {auth_method}")
         
         elif provider_config.provider == "internal":
             if not provider_config.endpoint_url:
@@ -498,11 +502,26 @@ class ProviderTestRequest(BaseModel):
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
     aws_session_token: Optional[str] = None
+    bedrock_api_key: Optional[str] = None
 
 
 class ProviderTestResponse(BaseModel):
     ok: bool
     message: str
+
+
+class GenerateCredentialsRequest(BaseModel):
+    aws_access_key_id: str
+    aws_secret_access_key: str
+    aws_session_token: Optional[str] = None
+    region: Optional[str] = "us-east-1"
+    duration_seconds: Optional[int] = 3600
+
+
+class GenerateCredentialsResponse(BaseModel):
+    ok: bool
+    message: str
+    credentials: Optional[Dict[str, str]] = None
 
 
 class ModelDiscoveryRequest(BaseModel):
@@ -514,6 +533,7 @@ class ModelDiscoveryRequest(BaseModel):
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
     aws_session_token: Optional[str] = None
+    bedrock_api_key: Optional[str] = None
     
     @field_validator('provider')
     @classmethod
@@ -1317,6 +1337,36 @@ async def export_results(request: ExportRequest, response: Response):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/providers/bedrock/generate-credentials", response_model=GenerateCredentialsResponse)
+async def generate_bedrock_credentials(request: GenerateCredentialsRequest, response: Response):
+    """Generate short-term AWS credentials for Bedrock access."""
+    try:
+        app_logger.info(f"Generating short-term credentials for Bedrock in {request.region}")
+        
+        provider = BedrockProvider(
+            model="anthropic.claude-3-haiku-20240307-v1:0",  # Dummy model for credential generation
+            region=request.region,
+            aws_access_key_id=request.aws_access_key_id,
+            aws_secret_access_key=request.aws_secret_access_key,
+            aws_session_token=request.aws_session_token
+        )
+        
+        credentials = await provider.generate_short_term_credentials()
+        
+        return GenerateCredentialsResponse(
+            ok=True,
+            message="Short-term credentials generated successfully",
+            credentials=credentials
+        )
+        
+    except Exception as e:
+        app_logger.error(f"Failed to generate credentials: {e}")
+        return GenerateCredentialsResponse(
+            ok=False,
+            message=f"Failed to generate credentials: {str(e)}"
+        )
+
+
 @app.post("/providers/test", response_model=ProviderTestResponse)
 async def test_provider(request: ProviderTestRequest, response: Response):
     """Test LLM provider connection."""
@@ -1354,13 +1404,15 @@ async def test_provider(request: ProviderTestRequest, response: Response):
                 region=region,
                 aws_access_key_id=request.aws_access_key_id,
                 aws_secret_access_key=request.aws_secret_access_key,
-                aws_session_token=request.aws_session_token
+                aws_session_token=request.aws_session_token,
+                bedrock_api_key=getattr(request, 'bedrock_api_key', None)
             )
             success = await provider.test_connection()
             
+            auth_method = "API key" if getattr(request, 'bedrock_api_key', None) else "AWS credentials"
             return ProviderTestResponse(
                 ok=success,
-                message="Connection successful" if success else f"Connection failed: Unable to connect to Bedrock in {region}"
+                message=f"Connection successful using {auth_method}" if success else f"Connection failed: Unable to connect to Bedrock in {region} using {auth_method}"
             )
             
         elif request.provider == "internal":
@@ -1463,7 +1515,8 @@ async def discover_models(request: ModelDiscoveryRequest, response: Response):
                 region=region,
                 aws_access_key_id=request.aws_access_key_id,
                 aws_secret_access_key=request.aws_secret_access_key,
-                aws_session_token=request.aws_session_token
+                aws_session_token=request.aws_session_token,
+                bedrock_api_key=getattr(request, 'bedrock_api_key', None)
             )
             
             models = [

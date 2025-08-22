@@ -1507,78 +1507,136 @@ class AutomatedAIAssessmentUI:
                 help="AWS region for Bedrock service"
             )
             
-            # AWS Credentials Configuration
-            st.sidebar.markdown("**AWS Credentials**")
-            st.sidebar.info("💡 AWS credentials are required to connect to Bedrock. You can also set these via environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).")
-            
-            # Option to choose input method
-            creds_input_method = st.sidebar.radio(
-                "Credentials Input Method",
-                ["Individual Fields", "Combined Format"],
-                help="Choose how to enter AWS credentials"
+            # Authentication method selection
+            auth_method = st.sidebar.radio(
+                "Authentication Method",
+                ["AWS Credentials", "Bedrock API Key"],
+                help="Choose authentication method for Bedrock"
             )
             
-            if creds_input_method == "Individual Fields":
-                aws_access_key_id = st.sidebar.text_input(
-                    "AWS Access Key ID",
-                    value=st.session_state.provider_config.get('aws_access_key_id', ''),
-                    type="password",
-                    help="Your AWS Access Key ID"
-                )
-                aws_secret_access_key = st.sidebar.text_input(
-                    "AWS Secret Access Key", 
-                    value=st.session_state.provider_config.get('aws_secret_access_key', ''),
-                    type="password",
-                    help="Your AWS Secret Access Key"
-                )
-                aws_session_token = st.sidebar.text_input(
-                    "AWS Session Token (Optional)",
-                    value=st.session_state.provider_config.get('aws_session_token', ''),
-                    type="password",
-                    help="Optional AWS Session Token for temporary credentials"
-                )
-            else:
-                # Combined format
-                combined_creds = st.sidebar.text_area(
-                    "AWS Credentials (Combined)",
-                    value=st.session_state.provider_config.get('combined_aws_creds', ''),
-                    height=100,
-                    help="Enter credentials in format:\nAWS_ACCESS_KEY_ID=your_key_id\nAWS_SECRET_ACCESS_KEY=your_secret_key\nAWS_SESSION_TOKEN=your_token (optional)"
-                )
+            # Initialize variables
+            aws_access_key_id = ""
+            aws_secret_access_key = ""
+            aws_session_token = ""
+            bedrock_api_key = ""
+            
+            if auth_method == "AWS Credentials":
+                st.sidebar.markdown("**AWS Credentials**")
                 
-                # Parse combined credentials
-                aws_access_key_id = ""
-                aws_secret_access_key = ""
-                aws_session_token = ""
+                # Option to choose input method
+                creds_input_method = st.sidebar.radio(
+                    "Credentials Input Method",
+                    ["Individual Fields", "Combined Format"],
+                    help="Choose how to enter AWS credentials"
+                )
+            
+                if creds_input_method == "Individual Fields":
+                    aws_access_key_id = st.sidebar.text_input(
+                        "AWS Access Key ID",
+                        value=st.session_state.provider_config.get('aws_access_key_id', ''),
+                        type="password",
+                        help="Your AWS Access Key ID"
+                    )
+                    aws_secret_access_key = st.sidebar.text_input(
+                        "AWS Secret Access Key", 
+                        value=st.session_state.provider_config.get('aws_secret_access_key', ''),
+                        type="password",
+                        help="Your AWS Secret Access Key"
+                    )
+                    aws_session_token = st.sidebar.text_input(
+                        "AWS Session Token (Optional)",
+                        value=st.session_state.provider_config.get('aws_session_token', ''),
+                        type="password",
+                        help="Optional AWS Session Token for temporary credentials"
+                    )
+                else:
+                    # Combined format
+                    combined_creds = st.sidebar.text_area(
+                        "AWS Credentials (Combined)",
+                        value=st.session_state.provider_config.get('combined_aws_creds', ''),
+                        height=100,
+                        help="Enter credentials in format:\nAWS_ACCESS_KEY_ID=your_key_id\nAWS_SECRET_ACCESS_KEY=your_secret_key\nAWS_SESSION_TOKEN=your_token (optional)"
+                    )
+                    
+                    # Parse combined credentials
+                    if combined_creds:
+                        for line in combined_creds.strip().split('\n'):
+                            if '=' in line:
+                                key, value = line.split('=', 1)
+                                key = key.strip()
+                                value = value.strip()
+                                if key == "AWS_ACCESS_KEY_ID":
+                                    aws_access_key_id = value
+                                elif key == "AWS_SECRET_ACCESS_KEY":
+                                    aws_secret_access_key = value
+                                elif key == "AWS_SESSION_TOKEN":
+                                    aws_session_token = value
                 
-                if combined_creds:
-                    for line in combined_creds.strip().split('\n'):
-                        if '=' in line:
-                            key, value = line.split('=', 1)
-                            key = key.strip()
-                            value = value.strip()
-                            if key == "AWS_ACCESS_KEY_ID":
-                                aws_access_key_id = value
-                            elif key == "AWS_SECRET_ACCESS_KEY":
-                                aws_secret_access_key = value
-                            elif key == "AWS_SESSION_TOKEN":
-                                aws_session_token = value
+                # Generate short-term credentials button
+                if st.sidebar.button("🔑 Generate Short-term Credentials", key="generate_creds"):
+                    if aws_access_key_id and aws_secret_access_key:
+                        with st.sidebar:
+                            with st.spinner("Generating short-term credentials..."):
+                                try:
+                                    response = asyncio.run(self.make_api_request(
+                                        "POST",
+                                        "/providers/bedrock/generate-credentials",
+                                        {
+                                            "aws_access_key_id": aws_access_key_id,
+                                            "aws_secret_access_key": aws_secret_access_key,
+                                            "aws_session_token": aws_session_token,
+                                            "region": region,
+                                            "duration_seconds": 3600
+                                        }
+                                    ))
+                                    if response.get('ok'):
+                                        creds = response.get('credentials', {})
+                                        st.session_state.provider_config.update({
+                                            'aws_access_key_id': creds.get('aws_access_key_id', ''),
+                                            'aws_secret_access_key': creds.get('aws_secret_access_key', ''),
+                                            'aws_session_token': creds.get('aws_session_token', ''),
+                                        })
+                                        st.success(f"✅ Short-term credentials generated! Valid until {creds.get('expiration', 'unknown')}")
+                                        st.rerun()
+                                    else:
+                                        st.error(f"Failed to generate credentials: {response.get('message', 'Unknown error')}")
+                                except Exception as e:
+                                    st.error(f"Error generating credentials: {str(e)}")
+                    else:
+                        st.sidebar.error("AWS Access Key ID and Secret Access Key are required to generate short-term credentials")
+            
+            else:  # Bedrock API Key
+                st.sidebar.markdown("**Bedrock API Key**")
+                bedrock_api_key = st.sidebar.text_input(
+                    "Bedrock API Key",
+                    value=st.session_state.provider_config.get('bedrock_api_key', ''),
+                    type="password",
+                    help="Your long-term Bedrock API key (see AWS documentation)"
+                )
             
             # Discover models button
             if st.sidebar.button("🔍 Discover Models", key="discover_bedrock"):
                 with st.sidebar:
                     with st.spinner("Discovering Bedrock models..."):
                         try:
-                            response = asyncio.run(self.make_api_request(
-                                "POST",
-                                "/providers/models",
-                                {
-                                    "provider": "bedrock",
-                                    "region": region,
+                            request_data = {
+                                "provider": "bedrock",
+                                "region": region
+                            }
+                            
+                            if auth_method == "AWS Credentials":
+                                request_data.update({
                                     "aws_access_key_id": aws_access_key_id,
                                     "aws_secret_access_key": aws_secret_access_key,
                                     "aws_session_token": aws_session_token
-                                }
+                                })
+                            else:
+                                request_data["bedrock_api_key"] = bedrock_api_key
+                            
+                            response = asyncio.run(self.make_api_request(
+                                "POST",
+                                "/providers/models",
+                                request_data
                             ))
                             if response.get('ok'):
                                 available_models = response.get('models', [])
@@ -1685,13 +1743,15 @@ class AutomatedAIAssessmentUI:
             'region': region
         }
         
-        # Add AWS credentials for Bedrock
+        # Add authentication details for Bedrock
         if current_provider == "bedrock":
             config_update.update({
+                'auth_method': auth_method,
                 'aws_access_key_id': aws_access_key_id,
                 'aws_secret_access_key': aws_secret_access_key,
                 'aws_session_token': aws_session_token,
-                'combined_aws_creds': combined_creds if creds_input_method == "Combined Format" else ""
+                'bedrock_api_key': bedrock_api_key,
+                'combined_aws_creds': combined_creds if auth_method == "AWS Credentials" and creds_input_method == "Combined Format" else ""
             })
         
         st.session_state.provider_config.update(config_update)
@@ -1734,16 +1794,27 @@ class AutomatedAIAssessmentUI:
             with st.spinner("Testing connection..."):
                 try:
                     config = st.session_state.provider_config
+                    test_data = {
+                        "provider": config['provider'],
+                        "model": config['model'],
+                        "api_key": config.get('api_key'),
+                        "endpoint_url": config.get('endpoint_url'),
+                        "region": config.get('region')
+                    }
+                    
+                    # Add Bedrock-specific authentication details
+                    if config['provider'] == "bedrock":
+                        test_data.update({
+                            "aws_access_key_id": config.get('aws_access_key_id'),
+                            "aws_secret_access_key": config.get('aws_secret_access_key'),
+                            "aws_session_token": config.get('aws_session_token'),
+                            "bedrock_api_key": config.get('bedrock_api_key')
+                        })
+                    
                     response = asyncio.run(self.make_api_request(
                         "POST",
                         "/providers/test",
-                        {
-                            "provider": config['provider'],
-                            "model": config['model'],
-                            "api_key": config.get('api_key'),
-                            "endpoint_url": config.get('endpoint_url'),
-                            "region": config.get('region')
-                        }
+                        test_data
                     ))
                     
                     if response['ok']:

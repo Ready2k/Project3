@@ -127,9 +127,11 @@ make dev
 #### AWS Bedrock
 - **Region**: AWS region (us-east-1, us-west-2, eu-west-1)
 - **Models**: claude-3-sonnet, claude-3-haiku
-- **Authentication**: AWS credentials via UI (individual fields or combined format) or environment variables
-- **Credentials**: AWS Access Key ID, Secret Access Key, and optional Session Token
-- **Environment Variables**: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN
+- **Authentication Options**:
+  - **AWS Credentials**: Access Key ID, Secret Access Key, and optional Session Token
+  - **Bedrock API Key**: Long-term API key for Bedrock access
+  - **Short-term Credentials**: Generate temporary credentials from existing AWS credentials
+- **Environment Variables**: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN, BEDROCK_API_KEY
 
 #### Anthropic Claude
 - **API Key**: Your Anthropic API key
