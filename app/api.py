@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
 
 from app.config import Settings, load_settings
-from app.embeddings.engine import SentenceTransformerEmbedder
+from app.embeddings.factory import create_embedding_provider
 from app.embeddings.index import FAISSIndex
 from app.exporters.service import ExportService
 from app.llm.openai_provider import OpenAIProvider
@@ -182,9 +182,14 @@ async def get_pattern_matcher() -> PatternMatcher:
         app_logger.info("Initializing pattern matcher...")
         settings = get_settings()
         
+        # Create LLM provider for embedding if needed
+        temp_llm_provider = None
+        if settings.embedding.provider.value == "llm_based":
+            temp_llm_provider = create_llm_provider()
+        
         # Initialize components
         pattern_loader = PatternLoader(str(settings.pattern_library_path))
-        embedder = SentenceTransformerEmbedder()
+        embedder = create_embedding_provider(settings, temp_llm_provider)
         faiss_index = FAISSIndex(embedder=embedder)
         
         # Build FAISS index from patterns
