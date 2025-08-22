@@ -1038,25 +1038,19 @@ class JiraService:
         if ticket.description:
             description_parts.append(ticket.description)
         
+        # Only include essential fields to avoid polluting agent generation
         requirements = {
             "description": " - ".join(description_parts),
             "source": "jira",
-            "jira_key": ticket.key,
-            "priority": ticket.priority,
-            "status": ticket.status,
-            "issue_type": ticket.issue_type,
-            "assignee": ticket.assignee,
-            "reporter": ticket.reporter,
-            "labels": ticket.labels,
-            "components": ticket.components,
-            "created": ticket.created,
-            "updated": ticket.updated
+            "jira_key": ticket.key
         }
         
-        # Try to infer domain from components or labels
+        # Try to infer domain from components or labels (for logging only)
         domain_hints = []
-        domain_hints.extend(ticket.components)
-        domain_hints.extend(ticket.labels)
+        if ticket.components:
+            domain_hints.extend(ticket.components)
+        if ticket.labels:
+            domain_hints.extend(ticket.labels)
         
         # Map common Jira fields to domain categories
         domain_mapping = {
@@ -1080,12 +1074,13 @@ class JiraService:
                 if key in hint_lower:
                     inferred_domains.append(domain)
         
+        # Only add domain if it's clearly identifiable and useful
         if inferred_domains:
             requirements["domain"] = inferred_domains[0]  # Take first match
         
-        # Try to infer pattern types from issue type and description
+        # Try to infer pattern types from issue type and description (for logging only)
         pattern_types = []
-        issue_type_lower = ticket.issue_type.lower()
+        issue_type_lower = ticket.issue_type.lower() if ticket.issue_type else ""
         description_lower = (ticket.summary + " " + (ticket.description or "")).lower()
         
         # Pattern type inference rules
@@ -1102,7 +1097,8 @@ class JiraService:
                 pattern_types.append("maintenance")
         
         # Add pattern types based on description keywords
-        combined_text = description_lower + " " + " ".join(ticket.components).lower()
+        components_text = " ".join(ticket.components).lower() if ticket.components else ""
+        combined_text = description_lower + " " + components_text
         if any(word in combined_text for word in ["api", "endpoint", "service"]):
             pattern_types.append("api_development")
         if any(word in combined_text for word in ["database", "migration", "schema"]):
@@ -1110,6 +1106,7 @@ class JiraService:
         if any(word in combined_text for word in ["automate", "automation", "script"]):
             pattern_types.append("automation")
         
+        # Only add pattern types if they're clearly identifiable and useful
         if pattern_types:
             requirements["pattern_types"] = list(set(pattern_types))  # Remove duplicates
         

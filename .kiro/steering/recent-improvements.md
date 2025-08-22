@@ -4,6 +4,85 @@ This document outlines recent improvements made to the AAA system and best pract
 
 ## Recent Major Improvements
 
+### 13. Enhanced Mermaid Code Extraction from LLM Responses (August 2025)
+
+**Problem**: Claude and other LLMs sometimes add explanatory text despite being asked for "only the mermaid code", causing diagram rendering failures:
+- LLMs adding explanations like "Here's the diagram for your requirement:" before Mermaid code
+- Explanatory text after diagrams like "This diagram shows the system architecture"
+- Mixed responses breaking Mermaid syntax validation and rendering
+- Inconsistent response formats across different LLM providers
+
+**Solution**: Implemented robust Mermaid code extraction system:
+- **Smart Code Extraction**: New `_extract_mermaid_code()` function that intelligently extracts only valid Mermaid code from mixed responses
+- **Multiple Format Support**: Handles markdown blocks, explanations before/after, and clean code
+- **Regex Pattern Matching**: Uses sophisticated patterns to identify valid diagram types (flowchart, graph, sequenceDiagram, C4Context, etc.)
+- **Syntax Validation**: Validates extracted code to ensure it looks like valid Mermaid syntax
+- **Enhanced Prompts**: Added explicit instructions to all diagram generation prompts to discourage explanatory text
+
+**Technical Implementation**:
+- **`_extract_mermaid_code()` Function**: Comprehensive extraction logic with multiple fallback strategies
+- **`_looks_like_mermaid_code()` Function**: Validates extracted code for Mermaid syntax patterns
+- **Enhanced Prompt Instructions**: Added 3 additional requirements to all diagram prompts:
+  - "DO NOT include any explanations, descriptions, or text before/after the Mermaid code"
+  - "Start your response immediately with the diagram declaration"
+  - "End your response immediately after the last diagram line"
+- **Integrated Processing**: Enhanced `_clean_mermaid_code()` to call extraction first, then apply existing cleaning logic
+
+**Files Modified**:
+- `streamlit_app.py`: Added extraction functions and enhanced all diagram generation prompts
+- Functions enhanced: `_extract_mermaid_code()`, `_looks_like_mermaid_code()`, `_clean_mermaid_code()`
+- All diagram generation functions benefit: context, container, sequence, tech stack wiring, agent interaction, C4
+
+**Results**:
+- ✅ Robust handling of mixed LLM responses with explanatory text
+- ✅ Automatic extraction of clean Mermaid code from various response formats
+- ✅ Improved diagram rendering reliability across all LLM providers
+- ✅ Backward compatible with existing clean responses
+- ✅ Enhanced error handling with meaningful fallback diagrams
+
+**Best Practices**:
+- Always extract and validate Mermaid code from LLM responses before rendering
+- Use explicit prompt instructions to discourage explanatory text
+- Implement multiple extraction strategies for different response formats
+- Validate extracted code before processing to ensure it's actually Mermaid syntax
+
+### 12. Jira Integration Agent Name Fix (August 2025)
+
+**Problem**: Jira integration was causing all agents to have the same generic information in Agent Team & Interaction Flow diagrams:
+- All agents named "Primary Autonomous Agent" regardless of context
+- Agent summaries, status, and priority all coming from Jira metadata instead of meaningful descriptions
+- Jira ticket fields (priority, status, assignee, etc.) polluting the requirements object
+- Generic agent roles making diagrams less useful and harder to understand
+
+**Solution**: Fixed Jira integration and implemented dynamic agent naming:
+- **Simplified Jira Integration**: Modified `map_ticket_to_requirements()` to only include essential fields (description combining summary + description)
+- **Removed Metadata Pollution**: Eliminated extra Jira fields (priority, status, assignee, reporter, labels, components, etc.) from requirements
+- **Dynamic Agent Naming**: Replaced hardcoded "Primary Autonomous Agent" with intelligent `_generate_agent_name()` method
+- **Context-Aware Names**: Agent names now generated based on requirement content (User Management Agent, Communication Agent, Analytics Agent, etc.)
+
+**Technical Implementation**:
+- **Jira Service Fix**: Streamlined `map_ticket_to_requirements()` to only use summary and description
+- **Agent Name Generation**: New `_generate_agent_name()` method with 14 domain categories and action-based fallbacks
+- **Applied Across All Agent Creation**: Fixed single-agent, custom pattern, and scope-limited recommendation methods
+- **Domain Detection**: Intelligent keyword matching for user, data, email, report, workflow, integration, monitoring, security, etc.
+
+**Files Modified**:
+- `app/services/jira.py`: Simplified ticket mapping to remove metadata pollution
+- `app/services/agentic_recommendation_service.py`: Added dynamic agent naming and applied to all agent creation methods
+
+**Results**:
+- ✅ Agent names are now context-specific and meaningful (e.g., "User Management Agent", "Communication Agent")
+- ✅ No more generic "Primary Autonomous Agent" for all scenarios
+- ✅ Jira metadata no longer pollutes agent generation process
+- ✅ Agent Team & Interaction Flow diagrams show proper, contextual agent names
+- ✅ Each agent gets appropriate names based on actual requirement content
+
+**Best Practices**:
+- Only include essential fields when mapping external data to requirements
+- Generate dynamic, context-specific names instead of using hardcoded values
+- Validate that external integrations don't pollute core business logic
+- Test agent generation with various requirement types to ensure meaningful names
+
 ### 11. Mermaid Diagram Rendering Compatibility Fix (August 2025)
 
 **Problem**: Agent Interaction Flow Mermaid diagrams were failing to render with "Syntax error in text" in Mermaid version 10.2.4:
