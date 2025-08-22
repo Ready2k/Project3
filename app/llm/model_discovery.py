@@ -168,13 +168,71 @@ class ModelDiscoveryService:
                                      bedrock_api_key: str = None) -> List[ModelInfo]:
         """Discover available AWS Bedrock models."""
         try:
+            if bedrock_api_key:
+                return await self._discover_bedrock_models_with_api_key(region, bedrock_api_key)
+            else:
+                return await self._discover_bedrock_models_with_credentials(
+                    region, aws_access_key_id, aws_secret_access_key, aws_session_token
+                )
+        except ClientError as e:
+            app_logger.error(f"AWS Bedrock access error: {e}")
+            return []
+        except Exception as e:
+            app_logger.error(f"Failed to discover Bedrock models: {e}")
+            return []
+    
+    async def _discover_bedrock_models_with_api_key(self, region: str, bedrock_api_key: str) -> List[ModelInfo]:
+        """Discover Bedrock models using API key."""
+        app_logger.info("Using Bedrock API key for model discovery")
+        
+        # Use HTTP request with API key
+        url = f"https://bedrock.{region}.amazonaws.com/foundation-models"
+        headers = {
+            "Authorization": f"Bearer {bedrock_api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(url, headers=headers, params={"byOutputModality": "TEXT"})
+            response.raise_for_status()
+            data = response.json()
+        
+        models = []
+        for model in data.get('modelSummaries', []):
+            model_id = model.get('modelId', '')
+            model_name = model.get('modelName', model_id)
+            
+            # Filter for text generation models
+            if 'TEXT' in model.get('outputModalities', []):
+                capabilities = []
+                if 'claude' in model_id.lower():
+                    capabilities = ["text", "code", "analysis"]
+                elif 'titan' in model_id.lower():
+                    capabilities = ["text", "embeddings"]
+                elif 'llama' in model_id.lower():
+                    capabilities = ["text", "code", "chat"]
+                
+                model_info = ModelInfo(
+                    id=model_id,
+                    name=model_name,
+                    provider="bedrock",
+                    description=f"AWS Bedrock {model_name}",
+                    capabilities=capabilities
+                )
+                models.append(model_info)
+        
+        app_logger.info(f"Discovered {len(models)} Bedrock models using API key")
+        return models
+    
+    async def _discover_bedrock_models_with_credentials(self, region: str, 
+                                                       aws_access_key_id: str = None,
+                                                       aws_secret_access_key: str = None,
+                                                       aws_session_token: str = None) -> List[ModelInfo]:
+        """Discover Bedrock models using AWS credentials."""
+        try:
             # Create boto3 client with credentials if provided
             client_kwargs = {"region_name": region}
-            
-            if bedrock_api_key:
-                # Note: This is a placeholder for when AWS implements API key auth for Bedrock
-                # For now, we'll still use AWS credentials but log the API key usage
-                app_logger.info("Bedrock API key provided for model discovery")
             
             if aws_access_key_id and aws_secret_access_key:
                 client_kwargs.update({
@@ -216,7 +274,7 @@ class ModelDiscoveryService:
                     )
                     models.append(model_info)
             
-            app_logger.info(f"Discovered {len(models)} Bedrock models")
+            app_logger.info(f"Discovered {len(models)} Bedrock models using AWS credentials")
             return models
             
         except ClientError as e:

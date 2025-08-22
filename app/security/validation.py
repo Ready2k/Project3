@@ -408,8 +408,8 @@ class InputValidator:
         if not model or not isinstance(model, str):
             return False
         
-        # Allow alphanumeric, hyphens, dots, and underscores
-        model_pattern = re.compile(r'^[a-zA-Z0-9\-\._]+$')
+        # Allow alphanumeric, hyphens, dots, underscores, and colons (for Bedrock models)
+        model_pattern = re.compile(r'^[a-zA-Z0-9\-\._:]+$')
         return bool(model_pattern.match(model)) and len(model) <= 100
     
     def validate_export_format(self, format_type: str) -> bool:
