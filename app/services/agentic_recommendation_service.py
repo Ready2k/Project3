@@ -88,10 +88,21 @@ class AgenticRecommendationService:
         recommendations = []
         
         # Process agentic pattern matches
-        for match in agentic_matches:
-            recommendation = await self._create_agentic_recommendation(
-                match, requirements, autonomy_assessment, multi_agent_design, session_id
-            )
+        for i, match in enumerate(agentic_matches):
+            # Create unique agent design for each pattern match to avoid duplication
+            if multi_agent_design and multi_agent_design.architecture_type.value == "single_agent":
+                # For single-agent scenarios, create unique agent names for each pattern
+                unique_agent_design = await self._create_unique_single_agent_design(
+                    requirements, autonomy_assessment, match, i
+                )
+                recommendation = await self._create_agentic_recommendation(
+                    match, requirements, autonomy_assessment, unique_agent_design, session_id
+                )
+            else:
+                # For multi-agent scenarios, use the shared design
+                recommendation = await self._create_agentic_recommendation(
+                    match, requirements, autonomy_assessment, multi_agent_design, session_id
+                )
             recommendations.append(recommendation)
         
         # Add multi-agent system recommendation if designed
@@ -591,6 +602,86 @@ class AgenticRecommendationService:
         
         return design
     
+    async def _create_unique_single_agent_design(self, 
+                                               requirements: Dict[str, Any],
+                                               autonomy_assessment: AutonomyAssessment,
+                                               pattern_match: Any,
+                                               index: int) -> 'MultiAgentSystemDesign':
+        """Create a unique single-agent design for each pattern match to avoid duplication."""
+        from app.services.multi_agent_designer import MultiAgentSystemDesign, AgentRole, AgentArchitectureType
+        
+        # Create a unique agent role based on the pattern and requirements
+        description = requirements.get('description', 'autonomous task')
+        
+        # Generate a unique agent name based on the pattern and index
+        base_agent_name = await self._generate_agent_name(requirements)
+        
+        # Create specialized agent names based on pattern characteristics
+        if hasattr(pattern_match, 'pattern_id'):
+            pattern_id = pattern_match.pattern_id
+            if 'workflow' in pattern_id.lower():
+                agent_name = f"Workflow {base_agent_name}"
+            elif 'data' in pattern_id.lower():
+                agent_name = f"Data Processing {base_agent_name}"
+            elif 'integration' in pattern_id.lower():
+                agent_name = f"Integration {base_agent_name}"
+            elif 'monitoring' in pattern_id.lower():
+                agent_name = f"Monitoring {base_agent_name}"
+            else:
+                agent_name = f"{base_agent_name} #{index + 1}"
+        else:
+            agent_name = f"{base_agent_name} #{index + 1}"
+        
+        # Create specialized capabilities based on pattern
+        base_capabilities = [
+            "task_execution",
+            "decision_making", 
+            "exception_handling",
+            "learning_adaptation",
+            "communication"
+        ]
+        
+        # Add pattern-specific capabilities
+        if hasattr(pattern_match, 'reasoning_capabilities'):
+            base_capabilities.extend(pattern_match.reasoning_capabilities[:2])
+        
+        unique_agent = AgentRole(
+            name=agent_name,
+            responsibility=f"Specialized autonomous agent for {description[:100]} using {getattr(pattern_match, 'pattern_id', 'custom')} pattern",
+            capabilities=base_capabilities,
+            autonomy_level=autonomy_assessment.overall_score,
+            decision_authority={
+                "scope": ["operational_decisions", "workflow_management", "pattern_specific_decisions"],
+                "limitations": ["no_financial_decisions", "escalate_critical_errors"]
+            },
+            interfaces={
+                "input": ["user_requests", "system_events", "pattern_data"],
+                "output": ["task_results", "status_updates", "pattern_insights"]
+            },
+            exception_handling="Autonomous resolution with pattern-specific fallbacks",
+            learning_capabilities=["pattern_recognition", "feedback_incorporation", "performance_optimization"],
+            communication_requirements=[
+                "status_reporting",
+                "pattern_coordination",
+                "user_interaction"
+            ]
+        )
+        
+        # Create a unique single-agent design
+        design = MultiAgentSystemDesign(
+            architecture_type=AgentArchitectureType.SINGLE_AGENT,
+            agent_roles=[unique_agent],
+            communication_protocols=[],
+            coordination_mechanisms=[],
+            autonomy_score=autonomy_assessment.overall_score,
+            recommended_frameworks=["LangChain", "OpenAI Assistants API"],
+            deployment_strategy=f"Specialized single agent deployment for {getattr(pattern_match, 'pattern_id', 'custom')} pattern",
+            scalability_considerations=["Pattern-specific scaling", "Specialized reasoning enhancement"],
+            monitoring_requirements=["Pattern performance metrics", "Decision accuracy", "Exception rates"]
+        )
+        
+        return design
+    
     def _calculate_agentic_score(self, recommendation: Recommendation) -> float:
         """Calculate agentic score for sorting recommendations."""
         
@@ -611,38 +702,39 @@ class AgenticRecommendationService:
         
         return min(1.0, base_score + agentic_boost)
     
-    async def _generate_agent_name(self, requirements: Dict[str, Any]) -> str:
-        """Generate a meaningful agent name based on requirements."""
+    async def _generate_agent_name(self, requirements: Dict[str, Any], suffix: str = None) -> str:
+        """Generate a meaningful agent name based on requirements with optional suffix for uniqueness."""
         
         description = requirements.get('description', '').lower()
         
         # Extract key domain/function words from description
         domain_keywords = {
-            'user': ['user', 'customer', 'client', 'account'],
-            'data': ['data', 'database', 'information', 'record'],
-            'email': ['email', 'mail', 'notification', 'message'],
+            'user': ['user', 'customer', 'client', 'account', 'deceased', 'care'],
+            'data': ['data', 'database', 'information', 'record', 'file', 'document'],
+            'email': ['email', 'mail', 'notification', 'message', 'letter'],
             'report': ['report', 'analytics', 'dashboard', 'metrics'],
-            'workflow': ['workflow', 'process', 'automation', 'task'],
-            'integration': ['integration', 'api', 'sync', 'connect'],
-            'monitoring': ['monitor', 'alert', 'watch', 'track'],
-            'security': ['security', 'auth', 'permission', 'access'],
-            'content': ['content', 'document', 'file', 'media'],
-            'communication': ['chat', 'communication', 'collaboration'],
+            'workflow': ['workflow', 'process', 'automation', 'task', 'pursue', 'dnp'],
+            'integration': ['integration', 'api', 'sync', 'connect', 'system'],
+            'monitoring': ['monitor', 'alert', 'watch', 'track', 'status'],
+            'security': ['security', 'auth', 'permission', 'access', 'compliance'],
+            'content': ['content', 'document', 'file', 'media', 'filing'],
+            'communication': ['chat', 'communication', 'collaboration', 'phone', 'connect'],
             'scheduling': ['schedule', 'calendar', 'appointment', 'booking'],
             'inventory': ['inventory', 'stock', 'product', 'item'],
             'financial': ['payment', 'invoice', 'billing', 'financial'],
-            'support': ['support', 'help', 'ticket', 'issue']
+            'support': ['support', 'help', 'ticket', 'issue', 'case']
         }
         
-        # Find matching domain
-        detected_domain = None
+        # Find all matching domains (not just first one)
+        detected_domains = []
         for domain, keywords in domain_keywords.items():
             if any(keyword in description for keyword in keywords):
-                detected_domain = domain
-                break
+                detected_domains.append(domain)
         
-        # Generate agent name based on domain
-        if detected_domain:
+        # Generate agent name based on primary domain
+        primary_domain = detected_domains[0] if detected_domains else None
+        
+        if primary_domain:
             domain_names = {
                 'user': 'User Management Agent',
                 'data': 'Data Processing Agent', 
@@ -659,7 +751,36 @@ class AgenticRecommendationService:
                 'financial': 'Financial Processing Agent',
                 'support': 'Support Agent'
             }
-            return domain_names.get(detected_domain, 'Task Automation Agent')
+            base_name = domain_names.get(primary_domain, 'Task Automation Agent')
+            
+            # Add suffix for uniqueness if provided
+            if suffix:
+                return f"{base_name} {suffix}"
+            
+            # If multiple domains detected, create a compound name
+            if len(detected_domains) > 1:
+                secondary_domain = detected_domains[1]
+                secondary_names = {
+                    'user': 'User',
+                    'data': 'Data', 
+                    'email': 'Communication',
+                    'report': 'Analytics',
+                    'workflow': 'Workflow',
+                    'integration': 'Integration',
+                    'monitoring': 'Monitoring',
+                    'security': 'Security',
+                    'content': 'Content',
+                    'communication': 'Communication',
+                    'scheduling': 'Scheduling',
+                    'inventory': 'Inventory',
+                    'financial': 'Financial',
+                    'support': 'Support'
+                }
+                secondary_name = secondary_names.get(secondary_domain, '')
+                if secondary_name and secondary_name not in base_name:
+                    return f"{secondary_name} {base_name}"
+            
+            return base_name
         
         # Fallback: try to extract action words
         action_keywords = {
@@ -672,12 +793,18 @@ class AgenticRecommendationService:
             'validate': 'Validation Agent',
             'transform': 'Transformation Agent',
             'sync': 'Synchronization Agent',
-            'migrate': 'Migration Agent'
+            'migrate': 'Migration Agent',
+            'mark': 'Status Management Agent',
+            'move': 'Transfer Agent'
         }
         
         for action, agent_name in action_keywords.items():
             if action in description:
+                if suffix:
+                    return f"{agent_name} {suffix}"
                 return agent_name
         
         # Final fallback
+        if suffix:
+            return f'Task Automation Agent {suffix}'
         return 'Task Automation Agent'
