@@ -114,26 +114,63 @@ class TestInputValidator:
     
     def test_validate_jira_credentials_valid(self):
         """Test valid Jira credentials validation."""
+        # Test API token authentication
         is_valid, message = self.validator.validate_jira_credentials(
-            "https://company.atlassian.net",
-            "user@company.com",
-            "abcd1234567890"
+            base_url="https://company.atlassian.net",
+            email="user@company.com",
+            api_token="abcd1234567890",
+            auth_type="api_token"
         )
+        assert is_valid is True
+        assert message == "Valid"
         
+        # Test basic authentication
+        is_valid, message = self.validator.validate_jira_credentials(
+            base_url="https://company.atlassian.net",
+            username="testuser",
+            password="testpass",
+            auth_type="basic"
+        )
+        assert is_valid is True
+        assert message == "Valid"
+        
+        # Test PAT authentication
+        is_valid, message = self.validator.validate_jira_credentials(
+            base_url="https://company.atlassian.net",
+            personal_access_token="abcd1234567890",
+            auth_type="pat"
+        )
         assert is_valid is True
         assert message == "Valid"
     
     def test_validate_jira_credentials_invalid(self):
         """Test invalid Jira credentials validation."""
         test_cases = [
-            ("invalid-url", "user@company.com", "token123", "Invalid Jira base URL format"),
-            ("https://company.atlassian.net", "invalid-email", "token123", "Invalid email format"),
-            ("https://company.atlassian.net", "user@company.com", "short", "Invalid API token format"),
-            ("", "user@company.com", "token123", "All Jira credentials are required")
+            # Invalid URL
+            ("invalid-url", "user@company.com", "token123", None, None, None, "api_token", "Invalid Jira base URL format"),
+            # Invalid email for API token auth
+            ("https://company.atlassian.net", "invalid-email", "token123", None, None, None, "api_token", "Invalid email format"),
+            # Invalid API token
+            ("https://company.atlassian.net", "user@company.com", "short", None, None, None, "api_token", "Invalid API token format"),
+            # Missing base URL
+            ("", "user@company.com", "token123", None, None, None, "api_token", "Base URL is required"),
+            # Missing credentials for basic auth
+            ("https://company.atlassian.net", None, None, "testuser", None, None, "basic", "Username and password are required"),
+            ("https://company.atlassian.net", None, None, None, "testpass", None, "basic", "Username and password are required"),
+            # Missing PAT
+            ("https://company.atlassian.net", None, None, None, None, None, "pat", "Personal Access Token is required")
         ]
         
-        for base_url, email, token, expected_message in test_cases:
-            is_valid, message = self.validator.validate_jira_credentials(base_url, email, token)
+        for base_url, email, api_token, username, password, pat, auth_type, expected_message in test_cases:
+            is_valid, message = self.validator.validate_jira_credentials(
+                base_url=base_url,
+                email=email,
+                api_token=api_token,
+                username=username,
+                password=password,
+                personal_access_token=pat,
+                auth_type=auth_type
+            )
             assert is_valid is False
             assert expected_message in message
     
