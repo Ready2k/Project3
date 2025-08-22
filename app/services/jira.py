@@ -62,6 +62,7 @@ class ConnectionResult(BaseModel):
     error_detail: Optional[JiraErrorDetail] = None  # New comprehensive error detail
     troubleshooting_steps: list[str] = []
     api_version: Optional[str] = None
+    ssl_configuration: Optional[Dict[str, Any]] = None  # SSL configuration information
 
 
 class JiraService:
@@ -82,6 +83,15 @@ class JiraService:
             verify_ssl=config.verify_ssl,
             ca_cert_path=config.ca_cert_path
         )
+        
+        # Log SSL configuration for debugging and security awareness
+        ssl_config_info = self.ssl_handler.get_ssl_configuration_info()
+        app_logger.info(f"SSL Configuration - Security Level: {ssl_config_info['security_level']}")
+        
+        # Log any SSL warnings
+        ssl_warnings = ssl_config_info.get('warnings', [])
+        for warning in ssl_warnings:
+            app_logger.warning(warning)
         
         # Initialize proxy handler
         self.proxy_handler = ProxyHandler(proxy_url=config.proxy_url)
@@ -236,7 +246,8 @@ class JiraService:
                         proxy_validation_result=proxy_validation_result,
                         error_details={"message": proxy_validation_result.error_message},
                         error_detail=error_detail,
-                        troubleshooting_steps=proxy_validation_result.troubleshooting_steps
+                        troubleshooting_steps=proxy_validation_result.troubleshooting_steps,
+                        ssl_configuration=self.ssl_handler.get_ssl_configuration_info()
                     )
             
             # Validate SSL certificate if using HTTPS
@@ -273,7 +284,8 @@ class JiraService:
                     proxy_validation_result=proxy_validation_result,
                     error_details={"message": auth_result.error_message or "Authentication failed"},
                     error_detail=error_detail,
-                    troubleshooting_steps=error_detail.troubleshooting_steps
+                    troubleshooting_steps=error_detail.troubleshooting_steps,
+                    ssl_configuration=self.ssl_handler.get_ssl_configuration_info()
                 )
             
             # Test the connection with authenticated headers
@@ -301,7 +313,8 @@ class JiraService:
                     auth_result=auth_result,
                     ssl_validation_result=ssl_validation_result,
                     proxy_validation_result=proxy_validation_result,
-                    api_version=self.api_version
+                    api_version=self.api_version,
+                    ssl_configuration=self.ssl_handler.get_ssl_configuration_info()
                 )
             else:
                 # Create comprehensive error detail for connection failure
@@ -326,7 +339,8 @@ class JiraService:
                     error_details={"message": error_message},
                     error_detail=error_detail,
                     troubleshooting_steps=combined_steps,
-                    api_version=self.api_version
+                    api_version=self.api_version,
+                    ssl_configuration=self.ssl_handler.get_ssl_configuration_info()
                 )
                 
         except JiraConnectionError as e:
@@ -341,7 +355,8 @@ class JiraService:
                 proxy_validation_result=proxy_validation_result,
                 error_details={"message": str(e)},
                 error_detail=error_detail,
-                troubleshooting_steps=error_detail.troubleshooting_steps
+                troubleshooting_steps=error_detail.troubleshooting_steps,
+                ssl_configuration=self.ssl_handler.get_ssl_configuration_info()
             )
         except Exception as e:
             app_logger.error(f"Unexpected error in connection test: {e}")
@@ -357,7 +372,8 @@ class JiraService:
                 proxy_validation_result=proxy_validation_result,
                 error_details={"message": f"Unexpected error: {str(e)}"},
                 error_detail=error_detail,
-                troubleshooting_steps=error_detail.troubleshooting_steps
+                troubleshooting_steps=error_detail.troubleshooting_steps,
+                ssl_configuration=self.ssl_handler.get_ssl_configuration_info()
             )
     
     async def _test_authenticated_connection(self, auth_headers: Dict[str, str]) -> Tuple[bool, Dict[str, Any], Optional[str]]:
@@ -374,6 +390,14 @@ class JiraService:
             # Get SSL verification and proxy configuration
             verify_config = self.ssl_handler.get_httpx_verify_config()
             proxy_config = self.proxy_handler.get_httpx_proxy_config()
+            
+            # Log SSL configuration for this connection attempt with security context
+            if verify_config is False:
+                app_logger.warning("🔓 Connection attempt with SSL verification DISABLED - Security risk!")
+            elif isinstance(verify_config, str):
+                app_logger.info(f"🔐 Connection attempt with custom CA certificate: {verify_config}")
+            else:
+                app_logger.info("🔐 Connection attempt with SSL verification enabled (system CA)")
             
             # Create client with retry-friendly configuration
             client_config = {

@@ -51,6 +51,18 @@ class SSLHandler:
         self.verify_ssl = verify_ssl
         self.ca_cert_path = ca_cert_path
         
+        # Log SSL configuration and security warnings
+        if not verify_ssl:
+            app_logger.warning("⚠️  SSL certificate verification is DISABLED")
+            app_logger.warning("🔒 This connection is vulnerable to man-in-the-middle attacks")
+            app_logger.warning("📋 Only use this setting for testing with self-signed certificates")
+            app_logger.warning("🏭 NEVER disable SSL verification in production environments")
+        else:
+            if ca_cert_path:
+                app_logger.info(f"🔐 SSL verification enabled with custom CA certificate: {ca_cert_path}")
+            else:
+                app_logger.info("🔐 SSL verification enabled with system CA certificates")
+        
     def get_ssl_context(self) -> Optional[ssl.SSLContext]:
         """Get SSL context for HTTP requests.
         
@@ -246,46 +258,51 @@ class SSLHandler:
             error_msg = str(e)
             if "certificate verify failed" in error_msg.lower():
                 return {
-                    "message": "SSL certificate verification failed",
+                    "message": "SSL certificate verification failed - The server's SSL certificate could not be verified",
                     "type": "certificate_verification_failed",
                     "troubleshooting_steps": [
-                        "Check if the certificate is valid and not expired",
-                        "Verify the certificate chain is complete",
-                        "For self-signed certificates, add the CA certificate to ca_cert_path",
-                        "QUICK FIX: In Jira configuration, uncheck 'Verify SSL Certificates'",
-                        "Alternative: Set environment variable JIRA_VERIFY_SSL=false",
-                        "For testing only, you can set verify_ssl=False (not recommended for production)"
+                        "🔍 Check if the certificate is valid and not expired",
+                        "🔗 Verify the certificate chain is complete on the server",
+                        "📋 For self-signed certificates: Export the certificate and set ca_cert_path",
+                        "🏢 For internal CA: Add your organization's CA certificate to ca_cert_path",
+                        "⚠️  QUICK FIX (Testing Only): Uncheck 'Verify SSL Certificates' in Jira configuration",
+                        "🔧 Alternative: Set environment variable JIRA_VERIFY_SSL=false",
+                        "⚠️  Security Warning: Disabling SSL verification makes connections vulnerable to attacks"
                     ],
                     "suggested_config": {
                         "verify_ssl": False,
-                        "note": "TESTING ONLY - Disables SSL verification. Never use in production!"
+                        "note": "⚠️  TESTING ONLY - Disables SSL verification. NEVER use in production environments!"
                     }
                 }
             elif "name mismatch" in error_msg.lower() or "hostname" in error_msg.lower():
                 return {
-                    "message": "SSL certificate hostname mismatch",
+                    "message": "SSL certificate hostname mismatch - The certificate doesn't match the server hostname",
                     "type": "hostname_mismatch",
                     "troubleshooting_steps": [
-                        "Verify the base URL hostname matches the certificate",
-                        "Check if you're using an IP address instead of hostname",
-                        "Ensure the certificate includes the correct Subject Alternative Names (SAN)"
+                        "🌐 Verify the base URL hostname exactly matches the certificate Common Name",
+                        "🔢 Avoid using IP addresses - use the proper hostname instead",
+                        "📋 Check if the certificate includes Subject Alternative Names (SAN) for your hostname",
+                        "🔍 Use browser developer tools to inspect the certificate details",
+                        "🏢 Contact your system administrator to update the certificate with correct hostnames"
                     ]
                 }
             elif "self signed certificate" in error_msg.lower():
                 return {
-                    "message": "Self-signed certificate detected",
+                    "message": "Self-signed certificate detected - The server uses a self-signed SSL certificate",
                     "type": "self_signed_certificate",
                     "troubleshooting_steps": [
-                        "Add the self-signed certificate to your CA certificate bundle",
-                        "Set ca_cert_path to point to the certificate file",
-                        "QUICK FIX: In Jira configuration, uncheck 'Verify SSL Certificates'",
-                        "Alternative: Set environment variable JIRA_VERIFY_SSL=false",
-                        "For testing only, you can set verify_ssl=False"
+                        "📥 Export the self-signed certificate from your browser (click the lock icon → Certificate)",
+                        "💾 Save the certificate as a .pem or .crt file on your system",
+                        "📂 Set 'Custom CA Certificate Path' to point to the saved certificate file",
+                        "🔄 Test the connection again with the certificate path configured",
+                        "⚠️  QUICK FIX (Testing Only): Uncheck 'Verify SSL Certificates' in configuration",
+                        "🔧 Alternative: Set environment variable JIRA_VERIFY_SSL=false",
+                        "⚠️  Security Warning: Self-signed certificates should only be used in development/testing"
                     ],
                     "suggested_config": {
-                        "ca_cert_path": "/path/to/your/certificate.pem",
+                        "ca_cert_path": "/path/to/your/self-signed-certificate.pem",
                         "verify_ssl": False,
-                        "note": "Either add certificate path OR disable SSL verification for testing"
+                        "note": "💡 Recommended: Add certificate path. Alternative: Disable SSL verification for testing only"
                     }
                 }
             else:
@@ -293,9 +310,12 @@ class SSLHandler:
                     "message": f"SSL connection error: {error_msg}",
                     "type": "ssl_connection_error",
                     "troubleshooting_steps": [
-                        "Check network connectivity to the server",
-                        "Verify SSL/TLS configuration on the server",
-                        "Check if firewall is blocking SSL traffic"
+                        "🌐 Check network connectivity to the server",
+                        "🔧 Verify SSL/TLS configuration on the server",
+                        "🛡️  Check if firewall is blocking SSL traffic (port 443)",
+                        "🔍 Test the URL in a web browser to see if it loads",
+                        "📞 Contact your system administrator for server-side SSL issues",
+                        "⚠️  Temporary workaround: Disable SSL verification for testing only"
                     ]
                 }
         except Exception as e:
@@ -446,6 +466,53 @@ class SSLHandler:
                 
         except Exception as e:
             return False, f"Error validating certificate file: {e}"
+    
+    def get_ssl_security_warnings(self) -> List[str]:
+        """Get security warnings related to current SSL configuration.
+        
+        Returns:
+            List of security warning messages
+        """
+        warnings = []
+        
+        if not self.verify_ssl:
+            warnings.extend([
+                "⚠️  SSL certificate verification is DISABLED",
+                "🔒 Your connection is vulnerable to man-in-the-middle attacks",
+                "🏭 NEVER use this setting in production environments",
+                "📋 Only disable SSL verification for testing with self-signed certificates",
+                "💡 Recommended: Add the server's certificate to 'Custom CA Certificate Path' instead"
+            ])
+        
+        if self.ca_cert_path:
+            ca_path = Path(self.ca_cert_path)
+            if not ca_path.exists():
+                warnings.append(f"⚠️  Custom CA certificate file not found: {self.ca_cert_path}")
+            elif not ca_path.is_file():
+                warnings.append(f"⚠️  Custom CA certificate path is not a file: {self.ca_cert_path}")
+        
+        return warnings
+    
+    def get_ssl_configuration_info(self) -> Dict[str, Any]:
+        """Get information about current SSL configuration.
+        
+        Returns:
+            Dictionary with SSL configuration details
+        """
+        info = {
+            "ssl_verification_enabled": self.verify_ssl,
+            "custom_ca_certificate": self.ca_cert_path is not None,
+            "ca_certificate_path": self.ca_cert_path,
+            "security_level": "HIGH" if self.verify_ssl else "LOW",
+            "warnings": self.get_ssl_security_warnings()
+        }
+        
+        if self.ca_cert_path:
+            ca_path = Path(self.ca_cert_path)
+            info["ca_certificate_exists"] = ca_path.exists()
+            info["ca_certificate_readable"] = ca_path.exists() and ca_path.is_file()
+        
+        return info
     
     @staticmethod
     def get_system_ca_bundle_path() -> str:

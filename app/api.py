@@ -674,6 +674,7 @@ class JiraTestResponse(BaseModel):
     error_details: Optional[JiraErrorDetail] = None
     auth_methods_available: List[str] = []
     api_version_detected: Optional[str] = None
+    ssl_configuration: Optional[Dict[str, Any]] = None
 
 
 class JiraFetchRequest(JiraTestRequest):
@@ -1741,7 +1742,8 @@ async def test_jira_connection(request: JiraTestRequest, response: Response):
                     message="Jira connection successful",
                     deployment_info=deployment_info,
                     auth_methods_available=auth_methods,
-                    api_version_detected=api_version
+                    api_version_detected=api_version,
+                    ssl_configuration=connection_result.ssl_configuration
                 )
             
             else:
@@ -1761,7 +1763,8 @@ async def test_jira_connection(request: JiraTestRequest, response: Response):
                 return JiraTestResponse(
                     ok=False,
                     message=connection_result.error_details.get("message", "Connection failed") if connection_result.error_details else "Connection failed",
-                    error_details=error_detail
+                    error_details=error_detail,
+                    ssl_configuration=connection_result.ssl_configuration
                 )
         
         except JiraConnectionError as e:
