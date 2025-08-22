@@ -3277,11 +3277,50 @@ class AutomatedAIAssessmentUI:
             
             # Also check recommendations for agent_roles
             agent_roles_found = []
+            seen_agents = set()  # Track unique agents to prevent duplicates
+            
             for recommendation in rec['recommendations']:
                 agent_roles_data = recommendation.get("agent_roles", [])
                 if agent_roles_data:
-                    agent_roles_found.extend(agent_roles_data)
+                    # Deduplicate agents based on name and responsibility
+                    for agent in agent_roles_data:
+                        agent_name = agent.get('name', 'Unknown Agent')
+                        agent_responsibility = agent.get('responsibility', '')
+                        
+                        # Create a unique identifier for the agent
+                        agent_id = f"{agent_name}|{agent_responsibility[:50]}"
+                        
+                        if agent_id not in seen_agents:
+                            seen_agents.add(agent_id)
+                            agent_roles_found.append(agent)
+                        else:
+                            # Log duplicate agent detection for debugging
+                            if st.session_state.get('debug_mode', False):
+                                st.warning(f"🔍 Debug: Duplicate agent detected and filtered: {agent_name}")
+                    
                     is_agentic = True
+            
+            # Validate agent data completeness
+            if agent_roles_found:
+                validated_agents = []
+                for agent in agent_roles_found:
+                    # Ensure required fields are present
+                    if not agent.get('name'):
+                        agent['name'] = 'Unnamed Agent'
+                    if not agent.get('responsibility'):
+                        agent['responsibility'] = f"Autonomous agent responsible for {agent.get('name', 'task')} operations"
+                    if not agent.get('capabilities'):
+                        agent['capabilities'] = ['task_execution', 'decision_making', 'exception_handling']
+                    if not isinstance(agent.get('autonomy_level'), (int, float)):
+                        agent['autonomy_level'] = 0.8
+                    
+                    validated_agents.append(agent)
+                
+                agent_roles_found = validated_agents
+                
+                # Log agent team composition for debugging
+                if st.session_state.get('debug_mode', False):
+                    st.info(f"🔍 Debug: Found {len(agent_roles_found)} unique agents after deduplication and validation")
             
             # Display solution type and overview
             if is_agentic:
