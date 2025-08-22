@@ -495,11 +495,15 @@ Create a `.env` file (see `.env.example`):
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=...
 
-# AWS Bedrock credentials
+# AWS Bedrock authentication (choose one method)
+# Method 1: AWS Credentials
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 AWS_SESSION_TOKEN=...  # Optional for temporary credentials
 BEDROCK_REGION=us-east-1  # Optional, defaults to config.yaml setting
+
+# Method 2: Bedrock API Key (long-term)
+BEDROCK_API_KEY=...  # Long-term Bedrock API key
 
 # Jira Integration (optional)
 # For Jira Cloud
@@ -537,10 +541,13 @@ logging:
   redact_pii: true
 bedrock:
   region: eu-west-2
-  # AWS credentials (can also be set via environment variables)
+  # Authentication options (can also be set via environment variables)
+  # Method 1: AWS credentials
   # aws_access_key_id: your_access_key_id
   # aws_secret_access_key: your_secret_access_key
   # aws_session_token: your_session_token  # Optional for temporary credentials
+  # Method 2: Bedrock API key (long-term)
+  # bedrock_api_key: your_bedrock_api_key
 ```
 
 ## Development

@@ -162,6 +162,7 @@ class BedrockConfig(BaseModel):
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
     aws_session_token: Optional[str] = None
+    bedrock_api_key: Optional[str] = None
 
 
 class JiraAuthType(str, Enum):
@@ -447,7 +448,8 @@ def load_settings(config_path: Optional[str] = None) -> Settings:
         'AWS_ACCESS_KEY_ID': 'aws_access_key_id',
         'AWS_SECRET_ACCESS_KEY': 'aws_secret_access_key',
         'AWS_SESSION_TOKEN': 'aws_session_token',
-        'BEDROCK_REGION': 'region'
+        'BEDROCK_REGION': 'region',
+        'BEDROCK_API_KEY': 'bedrock_api_key'
     }
     
     bedrock_config = {}

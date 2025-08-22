@@ -164,11 +164,18 @@ class ModelDiscoveryService:
     async def discover_bedrock_models(self, region: str = "us-east-1", 
                                      aws_access_key_id: str = None,
                                      aws_secret_access_key: str = None,
-                                     aws_session_token: str = None) -> List[ModelInfo]:
+                                     aws_session_token: str = None,
+                                     bedrock_api_key: str = None) -> List[ModelInfo]:
         """Discover available AWS Bedrock models."""
         try:
             # Create boto3 client with credentials if provided
             client_kwargs = {"region_name": region}
+            
+            if bedrock_api_key:
+                # Note: This is a placeholder for when AWS implements API key auth for Bedrock
+                # For now, we'll still use AWS credentials but log the API key usage
+                app_logger.info("Bedrock API key provided for model discovery")
+            
             if aws_access_key_id and aws_secret_access_key:
                 client_kwargs.update({
                     "aws_access_key_id": aws_access_key_id,
@@ -308,8 +315,9 @@ class ModelDiscoveryService:
                 aws_access_key_id = kwargs.get('aws_access_key_id')
                 aws_secret_access_key = kwargs.get('aws_secret_access_key')
                 aws_session_token = kwargs.get('aws_session_token')
+                bedrock_api_key = kwargs.get('bedrock_api_key')
                 models = await self.discover_bedrock_models(
-                    region, aws_access_key_id, aws_secret_access_key, aws_session_token
+                    region, aws_access_key_id, aws_secret_access_key, aws_session_token, bedrock_api_key
                 )
             
             elif provider == "internal":

@@ -312,54 +312,51 @@ class TestAPIEndpoints:
         assert "error" in data
         assert "Unsupported format" in data["error"]
     
-    @patch('app.api.get_llm_provider')
-    def test_test_provider_connection(self, mock_llm_provider, client):
+    @patch('app.api.OpenAIProvider')
+    def test_test_provider_connection(self, mock_provider_class, client):
         """Test testing provider connection."""
-        # Mock provider
+        # Mock provider instance
         mock_provider = Mock()
-        mock_provider.test_connection = AsyncMock(return_value=True)
-        mock_llm_provider.return_value = mock_provider
+        mock_provider.test_connection_detailed = AsyncMock(return_value=(True, None))
+        mock_provider_class.return_value = mock_provider
         
         # Test request
         request_data = {
-            "provider_type": "openai",
-            "config": {
-                "model": "gpt-4",
-                "api_key": "test-key"
-            }
+            "provider": "openai",
+            "model": "gpt-4",
+            "api_key": "test-key"
         }
         
         response = client.post("/providers/test", json=request_data)
         
         assert response.status_code == 200
         data = response.json()
-        assert data["success"] is True
+        assert data["ok"] is True
         assert "message" in data
         
         # Verify connection test
-        mock_provider.test_connection.assert_called_once()
+        mock_provider.test_connection_detailed.assert_called_once()
     
-    def test_test_provider_connection_failure(self, client):
+    @patch('app.api.OpenAIProvider')
+    def test_test_provider_connection_failure(self, mock_provider_class, client):
         """Test provider connection failure."""
-        with patch('app.api.get_llm_provider') as mock_llm_provider:
-            mock_provider = Mock()
-            mock_provider.test_connection = AsyncMock(side_effect=Exception("Connection failed"))
-            mock_llm_provider.return_value = mock_provider
-            
-            request_data = {
-                "provider_type": "openai",
-                "config": {
-                    "model": "gpt-4",
-                    "api_key": "invalid-key"
-                }
-            }
-            
-            response = client.post("/providers/test", json=request_data)
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert data["success"] is False
-            assert "error" in data
+        # Mock provider instance
+        mock_provider = Mock()
+        mock_provider.test_connection_detailed = AsyncMock(return_value=(False, "Connection failed"))
+        mock_provider_class.return_value = mock_provider
+        
+        request_data = {
+            "provider": "openai",
+            "model": "gpt-4",
+            "api_key": "invalid-key"
+        }
+        
+        response = client.post("/providers/test", json=request_data)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["ok"] is False
+        assert "message" in data
     
     # Session info and patterns endpoints don't exist in the current API
 
