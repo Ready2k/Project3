@@ -1,0 +1,96 @@
+{
+  "schema_enums": {
+    "reasoning_types": {
+      "description": "Types of reasoning the agent needs to perform",
+      "values": [
+        "logical",
+        "causal",
+        "temporal",
+        "spatial",
+        "analogical",
+        "case_based",
+        "probabilistic",
+        "strategic",
+        "collaborative",
+        "creative",
+        "ethical",
+        "contextual",
+        "invalid_type",
+        "test_reasoning"
+      ],
+      "user_extensible": true
+    },
+    "self_monitoring_capabilities": {
+      "description": "Agent's ability to monitor and assess its own performance",
+      "values": [
+        "performance_tracking",
+        "error_detection",
+        "quality_assessment",
+        "resource_monitoring",
+        "predictive_maintenance",
+        "response_time_monitoring",
+        "accuracy_monitoring",
+        "cost_monitoring",
+        "security_monitoring"
+      ],
+      "user_extensible": true
+    },
+    "learning_mechanisms": {
+      "description": "How the agent learns and improves over time",
+      "values": [
+        "feedback_incorporation",
+        "pattern_recognition",
+        "performance_optimization",
+        "strategy_adaptation",
+        "continuous_improvement",
+        "reinforcement_learning",
+        "transfer_learning",
+        "meta_learning"
+      ],
+      "user_extensible": true
+    },
+    "agent_architecture": {
+      "description": "Recommended agent architecture pattern",
+      "values": [
+        "single_agent",
+        "multi_agent_collaborative",
+        "hierarchical_agents",
+        "swarm_intelligence",
+        "federated_agents",
+        "pipeline_agents",
+        "reactive_agents"
+      ],
+      "user_extensible": true
+    },
+    "decision_authority_level": {
+      "description": "Level of decision-making authority",
+      "values": [
+        "low",
+        "medium",
+        "high",
+        "full",
+        "restricted",
+        "supervised"
+      ],
+      "user_extensible": true
+    },
+    "feasibility": {
+      "description": "Pattern feasibility levels",
+      "values": [
+        "Automatable",
+        "Fully Automatable",
+        "Partially Automatable",
+        "Not Automatable",
+        "Experimental",
+        "Proof of Concept"
+      ],
+      "user_extensible": false
+    }
+  },
+  "validation_settings": {
+    "strict_mode": false,
+    "allow_custom_values": true,
+    "warn_on_unknown_values": true,
+    "auto_add_new_values": true
+  }
+}

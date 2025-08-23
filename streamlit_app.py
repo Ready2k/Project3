@@ -7807,7 +7807,7 @@ verify_ssl = True
         self.render_provider_panel()
         
         # Main content area
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📝 Analysis", "📊 Diagrams", "📈 Observability", "📚 Pattern Library", "� Technology Catalog", "ℹ️ About"])
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📝 Analysis", "📊 Diagrams", "📈 Observability", "📚 Pattern Library", "🔧 Technology Catalog", "⚙️ Schema Config", "ℹ️ About"])
         
         with tab1:
             # Input methods
@@ -7866,6 +7866,10 @@ verify_ssl = True
             self.render_technology_catalog_management()
         
         with tab6:
+            from app.ui.schema_management import render_schema_management
+            render_schema_management()
+        
+        with tab7:
             st.markdown("""
             ## About Automated AI Assessment (AAA)
             
