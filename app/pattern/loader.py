@@ -35,7 +35,18 @@ class PatternLoader:
             raise RuntimeError(f"Failed to load pattern schema: {e}")
     
     def _load_agentic_schema(self) -> Dict[str, Any]:
-        """Load the agentic pattern JSON schema."""
+        """Load the agentic pattern JSON schema with dynamic enum support."""
+        try:
+            # Try to use dynamic schema loader first
+            from app.pattern.dynamic_schema_loader import dynamic_schema_loader
+            dynamic_schema = dynamic_schema_loader.generate_dynamic_schema()
+            if dynamic_schema:
+                app_logger.info("Using dynamic schema with configurable enums")
+                return dynamic_schema
+        except Exception as e:
+            app_logger.warning(f"Failed to load dynamic schema, falling back to static: {e}")
+        
+        # Fallback to static schema
         agentic_schema_path = Path(__file__).parent / "agentic_schema.json"
         try:
             with open(agentic_schema_path, 'r') as f:

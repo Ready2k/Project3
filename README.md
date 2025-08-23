@@ -4,6 +4,16 @@ Interactive GUI + API system that judges if user stories/requirements are automa
 
 ## Features
 
+### ⚙️ **Dynamic Schema System** *(New in v2.5.0)*
+- 🔧 **Configurable Validation Enums**: Replace hard-coded JSON schema enums with user-configurable values
+- 🎯 **Extended Reasoning Types**: 12+ configurable reasoning types (logical, causal, collaborative, creative, ethical, etc.)
+- 📊 **Flexible Monitoring Capabilities**: 9+ configurable self-monitoring capabilities including response_time_monitoring, security_monitoring
+- 🧠 **Extensible Learning Mechanisms**: 8+ configurable learning approaches (reinforcement_learning, transfer_learning, meta_learning, etc.)
+- 🏗️ **Configurable Agent Architectures**: 7+ agent architecture patterns with user extensibility
+- 🛠️ **Management Interfaces**: Both CLI (`manage_schema.py`) and web UI for enum configuration
+- 📤 **Configuration Sharing**: Export/import capabilities for team collaboration and environment consistency
+- 🔄 **Validation Modes**: Choose between strict validation or flexible extension with auto-addition of new values
+
 ### 🤖 **Agentic AI Transformation**
 - 🧠 **Autonomous Agent Assessment**: Advanced AI reasoning to evaluate autonomy potential with 90%+ accuracy scores
 - 🎯 **Agentic Pattern Library**: Specialized APAT-* patterns for autonomous agent solutions (95-98% autonomy levels)
@@ -645,6 +655,53 @@ mypy app/ --ignore-missing-imports
 3. **Pattern Matching** → Tag filtering + vector similarity
 4. **Recommendations** → Generate feasibility assessment
 5. **Export** → Download results in preferred format
+
+### 6. Schema Configuration *(New in v2.5.0)*
+
+Configure validation enums for your specific domain requirements:
+
+#### Web Interface (Schema Config Tab)
+1. Navigate to **⚙️ Schema Config** tab
+2. Configure validation settings (strict vs flexible mode)
+3. Select enum to manage (reasoning_types, self_monitoring_capabilities, etc.)
+4. Add/remove values for extensible enums
+5. Export/import configurations for team sharing
+
+#### CLI Management
+```bash
+# List all configurable enums
+python manage_schema.py list
+
+# Show details of specific enum
+python manage_schema.py show reasoning_types
+
+# Add domain-specific reasoning type
+python manage_schema.py add reasoning_types "quantum_reasoning"
+
+# Add custom monitoring capability
+python manage_schema.py add self_monitoring_capabilities "blockchain_monitoring"
+
+# Export configuration for team sharing
+python manage_schema.py export team_config.json
+
+# Import team configuration
+python manage_schema.py import team_config.json
+```
+
+#### Programmatic Usage
+```python
+from app.pattern.dynamic_schema_loader import dynamic_schema_loader
+
+# Add custom enum values
+dynamic_schema_loader.add_enum_value('reasoning_types', 'creative_reasoning')
+dynamic_schema_loader.add_enum_value('learning_mechanisms', 'federated_learning')
+
+# Validate enum values
+is_valid = dynamic_schema_loader.validate_enum_value('reasoning_types', 'collaborative')
+
+# Generate dynamic schema
+schema = dynamic_schema_loader.generate_dynamic_schema()
+```
 
 ## API Documentation
 
