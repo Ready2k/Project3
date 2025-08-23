@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import re
 import sqlite3
 import time
 from datetime import datetime
@@ -2100,7 +2101,7 @@ class AutomatedAIAssessmentUI:
         
         input_method = st.radio(
             "Choose input method:",
-            ["Text Input", "File Upload", "Jira Integration"],
+            ["Text Input", "File Upload", "Jira Integration", "Resume Previous Session"],
             horizontal=True
         )
         
@@ -2108,8 +2109,10 @@ class AutomatedAIAssessmentUI:
             self.render_text_input()
         elif input_method == "File Upload":
             self.render_file_upload()
-        else:
+        elif input_method == "Jira Integration":
             self.render_jira_input()
+        else:
+            self.render_resume_session()
     
     def render_text_input(self):
         """Render text input interface."""
@@ -2970,6 +2973,98 @@ verify_ssl = True
         except Exception as e:
             st.session_state.processing = False
             st.error(f"❌ Error submitting requirements: {str(e)}")
+    
+    def render_resume_session(self):
+        """Render resume previous session interface."""
+        st.subheader("🔄 Resume Previous Session")
+        
+        st.markdown("""
+        If you have a session ID from a previous analysis, you can resume it here to view 
+        the results or continue where you left off.
+        """)
+        
+        with st.form("resume_session_form"):
+            session_id_input = st.text_input(
+                "Session ID",
+                placeholder="e.g., 7249c0d9-7896-4fdf-931b-4f4aafbc44e0",
+                help="Enter the session ID from your previous analysis"
+            )
+            
+            col1, col2 = st.columns([1, 3])
+            
+            with col1:
+                resume_button = st.form_submit_button("🔄 Resume Session", type="primary")
+            
+            with col2:
+                if st.form_submit_button("❓ Where do I find my Session ID?", type="secondary"):
+                    st.info("""
+                    **Finding Your Session ID:**
+                    
+                    • Look at the URL when viewing analysis results
+                    • Check the "Processing Progress" section during analysis
+                    • Session IDs are also shown in export file names
+                    • Format: 8-4-4-4-12 characters (e.g., 7249c0d9-7896-4fdf-931b-4f4aafbc44e0)
+                    """)
+        
+        if resume_button:
+            if not session_id_input.strip():
+                st.error("❌ Please enter a session ID")
+                return
+            
+            # Validate session ID format
+            session_id_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+            if not re.match(session_id_pattern, session_id_input.strip().lower()):
+                st.error("❌ Invalid session ID format. Expected format: 8-4-4-4-12 characters (e.g., 7249c0d9-7896-4fdf-931b-4f4aafbc44e0)")
+                return
+            
+            with st.spinner(f"Loading session {session_id_input[:8]}..."):
+                try:
+                    # Try to get session status to validate it exists
+                    response = asyncio.run(self.make_api_request(
+                        "GET",
+                        f"/status/{session_id_input.strip()}"
+                    ))
+                    
+                    if response:
+                        # Session exists, load it into current state
+                        st.session_state.session_id = session_id_input.strip()
+                        st.session_state.current_phase = response.get('phase')
+                        st.session_state.progress = response.get('progress', 0)
+                        
+                        # Load requirements if available
+                        requirements = response.get('requirements')
+                        if requirements:
+                            st.session_state.requirements = requirements
+                        
+                        # If session is complete, load recommendations
+                        if response.get('phase') == 'DONE':
+                            try:
+                                self.load_recommendations()
+                            except Exception as e:
+                                st.warning(f"⚠️ Session loaded but couldn't load recommendations: {str(e)}")
+                        
+                        st.success(f"✅ Successfully resumed session {session_id_input[:8]}...")
+                        st.info(f"📊 Session Status: {response.get('phase', 'Unknown')} ({response.get('progress', 0)}%)")
+                        
+                        # Rerun to show the progress tracking
+                        st.rerun()
+                    else:
+                        st.error("❌ Session not found or invalid response")
+                        
+                except Exception as e:
+                    error_msg = str(e)
+                    if "404" in error_msg or "Session not found" in error_msg:
+                        st.error("❌ Session not found. Please check the session ID and try again.")
+                        st.info("""
+                        **Possible reasons:**
+                        • Session ID is incorrect or mistyped
+                        • Session has expired (sessions are kept for a limited time)
+                        • Session was created on a different system/environment
+                        """)
+                    elif "timeout" in error_msg.lower():
+                        st.error("❌ Request timed out. Please try again.")
+                    else:
+                        st.error(f"❌ Error loading session: {error_msg}")
     
     def render_progress_tracking(self):
         """Render progress tracking section."""
@@ -7722,6 +7817,30 @@ verify_ssl = True
             # Progress tracking and results
             if st.session_state.session_id:
                 self.render_progress_tracking()
+                
+                # Session information and actions
+                st.divider()
+                
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.markdown("**Current Session Information:**")
+                    st.code(f"Session ID: {st.session_state.session_id}", language=None)
+                    st.caption("💡 Save this Session ID to resume this analysis later")
+                
+                with col2:
+                    # Copy to clipboard button (using JavaScript)
+                    if st.button("📋 Copy Session ID"):
+                        # Use JavaScript to copy to clipboard
+                        copy_js = f"""
+                        <script>
+                        navigator.clipboard.writeText('{st.session_state.session_id}').then(function() {{
+                            console.log('Session ID copied to clipboard');
+                        }});
+                        </script>
+                        """
+                        st.components.v1.html(copy_js, height=0)
+                        st.success("✅ Session ID copied to clipboard!")
                 
                 # Reset button
                 if st.button("🔄 Start New Analysis"):

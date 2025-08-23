@@ -1,41 +1,41 @@
 """Version information for AAA (Automated AI Assessment) system."""
 
-__version__ = "2.3.0"
-__version_info__ = (2, 3, 0)
+__version__ = "2.4.0"
+__version_info__ = (2, 4, 0)
 
 # Release information
-RELEASE_NAME = "Advanced Prompt Defense System"
-RELEASE_DATE = "2025-08-16"
+RELEASE_NAME = "Session Continuity & Service Reliability"
+RELEASE_DATE = "2025-08-23"
 RELEASE_NOTES = """
-Major Security Features:
-- Advanced Prompt Defense System with 8 specialized detectors
-- Multi-layered security protecting against various attack vectors
-- Multilingual attack detection (English, Spanish, French, German, Chinese, Japanese)
-- Real-time security monitoring with comprehensive attack detection
-- User education system with contextual guidance for security violations
-- Performance-optimized security validation (sub-100ms with caching)
+Major User Experience Features:
+- Resume Previous Session: Complete session continuity allowing users to return to any previous analysis
+- Session ID Management: Copy-to-clipboard functionality and comprehensive session information display
+- Enhanced Collaboration: Share session IDs with team members for collaborative analysis review
+- Workflow Continuity: Never lose analysis progress due to browser crashes or interruptions
 
-Security Components:
-- Overt Injection Detection: Direct prompt manipulation attempts
-- Covert Injection Detection: Hidden attacks via encoding, markdown, zero-width characters
-- Context Attack Detection: Buried instructions and lorem ipsum attacks
-- Data Egress Protection: System prompt and environment variable extraction prevention
-- Business Logic Protection: Configuration access and safety toggle protection
-- Protocol Tampering Detection: JSON validation and format manipulation protection
-- Scope Validation: Business domain enforcement (feasibility, automation, assessment)
-- Multilingual Attack Detection: Support for attacks in 6 languages
+Session Management Features:
+- Session ID Validation: Robust UUID format validation with user-friendly error messages
+- Complete State Restoration: Restores phase, progress, requirements, and recommendations from any session
+- Cross-Input Compatibility: Works with Text Input, File Upload, and Jira Integration methods
+- Help System: Comprehensive guidance on finding and using session IDs
 
-Infrastructure Improvements:
-- Deployment Management: Gradual rollout with automatic rollback capabilities
-- Configuration Integration: Full Pydantic model integration with YAML configuration
-- Security Event Logging: Structured logging with PII redaction
-- Performance Optimization: Intelligent caching and parallel detection
-- Comprehensive Testing: 100% test coverage for all security components
+Critical Bug Fixes:
+- Agentic Recommendation Service: Fixed 'workflow_automation' attribute error preventing pattern saving
+- Pattern Creation Stability: Resolved crashes during APAT pattern and multi-agent system saving
+- Attribute Access Consistency: Corrected AutonomyAssessment attribute references throughout codebase
+- Service Reliability: Enhanced stability of agentic recommendation generation and pattern persistence
 
-Configuration Fix:
-- Resolved Pydantic validation errors for advanced security settings
-- Added missing configuration classes for deployment and security management
-- Fixed Q&A system errors related to configuration validation
+Technical Improvements:
+- Session Persistence: Leverages existing DiskCacheStore for reliable session management
+- Error Handling: Comprehensive error messages with troubleshooting guidance
+- API Integration: Uses existing endpoints for seamless session retrieval
+- Testing Coverage: Extensive test suites for session validation and service reliability
+
+User Interface Enhancements:
+- New Input Method: "Resume Previous Session" option in Analysis tab
+- Session Information Display: Current session ID with copy functionality at bottom of Analysis tab
+- Validation Feedback: Clear success/error messages for session operations
+- Help Integration: Contextual guidance for session management features
 """
 
 def get_version():
