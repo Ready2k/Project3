@@ -414,8 +414,27 @@ class AgenticRecommendationService:
             for role in design.agent_roles
         ]
         
+        # Generate unique APAT pattern ID for multi-agent system
+        pattern_id = self._generate_agentic_pattern_id()
+        
+        # Create and save the multi-agent pattern
+        multi_agent_pattern = {
+            "pattern_id": pattern_id,
+            "name": f"Multi-Agent {design.architecture_type.value.title()} System",
+            "description": f"Multi-agent system with {len(design.agent_roles)} specialized agents",
+            "feasibility": "Fully Automatable",
+            "autonomy_level": design.autonomy_score,
+            "agentic_frameworks": design.recommended_frameworks,
+            "tech_stack": tech_stack
+        }
+        
+        # Save the multi-agent pattern (fire and forget - don't block on save)
+        asyncio.create_task(self._save_multi_agent_pattern(multi_agent_pattern, design, requirements, autonomy_assessment, session_id))
+        
+        app_logger.info(f"Created multi-agent APAT pattern {pattern_id} for session {session_id}")
+        
         return Recommendation(
-            pattern_id="APAT-00",
+            pattern_id=pattern_id,
             feasibility="Fully Automatable",
             confidence=confidence,
             tech_stack=tech_stack,
@@ -433,10 +452,13 @@ class AgenticRecommendationService:
             return None
         
         try:
+            # Generate unique APAT pattern ID
+            pattern_id = self._generate_agentic_pattern_id()
+            
             # Create a base pattern from requirements
             base_pattern = {
-                "pattern_id": f"CUSTOM_AGENTIC_{session_id[:8]}",
-                "name": f"Custom Autonomous Agent for {requirements.get('description', 'Task')[:50]}",
+                "pattern_id": pattern_id,
+                "name": f"Autonomous Agent for {requirements.get('description', 'Task')[:50]}",
                 "description": requirements.get('description', ''),
                 "feasibility": "Partially Automatable",  # Will be enhanced
                 "pattern_type": ["custom_agentic"],
@@ -449,12 +471,15 @@ class AgenticRecommendationService:
                 base_pattern, requirements
             )
             
+            # Save the new APAT pattern to the pattern library
+            await self._save_agentic_pattern(enhanced_pattern, requirements, autonomy_assessment, session_id)
+            
             # Create recommendation from enhanced pattern
             confidence = enhanced_pattern.get("autonomy_level", 0.8) * self.confidence_boost_factor
             
             tech_stack = enhanced_pattern.get("agentic_frameworks", []) + enhanced_pattern.get("tech_stack", [])
             
-            reasoning = (f"Custom autonomous agent solution designed specifically for this requirement. "
+            reasoning = (f"New autonomous agent pattern created specifically for this requirement. "
                         f"Achieves {enhanced_pattern.get('autonomy_level', 0.8):.0%} autonomy through "
                         f"{', '.join(enhanced_pattern.get('reasoning_types', ['advanced']))} reasoning. "
                         f"Agent can handle: {', '.join(enhanced_pattern.get('decision_boundaries', {}).get('autonomous_decisions', ['standard operations'])[:2])}.")
@@ -481,8 +506,10 @@ class AgenticRecommendationService:
                 }
             ]
             
+            app_logger.info(f"Created new APAT pattern {pattern_id} for session {session_id}")
+            
             return Recommendation(
-                pattern_id=enhanced_pattern["pattern_id"],
+                pattern_id=pattern_id,
                 feasibility=enhanced_pattern.get("feasibility", "Fully Automatable"),
                 confidence=min(1.0, confidence),
                 tech_stack=tech_stack[:8],
@@ -808,3 +835,214 @@ class AgenticRecommendationService:
         if suffix:
             return f'Task Automation Agent {suffix}'
         return 'Task Automation Agent'
+    
+    def _generate_agentic_pattern_id(self) -> str:
+        """Generate a unique APAT pattern ID with duplicate validation.
+        
+        Returns:
+            Unique pattern ID in format APAT-XXX
+            
+        Raises:
+            ValueError: If unable to generate unique ID after multiple attempts
+        """
+        try:
+            # Find the highest existing APAT pattern number from files
+            pattern_library_path = Path("data/patterns")
+            existing_patterns = list(pattern_library_path.glob("APAT-*.json"))
+            max_num = 0
+            existing_ids = set()
+            
+            for pattern_file in existing_patterns:
+                try:
+                    pattern_id = pattern_file.stem
+                    existing_ids.add(pattern_id)
+                    
+                    # Extract number for max calculation
+                    num_str = pattern_id.split("-")[1]
+                    num = int(num_str)
+                    max_num = max(max_num, num)
+                except (IndexError, ValueError) as e:
+                    app_logger.warning(f"Could not parse APAT pattern ID from file {pattern_file}: {e}")
+                    continue
+            
+            # Generate new ID and validate uniqueness
+            max_attempts = 100  # Prevent infinite loop
+            for attempt in range(max_attempts):
+                new_id = f"APAT-{max_num + 1 + attempt:03d}"
+                
+                if new_id not in existing_ids:
+                    app_logger.info(f"Generated unique APAT pattern ID: {new_id}")
+                    return new_id
+                    
+                app_logger.warning(f"APAT pattern ID {new_id} already exists, trying next number")
+            
+            # If we get here, we couldn't generate a unique ID
+            raise ValueError(f"Unable to generate unique APAT pattern ID after {max_attempts} attempts")
+            
+        except Exception as e:
+            app_logger.error(f"Error generating APAT pattern ID: {e}")
+            # Fallback to UUID-based ID to ensure uniqueness
+            import uuid
+            fallback_id = f"APAT-{str(uuid.uuid4())[:8].upper()}"
+            app_logger.warning(f"Using fallback UUID-based APAT pattern ID: {fallback_id}")
+            return fallback_id
+    
+    async def _save_agentic_pattern(self, 
+                                  enhanced_pattern: Dict[str, Any],
+                                  requirements: Dict[str, Any],
+                                  autonomy_assessment: AutonomyAssessment,
+                                  session_id: str) -> bool:
+        """Save the new APAT pattern to the pattern library.
+        
+        Args:
+            enhanced_pattern: Enhanced pattern from pattern enhancer
+            requirements: Original requirements
+            autonomy_assessment: Autonomy assessment results
+            session_id: Session ID for tracking
+            
+        Returns:
+            True if pattern was saved successfully, False otherwise
+        """
+        try:
+            pattern_library_path = Path("data/patterns")
+            pattern_library_path.mkdir(exist_ok=True)
+            
+            # Create the APAT pattern structure similar to existing patterns
+            agentic_pattern = {
+                "pattern_id": enhanced_pattern["pattern_id"],
+                "name": enhanced_pattern.get("name", f"Autonomous Agent Pattern"),
+                "description": enhanced_pattern.get("description", requirements.get("description", "")),
+                "feasibility": enhanced_pattern.get("feasibility", "Fully Automatable"),
+                "pattern_type": enhanced_pattern.get("pattern_type", ["autonomous_agent"]),
+                "autonomy_level": enhanced_pattern.get("autonomy_level", 0.85),
+                "reasoning_capabilities": enhanced_pattern.get("reasoning_types", ["logical_reasoning", "pattern_matching"]),
+                "decision_scope": enhanced_pattern.get("decision_boundaries", {
+                    "autonomous_decisions": ["task_execution", "workflow_management", "exception_handling"],
+                    "escalation_triggers": ["critical_errors", "policy_violations", "resource_limits"]
+                }),
+                "exception_handling": "Autonomous resolution with escalation for critical failures",
+                "learning_mechanisms": ["feedback_incorporation", "pattern_recognition", "performance_optimization"],
+                "tech_stack": enhanced_pattern.get("agentic_frameworks", []) + enhanced_pattern.get("tech_stack", []),
+                "related_patterns": [],  # Will be populated as more patterns are created
+                "confidence_score": enhanced_pattern.get("autonomy_level", 0.85),
+                "constraints": {
+                    "min_autonomy_level": 0.8,
+                    "requires_human_oversight": False,
+                    "compliance_requirements": requirements.get("compliance_requirements", []),
+                    "data_sensitivity": requirements.get("data_sensitivity", "Internal")
+                },
+                "enhanced_pattern": {
+                    "creation_session": session_id,
+                    "autonomy_score": autonomy_assessment.overall_score,
+                    "reasoning_complexity": autonomy_assessment.reasoning_complexity.value,
+                    "decision_boundaries": autonomy_assessment.decision_boundaries,
+                    "workflow_coverage": autonomy_assessment.workflow_coverage,
+                    "created_timestamp": str(Path().cwd().stat().st_mtime)  # Simple timestamp
+                }
+            }
+            
+            # Save to file
+            pattern_file_path = pattern_library_path / f"{enhanced_pattern['pattern_id']}.json"
+            
+            with open(pattern_file_path, 'w', encoding='utf-8') as f:
+                json.dump(agentic_pattern, f, indent=2, ensure_ascii=False)
+            
+            app_logger.info(f"Successfully saved APAT pattern {enhanced_pattern['pattern_id']} to {pattern_file_path}")
+            return True
+            
+        except Exception as e:
+            app_logger.error(f"Failed to save APAT pattern {enhanced_pattern.get('pattern_id', 'unknown')}: {e}")
+            return False
+    
+    async def _save_multi_agent_pattern(self, 
+                                      multi_agent_pattern: Dict[str, Any],
+                                      design: 'MultiAgentSystemDesign',
+                                      requirements: Dict[str, Any],
+                                      autonomy_assessment: AutonomyAssessment,
+                                      session_id: str) -> bool:
+        """Save the multi-agent pattern to the pattern library.
+        
+        Args:
+            multi_agent_pattern: Multi-agent pattern data
+            design: Multi-agent system design
+            requirements: Original requirements
+            autonomy_assessment: Autonomy assessment results
+            session_id: Session ID for tracking
+            
+        Returns:
+            True if pattern was saved successfully, False otherwise
+        """
+        try:
+            pattern_library_path = Path("data/patterns")
+            pattern_library_path.mkdir(exist_ok=True)
+            
+            # Create the multi-agent APAT pattern structure
+            agentic_pattern = {
+                "pattern_id": multi_agent_pattern["pattern_id"],
+                "name": multi_agent_pattern["name"],
+                "description": f"{multi_agent_pattern['description']} for {requirements.get('description', 'complex automation task')[:100]}",
+                "feasibility": "Fully Automatable",
+                "pattern_type": ["multi_agent_system", design.architecture_type.value],
+                "autonomy_level": design.autonomy_score,
+                "reasoning_capabilities": ["collaborative_reasoning", "distributed_decision_making", "system_coordination"],
+                "decision_scope": {
+                    "autonomous_decisions": ["agent_coordination", "task_distribution", "resource_allocation", "exception_handling"],
+                    "escalation_triggers": ["system_wide_failures", "conflicting_agent_decisions", "resource_exhaustion"]
+                },
+                "exception_handling": "Multi-agent collaborative resolution with system-level escalation",
+                "learning_mechanisms": ["inter_agent_learning", "system_optimization", "performance_adaptation"],
+                "tech_stack": multi_agent_pattern["tech_stack"],
+                "agent_architecture": {
+                    "type": design.architecture_type.value,
+                    "agent_count": len(design.agent_roles),
+                    "communication_protocols": design.communication_protocols,
+                    "coordination_mechanisms": design.coordination_mechanisms,
+                    "agent_roles": [
+                        {
+                            "name": role.name,
+                            "responsibility": role.responsibility,
+                            "capabilities": role.capabilities,
+                            "autonomy_level": role.autonomy_level,
+                            "decision_authority": role.decision_authority,
+                            "communication_requirements": role.communication_requirements,
+                            "interfaces": role.interfaces,
+                            "exception_handling": role.exception_handling,
+                            "learning_capabilities": role.learning_capabilities
+                        }
+                        for role in design.agent_roles
+                    ]
+                },
+                "deployment_strategy": design.deployment_strategy,
+                "scalability_considerations": design.scalability_considerations,
+                "monitoring_requirements": design.monitoring_requirements,
+                "related_patterns": [],  # Will be populated as more patterns are created
+                "confidence_score": design.autonomy_score,
+                "constraints": {
+                    "min_autonomy_level": 0.85,
+                    "requires_human_oversight": False,
+                    "compliance_requirements": requirements.get("compliance_requirements", []),
+                    "data_sensitivity": requirements.get("data_sensitivity", "Internal")
+                },
+                "enhanced_pattern": {
+                    "creation_session": session_id,
+                    "autonomy_score": autonomy_assessment.overall_score,
+                    "reasoning_complexity": autonomy_assessment.reasoning_complexity.value,
+                    "decision_boundaries": autonomy_assessment.decision_boundaries,
+                    "workflow_coverage": autonomy_assessment.workflow_coverage,
+                    "multi_agent_design": True,
+                    "created_timestamp": str(Path().cwd().stat().st_mtime)  # Simple timestamp
+                }
+            }
+            
+            # Save to file
+            pattern_file_path = pattern_library_path / f"{multi_agent_pattern['pattern_id']}.json"
+            
+            with open(pattern_file_path, 'w', encoding='utf-8') as f:
+                json.dump(agentic_pattern, f, indent=2, ensure_ascii=False)
+            
+            app_logger.info(f"Successfully saved multi-agent APAT pattern {multi_agent_pattern['pattern_id']} to {pattern_file_path}")
+            return True
+            
+        except Exception as e:
+            app_logger.error(f"Failed to save multi-agent APAT pattern {multi_agent_pattern.get('pattern_id', 'unknown')}: {e}")
+            return False
