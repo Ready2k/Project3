@@ -38,9 +38,13 @@ class AgenticRecommendationService:
         if pattern_library_path:
             self.pattern_enhancer = PatternAgenticEnhancer(llm_provider, pattern_library_path)
         
-        # Agentic-focused thresholds (more optimistic)
-        self.min_autonomy_threshold = 0.7  # High autonomy requirement
-        self.confidence_boost_factor = 1.2  # Boost confidence for agentic solutions
+        # Import configuration service for dynamic thresholds
+        from app.services.configuration_service import get_config
+        self.config_service = get_config()
+        
+        # Use dynamic thresholds from configuration
+        self.min_autonomy_threshold = self.config_service.autonomy.min_autonomy_threshold
+        self.confidence_boost_factor = self.config_service.autonomy.confidence_boost_factor
         
     async def generate_agentic_recommendations(self, 
                                              requirements: Dict[str, Any],
@@ -220,9 +224,9 @@ class AgenticRecommendationService:
         base_feasibility = match.enhanced_pattern.get("feasibility", "Partially Automatable")
         
         # Aggressive agentic assessment - favor full automation
-        if match.autonomy_score >= 0.8:
+        if self.config_service.is_fully_automatable(match.autonomy_score):
             return "Fully Automatable"
-        elif match.autonomy_score >= 0.6:
+        elif self.config_service.is_partially_automatable(match.autonomy_score):
             # Check if we can upgrade to fully automatable
             if (autonomy_assessment.overall_score >= 0.7 and 
                 autonomy_assessment.decision_independence.value in ["high", "full"]):

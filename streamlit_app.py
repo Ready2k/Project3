@@ -47,8 +47,8 @@ async def make_llm_request(prompt: str, provider_config: Dict, purpose: str = "d
             aws_secret_access_key=provider_config.get('aws_secret_access_key'),
             aws_session_token=provider_config.get('aws_session_token'),
             bedrock_api_key=provider_config.get('bedrock_api_key'),
-            temperature=0.3,
-            max_tokens=1000
+            temperature=0.3,  # TODO: Use config_service.llm_generation.temperature
+            max_tokens=1000  # TODO: Use config_service.llm_generation.max_tokens
         )
         
         # Get session ID for audit logging
@@ -7807,7 +7807,7 @@ verify_ssl = True
         self.render_provider_panel()
         
         # Main content area
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📝 Analysis", "📊 Diagrams", "📈 Observability", "📚 Pattern Library", "🔧 Technology Catalog", "⚙️ Schema Config", "ℹ️ About"])
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["📝 Analysis", "📊 Diagrams", "📈 Observability", "📚 Pattern Library", "🔧 Technology Catalog", "⚙️ Schema Config", "🔧 System Config", "ℹ️ About"])
         
         with tab1:
             # Input methods
@@ -7870,6 +7870,11 @@ verify_ssl = True
             render_schema_management()
         
         with tab7:
+            # System Configuration
+            from app.ui.system_configuration import render_system_configuration
+            render_system_configuration()
+        
+        with tab8:
             st.markdown("""
             ## About Automated AI Assessment (AAA)
             

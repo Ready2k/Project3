@@ -103,13 +103,12 @@ class AutonomyAssessor:
 
     def __init__(self, llm_provider: LLMProvider):
         self.llm_provider = llm_provider
-        self.autonomy_weights = {
-            "reasoning_capability": 0.3,
-            "decision_independence": 0.25,
-            "exception_handling": 0.2,
-            "learning_adaptation": 0.15,
-            "self_monitoring": 0.1,
-        }
+        # Import configuration service for dynamic weights
+        from app.services.configuration_service import get_config
+        self.config_service = get_config()
+        
+        # Use dynamic weights from configuration
+        self.autonomy_weights = self.config_service.get_autonomy_weights()
 
     async def assess_autonomy_potential(self, requirements: Dict[str, Any]) -> AutonomyAssessment:
         """Assess how autonomous an AI agent can be for given requirements."""
@@ -196,8 +195,8 @@ class AutonomyAssessor:
         )
 
         # Boost score for high-potential scenarios (aggressive autonomy assessment)
-        if score > 0.7:
-            score = min(1.0, score * 1.1)  # 10% boost for high potential
+        if score > self.config_service.autonomy.high_autonomy_boost_threshold:
+            score = min(1.0, score * self.config_service.autonomy.autonomy_boost_multiplier)
 
         return min(1.0, score)
 
