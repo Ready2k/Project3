@@ -1,0 +1,67 @@
+autonomy:
+  agentic_necessity_threshold: 0.6
+  autonomy_boost_multiplier: 1.1
+  confidence_boost_factor: 1.2
+  decision_independence_weight: 0.25
+  exception_handling_weight: 0.2
+  fully_automatable_threshold: 0.8
+  high_autonomy_boost_threshold: 0.7
+  hybrid_zone_threshold: 0.1
+  learning_adaptation_weight: 0.15
+  min_autonomy_threshold: 0.7
+  partially_automatable_threshold: 0.6
+  reasoning_capability_weight: 0.3
+  self_monitoring_weight: 0.1
+  traditional_suitability_threshold: 0.7
+llm_generation:
+  api_request_timeout: 30.0
+  frequency_penalty: 0.0
+  http_timeout: 10
+  llm_timeout: 20
+  max_tokens: 1000
+  presence_penalty: 0.0
+  temperature: 0.3
+  top_p: 1.0
+pattern_matching:
+  autonomy_level_weight: 0.4
+  confidence_weight: 0.2
+  decision_independence_weight: 0.2
+  excellent_fit_threshold: 0.8
+  exception_handling_weight: 0.1
+  good_fit_threshold: 0.6
+  high_similarity_threshold: 0.7
+  learning_potential_weight: 0.05
+  moderate_similarity_threshold: 0.4
+  moderate_tag_match_threshold: 0.4
+  reasoning_capability_weight: 0.25
+  strong_tag_match_threshold: 0.7
+  tag_weight: 0.3
+  vector_weight: 0.5
+rate_limiting:
+  default_burst_limit: 25
+  default_burst_window_seconds: 60
+  default_requests_per_day: 10000
+  default_requests_per_hour: 1000
+  default_requests_per_minute: 60
+  enterprise_burst_limit: 100
+  enterprise_requests_per_day: 100000
+  enterprise_requests_per_hour: 10000
+  enterprise_requests_per_minute: 300
+  ip_burst_limit: 15
+  ip_requests_per_day: 5000
+  ip_requests_per_hour: 500
+  ip_requests_per_minute: 30
+  premium_burst_limit: 40
+  premium_requests_per_day: 30000
+  premium_requests_per_hour: 3000
+  premium_requests_per_minute: 120
+recommendations:
+  autonomy_boost_factor: 0.2
+  conceptual_similarity_threshold: 0.7
+  min_recommendation_confidence: 0.7
+  multi_agent_boost: 0.1
+  new_pattern_creation_threshold: 0.7
+  pattern_enhancement_similarity_threshold: 0.7
+  reasoning_boost_amount: 0.1
+  reasoning_boost_threshold: 3
+  tech_stack_inclusion_threshold: 0.6

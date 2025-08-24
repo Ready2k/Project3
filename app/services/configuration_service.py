@@ -9,15 +9,11 @@ from pathlib import Path
 import yaml
 from dataclasses import asdict
 
-from app.ui.system_configuration import (
+from app.config.system_config import (
     SystemConfiguration, SystemConfigurationManager,
     AutonomyConfig, PatternMatchingConfig, LLMGenerationConfig, RecommendationConfig
 )
-try:
-    from app.utils.logging import app_logger
-except ImportError:
-    import logging
-    app_logger = logging.getLogger(__name__)
+from app.utils.logger import app_logger
 
 
 class ConfigurationService:

@@ -21,6 +21,7 @@ Automated AI Assessment (AAA) is an interactive GUI + API system that evaluates 
 - **LLM-Driven Tech Stack Generation**: Intelligent technology recommendations from 55+ catalog technologies
 
 ### Management & Analytics
+- **Session Management**: Complete session continuity with resume functionality and cross-session compatibility
 - **Technology Catalog Management**: Complete CRUD interface for managing technology database
 - **Pattern Analytics**: Real-time analytics showing pattern match frequency, acceptance rates, and quality scores
 - **Advanced Security System**: Multi-layered prompt defense with 8 specialized detectors
@@ -49,7 +50,7 @@ Automated AI Assessment (AAA) is an interactive GUI + API system that evaluates 
 - **Q&A System**: LLM-powered question generation with duplicate prevention and security validation
 - **Advanced Security System**: Multi-layered prompt defense with 8 specialized detectors
 - **Security Monitoring**: Real-time attack detection and user education system
-- **State Management**: Session persistence with diskcache/Redis
+- **State Management**: Session persistence with diskcache/Redis and resume functionality
 - **Export System**: JSON, Markdown, and interactive HTML export
 - **Diagram System**: Mermaid-based architecture visualization with browser export
 - **Audit System**: Comprehensive logging and observability with pattern match tracking and security events
@@ -58,7 +59,7 @@ Automated AI Assessment (AAA) is an interactive GUI + API system that evaluates 
 
 ## Request Flow
 
-1. **Ingest** → Create session, parse requirements (supports Jira integration)
+1. **Ingest** → Create session, parse requirements (supports Jira integration and session resume)
 2. **Q&A Loop** → LLM-generated clarifying questions with caching
 3. **Pattern Matching** → Tag filtering + vector similarity
 4. **Tech Stack Generation** → LLM-driven technology recommendations

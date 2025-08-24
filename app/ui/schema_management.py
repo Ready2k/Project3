@@ -215,11 +215,20 @@ def render_enum_usage_stats():
     try:
         # This would require analyzing existing patterns
         # For now, show a placeholder
-        st.info("Enum usage statistics will be implemented in a future update.")
+        # Enum usage statistics placeholder
+        st.info("📊 **Enum Usage Statistics**")
+        st.write("Pattern analysis features:")
         
-        # TODO: Implement pattern analysis to show:
-        # - Which enum values are most commonly used
-        # - Which enums have unused values
+        with st.expander("📈 Usage Analytics (Coming Soon)"):
+            st.write("Future features will include:")
+            st.write("• Most commonly used enum values across patterns")
+            st.write("• Unused enum values that could be removed")
+            st.write("• Pattern distribution by enum categories")
+            st.write("• Trend analysis of enum usage over time")
+            
+            # Placeholder for future implementation
+            if st.button("🔄 Analyze Pattern Usage", disabled=True):
+                st.info("This feature will be implemented in a future release.")
         # - Patterns that use non-standard values
         
     except Exception as e:

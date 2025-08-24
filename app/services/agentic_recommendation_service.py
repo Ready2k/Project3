@@ -10,6 +10,7 @@ from app.pattern.agentic_matcher import AgenticPatternMatcher, AgenticPatternMat
 from app.services.multi_agent_designer import MultiAgentSystemDesigner, MultiAgentSystemDesign
 from app.services.agentic_technology_catalog import AgenticTechnologyCatalog
 from app.services.pattern_agentic_enhancer import PatternAgenticEnhancer
+from app.services.agentic_necessity_assessor import AgenticNecessityAssessor, AgenticNecessityAssessment, SolutionType
 from app.state.store import Recommendation
 from app.llm.base import LLMProvider
 from app.utils.logger import app_logger
@@ -32,6 +33,7 @@ class AgenticRecommendationService:
         self.autonomy_assessor = AutonomyAssessor(llm_provider)
         self.multi_agent_designer = MultiAgentSystemDesigner(llm_provider)
         self.agentic_catalog = AgenticTechnologyCatalog()
+        self.necessity_assessor = AgenticNecessityAssessor(llm_provider)
         
         # Initialize pattern enhancer if library path provided
         self.pattern_enhancer = None
@@ -53,6 +55,17 @@ class AgenticRecommendationService:
         
         app_logger.info("Generating agentic recommendations with autonomy prioritization")
         
+        # Step 0: Assess agentic necessity first
+        necessity_assessment = await self.necessity_assessor.assess_agentic_necessity(requirements)
+        
+        app_logger.info(f"Agentic necessity assessment: {necessity_assessment.recommended_solution_type.value} "
+                       f"(agentic: {necessity_assessment.agentic_necessity_score:.2f}, "
+                       f"traditional: {necessity_assessment.traditional_suitability_score:.2f})")
+        
+        # If traditional automation is clearly better, return traditional recommendation
+        if necessity_assessment.recommended_solution_type == SolutionType.TRADITIONAL_AUTOMATION:
+            return await self._create_traditional_automation_recommendation(requirements, necessity_assessment, session_id)
+        
         # Step 1: Assess autonomy potential (be optimistic)
         autonomy_assessment = await self.autonomy_assessor.assess_autonomy_potential(requirements)
         
@@ -61,7 +74,7 @@ class AgenticRecommendationService:
         
         # Step 2: Apply agentic scope filtering (less restrictive than traditional)
         if not self._passes_agentic_scope_filter(requirements, autonomy_assessment):
-            return await self._create_scope_limited_recommendation(requirements, autonomy_assessment)
+            return await self._create_scope_limited_recommendation(requirements, autonomy_assessment, necessity_assessment)
         
         # Step 3: Match agentic patterns
         agentic_matcher = AgenticPatternMatcher(
@@ -92,34 +105,34 @@ class AgenticRecommendationService:
         recommendations = []
         
         # Process agentic pattern matches
-        for i, match in enumerate(agentic_matches):
-            # Create unique agent design for each pattern match to avoid duplication
-            if multi_agent_design and multi_agent_design.architecture_type.value == "single_agent":
-                # For single-agent scenarios, create unique agent names for each pattern
-                unique_agent_design = await self._create_unique_single_agent_design(
-                    requirements, autonomy_assessment, match, i
-                )
+        if multi_agent_design and multi_agent_design.architecture_type.value == "single_agent":
+            # For single-agent scenarios, create one comprehensive recommendation instead of multiple duplicates
+            if agentic_matches:
+                # Use the best pattern match for the single agent
+                best_match = agentic_matches[0]
                 recommendation = await self._create_agentic_recommendation(
-                    match, requirements, autonomy_assessment, unique_agent_design, session_id
+                    best_match, requirements, autonomy_assessment, multi_agent_design, session_id, necessity_assessment
                 )
-            else:
-                # For multi-agent scenarios, use the shared design
+                recommendations.append(recommendation)
+        else:
+            # For multi-agent scenarios, process each pattern match
+            for i, match in enumerate(agentic_matches):
                 recommendation = await self._create_agentic_recommendation(
-                    match, requirements, autonomy_assessment, multi_agent_design, session_id
+                    match, requirements, autonomy_assessment, multi_agent_design, session_id, necessity_assessment
                 )
-            recommendations.append(recommendation)
-        
-        # Add multi-agent system recommendation if designed
-        if multi_agent_design:
-            multi_agent_recommendation = await self._create_multi_agent_recommendation(
-                multi_agent_design, requirements, autonomy_assessment, session_id
-            )
-            recommendations.insert(0, multi_agent_recommendation)  # Prioritize multi-agent
+                recommendations.append(recommendation)
+            
+            # Add multi-agent system recommendation if designed
+            if multi_agent_design:
+                multi_agent_recommendation = await self._create_multi_agent_recommendation(
+                    multi_agent_design, requirements, autonomy_assessment, session_id
+                )
+                recommendations.insert(0, multi_agent_recommendation)  # Prioritize multi-agent
         
         # Step 6: Create new agentic pattern if no good matches
         if not recommendations or all(r.confidence < 0.7 for r in recommendations):
             new_agentic_recommendation = await self._create_new_agentic_pattern_recommendation(
-                requirements, autonomy_assessment, session_id
+                requirements, autonomy_assessment, session_id, necessity_assessment
             )
             if new_agentic_recommendation:
                 recommendations.insert(0, new_agentic_recommendation)
@@ -162,11 +175,12 @@ class AgenticRecommendationService:
                                            requirements: Dict[str, Any],
                                            autonomy_assessment: AutonomyAssessment,
                                            multi_agent_design: Optional[MultiAgentSystemDesign],
-                                           session_id: str) -> Recommendation:
+                                           session_id: str,
+                                           necessity_assessment: Optional[AgenticNecessityAssessment] = None) -> Recommendation:
         """Create recommendation from agentic pattern match."""
         
         # Determine feasibility (aggressive - favor full automation)
-        feasibility = self._determine_agentic_feasibility(match, autonomy_assessment)
+        feasibility = self._determine_agentic_feasibility(match, autonomy_assessment, requirements)
         
         # Calculate confidence (boosted for agentic solutions)
         confidence = self._calculate_agentic_confidence(match, autonomy_assessment)
@@ -212,13 +226,27 @@ class AgenticRecommendationService:
             confidence=confidence,
             tech_stack=tech_stack,
             reasoning=reasoning,
-            agent_roles=agent_roles
+            agent_roles=agent_roles,
+            necessity_assessment=necessity_assessment
         )
     
     def _determine_agentic_feasibility(self, 
                                      match: AgenticPatternMatch,
-                                     autonomy_assessment: AutonomyAssessment) -> str:
+                                     autonomy_assessment: AutonomyAssessment,
+                                     requirements: Dict[str, Any]) -> str:
         """Determine feasibility with agentic bias (aggressive automation)."""
+        
+        # First, check if we have LLM analysis from Q&A phase - this should take priority
+        # The LLM analysis is more contextual and considers user-specific constraints
+        llm_feasibility = requirements.get("llm_analysis_automation_feasibility")
+        if llm_feasibility:
+            app_logger.info(f"Using LLM feasibility assessment from Q&A: {llm_feasibility}")
+            # Map to our standard format if needed
+            if llm_feasibility in ["Automatable", "Fully Automatable", "Partially Automatable", "Not Automatable"]:
+                return llm_feasibility
+        
+        # Fallback to autonomy score-based assessment
+        app_logger.info(f"No LLM feasibility found, using autonomy score-based assessment")
         
         # Start with pattern's enhanced feasibility
         base_feasibility = match.enhanced_pattern.get("feasibility", "Partially Automatable")
@@ -377,7 +405,8 @@ class AgenticRecommendationService:
                                                design: MultiAgentSystemDesign,
                                                requirements: Dict[str, Any],
                                                autonomy_assessment: AutonomyAssessment,
-                                               session_id: str) -> Recommendation:
+                                               session_id: str,
+                                               necessity_assessment: Optional[AgenticNecessityAssessment] = None) -> Recommendation:
         """Create recommendation for multi-agent system."""
         
         # Multi-agent systems are highly autonomous
@@ -421,12 +450,21 @@ class AgenticRecommendationService:
         # Generate unique APAT pattern ID for multi-agent system
         pattern_id = self._generate_agentic_pattern_id()
         
+        # Determine feasibility - respect LLM analysis if available
+        llm_feasibility = requirements.get("llm_analysis_automation_feasibility")
+        if llm_feasibility and llm_feasibility in ["Automatable", "Fully Automatable", "Partially Automatable", "Not Automatable"]:
+            feasibility = llm_feasibility
+            app_logger.info(f"Using LLM feasibility assessment for multi-agent recommendation: {llm_feasibility}")
+        else:
+            feasibility = "Fully Automatable"  # Default for multi-agent systems
+            app_logger.info("No LLM feasibility found, using default 'Fully Automatable' for multi-agent recommendation")
+        
         # Create and save the multi-agent pattern
         multi_agent_pattern = {
             "pattern_id": pattern_id,
             "name": f"Multi-Agent {design.architecture_type.value.title()} System",
             "description": f"Multi-agent system with {len(design.agent_roles)} specialized agents",
-            "feasibility": "Fully Automatable",
+            "feasibility": feasibility,
             "autonomy_level": design.autonomy_score,
             "agentic_frameworks": design.recommended_frameworks,
             "tech_stack": tech_stack
@@ -439,17 +477,19 @@ class AgenticRecommendationService:
         
         return Recommendation(
             pattern_id=pattern_id,
-            feasibility="Fully Automatable",
+            feasibility=feasibility,
             confidence=confidence,
             tech_stack=tech_stack,
             reasoning=reasoning,
-            agent_roles=agent_roles
+            agent_roles=agent_roles,
+            necessity_assessment=necessity_assessment
         )
     
     async def _create_new_agentic_pattern_recommendation(self, 
                                                        requirements: Dict[str, Any],
                                                        autonomy_assessment: AutonomyAssessment,
-                                                       session_id: str) -> Optional[Recommendation]:
+                                                       session_id: str,
+                                                       necessity_assessment: Optional[AgenticNecessityAssessment] = None) -> Optional[Recommendation]:
         """Create new agentic pattern when no good matches exist."""
         
         if not self.pattern_enhancer:
@@ -462,7 +502,7 @@ class AgenticRecommendationService:
             # Create a base pattern from requirements
             base_pattern = {
                 "pattern_id": pattern_id,
-                "name": f"Autonomous Agent for {requirements.get('description', 'Task')[:50]}",
+                "name": f"Autonomous Agent for {requirements.get('description', 'Task')}",
                 "description": requirements.get('description', ''),
                 "feasibility": "Partially Automatable",  # Will be enhanced
                 "pattern_type": ["custom_agentic"],
@@ -493,7 +533,7 @@ class AgenticRecommendationService:
             agent_roles = [
                 {
                     "name": agent_name,
-                    "responsibility": f"Main autonomous agent responsible for {requirements.get('description', 'the task')[:100]}",
+                    "responsibility": await self._generate_agent_responsibility(requirements, agent_name),
                     "capabilities": enhanced_pattern.get("decision_boundaries", {}).get("autonomous_decisions", ["task_execution", "decision_making"]),
                     "autonomy_level": enhanced_pattern.get("autonomy_level", 0.8),
                     "decision_authority": {
@@ -510,15 +550,25 @@ class AgenticRecommendationService:
                 }
             ]
             
+            # Determine feasibility - respect LLM analysis if available
+            llm_feasibility = requirements.get("llm_analysis_automation_feasibility")
+            if llm_feasibility and llm_feasibility in ["Automatable", "Fully Automatable", "Partially Automatable", "Not Automatable"]:
+                feasibility = llm_feasibility
+                app_logger.info(f"Using LLM feasibility assessment for new agentic pattern: {llm_feasibility}")
+            else:
+                feasibility = enhanced_pattern.get("feasibility", "Fully Automatable")
+                app_logger.info(f"No LLM feasibility found, using enhanced pattern feasibility: {feasibility}")
+            
             app_logger.info(f"Created new APAT pattern {pattern_id} for session {session_id}")
             
             return Recommendation(
                 pattern_id=pattern_id,
-                feasibility=enhanced_pattern.get("feasibility", "Fully Automatable"),
+                feasibility=feasibility,
                 confidence=min(1.0, confidence),
                 tech_stack=tech_stack[:8],
                 reasoning=reasoning,
-                agent_roles=agent_roles
+                agent_roles=agent_roles,
+                necessity_assessment=necessity_assessment
             )
             
         except Exception as e:
@@ -527,7 +577,8 @@ class AgenticRecommendationService:
     
     async def _create_scope_limited_recommendation(self, 
                                                  requirements: Dict[str, Any],
-                                                 autonomy_assessment: AutonomyAssessment) -> List[Recommendation]:
+                                                 autonomy_assessment: AutonomyAssessment,
+                                                 necessity_assessment: Optional[AgenticNecessityAssessment] = None) -> List[Recommendation]:
         """Create recommendation for scope-limited scenarios."""
         
         description = requirements.get('description', '')
@@ -550,7 +601,7 @@ class AgenticRecommendationService:
         agent_roles = [
             {
                 "name": agent_name,
-                "responsibility": "Autonomous agent handling digital workflow aspects while coordinating with physical processes",
+                "responsibility": await self._generate_agent_responsibility(requirements, agent_name),
                 "capabilities": ["monitoring", "scheduling", "notifications", "data_tracking", "coordination"],
                 "autonomy_level": autonomy_assessment.overall_score,
                 "decision_authority": {
@@ -567,13 +618,23 @@ class AgenticRecommendationService:
             }
         ]
         
+        # Determine feasibility - respect LLM analysis if available
+        llm_feasibility = requirements.get("llm_analysis_automation_feasibility")
+        if llm_feasibility and llm_feasibility in ["Automatable", "Fully Automatable", "Partially Automatable", "Not Automatable"]:
+            feasibility = llm_feasibility
+            app_logger.info(f"Using LLM feasibility assessment for scope-limited recommendation: {llm_feasibility}")
+        else:
+            feasibility = "Partially Automatable"  # Default for scope-limited scenarios
+            app_logger.info("No LLM feasibility found, using default 'Partially Automatable' for scope-limited recommendation")
+        
         limited_recommendation = Recommendation(
             pattern_id="AGENTIC_DIGITAL_ASSISTANT",
-            feasibility="Partially Automatable",
+            feasibility=feasibility,
             confidence=0.7,  # Still confident in agentic approach
             tech_stack=agentic_tech,
             reasoning=reasoning,
-            agent_roles=agent_roles
+            agent_roles=agent_roles,
+            necessity_assessment=necessity_assessment
         )
         
         return [limited_recommendation]
@@ -590,16 +651,45 @@ class AgenticRecommendationService:
         # Generate a meaningful agent name based on the requirements
         agent_name = await self._generate_agent_name(requirements)
         
+        # Create domain-specific capabilities
+        base_capabilities = [
+            "task_execution",
+            "decision_making", 
+            "exception_handling",
+            "learning_adaptation",
+            "communication"
+        ]
+        
+        # Add domain-specific capabilities based on the agent name/description
+        if "order" in description.lower() or "Order" in agent_name:
+            base_capabilities.extend([
+                "order_processing",
+                "workflow_coordination",
+                "real_time_communication",
+                "status_tracking",
+                "validation_and_verification"
+            ])
+        elif "data" in description.lower() or "Data" in agent_name:
+            base_capabilities.extend([
+                "data_processing",
+                "information_extraction",
+                "data_validation",
+                "storage_management"
+            ])
+        elif "workflow" in description.lower() or "Workflow" in agent_name:
+            base_capabilities.extend([
+                "process_automation",
+                "task_orchestration",
+                "workflow_optimization"
+            ])
+        
+        # Generate proper agent responsibility using LLM
+        agent_responsibility = await self._generate_agent_responsibility(requirements, agent_name)
+        
         single_agent = AgentRole(
             name=agent_name,
-            responsibility=f"Main autonomous agent responsible for {description[:100]}",
-            capabilities=[
-                "task_execution",
-                "decision_making", 
-                "exception_handling",
-                "learning_adaptation",
-                "communication"
-            ],
+            responsibility=agent_responsibility,
+            capabilities=base_capabilities,
             autonomy_level=autonomy_assessment.overall_score,
             decision_authority={
                 "scope": ["operational_decisions", "workflow_management", "resource_allocation"],
@@ -632,6 +722,105 @@ class AgenticRecommendationService:
         )
         
         return design
+    
+    async def _create_traditional_automation_recommendation(self, 
+                                                          requirements: Dict[str, Any],
+                                                          necessity_assessment: AgenticNecessityAssessment,
+                                                          session_id: str) -> List[Recommendation]:
+        """Create recommendation for traditional automation approach."""
+        
+        app_logger.info("Creating traditional automation recommendation")
+        
+        # Generate traditional tech stack
+        tech_stack = await self._generate_traditional_tech_stack(requirements)
+        
+        # Create reasoning that explains why traditional automation is better
+        reasoning = self._generate_traditional_reasoning(necessity_assessment, requirements)
+        
+        # Determine feasibility - respect LLM analysis if available
+        llm_feasibility = requirements.get("llm_analysis_automation_feasibility")
+        if llm_feasibility and llm_feasibility in ["Automatable", "Fully Automatable", "Partially Automatable", "Not Automatable"]:
+            feasibility = llm_feasibility
+            app_logger.info(f"Using LLM feasibility assessment for traditional automation: {llm_feasibility}")
+        else:
+            feasibility = "Fully Automatable"  # Default for traditional automation
+            app_logger.info("No LLM feasibility found, using default 'Fully Automatable' for traditional automation")
+        
+        # Create traditional automation recommendation
+        recommendation = Recommendation(
+            pattern_id="TRAD-AUTO-001",  # Traditional automation pattern
+            feasibility=feasibility,
+            confidence=necessity_assessment.confidence_level,
+            tech_stack=tech_stack,
+            reasoning=reasoning,
+            agent_roles=[],  # No agent roles for traditional automation
+            necessity_assessment=necessity_assessment  # Include the assessment
+        )
+        
+        app_logger.info(f"Created traditional automation recommendation with confidence {necessity_assessment.confidence_level:.2f}")
+        
+        return [recommendation]
+    
+    async def _generate_traditional_tech_stack(self, requirements: Dict[str, Any]) -> List[str]:
+        """Generate appropriate tech stack for traditional automation."""
+        
+        description = requirements.get("description", "").lower()
+        
+        # Base traditional automation technologies
+        tech_stack = []
+        
+        # Workflow engines
+        if any(keyword in description for keyword in ["workflow", "process", "steps", "sequence"]):
+            tech_stack.extend(["Apache Airflow", "Zapier", "Microsoft Power Automate"])
+        
+        # Data processing
+        if any(keyword in description for keyword in ["data", "file", "document", "record"]):
+            tech_stack.extend(["Apache Kafka", "ETL Tools", "Database Systems"])
+        
+        # Web automation
+        if any(keyword in description for keyword in ["web", "browser", "form", "website"]):
+            tech_stack.extend(["Selenium", "REST APIs", "Web Scraping Tools"])
+        
+        # Integration platforms
+        if any(keyword in description for keyword in ["integrate", "connect", "sync", "api"]):
+            tech_stack.extend(["MuleSoft", "Apache Camel", "API Gateway"])
+        
+        # Business process management
+        if any(keyword in description for keyword in ["business process", "bpm", "workflow"]):
+            tech_stack.extend(["Camunda", "jBPM", "Business Process Management"])
+        
+        # Restaurant/food service specific
+        if any(keyword in description for keyword in ["order", "food", "restaurant", "kitchen"]):
+            tech_stack.extend(["POS Systems", "Kitchen Display Systems", "Order Management Software"])
+        
+        # Default technologies if none detected
+        if not tech_stack:
+            tech_stack = ["Workflow Automation Platform", "Database System", "API Integration"]
+        
+        return tech_stack[:8]  # Limit to reasonable number
+    
+    def _generate_traditional_reasoning(self, necessity_assessment: AgenticNecessityAssessment, 
+                                      requirements: Dict[str, Any]) -> str:
+        """Generate reasoning for why traditional automation is recommended."""
+        
+        reasoning_parts = [
+            f"Traditional automation approach recommended based on analysis showing {necessity_assessment.traditional_suitability_score:.0%} suitability for conventional workflow automation."
+        ]
+        
+        # Add specific justifications
+        if necessity_assessment.traditional_justification:
+            reasoning_parts.append("Key factors supporting traditional automation:")
+            for justification in necessity_assessment.traditional_justification[:3]:
+                reasoning_parts.append(f"• {justification}")
+        
+        # Add efficiency benefits
+        reasoning_parts.append("Traditional automation benefits: Lower complexity, faster implementation, proven reliability, and cost-effective maintenance.")
+        
+        # Add when to consider agentic upgrade
+        if necessity_assessment.agentic_necessity_score > 0.4:
+            reasoning_parts.append(f"Future consideration: If requirements evolve to need more complex reasoning or adaptation (current agentic score: {necessity_assessment.agentic_necessity_score:.0%}), consider upgrading to autonomous agent approach.")
+        
+        return " ".join(reasoning_parts)
     
     async def _create_unique_single_agent_design(self, 
                                                requirements: Dict[str, Any],
@@ -678,7 +867,7 @@ class AgenticRecommendationService:
         
         unique_agent = AgentRole(
             name=agent_name,
-            responsibility=f"Specialized autonomous agent for {description[:100]} using {getattr(pattern_match, 'pattern_id', 'custom')} pattern",
+            responsibility=await self._generate_agent_responsibility(requirements, agent_name),
             capabilities=base_capabilities,
             autonomy_level=autonomy_assessment.overall_score,
             decision_authority={
@@ -733,6 +922,52 @@ class AgenticRecommendationService:
         
         return min(1.0, base_score + agentic_boost)
     
+    async def _generate_agent_responsibility(self, requirements: Dict[str, Any], agent_name: str) -> str:
+        """Generate a meaningful agent responsibility description using LLM."""
+        description = requirements.get('description', '')
+        
+        if not self.llm_provider:
+            # Fallback if no LLM available
+            return f"Autonomous agent responsible for automating the described workflow"
+        
+        prompt = f"""You are an expert in agentic AI systems. Given a user requirement, generate a concise, professional description of what an autonomous AI agent will DO to solve this problem.
+
+USER REQUIREMENT:
+{description}
+
+AGENT NAME: {agent_name}
+
+Generate a responsibility statement that describes the ACTIONS and CAPABILITIES the agent will perform, not the user's problem. Focus on:
+- What the agent will automate
+- Key processes it will handle
+- Decisions it will make autonomously
+- Systems it will integrate with
+
+Format: "Autonomous agent responsible for [specific actions and capabilities]"
+
+Examples:
+- User: "I need help processing invoices" → Agent: "Autonomous agent responsible for extracting invoice data, validating payment terms, routing approvals, and updating accounting systems"
+- User: "I want to automate customer support" → Agent: "Autonomous agent responsible for analyzing support tickets, categorizing issues, providing automated responses, and escalating complex cases"
+
+Respond with ONLY the responsibility statement, no other text."""
+
+        try:
+            response = await self.llm_provider.generate(prompt, purpose="agent_responsibility_generation")
+            
+            # Clean up the response
+            responsibility = response.strip()
+            
+            # Ensure it starts with appropriate text
+            if not responsibility.lower().startswith(('autonomous agent', 'main autonomous agent')):
+                responsibility = f"Autonomous agent responsible for {responsibility}"
+            
+            return responsibility
+            
+        except Exception as e:
+            app_logger.error(f"Error generating agent responsibility: {e}")
+            # Fallback to a generic but better description
+            return f"Autonomous agent responsible for automating and optimizing the workflow described in the requirements"
+
     async def _generate_agent_name(self, requirements: Dict[str, Any], suffix: str = None) -> str:
         """Generate a meaningful agent name based on requirements with optional suffix for uniqueness."""
         
@@ -740,6 +975,7 @@ class AgenticRecommendationService:
         
         # Extract key domain/function words from description
         domain_keywords = {
+            'order_management': ['order', 'orders', 'ordering', 'food', 'restaurant', 'kitchen', 'chef', 'wait', 'waitress', 'waiter', 'menu'],
             'user': ['user', 'customer', 'client', 'account', 'deceased', 'care'],
             'data': ['data', 'database', 'information', 'record', 'file', 'document'],
             'email': ['email', 'mail', 'notification', 'message', 'letter'],
@@ -767,6 +1003,7 @@ class AgenticRecommendationService:
         
         if primary_domain:
             domain_names = {
+                'order_management': 'Order Management Agent',
                 'user': 'User Management Agent',
                 'data': 'Data Processing Agent', 
                 'email': 'Communication Agent',
@@ -792,6 +1029,7 @@ class AgenticRecommendationService:
             if len(detected_domains) > 1:
                 secondary_domain = detected_domains[1]
                 secondary_names = {
+                    'order_management': 'Order',
                     'user': 'User',
                     'data': 'Data', 
                     'email': 'Communication',
@@ -984,7 +1222,7 @@ class AgenticRecommendationService:
             agentic_pattern = {
                 "pattern_id": multi_agent_pattern["pattern_id"],
                 "name": multi_agent_pattern["name"],
-                "description": f"{multi_agent_pattern['description']} for {requirements.get('description', 'complex automation task')[:100]}",
+                "description": f"{multi_agent_pattern['description']} for {requirements.get('description', 'complex automation task')}",
                 "feasibility": "Fully Automatable",
                 "pattern_type": ["multi_agent_system", design.architecture_type.value],
                 "autonomy_level": design.autonomy_score,

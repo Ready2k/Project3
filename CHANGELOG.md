@@ -7,6 +7,87 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.0] - 2025-08-24 - Complete System Enhancement
+
+### Added
+- **Resume Previous Session Feature**: Complete session continuity functionality
+  - New "Resume Previous Session" input method in Analysis tab
+  - Session ID validation with UUID format checking and helpful error messages
+  - Complete session state restoration (phase, progress, requirements, recommendations)
+  - Session information display with copy-to-clipboard functionality
+  - Cross-session compatibility with all input methods (Text, File Upload, Jira Integration)
+  - Comprehensive help system with "Where do I find my Session ID?" guidance
+- **Enhanced Mermaid Code Extraction**: Robust handling of mixed LLM responses
+  - Smart code extraction from responses with explanatory text
+  - Multiple format support (markdown blocks, explanations before/after, clean code)
+  - Regex pattern matching for valid diagram types (flowchart, graph, sequenceDiagram, C4Context, etc.)
+  - Syntax validation to ensure extracted code is valid Mermaid
+  - Enhanced prompts with explicit instructions to discourage explanatory text
+- **Jira Integration Agent Name Fix**: Dynamic, context-aware agent naming
+  - Replaced hardcoded "Primary Autonomous Agent" with intelligent agent name generation
+  - Context-aware names based on requirement content (User Management Agent, Communication Agent, etc.)
+  - Simplified Jira integration to remove metadata pollution from requirements
+  - Dynamic agent naming across all agent creation methods (single-agent, custom pattern, scope-limited)
+- **Agentic Recommendation Service Bug Fix**: Critical attribute access fixes
+  - Fixed `'AutonomyAssessment' object has no attribute 'workflow_automation'` error
+  - Corrected attribute access in pattern saving methods (`workflow_automation` → `workflow_coverage`)
+  - Fixed enum value access for proper serialization (`reasoning_complexity.value`)
+  - Consistent implementation across both `_save_agentic_pattern()` and `_save_multi_agent_pattern()` methods
+
+### Changed
+- **Session Management**: Enhanced with resume functionality and improved user experience
+- **Agent Naming**: All agents now get meaningful, context-specific names instead of generic labels
+- **Jira Integration**: Streamlined to focus on essential fields (description combining summary + description)
+- **Mermaid Processing**: Enhanced extraction and validation pipeline for better diagram rendering
+- **Pattern Saving**: Fixed critical bugs preventing APAT pattern creation and saving
+
+### Fixed
+- **Session Resume Issues**: Users can now return to any previous analysis session using session ID
+- **Mermaid Rendering Failures**: LLM responses with explanatory text no longer break diagram rendering
+- **Generic Agent Names**: All agents in diagrams now show proper, contextual names
+- **Pattern Saving Crashes**: Agentic recommendation service no longer crashes during pattern creation
+- **Jira Metadata Pollution**: Jira ticket fields no longer pollute agent generation process
+- **AttributeError Crashes**: Fixed attribute access issues in `AutonomyAssessment` class usage
+
+### Technical Details
+- **Resume Session Implementation**:
+  - New `render_resume_session()` method with user-friendly form interface
+  - Regex pattern matching for UUID format with case-insensitive support
+  - Integration with existing `/status/{session_id}` endpoint for session retrieval
+  - Enhanced error handling with comprehensive error messages and troubleshooting tips
+- **Mermaid Code Extraction**:
+  - New `_extract_mermaid_code()` function with intelligent extraction logic
+  - Enhanced `_looks_like_mermaid_code()` function for syntax validation
+  - Multiple fallback strategies for different response formats
+  - Integration with existing `_clean_mermaid_code()` processing pipeline
+- **Agent Name Generation**:
+  - New `_generate_agent_name()` method with 14 domain categories
+  - Intelligent keyword matching for user, data, email, report, workflow, integration, monitoring, security
+  - Action-based fallbacks for comprehensive coverage
+- **Jira Service Fixes**:
+  - Streamlined `map_ticket_to_requirements()` to only use summary and description
+  - Removed extra Jira fields (priority, status, assignee, reporter, labels, components) from requirements
+- **Agentic Service Fixes**:
+  - Corrected attribute names in pattern saving methods (lines ~936 and ~1029)
+  - Fixed enum value access for proper JSON serialization
+  - Enhanced error handling and validation in pattern creation
+
+### Results
+- ✅ Users can resume any previous session for improved workflow continuity
+- ✅ Diagrams render correctly with mixed LLM responses containing explanatory text
+- ✅ Agent names are context-specific and meaningful in all diagrams
+- ✅ Agentic recommendation service works reliably without crashes
+- ✅ APAT pattern creation and saving functions properly
+- ✅ Enhanced collaboration through session ID sharing
+- ✅ Improved system stability and user experience across all features
+
+### Best Practices Applied
+- Session continuity for long-running processes with robust validation
+- Intelligent content extraction with multiple fallback strategies
+- Dynamic, context-specific naming instead of hardcoded values
+- Systematic bug fixing with comprehensive testing
+- Enhanced user experience through improved error handling and guidance
+
 ## [2.5.0] - 2025-08-23 - Dynamic Schema System
 
 ### Added

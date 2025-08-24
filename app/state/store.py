@@ -75,6 +75,7 @@ class Recommendation:
     enhanced_tech_stack: Optional[List[str]] = None
     architecture_explanation: Optional[str] = None
     agent_roles: Optional[List[Dict[str, Any]]] = None
+    necessity_assessment: Optional[Any] = None  # AgenticNecessityAssessment
     
     def dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
