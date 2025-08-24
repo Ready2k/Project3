@@ -1,0 +1,2087 @@
+{
+  "categories": {
+    "agentic": {
+      "description": "Autonomous agent frameworks and multi-agent system platforms",
+      "name": "Agentic AI & Multi-Agent Systems",
+      "technologies": [
+        "langchain",
+        "crewai",
+        "microsoft_semantic_kernel",
+        "autogen",
+        "langchain_multi_agent",
+        "gpt4o_reasoning",
+        "drools",
+        "prolog",
+        "neo4j_agents",
+        "pega_workflow"
+      ]
+    },
+    "ai": {
+      "description": "Artificial intelligence and machine learning services",
+      "name": "AI & Machine Learning",
+      "technologies": [
+        "openai",
+        "claude",
+        "huggingface",
+        "spacy",
+        "dialogflow",
+        "aws_translate",
+        "aws_comprehend",
+        "aws_textract",
+        "tesseract",
+        "sentence_transformers",
+        "azure_cognitive_services",
+        "tailwind_css"
+      ]
+    },
+    "automation": {
+      "description": "Browser automation and testing frameworks",
+      "name": "Automation & Testing",
+      "technologies": [
+        "selenium"
+      ]
+    },
+    "cloud": {
+      "description": "Cloud services and infrastructure management",
+      "name": "Cloud & Infrastructure",
+      "technologies": [
+        "aws",
+        "azure",
+        "gcp",
+        "aws_lambda",
+        "azure_functions"
+      ]
+    },
+    "communication": {
+      "description": "APIs, messaging, and third-party integrations",
+      "name": "Communication & Integration",
+      "technologies": [
+        "twilio",
+        "imap",
+        "aws_ses"
+      ]
+    },
+    "data": {
+      "description": "Data processing, ORM, and database abstraction",
+      "name": "Data Processing & ORM",
+      "technologies": [
+        "sqlalchemy"
+      ]
+    },
+    "databases": {
+      "description": "Data storage and database management systems",
+      "name": "Databases & Storage",
+      "technologies": [
+        "postgresql",
+        "mongodb",
+        "redis",
+        "elasticsearch",
+        "sqlite"
+      ]
+    },
+    "frameworks": {
+      "description": "Frameworks for building web applications and APIs",
+      "name": "Web Frameworks & APIs",
+      "technologies": [
+        "fastapi",
+        "django",
+        "express",
+        "spring"
+      ]
+    },
+    "infrastructure": {
+      "description": "Container orchestration and deployment tools",
+      "name": "Infrastructure & DevOps",
+      "technologies": [
+        "docker",
+        "kubernetes"
+      ]
+    },
+    "integration": {
+      "description": "API standards and integration platforms",
+      "name": "APIs & Integration",
+      "technologies": [
+        "rest_api",
+        "microsoft_graph",
+        "salesforce_api",
+        "stripe",
+        "vercel",
+        "supabase",
+        "custom_internal"
+      ]
+    },
+    "languages": {
+      "description": "Core programming languages used for development",
+      "name": "Programming Languages",
+      "technologies": [
+        "python",
+        "node.js",
+        "java"
+      ]
+    },
+    "processing": {
+      "description": "Asynchronous processing and message handling",
+      "name": "Message Queues & Processing",
+      "technologies": [
+        "celery",
+        "kafka",
+        "rabbitmq"
+      ]
+    },
+    "scheduling": {
+      "description": "Job scheduling and task automation",
+      "name": "Scheduling & Jobs",
+      "technologies": [
+        "cron"
+      ]
+    },
+    "search": {
+      "description": "Search engines and similarity matching",
+      "name": "Search & Similarity",
+      "technologies": [
+        "faiss"
+      ]
+    },
+    "security": {
+      "description": "Security, authentication, and privacy tools",
+      "name": "Security & Authentication",
+      "technologies": [
+        "microsoft_presidio",
+        "oauth2",
+        "openpgp",
+        "opa"
+      ]
+    },
+    "storage": {
+      "description": "File storage and object storage services",
+      "name": "File & Object Storage",
+      "technologies": [
+        "aws_s3"
+      ]
+    },
+    "testing": {
+      "description": "Testing and quality assurance tools",
+      "name": "Testing Frameworks",
+      "technologies": [
+        "pytest"
+      ]
+    },
+    "validation": {
+      "description": "Data validation and schema enforcement",
+      "name": "Validation & Schema",
+      "technologies": [
+        "jsonschema"
+      ]
+    }
+  },
+  "metadata": {
+    "description": "Comprehensive technology catalog for AAA system recommendations",
+    "last_auto_update": "2025-08-14T08:44:57.363198",
+    "last_updated": "2025-08-24",
+    "total_technologies": 64,
+    "version": "2.2.0",
+    "release_name": "Agentic AI Enhancement",
+    "release_date": "2025-08-24"
+  },
+  "technologies": {
+    "aws": {
+      "alternatives": [
+        "azure",
+        "gcp",
+        "on-premises"
+      ],
+      "category": "cloud",
+      "description": "Amazon Web Services cloud computing platform with comprehensive service portfolio",
+      "integrates_with": [
+        "python",
+        "node.js",
+        "java",
+        "docker"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "AWS",
+      "tags": [
+        "cloud",
+        "infrastructure",
+        "serverless",
+        "managed-services"
+      ],
+      "use_cases": [
+        "cloud_hosting",
+        "serverless",
+        "managed_databases",
+        "ai_services"
+      ]
+    },
+    "aws_comprehend": {
+      "alternatives": [
+        "google_nlp",
+        "azure_text_analytics",
+        "spacy"
+      ],
+      "category": "ai",
+      "description": "Natural language processing service for sentiment analysis and entity recognition",
+      "integrates_with": [
+        "aws",
+        "python",
+        "node.js",
+        "lambda"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "AWS Comprehend",
+      "tags": [
+        "nlp",
+        "aws",
+        "sentiment",
+        "entity-recognition"
+      ],
+      "use_cases": [
+        "sentiment_analysis",
+        "entity_extraction",
+        "text_classification",
+        "content_analysis"
+      ]
+    },
+    "aws_lambda": {
+      "alternatives": [
+        "azure_functions",
+        "google_cloud_functions",
+        "docker"
+      ],
+      "category": "cloud",
+      "description": "Serverless compute service for running code without managing servers",
+      "integrates_with": [
+        "python",
+        "node.js",
+        "java",
+        "aws"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "AWS Lambda",
+      "tags": [
+        "serverless",
+        "aws",
+        "functions",
+        "event-driven"
+      ],
+      "use_cases": [
+        "event_processing",
+        "api_backends",
+        "automation",
+        "microservices"
+      ]
+    },
+    "aws_s3": {
+      "alternatives": [
+        "azure_blob",
+        "google_cloud_storage",
+        "minio"
+      ],
+      "category": "storage",
+      "description": "Amazon Simple Storage Service for scalable object storage",
+      "integrates_with": [
+        "aws",
+        "python",
+        "node.js",
+        "lambda"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "AWS S3",
+      "tags": [
+        "storage",
+        "aws",
+        "object-storage",
+        "scalable"
+      ],
+      "use_cases": [
+        "file_storage",
+        "backup",
+        "static_hosting",
+        "data_archiving"
+      ]
+    },
+    "aws_ses": {
+      "alternatives": [
+        "sendgrid",
+        "mailgun",
+        "smtp"
+      ],
+      "category": "communication",
+      "description": "Amazon Simple Email Service for sending transactional and marketing emails",
+      "integrates_with": [
+        "aws",
+        "python",
+        "node.js",
+        "lambda"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "AWS SES",
+      "tags": [
+        "email",
+        "aws",
+        "transactional",
+        "marketing"
+      ],
+      "use_cases": [
+        "transactional_emails",
+        "notifications",
+        "marketing_campaigns",
+        "email_delivery"
+      ]
+    },
+    "aws_textract": {
+      "alternatives": [
+        "tesseract",
+        "google_vision",
+        "azure_form_recognizer"
+      ],
+      "category": "ai",
+      "description": "OCR service for extracting text and data from documents and images",
+      "integrates_with": [
+        "aws",
+        "python",
+        "node.js",
+        "s3"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "AWS Textract",
+      "tags": [
+        "ocr",
+        "aws",
+        "document-processing",
+        "text-extraction"
+      ],
+      "use_cases": [
+        "document_processing",
+        "ocr",
+        "form_extraction",
+        "invoice_processing"
+      ]
+    },
+    "aws_translate": {
+      "alternatives": [
+        "google_translate",
+        "azure_translator",
+        "local_nmt"
+      ],
+      "category": "ai",
+      "description": "Neural machine translation service for real-time text translation",
+      "integrates_with": [
+        "aws",
+        "python",
+        "node.js",
+        "rest_api"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "AWS Translate",
+      "tags": [
+        "translation",
+        "aws",
+        "neural",
+        "multilingual"
+      ],
+      "use_cases": [
+        "text_translation",
+        "multilingual_support",
+        "content_localization",
+        "real_time_translation"
+      ]
+    },
+    "azure": {
+      "alternatives": [
+        "aws",
+        "gcp",
+        "on-premises"
+      ],
+      "category": "cloud",
+      "description": "Microsoft cloud platform with strong enterprise integration and AI services",
+      "integrates_with": [
+        "node.js",
+        "python",
+        "java",
+        "active-directory"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "Azure",
+      "tags": [
+        "cloud",
+        "microsoft",
+        "enterprise",
+        "ai",
+        "active-directory"
+      ],
+      "use_cases": [
+        "enterprise_cloud",
+        "ai_services",
+        "identity_management",
+        "hybrid_cloud"
+      ]
+    },
+    "azure_cognitive_services": {
+      "alternatives": [
+        "aws_ai_services",
+        "google_ai",
+        "open_source_models"
+      ],
+      "category": "ai",
+      "description": "Microsoft's AI services for vision, speech, language, and decision making",
+      "integrates_with": [
+        "azure",
+        "python",
+        "node.js",
+        "rest_api"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "Azure Cognitive Services",
+      "tags": [
+        "ai",
+        "azure",
+        "cognitive",
+        "vision",
+        "speech"
+      ],
+      "use_cases": [
+        "document_analysis",
+        "text_extraction",
+        "image_processing",
+        "speech_recognition"
+      ]
+    },
+    "azure_functions": {
+      "alternatives": [
+        "aws_lambda",
+        "google_cloud_functions",
+        "docker"
+      ],
+      "category": "cloud",
+      "description": "Serverless compute service on Microsoft Azure platform",
+      "integrates_with": [
+        "node.js",
+        "python",
+        "java",
+        "azure"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "Azure Functions",
+      "tags": [
+        "serverless",
+        "azure",
+        "functions",
+        "event-driven"
+      ],
+      "use_cases": [
+        "event_processing",
+        "api_backends",
+        "automation",
+        "integration"
+      ]
+    },
+    "celery": {
+      "alternatives": [
+        "rq",
+        "dramatiq",
+        "kafka"
+      ],
+      "category": "processing",
+      "description": "Distributed task queue for asynchronous processing in Python",
+      "integrates_with": [
+        "python",
+        "redis",
+        "rabbitmq",
+        "postgresql"
+      ],
+      "license": "BSD",
+      "maturity": "stable",
+      "name": "Celery",
+      "tags": [
+        "python",
+        "async",
+        "queue",
+        "distributed",
+        "tasks"
+      ],
+      "use_cases": [
+        "background_tasks",
+        "async_processing",
+        "job_queues",
+        "scheduling"
+      ]
+    },
+    "claude": {
+      "alternatives": [
+        "openai",
+        "huggingface",
+        "local_llm"
+      ],
+      "category": "ai",
+      "description": "Anthropic's AI assistant for analysis, writing, and reasoning tasks",
+      "integrates_with": [
+        "python",
+        "node.js",
+        "rest_api",
+        "aws_bedrock"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "Claude",
+      "tags": [
+        "llm",
+        "anthropic",
+        "analysis",
+        "ai"
+      ],
+      "use_cases": [
+        "text_analysis",
+        "content_generation",
+        "reasoning",
+        "automation"
+      ]
+    },
+    "cron": {
+      "alternatives": [
+        "systemd_timers",
+        "kubernetes_cronjobs",
+        "aws_eventbridge"
+      ],
+      "category": "scheduling",
+      "description": "Time-based job scheduler for Unix-like operating systems",
+      "integrates_with": [
+        "linux",
+        "python",
+        "bash",
+        "docker"
+      ],
+      "license": "Unix",
+      "maturity": "stable",
+      "name": "Cron",
+      "tags": [
+        "scheduling",
+        "unix",
+        "automation",
+        "jobs"
+      ],
+      "use_cases": [
+        "job_scheduling",
+        "automation",
+        "maintenance_tasks",
+        "periodic_execution"
+      ]
+    },
+    "custom_internal": {
+      "added_date": "2025-08-14",
+      "category": "integration",
+      "description": "Internal company API for data access",
+      "license": "proprietary",
+      "maturity": "stable",
+      "name": "Custom Internal API",
+      "tags": [
+        "internal",
+        "api",
+        "custom"
+      ]
+    },
+    "dialogflow": {
+      "alternatives": [
+        "aws_lex",
+        "azure_bot",
+        "rasa"
+      ],
+      "category": "ai",
+      "description": "Google's conversational AI platform for building chatbots and voice assistants",
+      "integrates_with": [
+        "node.js",
+        "python",
+        "gcp",
+        "twilio"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "Dialogflow",
+      "tags": [
+        "chatbot",
+        "nlp",
+        "conversational-ai",
+        "google"
+      ],
+      "use_cases": [
+        "chatbots",
+        "voice_assistants",
+        "customer_support",
+        "conversational_interfaces"
+      ]
+    },
+    "django": {
+      "alternatives": [
+        "fastapi",
+        "flask",
+        "spring"
+      ],
+      "category": "frameworks",
+      "description": "High-level Python web framework for rapid development with built-in admin and ORM",
+      "integrates_with": [
+        "python",
+        "postgresql",
+        "redis",
+        "celery"
+      ],
+      "license": "BSD",
+      "maturity": "stable",
+      "name": "Django",
+      "tags": [
+        "python",
+        "web",
+        "orm",
+        "admin",
+        "mvc"
+      ],
+      "use_cases": [
+        "web_applications",
+        "admin_interfaces",
+        "content_management",
+        "apis"
+      ]
+    },
+    "docker": {
+      "alternatives": [
+        "podman",
+        "containerd",
+        "vm"
+      ],
+      "category": "infrastructure",
+      "description": "Containerization platform for packaging and deploying applications",
+      "integrates_with": [
+        "kubernetes",
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "license": "Apache 2.0",
+      "maturity": "stable",
+      "name": "Docker",
+      "tags": [
+        "containers",
+        "deployment",
+        "devops",
+        "isolation"
+      ],
+      "use_cases": [
+        "containerization",
+        "deployment",
+        "development",
+        "microservices"
+      ]
+    },
+    "elasticsearch": {
+      "alternatives": [
+        "solr",
+        "postgresql",
+        "mongodb"
+      ],
+      "category": "databases",
+      "description": "Distributed search and analytics engine for full-text search and log analysis",
+      "integrates_with": [
+        "python",
+        "java",
+        "node.js",
+        "kafka"
+      ],
+      "license": "Elastic",
+      "maturity": "stable",
+      "name": "ElasticSearch",
+      "tags": [
+        "search",
+        "analytics",
+        "distributed",
+        "json",
+        "logs"
+      ],
+      "use_cases": [
+        "full_text_search",
+        "log_analysis",
+        "document_search",
+        "analytics"
+      ]
+    },
+    "express": {
+      "alternatives": [
+        "fastapi",
+        "django",
+        "spring"
+      ],
+      "category": "frameworks",
+      "description": "Minimal and flexible Node.js web application framework",
+      "integrates_with": [
+        "node.js",
+        "mongodb",
+        "redis",
+        "postgresql"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "Express",
+      "tags": [
+        "node.js",
+        "web",
+        "api",
+        "middleware"
+      ],
+      "use_cases": [
+        "api_development",
+        "web_services",
+        "middleware",
+        "real_time_apps"
+      ]
+    },
+    "faiss": {
+      "alternatives": [
+        "elasticsearch",
+        "pinecone",
+        "weaviate"
+      ],
+      "category": "search",
+      "description": "Facebook's library for efficient similarity search and clustering of dense vectors",
+      "integrates_with": [
+        "python",
+        "sentence_transformers",
+        "huggingface",
+        "numpy"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "FAISS",
+      "tags": [
+        "vector-search",
+        "similarity",
+        "embeddings",
+        "facebook"
+      ],
+      "use_cases": [
+        "vector_search",
+        "similarity_matching",
+        "embeddings",
+        "recommendation_systems"
+      ]
+    },
+    "fastapi": {
+      "alternatives": [
+        "django",
+        "flask",
+        "express"
+      ],
+      "category": "frameworks",
+      "description": "Modern, fast web framework for building APIs with Python, featuring automatic OpenAPI documentation",
+      "integrates_with": [
+        "python",
+        "postgresql",
+        "redis",
+        "celery"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "FastAPI",
+      "tags": [
+        "python",
+        "api",
+        "async",
+        "web",
+        "openapi"
+      ],
+      "use_cases": [
+        "api_development",
+        "microservices",
+        "automation_endpoints",
+        "ml_serving"
+      ]
+    },
+    "gcp": {
+      "alternatives": [
+        "aws",
+        "azure",
+        "on-premises"
+      ],
+      "category": "cloud",
+      "description": "Google's cloud platform with strong AI/ML and data analytics capabilities",
+      "integrates_with": [
+        "python",
+        "java",
+        "node.js",
+        "tensorflow"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "Google Cloud Platform",
+      "tags": [
+        "cloud",
+        "google",
+        "ai",
+        "ml",
+        "analytics"
+      ],
+      "use_cases": [
+        "ai_ml",
+        "data_analytics",
+        "cloud_hosting",
+        "big_data"
+      ]
+    },
+    "huggingface": {
+      "alternatives": [
+        "openai",
+        "spacy",
+        "tensorflow"
+      ],
+      "category": "ai",
+      "description": "Open-source library for state-of-the-art NLP models and transformers",
+      "integrates_with": [
+        "python",
+        "pytorch",
+        "tensorflow",
+        "fastapi"
+      ],
+      "license": "Apache 2.0",
+      "maturity": "stable",
+      "name": "HuggingFace Transformers",
+      "tags": [
+        "nlp",
+        "transformers",
+        "ml",
+        "open-source"
+      ],
+      "use_cases": [
+        "nlp",
+        "text_classification",
+        "sentiment_analysis",
+        "local_inference"
+      ]
+    },
+    "imap": {
+      "alternatives": [
+        "pop3",
+        "exchange_web_services",
+        "microsoft_graph"
+      ],
+      "category": "communication",
+      "description": "Internet Message Access Protocol for email retrieval and management",
+      "integrates_with": [
+        "python",
+        "node.js",
+        "email_clients",
+        "smtp"
+      ],
+      "license": "IETF",
+      "maturity": "stable",
+      "name": "IMAP",
+      "tags": [
+        "email",
+        "protocol",
+        "messaging",
+        "retrieval"
+      ],
+      "use_cases": [
+        "email_processing",
+        "message_retrieval",
+        "email_automation",
+        "inbox_monitoring"
+      ]
+    },
+    "java": {
+      "alternatives": [
+        "python",
+        "c#",
+        "go"
+      ],
+      "category": "languages",
+      "description": "Enterprise-grade programming language for large-scale applications",
+      "integrates_with": [
+        "spring",
+        "postgresql",
+        "kafka",
+        "elasticsearch"
+      ],
+      "license": "Oracle",
+      "maturity": "stable",
+      "name": "Java",
+      "tags": [
+        "programming",
+        "enterprise",
+        "jvm",
+        "backend"
+      ],
+      "use_cases": [
+        "enterprise_apps",
+        "microservices",
+        "big_data",
+        "api_development"
+      ]
+    },
+    "jsonschema": {
+      "alternatives": [
+        "pydantic",
+        "joi",
+        "ajv"
+      ],
+      "category": "validation",
+      "description": "Vocabulary for validating JSON data structure and content",
+      "integrates_with": [
+        "python",
+        "node.js",
+        "fastapi",
+        "rest_api"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "JSON Schema",
+      "tags": [
+        "validation",
+        "json",
+        "schema",
+        "data-quality"
+      ],
+      "use_cases": [
+        "data_validation",
+        "api_contracts",
+        "configuration_validation",
+        "data_quality"
+      ]
+    },
+    "kafka": {
+      "alternatives": [
+        "rabbitmq",
+        "redis",
+        "aws_sqs"
+      ],
+      "category": "processing",
+      "description": "Distributed streaming platform for building real-time data pipelines",
+      "integrates_with": [
+        "java",
+        "python",
+        "node.js",
+        "elasticsearch"
+      ],
+      "license": "Apache 2.0",
+      "maturity": "stable",
+      "name": "Apache Kafka",
+      "tags": [
+        "streaming",
+        "messaging",
+        "distributed",
+        "real-time"
+      ],
+      "use_cases": [
+        "event_streaming",
+        "data_pipelines",
+        "messaging",
+        "real_time_analytics"
+      ]
+    },
+    "kubernetes": {
+      "alternatives": [
+        "docker_swarm",
+        "nomad",
+        "ecs"
+      ],
+      "category": "infrastructure",
+      "description": "Container orchestration platform for managing containerized applications at scale",
+      "integrates_with": [
+        "docker",
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "license": "Apache 2.0",
+      "maturity": "stable",
+      "name": "Kubernetes",
+      "tags": [
+        "orchestration",
+        "containers",
+        "scaling",
+        "devops"
+      ],
+      "use_cases": [
+        "container_orchestration",
+        "scaling",
+        "microservices",
+        "devops"
+      ]
+    },
+    "microsoft_graph": {
+      "alternatives": [
+        "exchange_web_services",
+        "outlook_api",
+        "sharepoint_api"
+      ],
+      "category": "integration",
+      "description": "Unified API endpoint for accessing Microsoft 365 services and data",
+      "integrates_with": [
+        "python",
+        "node.js",
+        "azure",
+        "oauth2"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "Microsoft Graph",
+      "tags": [
+        "microsoft",
+        "api",
+        "office365",
+        "integration"
+      ],
+      "use_cases": [
+        "email_integration",
+        "calendar_access",
+        "file_sharing",
+        "user_management"
+      ]
+    },
+    "microsoft_presidio": {
+      "alternatives": [
+        "aws_macie",
+        "google_dlp",
+        "custom_regex"
+      ],
+      "category": "security",
+      "description": "Data protection and de-identification SDK for PII detection and anonymization",
+      "integrates_with": [
+        "python",
+        "spacy",
+        "fastapi",
+        "azure"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "Microsoft Presidio",
+      "tags": [
+        "pii",
+        "privacy",
+        "anonymization",
+        "security"
+      ],
+      "use_cases": [
+        "pii_detection",
+        "data_anonymization",
+        "privacy_compliance",
+        "data_protection"
+      ]
+    },
+    "mongodb": {
+      "alternatives": [
+        "postgresql",
+        "elasticsearch",
+        "dynamodb"
+      ],
+      "category": "databases",
+      "description": "NoSQL document database for flexible, scalable data storage",
+      "integrates_with": [
+        "node.js",
+        "python",
+        "java",
+        "express"
+      ],
+      "license": "SSPL",
+      "maturity": "stable",
+      "name": "MongoDB",
+      "tags": [
+        "database",
+        "nosql",
+        "document",
+        "json",
+        "scalable"
+      ],
+      "use_cases": [
+        "document_storage",
+        "content_management",
+        "real_time_apps",
+        "analytics"
+      ]
+    },
+    "node.js": {
+      "alternatives": [
+        "python",
+        "java",
+        "go"
+      ],
+      "category": "languages",
+      "description": "JavaScript runtime for server-side applications and real-time systems",
+      "integrates_with": [
+        "express",
+        "mongodb",
+        "redis",
+        "aws"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "Node.js",
+      "tags": [
+        "javascript",
+        "runtime",
+        "real-time",
+        "api",
+        "backend"
+      ],
+      "use_cases": [
+        "api_development",
+        "real_time_apps",
+        "chatbots",
+        "microservices"
+      ]
+    },
+    "oauth2": {
+      "alternatives": [
+        "jwt",
+        "saml",
+        "openid_connect"
+      ],
+      "category": "security",
+      "description": "Industry-standard protocol for authorization and secure API access",
+      "integrates_with": [
+        "fastapi",
+        "express",
+        "spring",
+        "azure_ad"
+      ],
+      "license": "IETF",
+      "maturity": "stable",
+      "name": "OAuth 2.0",
+      "tags": [
+        "auth",
+        "security",
+        "api",
+        "standard"
+      ],
+      "use_cases": [
+        "api_authorization",
+        "third_party_auth",
+        "secure_access",
+        "identity_management"
+      ]
+    },
+    "opa": {
+      "alternatives": [
+        "casbin",
+        "authz",
+        "custom_rbac"
+      ],
+      "category": "security",
+      "description": "Policy engine for unified policy enforcement across the stack",
+      "integrates_with": [
+        "kubernetes",
+        "envoy",
+        "fastapi",
+        "microservices"
+      ],
+      "license": "Apache 2.0",
+      "maturity": "stable",
+      "name": "Open Policy Agent",
+      "tags": [
+        "policy",
+        "security",
+        "authorization",
+        "governance"
+      ],
+      "use_cases": [
+        "policy_enforcement",
+        "authorization",
+        "compliance",
+        "governance"
+      ]
+    },
+    "openai": {
+      "alternatives": [
+        "claude",
+        "huggingface",
+        "local_llm"
+      ],
+      "category": "ai",
+      "description": "AI platform providing GPT models for text generation, completion, and analysis",
+      "integrates_with": [
+        "python",
+        "node.js",
+        "rest_api",
+        "fastapi"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "OpenAI",
+      "tags": [
+        "llm",
+        "gpt",
+        "text-generation",
+        "ai"
+      ],
+      "use_cases": [
+        "text_generation",
+        "content_creation",
+        "analysis",
+        "automation"
+      ]
+    },
+    "openpgp": {
+      "alternatives": [
+        "s/mime",
+        "x509",
+        "jwt"
+      ],
+      "category": "security",
+      "description": "Encryption standard for secure communication and digital signatures",
+      "integrates_with": [
+        "python",
+        "java",
+        "node.js",
+        "email"
+      ],
+      "license": "IETF",
+      "maturity": "stable",
+      "name": "OpenPGP",
+      "tags": [
+        "encryption",
+        "signatures",
+        "security",
+        "standard"
+      ],
+      "use_cases": [
+        "email_encryption",
+        "digital_signatures",
+        "secure_communication",
+        "identity_verification"
+      ]
+    },
+    "postgresql": {
+      "alternatives": [
+        "mysql",
+        "sqlite",
+        "mongodb"
+      ],
+      "category": "databases",
+      "description": "Advanced open-source relational database with JSON support and full-text search",
+      "integrates_with": [
+        "python",
+        "node.js",
+        "java",
+        "sqlalchemy"
+      ],
+      "license": "PostgreSQL",
+      "maturity": "stable",
+      "name": "PostgreSQL",
+      "tags": [
+        "database",
+        "relational",
+        "sql",
+        "json",
+        "acid"
+      ],
+      "use_cases": [
+        "transactional_data",
+        "analytics",
+        "document_storage",
+        "full_text_search"
+      ]
+    },
+    "pytest": {
+      "alternatives": [
+        "unittest",
+        "nose2",
+        "testify"
+      ],
+      "category": "testing",
+      "description": "Testing framework for Python with fixtures and plugins",
+      "integrates_with": [
+        "python",
+        "fastapi",
+        "django",
+        "coverage"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "pytest",
+      "tags": [
+        "testing",
+        "python",
+        "fixtures",
+        "tdd"
+      ],
+      "use_cases": [
+        "unit_testing",
+        "integration_testing",
+        "tdd",
+        "test_automation"
+      ]
+    },
+    "python": {
+      "alternatives": [
+        "java",
+        "node.js",
+        "go"
+      ],
+      "category": "languages",
+      "description": "High-level programming language for automation, data processing, and AI/ML applications",
+      "integrates_with": [
+        "fastapi",
+        "django",
+        "flask",
+        "postgresql",
+        "redis"
+      ],
+      "license": "PSF",
+      "maturity": "stable",
+      "name": "Python",
+      "tags": [
+        "programming",
+        "automation",
+        "ai",
+        "data-science",
+        "backend"
+      ],
+      "use_cases": [
+        "automation",
+        "api_development",
+        "data_processing",
+        "ml_inference"
+      ]
+    },
+    "rabbitmq": {
+      "alternatives": [
+        "kafka",
+        "redis",
+        "aws_sqs"
+      ],
+      "category": "processing",
+      "description": "Message broker for reliable message queuing and routing",
+      "integrates_with": [
+        "python",
+        "java",
+        "node.js",
+        "celery"
+      ],
+      "license": "MPL 2.0",
+      "maturity": "stable",
+      "name": "RabbitMQ",
+      "tags": [
+        "messaging",
+        "queue",
+        "amqp",
+        "reliable"
+      ],
+      "use_cases": [
+        "message_queuing",
+        "task_distribution",
+        "microservices",
+        "event_driven"
+      ]
+    },
+    "redis": {
+      "alternatives": [
+        "memcached",
+        "hazelcast",
+        "elasticsearch"
+      ],
+      "category": "databases",
+      "description": "In-memory data structure store for caching, sessions, and message queues",
+      "integrates_with": [
+        "python",
+        "node.js",
+        "java",
+        "celery"
+      ],
+      "license": "BSD",
+      "maturity": "stable",
+      "name": "Redis",
+      "tags": [
+        "cache",
+        "in-memory",
+        "key-value",
+        "pub-sub",
+        "sessions"
+      ],
+      "use_cases": [
+        "caching",
+        "session_storage",
+        "message_queues",
+        "real_time_data"
+      ]
+    },
+    "rest_api": {
+      "alternatives": [
+        "graphql",
+        "grpc",
+        "soap"
+      ],
+      "category": "integration",
+      "description": "Architectural style for designing networked applications using HTTP",
+      "integrates_with": [
+        "fastapi",
+        "express",
+        "spring",
+        "http_clients"
+      ],
+      "license": "Standard",
+      "maturity": "stable",
+      "name": "REST API",
+      "tags": [
+        "api",
+        "http",
+        "web-services",
+        "integration"
+      ],
+      "use_cases": [
+        "api_design",
+        "microservices",
+        "integration",
+        "web_services"
+      ]
+    },
+    "salesforce_api": {
+      "alternatives": [
+        "hubspot_api",
+        "dynamics_api",
+        "custom_crm"
+      ],
+      "category": "integration",
+      "description": "APIs for integrating with Salesforce CRM and platform services",
+      "integrates_with": [
+        "python",
+        "node.js",
+        "rest_api",
+        "oauth2"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "Salesforce API",
+      "tags": [
+        "crm",
+        "salesforce",
+        "api",
+        "integration"
+      ],
+      "use_cases": [
+        "crm_integration",
+        "customer_data",
+        "sales_automation",
+        "service_management"
+      ]
+    },
+    "selenium": {
+      "alternatives": [
+        "playwright",
+        "puppeteer",
+        "cypress"
+      ],
+      "category": "automation",
+      "description": "Web browser automation framework for testing and scraping",
+      "integrates_with": [
+        "python",
+        "java",
+        "node.js",
+        "chrome"
+      ],
+      "license": "Apache 2.0",
+      "maturity": "stable",
+      "name": "Selenium",
+      "tags": [
+        "automation",
+        "browser",
+        "testing",
+        "scraping"
+      ],
+      "use_cases": [
+        "web_automation",
+        "ui_testing",
+        "web_scraping",
+        "rpa"
+      ]
+    },
+    "sentence_transformers": {
+      "alternatives": [
+        "openai_embeddings",
+        "universal_sentence_encoder",
+        "word2vec"
+      ],
+      "category": "ai",
+      "description": "Python framework for state-of-the-art sentence and text embeddings",
+      "integrates_with": [
+        "python",
+        "huggingface",
+        "faiss",
+        "pytorch"
+      ],
+      "license": "Apache 2.0",
+      "maturity": "stable",
+      "name": "Sentence Transformers",
+      "tags": [
+        "embeddings",
+        "nlp",
+        "similarity",
+        "transformers"
+      ],
+      "use_cases": [
+        "text_embeddings",
+        "semantic_search",
+        "similarity_matching",
+        "clustering"
+      ]
+    },
+    "spacy": {
+      "alternatives": [
+        "nltk",
+        "huggingface",
+        "stanford_nlp"
+      ],
+      "category": "ai",
+      "description": "Industrial-strength NLP library for Python with pre-trained models",
+      "integrates_with": [
+        "python",
+        "fastapi",
+        "postgresql",
+        "elasticsearch"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "spaCy",
+      "tags": [
+        "nlp",
+        "python",
+        "ner",
+        "parsing"
+      ],
+      "use_cases": [
+        "ner",
+        "text_processing",
+        "entity_extraction",
+        "language_detection"
+      ]
+    },
+    "spring": {
+      "alternatives": [
+        "django",
+        "fastapi",
+        "express"
+      ],
+      "category": "frameworks",
+      "description": "Comprehensive Java framework for enterprise applications",
+      "integrates_with": [
+        "java",
+        "postgresql",
+        "kafka",
+        "redis"
+      ],
+      "license": "Apache 2.0",
+      "maturity": "stable",
+      "name": "Spring",
+      "tags": [
+        "java",
+        "enterprise",
+        "dependency-injection",
+        "web"
+      ],
+      "use_cases": [
+        "enterprise_apps",
+        "microservices",
+        "web_services",
+        "batch_processing"
+      ]
+    },
+    "sqlalchemy": {
+      "alternatives": [
+        "django_orm",
+        "peewee",
+        "tortoise_orm"
+      ],
+      "category": "data",
+      "description": "Python SQL toolkit and Object-Relational Mapping (ORM) library",
+      "integrates_with": [
+        "python",
+        "postgresql",
+        "mysql",
+        "fastapi"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "SQLAlchemy",
+      "tags": [
+        "python",
+        "orm",
+        "sql",
+        "database"
+      ],
+      "use_cases": [
+        "database_orm",
+        "sql_abstraction",
+        "data_modeling",
+        "migrations"
+      ]
+    },
+    "sqlite": {
+      "alternatives": [
+        "postgresql",
+        "mysql",
+        "h2"
+      ],
+      "category": "databases",
+      "description": "Lightweight embedded SQL database for local storage",
+      "integrates_with": [
+        "python",
+        "node.js",
+        "java",
+        "sqlalchemy"
+      ],
+      "license": "Public Domain",
+      "maturity": "stable",
+      "name": "SQLite",
+      "tags": [
+        "database",
+        "embedded",
+        "sql",
+        "local",
+        "lightweight"
+      ],
+      "use_cases": [
+        "local_storage",
+        "testing",
+        "embedded_apps",
+        "prototyping"
+      ]
+    },
+    "stripe": {
+      "added_date": "2025-08-14",
+      "alternatives": [],
+      "auto_generated": true,
+      "category": "integration",
+      "description": "Technology component: Stripe API",
+      "integrates_with": [],
+      "license": "unknown",
+      "maturity": "unknown",
+      "name": "Stripe API",
+      "tags": [
+        "api",
+        "integration"
+      ],
+      "use_cases": []
+    },
+    "supabase": {
+      "added_date": "2025-08-14",
+      "alternatives": [],
+      "auto_generated": true,
+      "category": "integration",
+      "description": "Technology component: Supabase",
+      "integrates_with": [],
+      "license": "unknown",
+      "maturity": "unknown",
+      "name": "Supabase",
+      "tags": [],
+      "use_cases": []
+    },
+    "tailwind_css": {
+      "added_date": "2025-08-14",
+      "alternatives": [],
+      "auto_generated": true,
+      "category": "ai",
+      "description": "Technology component: Tailwind CSS",
+      "integrates_with": [],
+      "license": "unknown",
+      "maturity": "unknown",
+      "name": "Tailwind CSS",
+      "tags": [
+        "ai",
+        "ml",
+        "nlp"
+      ],
+      "use_cases": []
+    },
+    "tesseract": {
+      "alternatives": [
+        "aws_textract",
+        "google_vision",
+        "azure_form_recognizer"
+      ],
+      "category": "ai",
+      "description": "Open-source OCR engine for text recognition from images",
+      "integrates_with": [
+        "python",
+        "opencv",
+        "pillow",
+        "fastapi"
+      ],
+      "license": "Apache 2.0",
+      "maturity": "stable",
+      "name": "Tesseract",
+      "tags": [
+        "ocr",
+        "open-source",
+        "text-recognition",
+        "image-processing"
+      ],
+      "use_cases": [
+        "ocr",
+        "document_digitization",
+        "text_extraction",
+        "image_processing"
+      ]
+    },
+    "twilio": {
+      "alternatives": [
+        "aws_sns",
+        "vonage",
+        "plivo"
+      ],
+      "category": "communication",
+      "description": "Cloud communications platform for SMS, voice, video, and messaging APIs",
+      "integrates_with": [
+        "python",
+        "node.js",
+        "java",
+        "rest_api"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "Twilio",
+      "tags": [
+        "sms",
+        "voice",
+        "api",
+        "communication",
+        "telephony"
+      ],
+      "use_cases": [
+        "sms_notifications",
+        "voice_calls",
+        "otp",
+        "customer_communication"
+      ]
+    },
+    "langchain": {
+      "alternatives": [
+        "crewai",
+        "autogen",
+        "microsoft_semantic_kernel"
+      ],
+      "category": "agentic",
+      "description": "Framework for developing applications powered by language models with agent capabilities",
+      "integrates_with": [
+        "openai",
+        "claude",
+        "huggingface",
+        "python",
+        "fastapi"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "LangChain",
+      "tags": [
+        "llm",
+        "agents",
+        "chains",
+        "autonomous",
+        "reasoning"
+      ],
+      "use_cases": [
+        "autonomous_agents",
+        "llm_applications",
+        "reasoning_chains",
+        "tool_integration"
+      ]
+    },
+    "crewai": {
+      "alternatives": [
+        "langchain",
+        "autogen",
+        "microsoft_semantic_kernel"
+      ],
+      "category": "agentic",
+      "description": "Multi-agent framework for orchestrating role-playing autonomous AI agents",
+      "integrates_with": [
+        "openai",
+        "claude",
+        "python",
+        "langchain"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "CrewAI",
+      "tags": [
+        "multi-agent",
+        "orchestration",
+        "role-playing",
+        "autonomous",
+        "collaboration"
+      ],
+      "use_cases": [
+        "multi_agent_systems",
+        "collaborative_ai",
+        "role_based_agents",
+        "team_coordination"
+      ]
+    },
+    "microsoft_semantic_kernel": {
+      "alternatives": [
+        "langchain",
+        "crewai",
+        "autogen"
+      ],
+      "category": "agentic",
+      "description": "Microsoft's SDK for integrating AI services into applications with agent capabilities",
+      "integrates_with": [
+        "azure",
+        "openai",
+        "python",
+        "dotnet",
+        "java"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "Microsoft Semantic Kernel",
+      "tags": [
+        "microsoft",
+        "sdk",
+        "agents",
+        "planning",
+        "skills"
+      ],
+      "use_cases": [
+        "enterprise_agents",
+        "ai_planning",
+        "skill_orchestration",
+        "azure_integration"
+      ]
+    },
+    "autogen": {
+      "alternatives": [
+        "crewai",
+        "langchain",
+        "microsoft_semantic_kernel"
+      ],
+      "category": "agentic",
+      "description": "Microsoft's framework for multi-agent conversation and collaboration",
+      "integrates_with": [
+        "openai",
+        "azure",
+        "python",
+        "jupyter"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "AutoGen",
+      "tags": [
+        "multi-agent",
+        "conversation",
+        "microsoft",
+        "collaboration",
+        "autonomous"
+      ],
+      "use_cases": [
+        "conversational_agents",
+        "multi_agent_chat",
+        "collaborative_problem_solving",
+        "agent_workflows"
+      ]
+    },
+    "langchain_multi_agent": {
+      "alternatives": [
+        "crewai",
+        "autogen",
+        "microsoft_semantic_kernel"
+      ],
+      "category": "agentic",
+      "description": "LangChain's multi-agent framework for coordinating multiple AI agents",
+      "integrates_with": [
+        "langchain",
+        "openai",
+        "claude",
+        "python"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "LangChain Multi-Agent Framework",
+      "tags": [
+        "langchain",
+        "multi-agent",
+        "coordination",
+        "autonomous",
+        "orchestration"
+      ],
+      "use_cases": [
+        "agent_coordination",
+        "distributed_reasoning",
+        "multi_agent_workflows",
+        "collaborative_ai"
+      ]
+    },
+    "gpt4o_reasoning": {
+      "alternatives": [
+        "claude",
+        "openai",
+        "local_llm"
+      ],
+      "category": "agentic",
+      "description": "GPT-4o optimized for complex reasoning and autonomous decision-making",
+      "integrates_with": [
+        "openai",
+        "langchain",
+        "python",
+        "rest_api"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "GPT-4o for Reasoning and Communication",
+      "tags": [
+        "gpt-4o",
+        "reasoning",
+        "autonomous",
+        "decision-making",
+        "communication"
+      ],
+      "use_cases": [
+        "complex_reasoning",
+        "autonomous_decisions",
+        "agent_communication",
+        "problem_solving"
+      ]
+    },
+    "drools": {
+      "alternatives": [
+        "prolog",
+        "opa",
+        "custom_rules"
+      ],
+      "category": "agentic",
+      "description": "Business rules management system for complex decision-making and rule-based reasoning",
+      "integrates_with": [
+        "java",
+        "spring",
+        "kafka",
+        "rest_api"
+      ],
+      "license": "Apache 2.0",
+      "maturity": "stable",
+      "name": "Drools",
+      "tags": [
+        "rules-engine",
+        "decision-making",
+        "business-logic",
+        "reasoning",
+        "java"
+      ],
+      "use_cases": [
+        "business_rules",
+        "decision_automation",
+        "rule_based_systems",
+        "complex_logic"
+      ]
+    },
+    "prolog": {
+      "alternatives": [
+        "drools",
+        "clips",
+        "swi_prolog"
+      ],
+      "category": "agentic",
+      "description": "Logic programming language for symbolic reasoning and knowledge representation",
+      "integrates_with": [
+        "python",
+        "java",
+        "swi_prolog",
+        "knowledge_bases"
+      ],
+      "license": "Various",
+      "maturity": "stable",
+      "name": "Prolog",
+      "tags": [
+        "logic-programming",
+        "symbolic-reasoning",
+        "knowledge-representation",
+        "inference",
+        "ai"
+      ],
+      "use_cases": [
+        "symbolic_reasoning",
+        "knowledge_systems",
+        "logical_inference",
+        "expert_systems"
+      ]
+    },
+    "neo4j_agents": {
+      "alternatives": [
+        "graph_databases",
+        "knowledge_graphs",
+        "rdf_stores"
+      ],
+      "category": "agentic",
+      "description": "Graph database optimized for agent relationship modeling and knowledge graphs",
+      "integrates_with": [
+        "python",
+        "java",
+        "cypher",
+        "langchain"
+      ],
+      "license": "Commercial/GPL",
+      "maturity": "stable",
+      "name": "Neo4j for Agent Systems",
+      "tags": [
+        "graph-database",
+        "knowledge-graph",
+        "relationships",
+        "agents",
+        "cypher"
+      ],
+      "use_cases": [
+        "agent_relationships",
+        "knowledge_graphs",
+        "relationship_modeling",
+        "graph_reasoning"
+      ]
+    },
+    "pega_workflow": {
+      "alternatives": [
+        "camunda",
+        "activiti",
+        "custom_workflow"
+      ],
+      "category": "agentic",
+      "description": "Enterprise workflow orchestration platform for complex business process automation",
+      "integrates_with": [
+        "java",
+        "rest_api",
+        "databases",
+        "enterprise_systems"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "Pega Workflow Orchestration",
+      "tags": [
+        "workflow",
+        "orchestration",
+        "enterprise",
+        "automation",
+        "bpm"
+      ],
+      "use_cases": [
+        "workflow_orchestration",
+        "business_process_automation",
+        "enterprise_workflows",
+        "process_management"
+      ]
+    },
+    "vercel": {
+      "added_date": "2025-08-14",
+      "alternatives": [],
+      "auto_generated": true,
+      "category": "integration",
+      "description": "Technology component: Vercel",
+      "integrates_with": [],
+      "license": "unknown",
+      "maturity": "unknown",
+      "name": "Vercel",
+      "tags": [],
+      "use_cases": []
+    }
+  }
+}
