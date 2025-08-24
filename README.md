@@ -703,6 +703,42 @@ is_valid = dynamic_schema_loader.validate_enum_value('reasoning_types', 'collabo
 schema = dynamic_schema_loader.generate_dynamic_schema()
 ```
 
+### 7. System Configuration Management *(New in v2.6.0)*
+
+Configure system behavior through a comprehensive GUI interface:
+
+#### Configurable Parameters
+- **🤖 Autonomy Assessment**: Thresholds, scoring weights, feasibility classification
+- **🔍 Pattern Matching**: Tag/vector weights, similarity thresholds, agentic scoring  
+- **🧠 LLM Generation**: Temperature, max tokens, penalties, timeouts
+- **💡 Recommendations**: Confidence thresholds, boost factors, creation criteria
+
+#### Management Interface
+Access via the **🔧 System Config** tab:
+1. **Real-time Adjustment**: Modify parameters with live validation
+2. **Import/Export**: Share configurations across environments
+3. **Reset to Defaults**: Quick restoration of original values
+4. **Configuration Preview**: Live YAML preview of current settings
+
+#### Configuration Persistence
+Settings are automatically saved to `system_config.yaml`:
+```yaml
+autonomy:
+  min_autonomy_threshold: 0.7
+  confidence_boost_factor: 1.2
+  reasoning_capability_weight: 0.3
+  
+pattern_matching:
+  tag_weight: 0.3
+  vector_weight: 0.5
+  strong_tag_match_threshold: 0.7
+  
+llm_generation:
+  temperature: 0.3
+  max_tokens: 1000
+  top_p: 1.0
+```
+
 ## API Documentation
 
 Once running, visit:
