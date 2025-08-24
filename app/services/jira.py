@@ -18,6 +18,7 @@ from app.services.proxy_handler import ProxyHandler, ProxyValidationResult
 from app.services.retry_handler import RetryHandler, RetryConfig, RetryStrategy
 from app.services.jira_error_handler import JiraErrorHandler, JiraErrorDetail, create_jira_error_handler
 from app.utils.logger import app_logger
+from app.utils.error_boundaries import error_boundary
 
 
 class JiraTicket(BaseModel):
@@ -218,6 +219,22 @@ class JiraService:
             return False, str(e)
     
     async def test_connection_with_fallback(self) -> ConnectionResult:
+        """Test connection with comprehensive error handling and fallback."""
+        try:
+            return await self._test_connection_internal()
+        except Exception as e:
+            app_logger.error(f"Jira connection test failed: {type(e).__name__}: {str(e)}")
+            return ConnectionResult(
+                success=False,
+                error_details={"message": f"Connection test failed: {str(e)}"},
+                deployment_info=None,
+                api_version_detected=None,
+                auth_methods_available=[],
+                ssl_configuration=None
+            )
+    
+    @error_boundary("jira_connection_internal", timeout_seconds=30.0, max_retries=2, reraise=True)
+    async def _test_connection_internal(self) -> ConnectionResult:
         """Test connection with comprehensive authentication fallback and deployment detection.
         
         Returns:

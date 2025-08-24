@@ -6,183 +6,15 @@ configuration parameters that are currently hardcoded throughout the system.
 
 import streamlit as st
 from typing import Dict, Any, Optional
-from dataclasses import dataclass, asdict
+from dataclasses import asdict
 import yaml
 from pathlib import Path
 
 from app.config import Settings, load_settings
-
-
-@dataclass
-class AutonomyConfig:
-    """Configuration for autonomy assessment parameters."""
-    min_autonomy_threshold: float = 0.7
-    confidence_boost_factor: float = 1.2
-    
-    # Autonomy scoring weights
-    reasoning_capability_weight: float = 0.3
-    decision_independence_weight: float = 0.25
-    exception_handling_weight: float = 0.2
-    learning_adaptation_weight: float = 0.15
-    self_monitoring_weight: float = 0.1
-    
-    # Feasibility thresholds
-    fully_automatable_threshold: float = 0.8
-    partially_automatable_threshold: float = 0.6
-    high_autonomy_boost_threshold: float = 0.7
-    autonomy_boost_multiplier: float = 1.1
-
-
-@dataclass
-class PatternMatchingConfig:
-    """Configuration for pattern matching and similarity calculations."""
-    # Blending weights
-    tag_weight: float = 0.3
-    vector_weight: float = 0.5
-    confidence_weight: float = 0.2
-    
-    # Tag score thresholds
-    strong_tag_match_threshold: float = 0.7
-    moderate_tag_match_threshold: float = 0.4
-    
-    # Vector similarity thresholds
-    high_similarity_threshold: float = 0.7
-    moderate_similarity_threshold: float = 0.4
-    
-    # Overall match thresholds
-    excellent_fit_threshold: float = 0.8
-    good_fit_threshold: float = 0.6
-    
-    # Agentic scoring weights
-    autonomy_level_weight: float = 0.4
-    reasoning_capability_weight: float = 0.25
-    decision_independence_weight: float = 0.2
-    exception_handling_weight: float = 0.1
-    learning_potential_weight: float = 0.05
-
-
-@dataclass
-class LLMGenerationConfig:
-    """Configuration for LLM generation parameters."""
-    temperature: float = 0.3
-    max_tokens: int = 1000
-    top_p: float = 1.0
-    frequency_penalty: float = 0.0
-    presence_penalty: float = 0.0
-    
-    # Timeout configurations
-    llm_timeout: int = 20
-    http_timeout: int = 10
-    api_request_timeout: float = 30.0
-
-
-@dataclass
-class RecommendationConfig:
-    """Configuration for recommendation generation and filtering."""
-    min_recommendation_confidence: float = 0.7
-    tech_stack_inclusion_threshold: float = 0.6
-    new_pattern_creation_threshold: float = 0.7
-    
-    # Enhancement thresholds
-    pattern_enhancement_similarity_threshold: float = 0.7
-    conceptual_similarity_threshold: float = 0.7
-    
-    # Confidence calculation
-    autonomy_boost_factor: float = 0.2  # Up to 20% boost
-    reasoning_boost_threshold: int = 3
-    reasoning_boost_amount: float = 0.1
-    multi_agent_boost: float = 0.1
-
-
-@dataclass
-class SystemConfiguration:
-    """Complete system configuration container."""
-    autonomy: AutonomyConfig
-    pattern_matching: PatternMatchingConfig
-    llm_generation: LLMGenerationConfig
-    recommendations: RecommendationConfig
-
-
-class SystemConfigurationManager:
-    """Manager for system configuration with persistence."""
-    
-    def __init__(self, config_path: str = "system_config.yaml"):
-        self.config_path = Path(config_path)
-        self.config = self._load_config()
-    
-    def _load_config(self) -> SystemConfiguration:
-        """Load configuration from file or create defaults."""
-        if self.config_path.exists():
-            try:
-                with open(self.config_path, 'r') as f:
-                    data = yaml.safe_load(f)
-                
-                return SystemConfiguration(
-                    autonomy=AutonomyConfig(**data.get('autonomy', {})),
-                    pattern_matching=PatternMatchingConfig(**data.get('pattern_matching', {})),
-                    llm_generation=LLMGenerationConfig(**data.get('llm_generation', {})),
-                    recommendations=RecommendationConfig(**data.get('recommendations', {}))
-                )
-            except Exception as e:
-                st.error(f"Error loading configuration: {e}")
-        
-        # Return defaults
-        return SystemConfiguration(
-            autonomy=AutonomyConfig(),
-            pattern_matching=PatternMatchingConfig(),
-            llm_generation=LLMGenerationConfig(),
-            recommendations=RecommendationConfig()
-        )
-    
-    def save_config(self) -> bool:
-        """Save current configuration to file."""
-        try:
-            config_dict = {
-                'autonomy': asdict(self.config.autonomy),
-                'pattern_matching': asdict(self.config.pattern_matching),
-                'llm_generation': asdict(self.config.llm_generation),
-                'recommendations': asdict(self.config.recommendations)
-            }
-            
-            with open(self.config_path, 'w') as f:
-                yaml.dump(config_dict, f, default_flow_style=False, indent=2)
-            
-            return True
-        except Exception as e:
-            st.error(f"Error saving configuration: {e}")
-            return False
-    
-    def reset_to_defaults(self):
-        """Reset configuration to default values."""
-        self.config = SystemConfiguration(
-            autonomy=AutonomyConfig(),
-            pattern_matching=PatternMatchingConfig(),
-            llm_generation=LLMGenerationConfig(),
-            recommendations=RecommendationConfig()
-        )
-    
-    def export_config(self) -> Dict[str, Any]:
-        """Export configuration as dictionary."""
-        return {
-            'autonomy': asdict(self.config.autonomy),
-            'pattern_matching': asdict(self.config.pattern_matching),
-            'llm_generation': asdict(self.config.llm_generation),
-            'recommendations': asdict(self.config.recommendations)
-        }
-    
-    def import_config(self, config_dict: Dict[str, Any]) -> bool:
-        """Import configuration from dictionary."""
-        try:
-            self.config = SystemConfiguration(
-                autonomy=AutonomyConfig(**config_dict.get('autonomy', {})),
-                pattern_matching=PatternMatchingConfig(**config_dict.get('pattern_matching', {})),
-                llm_generation=LLMGenerationConfig(**config_dict.get('llm_generation', {})),
-                recommendations=RecommendationConfig(**config_dict.get('recommendations', {}))
-            )
-            return True
-        except Exception as e:
-            st.error(f"Error importing configuration: {e}")
-            return False
+from app.config.system_config import (
+    AutonomyConfig, PatternMatchingConfig, LLMGenerationConfig, RecommendationConfig,
+    SystemConfiguration, SystemConfigurationManager
+)
 
 
 def render_system_configuration():
@@ -196,17 +28,51 @@ def render_system_configuration():
     
     config_manager = st.session_state.config_manager
     
+    # Debug: Check if config has required attributes and auto-fix if needed
+    try:
+        # Test access to the problematic attribute
+        _ = config_manager.config.autonomy.agentic_necessity_threshold
+    except AttributeError as e:
+        st.error(f"⚠️ Configuration Error: {e}")
+        st.warning("This is a cached configuration issue. The system will automatically fix this.")
+        
+        # Automatically fix the issue
+        st.info("🔄 Automatically resetting configuration...")
+        
+        # Clear session state and recreate config manager
+        if 'config_manager' in st.session_state:
+            del st.session_state.config_manager
+        
+        # Force recreation of config manager
+        st.session_state.config_manager = SystemConfigurationManager()
+        config_manager = st.session_state.config_manager
+        
+        # Verify the fix worked
+        try:
+            _ = config_manager.config.autonomy.agentic_necessity_threshold
+            st.success("✅ Configuration fixed! The page will refresh automatically.")
+            st.rerun()
+        except AttributeError:
+            st.error("❌ Unable to fix configuration automatically. Please restart the application.")
+            return
+    
     # Configuration tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "🤖 Autonomy Assessment", 
         "🔍 Pattern Matching", 
         "🧠 LLM Generation", 
         "💡 Recommendations",
+        "🚦 Rate Limiting",
         "⚙️ Management"
     ])
     
     with tab1:
-        render_autonomy_config(config_manager.config.autonomy)
+        # Additional safety check before rendering
+        try:
+            render_autonomy_config(config_manager.config.autonomy)
+        except AttributeError as e:
+            st.error(f"Configuration rendering error: {e}")
+            st.info("Please refresh the page or use the Management tab to reset configuration.")
     
     with tab2:
         render_pattern_matching_config(config_manager.config.pattern_matching)
@@ -218,6 +84,9 @@ def render_system_configuration():
         render_recommendation_config(config_manager.config.recommendations)
     
     with tab5:
+        render_rate_limiting_config(config_manager.config.rate_limiting)
+    
+    with tab6:
         render_configuration_management(config_manager)
 
 
@@ -251,6 +120,25 @@ def render_autonomy_config(config: AutonomyConfig):
             "Partially Automatable Threshold",
             min_value=0.0, max_value=1.0, value=config.partially_automatable_threshold, step=0.05,
             help="Score threshold for 'Partially Automatable' classification"
+        )
+        
+        st.write("**Agentic Necessity Assessment**")
+        config.agentic_necessity_threshold = st.slider(
+            "Agentic Necessity Threshold",
+            min_value=0.0, max_value=1.0, value=config.agentic_necessity_threshold, step=0.05,
+            help="Score above which agentic AI is recommended over traditional automation"
+        )
+        
+        config.traditional_suitability_threshold = st.slider(
+            "Traditional Suitability Threshold",
+            min_value=0.0, max_value=1.0, value=config.traditional_suitability_threshold, step=0.05,
+            help="Score above which traditional automation is recommended over agentic AI"
+        )
+        
+        config.hybrid_zone_threshold = st.slider(
+            "Hybrid Zone Threshold",
+            min_value=0.0, max_value=0.3, value=config.hybrid_zone_threshold, step=0.01,
+            help="Score difference threshold for recommending hybrid approaches"
         )
     
     with col2:
@@ -444,6 +332,103 @@ def render_recommendation_config(config: RecommendationConfig):
             min_value=0.0, max_value=0.3, value=config.multi_agent_boost, step=0.05,
             help="Boost for multi-agent potential when appropriate"
         )
+
+
+def render_rate_limiting_config(config):
+    """Render rate limiting configuration."""
+    from app.config.system_config import RateLimitConfig
+    
+    st.subheader("API Rate Limiting Configuration")
+    st.info("Configure rate limits to prevent API abuse while allowing normal Q&A interactions.")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Default Tier Limits**")
+        config.default_requests_per_minute = st.number_input(
+            "Requests per Minute",
+            min_value=10, max_value=500, value=config.default_requests_per_minute,
+            help="Maximum requests per minute for default users"
+        )
+        
+        config.default_requests_per_hour = st.number_input(
+            "Requests per Hour",
+            min_value=100, max_value=5000, value=config.default_requests_per_hour,
+            help="Maximum requests per hour for default users"
+        )
+        
+        config.default_requests_per_day = st.number_input(
+            "Requests per Day",
+            min_value=1000, max_value=50000, value=config.default_requests_per_day,
+            help="Maximum requests per day for default users"
+        )
+        
+        config.default_burst_limit = st.number_input(
+            "Burst Limit",
+            min_value=5, max_value=100, value=config.default_burst_limit,
+            help="Maximum burst requests (important for Q&A interactions)"
+        )
+        
+        config.default_burst_window_seconds = st.number_input(
+            "Burst Window (seconds)",
+            min_value=30, max_value=300, value=config.default_burst_window_seconds,
+            help="Time window for burst limit reset"
+        )
+    
+    with col2:
+        st.write("**Premium & Enterprise Tiers**")
+        
+        st.write("*Premium Tier*")
+        config.premium_requests_per_minute = st.number_input(
+            "Premium: Requests per Minute",
+            min_value=50, max_value=1000, value=config.premium_requests_per_minute,
+            help="Premium tier requests per minute"
+        )
+        
+        config.premium_burst_limit = st.number_input(
+            "Premium: Burst Limit",
+            min_value=20, max_value=200, value=config.premium_burst_limit,
+            help="Premium tier burst limit"
+        )
+        
+        st.write("*Enterprise Tier*")
+        config.enterprise_requests_per_minute = st.number_input(
+            "Enterprise: Requests per Minute",
+            min_value=100, max_value=2000, value=config.enterprise_requests_per_minute,
+            help="Enterprise tier requests per minute"
+        )
+        
+        config.enterprise_burst_limit = st.number_input(
+            "Enterprise: Burst Limit",
+            min_value=50, max_value=500, value=config.enterprise_burst_limit,
+            help="Enterprise tier burst limit"
+        )
+        
+        st.write("*IP-Based Limits (Restrictive)*")
+        config.ip_burst_limit = st.number_input(
+            "IP-Based: Burst Limit",
+            min_value=5, max_value=50, value=config.ip_burst_limit,
+            help="Burst limit for IP-based identification"
+        )
+    
+    # Rate limiting status and recommendations
+    st.write("**Current Configuration Impact**")
+    
+    if config.default_burst_limit < 15:
+        st.warning("⚠️ Low burst limit may cause issues with Q&A interactions. Consider increasing to 20+.")
+    elif config.default_burst_limit >= 25:
+        st.success("✅ Burst limit is sufficient for smooth Q&A interactions.")
+    else:
+        st.info("ℹ️ Burst limit is adequate but could be higher for better user experience.")
+    
+    # Show example scenarios
+    with st.expander("📊 Rate Limiting Scenarios"):
+        st.write("**Q&A Interaction Example:**")
+        st.write(f"- User loads questions: 1 request")
+        st.write(f"- User submits answers: 1 request") 
+        st.write(f"- System processes: 2-3 requests")
+        st.write(f"- **Total burst needed: 4-5 requests**")
+        st.write(f"- **Current burst limit: {config.default_burst_limit} requests** ✅" if config.default_burst_limit >= 10 else f"- **Current burst limit: {config.default_burst_limit} requests** ⚠️")
 
 
 def render_configuration_management(config_manager: SystemConfigurationManager):

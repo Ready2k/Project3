@@ -1,5 +1,16 @@
 {
   "categories": {
+    "agentic": {
+      "description": "Autonomous agent frameworks and multi-agent system platforms",
+      "name": "Agentic AI & Multi-Agent Systems",
+      "technologies": [
+        "langchain",
+        "crewai",
+        "microsoft_semantic_kernel",
+        "autogen",
+        "langchain_multi_agent"
+      ]
+    },
     "ai": {
       "description": "Artificial intelligence and machine learning services",
       "name": "AI & Machine Learning",
@@ -15,14 +26,16 @@
         "tesseract",
         "sentence_transformers",
         "azure_cognitive_services",
-        "tailwind_css"
+        "tailwind_css",
+        "gpt4o_reasoning"
       ]
     },
     "automation": {
       "description": "Browser automation and testing frameworks",
       "name": "Automation & Testing",
       "technologies": [
-        "selenium"
+        "selenium",
+        "pega_workflow"
       ]
     },
     "cloud": {
@@ -60,7 +73,8 @@
         "mongodb",
         "redis",
         "elasticsearch",
-        "sqlite"
+        "sqlite",
+        "neo4j_agents"
       ]
     },
     "frameworks": {
@@ -156,16 +170,24 @@
       "technologies": [
         "jsonschema"
       ]
+    },
+    "reasoning": {
+      "name": "Logic & Reasoning Systems",
+      "description": "Logic programming languages, rules engines, and symbolic reasoning systems",
+      "technologies": [
+        "drools",
+        "prolog"
+      ]
     }
   },
   "metadata": {
     "description": "Comprehensive technology catalog for AAA system recommendations",
     "last_auto_update": "2025-08-14T08:44:57.363198",
-    "last_updated": "2025-08-14",
-    "total_technologies": 54,
-    "version": "2.1.0",
-    "release_name": "Technology Catalog",
-    "release_date": "2025-08-14"
+    "last_updated": "2025-08-24",
+    "total_technologies": 64,
+    "version": "2.2.1",
+    "release_name": "Expert Categorization",
+    "release_date": "2025-08-24"
   },
   "technologies": {
     "aws": {
@@ -1740,6 +1762,318 @@
         "voice_calls",
         "otp",
         "customer_communication"
+      ]
+    },
+    "langchain": {
+      "alternatives": [
+        "crewai",
+        "autogen",
+        "microsoft_semantic_kernel"
+      ],
+      "category": "agentic",
+      "description": "Framework for developing applications powered by language models with agent capabilities",
+      "integrates_with": [
+        "openai",
+        "claude",
+        "huggingface",
+        "python",
+        "fastapi"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "LangChain",
+      "tags": [
+        "llm",
+        "agents",
+        "chains",
+        "autonomous",
+        "reasoning"
+      ],
+      "use_cases": [
+        "autonomous_agents",
+        "llm_applications",
+        "reasoning_chains",
+        "tool_integration"
+      ]
+    },
+    "crewai": {
+      "alternatives": [
+        "langchain",
+        "autogen",
+        "microsoft_semantic_kernel"
+      ],
+      "category": "agentic",
+      "description": "Multi-agent framework for orchestrating role-playing autonomous AI agents",
+      "integrates_with": [
+        "openai",
+        "claude",
+        "python",
+        "langchain"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "CrewAI",
+      "tags": [
+        "multi-agent",
+        "orchestration",
+        "role-playing",
+        "autonomous",
+        "collaboration"
+      ],
+      "use_cases": [
+        "multi_agent_systems",
+        "collaborative_ai",
+        "role_based_agents",
+        "team_coordination"
+      ]
+    },
+    "microsoft_semantic_kernel": {
+      "alternatives": [
+        "langchain",
+        "crewai",
+        "autogen"
+      ],
+      "category": "agentic",
+      "description": "Microsoft's SDK for integrating AI services into applications with agent capabilities",
+      "integrates_with": [
+        "azure",
+        "openai",
+        "python",
+        "dotnet",
+        "java"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "Microsoft Semantic Kernel",
+      "tags": [
+        "microsoft",
+        "sdk",
+        "agents",
+        "planning",
+        "skills"
+      ],
+      "use_cases": [
+        "enterprise_agents",
+        "ai_planning",
+        "skill_orchestration",
+        "azure_integration"
+      ]
+    },
+    "autogen": {
+      "alternatives": [
+        "crewai",
+        "langchain",
+        "microsoft_semantic_kernel"
+      ],
+      "category": "agentic",
+      "description": "Microsoft's framework for multi-agent conversation and collaboration",
+      "integrates_with": [
+        "openai",
+        "azure",
+        "python",
+        "jupyter"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "AutoGen",
+      "tags": [
+        "multi-agent",
+        "conversation",
+        "microsoft",
+        "collaboration",
+        "autonomous"
+      ],
+      "use_cases": [
+        "conversational_agents",
+        "multi_agent_chat",
+        "collaborative_problem_solving",
+        "agent_workflows"
+      ]
+    },
+    "langchain_multi_agent": {
+      "alternatives": [
+        "crewai",
+        "autogen",
+        "microsoft_semantic_kernel"
+      ],
+      "category": "agentic",
+      "description": "LangChain's multi-agent framework for coordinating multiple AI agents",
+      "integrates_with": [
+        "langchain",
+        "openai",
+        "claude",
+        "python"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "name": "LangChain Multi-Agent Framework",
+      "tags": [
+        "langchain",
+        "multi-agent",
+        "coordination",
+        "autonomous",
+        "orchestration"
+      ],
+      "use_cases": [
+        "agent_coordination",
+        "distributed_reasoning",
+        "multi_agent_workflows",
+        "collaborative_ai"
+      ]
+    },
+    "gpt4o_reasoning": {
+      "alternatives": [
+        "claude",
+        "openai",
+        "local_llm"
+      ],
+      "category": "ai",
+      "description": "GPT-4o optimized for complex reasoning and autonomous decision-making",
+      "integrates_with": [
+        "openai",
+        "langchain",
+        "python",
+        "rest_api"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "GPT-4o for Reasoning and Communication",
+      "tags": [
+        "gpt-4o",
+        "reasoning",
+        "autonomous",
+        "decision-making",
+        "communication"
+      ],
+      "use_cases": [
+        "complex_reasoning",
+        "autonomous_decisions",
+        "agent_communication",
+        "problem_solving"
+      ]
+    },
+    "drools": {
+      "alternatives": [
+        "prolog",
+        "opa",
+        "custom_rules"
+      ],
+      "category": "reasoning",
+      "description": "Business rules management system for complex decision-making and rule-based reasoning",
+      "integrates_with": [
+        "java",
+        "spring",
+        "kafka",
+        "rest_api"
+      ],
+      "license": "Apache 2.0",
+      "maturity": "stable",
+      "name": "Drools",
+      "tags": [
+        "rules-engine",
+        "decision-making",
+        "business-logic",
+        "reasoning",
+        "java"
+      ],
+      "use_cases": [
+        "business_rules",
+        "decision_automation",
+        "rule_based_systems",
+        "complex_logic"
+      ]
+    },
+    "prolog": {
+      "alternatives": [
+        "drools",
+        "clips",
+        "swi_prolog"
+      ],
+      "category": "reasoning",
+      "description": "Logic programming language for symbolic reasoning and knowledge representation",
+      "integrates_with": [
+        "python",
+        "java",
+        "swi_prolog",
+        "knowledge_bases"
+      ],
+      "license": "Various",
+      "maturity": "stable",
+      "name": "Prolog",
+      "tags": [
+        "logic-programming",
+        "symbolic-reasoning",
+        "knowledge-representation",
+        "inference",
+        "ai"
+      ],
+      "use_cases": [
+        "symbolic_reasoning",
+        "knowledge_systems",
+        "logical_inference",
+        "expert_systems"
+      ]
+    },
+    "neo4j_agents": {
+      "alternatives": [
+        "graph_databases",
+        "knowledge_graphs",
+        "rdf_stores"
+      ],
+      "category": "databases",
+      "description": "Graph database optimized for agent relationship modeling and knowledge graphs",
+      "integrates_with": [
+        "python",
+        "java",
+        "cypher",
+        "langchain"
+      ],
+      "license": "Commercial/GPL",
+      "maturity": "stable",
+      "name": "Neo4j for Agent Systems",
+      "tags": [
+        "graph-database",
+        "knowledge-graph",
+        "relationships",
+        "agents",
+        "cypher"
+      ],
+      "use_cases": [
+        "agent_relationships",
+        "knowledge_graphs",
+        "relationship_modeling",
+        "graph_reasoning"
+      ]
+    },
+    "pega_workflow": {
+      "alternatives": [
+        "camunda",
+        "activiti",
+        "custom_workflow"
+      ],
+      "category": "automation",
+      "description": "Enterprise workflow orchestration platform for complex business process automation",
+      "integrates_with": [
+        "java",
+        "rest_api",
+        "databases",
+        "enterprise_systems"
+      ],
+      "license": "Commercial",
+      "maturity": "stable",
+      "name": "Pega Workflow Orchestration",
+      "tags": [
+        "workflow",
+        "orchestration",
+        "enterprise",
+        "automation",
+        "bpm"
+      ],
+      "use_cases": [
+        "workflow_orchestration",
+        "business_process_automation",
+        "enterprise_workflows",
+        "process_management"
       ]
     },
     "vercel": {

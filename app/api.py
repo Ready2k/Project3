@@ -34,7 +34,8 @@ from app.state.store import SessionState, Phase, DiskCacheStore
 from app.utils.logger import app_logger
 from app.utils.audit import log_pattern_match
 from app.version import __version__, RELEASE_NAME
-from app.security import SecurityMiddleware, RateLimitMiddleware, InputValidator, SecurityValidator, SecurityHeaders
+from app.security import SecurityMiddleware, InputValidator, SecurityValidator, SecurityHeaders
+from app.middleware.rate_limiter import RateLimitMiddleware
 from app.security.middleware import setup_cors_middleware
 
 
@@ -106,7 +107,17 @@ app.add_middleware(
 setup_cors_middleware(app)
 
 # 3. Rate limiting middleware
-app.add_middleware(RateLimitMiddleware, calls_per_minute=60, calls_per_hour=1000)
+# Load system configuration for rate limiting
+try:
+    from app.config.system_config import SystemConfigurationManager
+    system_config_manager = SystemConfigurationManager()
+    rate_limit_config = system_config_manager.config.rate_limiting
+    app_logger.info(f"Loaded rate limiting config: burst_limit={rate_limit_config.default_burst_limit}")
+except Exception as e:
+    app_logger.warning(f"Failed to load system config for rate limiting, using defaults: {e}")
+    rate_limit_config = None
+
+app.add_middleware(RateLimitMiddleware, settings=None, rate_limit_config=rate_limit_config)
 
 # 4. General security middleware (last)
 app.add_middleware(SecurityMiddleware, max_request_size=10 * 1024 * 1024)  # 10MB limit
@@ -150,13 +161,131 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     return SecurityHeaders.add_security_headers(response)
 
 
-# Health check endpoint (no authentication required)
+# Health check endpoints (no authentication required)
 @app.get("/health")
 async def health_check(response: Response):
-    """Health check endpoint for monitoring."""
+    """Basic health check endpoint for monitoring."""
     # Add security headers
     SecurityHeaders.add_security_headers(response)
     return {"status": "healthy", "version": f"AAA-{__version__}", "release_name": RELEASE_NAME}
+
+@app.get("/health/detailed")
+async def detailed_health_check(response: Response):
+    """Detailed health check with all system components."""
+    from app.health.health_checker import get_health_checker
+    
+    try:
+        health_checker = get_health_checker(settings)
+        system_health = await health_checker.check_health()
+        
+        SecurityHeaders.add_security_headers(response)
+        return system_health.to_dict()
+        
+    except Exception as e:
+        app_logger.error(f"Detailed health check failed: {e}")
+        SecurityHeaders.add_security_headers(response)
+        return {
+            "status": "critical",
+            "message": f"Health check system failed: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+@app.get("/health/readiness")
+async def readiness_check(response: Response):
+    """Kubernetes readiness probe endpoint."""
+    from app.health.health_checker import get_health_checker
+    
+    try:
+        health_checker = get_health_checker(settings)
+        # Only check critical components for readiness
+        critical_checks = ["disk_cache", "pattern_library", "llm_providers"]
+        system_health = await health_checker.check_health(critical_checks)
+        
+        SecurityHeaders.add_security_headers(response)
+        
+        if system_health.status in ["healthy", "degraded"]:
+            return {"status": "ready", "checks": len(system_health.checks)}
+        else:
+            response.status_code = 503
+            return {"status": "not_ready", "message": "Critical components unhealthy"}
+            
+    except Exception as e:
+        app_logger.error(f"Readiness check failed: {e}")
+        response.status_code = 503
+        SecurityHeaders.add_security_headers(response)
+        return {"status": "not_ready", "message": str(e)}
+
+@app.get("/health/liveness")
+async def liveness_check(response: Response):
+    """Kubernetes liveness probe endpoint."""
+    from app.health.health_checker import get_health_checker
+    
+    try:
+        health_checker = get_health_checker(settings)
+        # Only check basic system resources for liveness
+        liveness_checks = ["system_resources", "disk_cache"]
+        system_health = await health_checker.check_health(liveness_checks)
+        
+        SecurityHeaders.add_security_headers(response)
+        
+        if system_health.status != "critical":
+            return {"status": "alive", "checks": len(system_health.checks)}
+        else:
+            response.status_code = 503
+            return {"status": "dead", "message": "System resources critical"}
+            
+    except Exception as e:
+        app_logger.error(f"Liveness check failed: {e}")
+        response.status_code = 503
+        SecurityHeaders.add_security_headers(response)
+        return {"status": "dead", "message": str(e)}
+
+@app.get("/security/scan")
+async def run_security_scan(response: Response, scan_type: str = "full"):
+    """Run security scan on the application."""
+    from app.security.security_scanner import get_security_scanner
+    
+    try:
+        scanner = get_security_scanner(settings)
+        
+        if scan_type == "full":
+            results = await scanner.run_full_security_scan()
+            SecurityHeaders.add_security_headers(response)
+            return {
+                "scan_type": "full",
+                "results": {name: result.to_dict() for name, result in results.items()}
+            }
+        elif scan_type == "code":
+            result = await scanner.scan_code_vulnerabilities()
+        elif scan_type == "dependencies":
+            result = await scanner.scan_dependencies()
+        elif scan_type == "configuration":
+            result = await scanner.scan_configuration_security()
+        else:
+            raise HTTPException(status_code=400, detail="Invalid scan type")
+        
+        SecurityHeaders.add_security_headers(response)
+        return result.to_dict()
+        
+    except Exception as e:
+        app_logger.error(f"Security scan failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Security scan failed: {str(e)}")
+
+@app.get("/security/history")
+async def get_security_scan_history(response: Response, limit: int = 10):
+    """Get security scan history."""
+    from app.security.security_scanner import get_security_scanner
+    
+    try:
+        scanner = get_security_scanner(settings)
+        history = await scanner.get_scan_history(limit)
+        
+        SecurityHeaders.add_security_headers(response)
+        return {"history": history}
+        
+    except Exception as e:
+        app_logger.error(f"Failed to get security scan history: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 def get_settings() -> Settings:
@@ -1028,19 +1157,110 @@ async def get_qa_questions(session_id: str, response: Response):
         question_loop = get_question_loop(provider_config, session_id)
         questions = await question_loop.generate_questions(session_id, max_questions=5)
         
-        # Cache the API response
-        result = {
-            "questions": [q.to_dict() for q in questions],
-            "session_id": session_id,
-            "phase": session.phase.value
-        }
+        # If no questions generated (agentic scope gate rejection), assess for traditional automation
+        if not questions:
+            app_logger.info(f"No agentic questions generated for session {session_id}, assessing traditional automation suitability")
+            
+            # Import and use automation suitability assessor
+            from app.services.automation_suitability_assessor import AutomationSuitabilityAssessor
+            
+            # Create assessor with same LLM provider
+            llm_provider = get_llm_provider(provider_config, session_id)
+            assessor = AutomationSuitabilityAssessor(llm_provider)
+            
+            # Assess automation suitability
+            assessment = await assessor.assess_automation_suitability(
+                session.requirements, 
+                agentic_rejected=True
+            )
+            
+            # Store assessment in session for later use
+            session.requirements['automation_suitability_assessment'] = {
+                'suitability': assessment.suitability.value,
+                'confidence': assessment.confidence,
+                'reasoning': assessment.reasoning,
+                'recommended_approach': assessment.recommended_approach,
+                'challenges': assessment.challenges,
+                'next_steps': assessment.next_steps,
+                'user_choice_required': assessment.user_choice_required,
+                'warning_message': assessment.warning_message
+            }
+            
+            # Update session with assessment
+            await store.update_session(session_id, session)
+            
+            # Determine next steps based on assessment
+            if assessor.should_require_user_choice(assessment):
+                # Return special response indicating user choice is needed
+                result = {
+                    "questions": [],
+                    "session_id": session_id,
+                    "phase": session.phase.value,
+                    "automation_assessment": {
+                        "suitability": assessment.suitability.value,
+                        "confidence": assessment.confidence,
+                        "reasoning": assessment.reasoning,
+                        "recommended_approach": assessment.recommended_approach,
+                        "challenges": assessment.challenges,
+                        "next_steps": assessment.next_steps,
+                        "user_choice_required": assessment.user_choice_required,
+                        "warning_message": assessment.warning_message
+                    },
+                    "requires_user_decision": True
+                }
+            elif assessor.should_proceed_with_traditional_patterns(assessment):
+                # Proceed to traditional pattern matching
+                app_logger.info(f"Proceeding with traditional automation for session {session_id}")
+                
+                # Advance session to MATCHING phase for traditional patterns
+                session.phase = Phase.MATCHING
+                session.progress = 60
+                session.updated_at = datetime.now()
+                await store.update_session(session_id, session)
+                
+                result = {
+                    "questions": [],
+                    "session_id": session_id,
+                    "phase": Phase.MATCHING.value,
+                    "automation_assessment": {
+                        "suitability": assessment.suitability.value,
+                        "confidence": assessment.confidence,
+                        "reasoning": assessment.reasoning,
+                        "recommended_approach": assessment.recommended_approach
+                    },
+                    "proceeding_with_traditional": True
+                }
+            else:
+                # Not suitable for automation - require user choice
+                result = {
+                    "questions": [],
+                    "session_id": session_id,
+                    "phase": session.phase.value,
+                    "automation_assessment": {
+                        "suitability": assessment.suitability.value,
+                        "confidence": assessment.confidence,
+                        "reasoning": assessment.reasoning,
+                        "recommended_approach": assessment.recommended_approach,
+                        "challenges": assessment.challenges,
+                        "next_steps": assessment.next_steps,
+                        "warning_message": assessment.warning_message or "This requirement may not be suitable for automation"
+                    },
+                    "requires_user_decision": True
+                }
+        else:
+            # Normal Q&A flow - we have questions to ask
+            result = {
+                "questions": [q.to_dict() for q in questions],
+                "session_id": session_id,
+                "phase": session.phase.value
+            }
         
-        # Only cache if we actually have questions
+        # Cache the API response
         if questions:
             get_qa_questions._api_question_cache[api_cache_key] = (result, datetime.now())
             app_logger.info(f"Cached {len(questions)} questions for session {session_id}")
         else:
-            app_logger.info(f"No questions to cache for session {session_id}")
+            app_logger.info(f"No questions to cache for session {session_id} - assessment result returned")
         
         # Add security headers
         SecurityHeaders.add_security_headers(response)
@@ -1049,6 +1269,66 @@ async def get_qa_questions(session_id: str, response: Response):
         
     except Exception as e:
         app_logger.error(f"Error getting Q&A questions for {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/sessions/{session_id}/force_advance")
+async def force_advance_session(session_id: str, request: dict, response: Response):
+    """Force advance a session to a specific phase (user override)."""
+    try:
+        target_phase = request.get('target_phase')
+        user_override = request.get('user_override', False)
+        
+        if not target_phase:
+            raise HTTPException(status_code=400, detail="target_phase is required")
+        
+        if not user_override:
+            raise HTTPException(status_code=400, detail="user_override must be true for force advance")
+        
+        # Get session
+        store = get_session_store()
+        session = await store.get_session(session_id)
+        
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        # Map string to Phase enum
+        from app.state.store import Phase
+        phase_mapping = {
+            'PARSING': Phase.PARSING,
+            'VALIDATING': Phase.VALIDATING,
+            'QNA': Phase.QNA,
+            'MATCHING': Phase.MATCHING,
+            'RECOMMENDING': Phase.RECOMMENDING,
+            'DONE': Phase.DONE
+        }
+        
+        new_phase = phase_mapping.get(target_phase)
+        if not new_phase:
+            raise HTTPException(status_code=400, detail=f"Invalid target_phase: {target_phase}")
+        
+        # Update session phase
+        session.phase = new_phase
+        session.progress = 60 if new_phase == Phase.MATCHING else 80 if new_phase == Phase.RECOMMENDING else 100
+        session.updated_at = datetime.now()
+        
+        # Mark that this was a user override
+        session.requirements['user_override'] = True
+        session.requirements['override_reason'] = 'User chose to proceed despite automation suitability concerns'
+        
+        await store.update_session(session_id, session)
+        
+        app_logger.info(f"Force advanced session {session_id} to {target_phase} by user override")
+        
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        
+        return {"success": True, "new_phase": target_phase, "message": "Session advanced successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        app_logger.error(f"Error force advancing session {session_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

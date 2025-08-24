@@ -145,6 +145,24 @@ class AuditLogger:
                           purpose: Optional[str] = None) -> None:
         """Log an LLM provider call with optional prompt, response, and purpose."""
         try:
+            # Input validation
+            if not session_id or not isinstance(session_id, str):
+                raise ValueError("session_id must be a non-empty string")
+            if not provider or not isinstance(provider, str):
+                raise ValueError("provider must be a non-empty string")
+            if not model or not isinstance(model, str):
+                raise ValueError("model must be a non-empty string")
+            if not isinstance(latency_ms, (int, float)) or latency_ms < 0:
+                raise ValueError("latency_ms must be a non-negative number")
+            if tokens is not None and (not isinstance(tokens, int) or tokens < 0):
+                raise ValueError("tokens must be a non-negative integer")
+            if prompt is not None and not isinstance(prompt, str):
+                raise ValueError("prompt must be a string")
+            if response is not None and not isinstance(response, str):
+                raise ValueError("response must be a string")
+            if purpose is not None and not isinstance(purpose, str):
+                raise ValueError("purpose must be a string")
+            
             # Redact PII from prompt and response if enabled
             redacted_prompt = None
             redacted_response = None
@@ -199,6 +217,16 @@ class AuditLogger:
                                accepted: Optional[bool] = None) -> None:
         """Log a pattern matching operation."""
         try:
+            # Input validation
+            if not session_id or not isinstance(session_id, str):
+                raise ValueError("session_id must be a non-empty string")
+            if not pattern_id or not isinstance(pattern_id, str):
+                raise ValueError("pattern_id must be a non-empty string")
+            if not isinstance(score, (int, float)) or score < 0 or score > 1:
+                raise ValueError("score must be a number between 0 and 1")
+            if accepted is not None and not isinstance(accepted, bool):
+                raise ValueError("accepted must be a boolean or None")
+            
             audit_match = AuditMatch(
                 session_id=self._redact_session_id(session_id),
                 pattern_id=pattern_id,

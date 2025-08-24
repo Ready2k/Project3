@@ -1,6 +1,7 @@
 """
 Infrastructure diagram generation using mingrammer/diagrams.
 Supports AWS, GCP, Azure, Kubernetes, On-Prem, and SaaS components.
+Uses dynamic component mapping for extensibility.
 """
 
 import json
@@ -9,6 +10,8 @@ import os
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from loguru import logger
+
+from .dynamic_component_mapper import DynamicComponentMapper
 
 try:
     from diagrams import Diagram, Cluster, Edge
@@ -59,6 +62,7 @@ class InfrastructureDiagramGenerator:
     
     def __init__(self):
         self.component_mapping = self._build_component_mapping()
+        self.dynamic_mapper = DynamicComponentMapper()
     
     def _build_component_mapping(self) -> Dict[str, Dict[str, Any]]:
         """Build mapping from component types to diagrams classes."""
@@ -200,6 +204,36 @@ class InfrastructureDiagramGenerator:
                 # Analytics
                 "snowflake": saas_analytics.Snowflake,
                 "stitch": saas_analytics.Stitch,
+                
+                # AI/ML Services
+                "openai_api": saas_analytics.Snowflake,  # Use generic SaaS icon
+                "claude_api": saas_analytics.Snowflake,  # Use generic SaaS icon
+                "salesforce_api": saas_analytics.Snowflake,  # Use generic SaaS icon
+                "semantic_kernel": saas_analytics.Snowflake,  # Use generic SaaS icon
+                "assistants_api": saas_analytics.Snowflake,  # Use generic SaaS icon
+            },
+            "agentic": {
+                # AI Agent Orchestration
+                "langchain_orchestrator": onprem_compute.Server,  # Use server icon for orchestrators
+                "crewai_coordinator": onprem_compute.Server,  # Use server icon for coordinators
+                "agent_memory": onprem_database.MongoDB,  # Use database icon for memory
+                "semantic_kernel": onprem_compute.Server,  # Use server icon for kernel
+                
+                # AI Model Services
+                "openai_api": saas_analytics.Snowflake,  # Use SaaS icon for APIs
+                "claude_api": saas_analytics.Snowflake,  # Use SaaS icon for APIs
+                "assistants_api": saas_analytics.Snowflake,  # Use SaaS icon for APIs
+                
+                # Knowledge & Data
+                "vector_db": onprem_database.MongoDB,  # Use database icon for vector DBs
+                "knowledge_base": onprem_database.PostgreSQL,  # Use database icon for knowledge
+                
+                # Rules & Workflow
+                "rule_engine": onprem_compute.Server,  # Use server icon for rule engines
+                "workflow_engine": onprem_compute.Server,  # Use server icon for workflow
+                
+                # Integration
+                "salesforce_api": saas_analytics.Snowflake,  # Use SaaS icon for external APIs
             }
         }
     
@@ -311,14 +345,51 @@ class InfrastructureDiagramGenerator:
     
     def _get_component_class(self, provider: str, component_type: str) -> Optional[str]:
         """Get the diagrams class name for a component type."""
+        # First try static mapping for backward compatibility
         provider_mapping = self.component_mapping.get(provider, {})
         component_class = provider_mapping.get(component_type.lower())
         
         if component_class:
-            # Return the full class path
-            module_name = component_class.__module__.split('.')[-1]
+            # Get the actual module and class name from the component class
+            module_path = component_class.__module__
             class_name = component_class.__name__
-            return f"{provider}_{module_name}.{class_name}"
+            
+            # Extract the actual provider and module from the module path
+            # e.g., 'diagrams.onprem.compute' -> 'onprem_compute'
+            if 'diagrams.' in module_path:
+                parts = module_path.split('.')
+                if len(parts) >= 3:
+                    actual_provider = parts[1]  # e.g., 'onprem'
+                    actual_module = parts[2]    # e.g., 'compute'
+                    return f"{actual_provider}_{actual_module}.{class_name}"
+            
+            # Fallback for any edge cases
+            return f"{provider}_{component_class.__module__.split('.')[-1]}.{class_name}"
+        
+        # If not found in static mapping, try dynamic mapping
+        try:
+            dynamic_provider, dynamic_component = self.dynamic_mapper.map_technology_to_component(
+                f"{provider}.{component_type}", provider_hint=provider
+            )
+            
+            # Map to actual component class
+            dynamic_mapping = self.component_mapping.get(dynamic_provider, {})
+            dynamic_class = dynamic_mapping.get(dynamic_component.lower())
+            
+            if dynamic_class:
+                module_path = dynamic_class.__module__
+                class_name = dynamic_class.__name__
+                
+                if 'diagrams.' in module_path:
+                    parts = module_path.split('.')
+                    if len(parts) >= 3:
+                        actual_provider = parts[1]
+                        actual_module = parts[2]
+                        logger.info(f"Dynamic mapping: {provider}.{component_type} -> {actual_provider}_{actual_module}.{class_name}")
+                        return f"{actual_provider}_{actual_module}.{class_name}"
+                        
+        except Exception as e:
+            logger.warning(f"Dynamic mapping failed for {provider}.{component_type}: {e}")
         
         return None
     

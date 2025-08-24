@@ -4,6 +4,13 @@ Interactive GUI + API system that judges if user stories/requirements are automa
 
 ## Features
 
+### 🔄 **Session Management** *(Enhanced in v2.6.0)*
+- 🔄 **Resume Previous Session**: Complete session continuity functionality with UUID validation
+- 📋 **Session Information Display**: Current session ID with copy-to-clipboard functionality  
+- 🔗 **Cross-Session Compatibility**: Works with all input methods (Text, File Upload, Jira Integration)
+- 📚 **Comprehensive Help System**: "Where do I find my Session ID?" guidance with detailed instructions
+- 🛡️ **Robust Validation**: UUID format validation with helpful error messages and troubleshooting tips
+
 ### ⚙️ **Dynamic Schema System** *(New in v2.5.0)*
 - 🔧 **Configurable Validation Enums**: Replace hard-coded JSON schema enums with user-configurable values
 - 🎯 **Extended Reasoning Types**: 12+ configurable reasoning types (logical, causal, collaborative, creative, ethical, etc.)
@@ -30,8 +37,8 @@ Interactive GUI + API system that judges if user stories/requirements are automa
 - �️ ***LLM-Driven Tech Stack Generation**: Intelligent technology recommendations from 55+ catalog technologies
 - 🏗️ **AI-Generated Architecture Explanations**: LLM explains how technology components work together for your specific use case
 
-### � *e*Visualization & Documentation**
-- 📈 **AI-Generated Architecture Diagrams**: Context, Container, Sequence, C4 Architecture, and Tech Stack Wiring diagrams using Mermaid with enhanced viewing options and v10.2.4 compatibility
+### 📊 **Visualization & Documentation**
+- 📈 **AI-Generated Architecture Diagrams**: Context, Container, Sequence, C4 Architecture, and Tech Stack Wiring diagrams using Mermaid with enhanced viewing options, v10.2.4 compatibility, and robust LLM response extraction
 - 🏗️ **Infrastructure Diagrams**: Cloud architecture diagrams with vendor-specific icons (AWS, GCP, Azure) using mingrammer/diagrams
 - 📚 **Technology Catalog Management**: Complete CRUD interface for managing 55+ technologies across 17 categories
 - 📊 **Pattern Analytics Dashboard**: Real-time analytics showing pattern match frequency, acceptance rates, and quality scores
@@ -251,11 +258,12 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
    - Test connection to verify setup
 
 2. **Submit Requirements** (Analysis Tab):
-   - Choose input method: Text, File Upload, or Jira
-   - Enter your automation requirement description
+   - Choose input method: Text, File Upload, Jira, or **Resume Previous Session**
+   - For new analysis: Enter your automation requirement description
+   - For resume: Enter session ID (found in progress tracking, results, exports, or browser URL)
    - Optionally specify domain and pattern types
    - **Set Technology Constraints**: Banned technologies, required integrations, compliance requirements
-   - Click "🚀 Analyze Requirements"
+   - Click "🚀 Analyze Requirements" or "🔄 Resume Session"
 
 3. **Answer AI Questions** (Automatic):
    - System generates personalized questions using AI

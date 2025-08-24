@@ -16,6 +16,7 @@ from app.services.autonomy_assessor import AutonomyAssessor
 from app.exporters.agent_exporter import AgentSystemExporter
 from app.services.agent_display_config import AgentDisplayConfigManager
 from app.utils.logger import app_logger
+from app.utils.error_boundaries import error_boundary
 
 
 class AgentDisplayValidator:
@@ -33,8 +34,8 @@ class AgentDisplayValidator:
     def run_validation(self) -> Dict[str, Any]:
         """Run complete validation suite."""
         
-        print("🚀 Starting Agent Display System Validation...")
-        print("=" * 60)
+        app_logger.info("🚀 Starting Agent Display System Validation...")
+        app_logger.info("=" * 60)
         
         try:
             # Component validation
@@ -56,8 +57,8 @@ class AgentDisplayValidator:
             self._print_results()
             
         except Exception as e:
-            print(f"❌ Validation failed with error: {e}")
-            traceback.print_exc()
+            app_logger.error(f"❌ Validation failed with error: {e}")
+            app_logger.error(f"Traceback: {traceback.format_exc()}")
             self.validation_results["overall_status"] = "FAILED"
         
         return self.validation_results
@@ -65,7 +66,7 @@ class AgentDisplayValidator:
     def _validate_components(self):
         """Validate individual components."""
         
-        print("\n📦 Validating Individual Components...")
+        app_logger.info("\n📦 Validating Individual Components...")
         
         # Test AgentDataFormatter
         try:
@@ -76,11 +77,11 @@ class AgentDisplayValidator:
             assert result.has_agents == False
             
             self.validation_results["component_tests"]["agent_formatter"] = "PASS"
-            print("  ✅ AgentDataFormatter: PASS")
+            app_logger.info("  ✅ AgentDataFormatter: PASS")
             
         except Exception as e:
             self.validation_results["component_tests"]["agent_formatter"] = f"FAIL: {e}"
-            print(f"  ❌ AgentDataFormatter: FAIL - {e}")
+            app_logger.error(f"  ❌ AgentDataFormatter: FAIL - {e}")
         
         # Test TechStackEnhancer
         try:
@@ -92,11 +93,11 @@ class AgentDisplayValidator:
             assert "deployment_ready" in result
             
             self.validation_results["component_tests"]["tech_stack_enhancer"] = "PASS"
-            print("  ✅ TechStackEnhancer: PASS")
+            app_logger.info("  ✅ TechStackEnhancer: PASS")
             
         except Exception as e:
             self.validation_results["component_tests"]["tech_stack_enhancer"] = f"FAIL: {e}"
-            print(f"  ❌ TechStackEnhancer: FAIL - {e}")
+            app_logger.error(f"  ❌ TechStackEnhancer: FAIL - {e}")
         
         # Test AgentRolesUIComponent
         try:
@@ -107,11 +108,11 @@ class AgentDisplayValidator:
             assert color is not None
             
             self.validation_results["component_tests"]["ui_component"] = "PASS"
-            print("  ✅ AgentRolesUIComponent: PASS")
+            app_logger.info("  ✅ AgentRolesUIComponent: PASS")
             
         except Exception as e:
             self.validation_results["component_tests"]["ui_component"] = f"FAIL: {e}"
-            print(f"  ❌ AgentRolesUIComponent: FAIL - {e}")
+            app_logger.error(f"  ❌ AgentRolesUIComponent: FAIL - {e}")
         
         # Test AgentSystemExporter
         try:
@@ -123,11 +124,11 @@ class AgentDisplayValidator:
             assert "export_metadata" in result
             
             self.validation_results["component_tests"]["exporter"] = "PASS"
-            print("  ✅ AgentSystemExporter: PASS")
+            app_logger.info("  ✅ AgentSystemExporter: PASS")
             
         except Exception as e:
             self.validation_results["component_tests"]["exporter"] = f"FAIL: {e}"
-            print(f"  ❌ AgentSystemExporter: FAIL - {e}")
+            app_logger.error(f"  ❌ AgentSystemExporter: FAIL - {e}")
         
         # Test Configuration Manager
         try:
@@ -138,16 +139,16 @@ class AgentDisplayValidator:
             assert success == True
             
             self.validation_results["component_tests"]["config_manager"] = "PASS"
-            print("  ✅ AgentDisplayConfigManager: PASS")
+            app_logger.info("  ✅ AgentDisplayConfigManager: PASS")
             
         except Exception as e:
             self.validation_results["component_tests"]["config_manager"] = f"FAIL: {e}"
-            print(f"  ❌ AgentDisplayConfigManager: FAIL - {e}")
+            app_logger.error(f"  ❌ AgentDisplayConfigManager: FAIL - {e}")
     
     def _validate_integration(self):
         """Validate component integration."""
         
-        print("\n🔗 Validating Component Integration...")
+        app_logger.info("\n🔗 Validating Component Integration...")
         
         try:
             # Test complete workflow
@@ -172,11 +173,11 @@ class AgentDisplayValidator:
             assert "integration_test" in json_export["export_metadata"]["session_id"]
             
             self.validation_results["integration_tests"]["workflow"] = "PASS"
-            print("  ✅ Complete Workflow Integration: PASS")
+            app_logger.info("  ✅ Complete Workflow Integration: PASS")
             
         except Exception as e:
             self.validation_results["integration_tests"]["workflow"] = f"FAIL: {e}"
-            print(f"  ❌ Complete Workflow Integration: FAIL - {e}")
+            app_logger.error(f"  ❌ Complete Workflow Integration: FAIL - {e}")
         
         # Test error handling integration
         try:
@@ -191,16 +192,16 @@ class AgentDisplayValidator:
             assert "error" in error_result.tech_stack_validation
             
             self.validation_results["integration_tests"]["error_handling"] = "PASS"
-            print("  ✅ Error Handling Integration: PASS")
+            app_logger.info("  ✅ Error Handling Integration: PASS")
             
         except Exception as e:
             self.validation_results["integration_tests"]["error_handling"] = f"FAIL: {e}"
-            print(f"  ❌ Error Handling Integration: FAIL - {e}")
+            app_logger.error(f"  ❌ Error Handling Integration: FAIL - {e}")
     
     def _validate_performance(self):
         """Validate performance characteristics."""
         
-        print("\n⚡ Validating Performance...")
+        app_logger.info("\n⚡ Validating Performance...")
         
         try:
             import time
@@ -221,11 +222,11 @@ class AgentDisplayValidator:
             assert result.has_agents == True
             
             self.validation_results["performance_tests"]["formatting_speed"] = f"PASS ({formatting_time:.3f}s)"
-            print(f"  ✅ Formatting Performance: PASS ({formatting_time:.3f}s)")
+            app_logger.info(f"  ✅ Formatting Performance: PASS ({formatting_time:.3f}s)")
             
         except Exception as e:
             self.validation_results["performance_tests"]["formatting_speed"] = f"FAIL: {e}"
-            print(f"  ❌ Formatting Performance: FAIL - {e}")
+            app_logger.error(f"  ❌ Formatting Performance: FAIL - {e}")
         
         # Test export performance
         try:
@@ -243,16 +244,16 @@ class AgentDisplayValidator:
             assert len(markdown_export) > 0
             
             self.validation_results["performance_tests"]["export_speed"] = f"PASS ({export_time:.3f}s)"
-            print(f"  ✅ Export Performance: PASS ({export_time:.3f}s)")
+            app_logger.info(f"  ✅ Export Performance: PASS ({export_time:.3f}s)")
             
         except Exception as e:
             self.validation_results["performance_tests"]["export_speed"] = f"FAIL: {e}"
-            print(f"  ❌ Export Performance: FAIL - {e}")
+            app_logger.error(f"  ❌ Export Performance: FAIL - {e}")
     
     def _validate_accessibility(self):
         """Validate accessibility features."""
         
-        print("\n♿ Validating Accessibility Features...")
+        app_logger.info("\n♿ Validating Accessibility Features...")
         
         try:
             ui_component = AgentRolesUIComponent()
@@ -265,11 +266,11 @@ class AgentDisplayValidator:
             ui_component.render_accessible_agent_summary(agent_system)
             
             self.validation_results["accessibility_tests"]["features"] = "PASS"
-            print("  ✅ Accessibility Features: PASS")
+            app_logger.info("  ✅ Accessibility Features: PASS")
             
         except Exception as e:
             self.validation_results["accessibility_tests"]["features"] = f"FAIL: {e}"
-            print(f"  ❌ Accessibility Features: FAIL - {e}")
+            app_logger.error(f"  ❌ Accessibility Features: FAIL - {e}")
         
         # Test keyboard navigation support
         try:
@@ -277,11 +278,11 @@ class AgentDisplayValidator:
             ui_component._add_keyboard_navigation_support()
             
             self.validation_results["accessibility_tests"]["keyboard_navigation"] = "PASS"
-            print("  ✅ Keyboard Navigation: PASS")
+            app_logger.info("  ✅ Keyboard Navigation: PASS")
             
         except Exception as e:
             self.validation_results["accessibility_tests"]["keyboard_navigation"] = f"FAIL: {e}"
-            print(f"  ❌ Keyboard Navigation: FAIL - {e}")
+            app_logger.error(f"  ❌ Keyboard Navigation: FAIL - {e}")
     
     def _determine_overall_status(self):
         """Determine overall validation status."""
@@ -302,46 +303,49 @@ class AgentDisplayValidator:
             self.validation_results["overall_status"] = "FAIL"
     
     def _print_results(self):
-        """Print validation results summary."""
+        """Log validation results summary."""
         
-        print("\n" + "=" * 60)
-        print("📊 VALIDATION RESULTS SUMMARY")
-        print("=" * 60)
+        app_logger.info("\n" + "=" * 60)
+        app_logger.info("📊 VALIDATION RESULTS SUMMARY")
+        app_logger.info("=" * 60)
         
         # Overall status
         status = self.validation_results["overall_status"]
         if status == "PASS":
-            print("🎉 Overall Status: ✅ PASS - All systems operational!")
+            app_logger.info("🎉 Overall Status: ✅ PASS - All systems operational!")
         elif status == "PARTIAL":
-            print("⚠️  Overall Status: 🟡 PARTIAL - Some issues detected")
+            app_logger.warning("⚠️  Overall Status: 🟡 PARTIAL - Some issues detected")
         else:
-            print("💥 Overall Status: ❌ FAIL - Critical issues found")
+            app_logger.error("💥 Overall Status: ❌ FAIL - Critical issues found")
         
-        print()
+        app_logger.info("")
         
         # Detailed results
         for category, tests in self.validation_results.items():
             if category == "overall_status":
                 continue
             
-            print(f"{category.replace('_', ' ').title()}:")
+            app_logger.info(f"{category.replace('_', ' ').title()}:")
             if isinstance(tests, dict):
                 for test_name, result in tests.items():
                     status_icon = "✅" if result.startswith("PASS") else "❌"
-                    print(f"  {status_icon} {test_name}: {result}")
-            print()
+                    if result.startswith("PASS"):
+                        app_logger.info(f"  {status_icon} {test_name}: {result}")
+                    else:
+                        app_logger.error(f"  {status_icon} {test_name}: {result}")
+            app_logger.info("")
         
         # Recommendations
         if self.validation_results["overall_status"] != "PASS":
-            print("🔧 RECOMMENDATIONS:")
-            print("  - Check failed components and fix issues")
-            print("  - Run validation again after fixes")
-            print("  - Consider running individual component tests for debugging")
+            app_logger.info("🔧 RECOMMENDATIONS:")
+            app_logger.info("  - Check failed components and fix issues")
+            app_logger.info("  - Run validation again after fixes")
+            app_logger.info("  - Consider running individual component tests for debugging")
         else:
-            print("🚀 READY FOR DEPLOYMENT:")
-            print("  - All agent display components are working correctly")
-            print("  - System is ready for production use")
-            print("  - Performance and accessibility standards met")
+            app_logger.info("🚀 READY FOR DEPLOYMENT:")
+            app_logger.info("  - All agent display components are working correctly")
+            app_logger.info("  - System is ready for production use")
+            app_logger.info("  - Performance and accessibility standards met")
     
     def _create_mock_agent_design(self):
         """Create mock agent design for testing."""

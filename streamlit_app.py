@@ -36,7 +36,12 @@ async def make_llm_request(prompt: str, provider_config: Dict, purpose: str = "d
         # Import here to avoid circular imports
         from app.api import create_llm_provider, ProviderConfig
         
-        # Create provider config object
+        # Import configuration service for dynamic parameters
+        from app.services.configuration_service import get_config
+        config_service = get_config()
+        llm_params = config_service.get_llm_params()
+        
+        # Create provider config object with dynamic parameters
         config = ProviderConfig(
             provider=provider_config.get('provider', 'openai'),
             model=provider_config.get('model', 'gpt-4o'),
@@ -47,8 +52,8 @@ async def make_llm_request(prompt: str, provider_config: Dict, purpose: str = "d
             aws_secret_access_key=provider_config.get('aws_secret_access_key'),
             aws_session_token=provider_config.get('aws_session_token'),
             bedrock_api_key=provider_config.get('bedrock_api_key'),
-            temperature=0.3,  # TODO: Use config_service.llm_generation.temperature
-            max_tokens=1000  # TODO: Use config_service.llm_generation.max_tokens
+            temperature=llm_params['temperature'],
+            max_tokens=llm_params['max_tokens']
         )
         
         # Get session ID for audit logging
@@ -582,11 +587,26 @@ async def build_context_diagram(requirement: str, recommendations: List[Dict],
         app_logger.info(f"Using recommendation tech stack context for context diagram: {len(tech_stack)} technologies")
         tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(tech_stack)}"
     
+    # Build comprehensive recommendation context
+    recommendation_context = ""
+    if recommendations:
+        rec = recommendations[0]
+        recommendation_context = f"""
+SOLUTION ANALYSIS:
+- Pattern: {rec.get('pattern_id', 'Unknown')}
+- Feasibility: {rec.get('feasibility', 'Unknown')}
+- Confidence: {rec.get('confidence', 0):.1%}
+- Reasoning: {rec.get('reasoning', 'No reasoning available')}"""
+        
+        # Add agent roles if available
+        if rec.get('agent_roles'):
+            agent_roles = rec['agent_roles']
+            roles_text = ', '.join([role.get('name', 'Unknown Agent') for role in agent_roles])
+            recommendation_context += f"\n- Agent Roles: {roles_text}"
+    
     prompt = f"""Generate a Mermaid context diagram (C4 Level 1) for this automation requirement:
 
-REQUIREMENT: {requirement}
-
-RECOMMENDATIONS: {recommendations[0].get('reasoning', 'No recommendations available') if recommendations else 'No recommendations available'}
+REQUIREMENT: {requirement}{recommendation_context}
 
 {tech_stack_context}
 
@@ -672,11 +692,26 @@ async def build_container_diagram(requirement: str, recommendations: List[Dict],
         app_logger.info(f"Using recommendation tech stack context for container diagram: {len(tech_stack)} technologies")
         tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(tech_stack)}"
     
+    # Build comprehensive recommendation context
+    recommendation_context = ""
+    if recommendations:
+        rec = recommendations[0]
+        recommendation_context = f"""
+SOLUTION ANALYSIS:
+- Pattern: {rec.get('pattern_id', 'Unknown')}
+- Feasibility: {rec.get('feasibility', 'Unknown')}
+- Confidence: {rec.get('confidence', 0):.1%}
+- Reasoning: {rec.get('reasoning', 'No reasoning available')}"""
+        
+        # Add agent roles if available
+        if rec.get('agent_roles'):
+            agent_roles = rec['agent_roles']
+            roles_text = ', '.join([role.get('name', 'Unknown Agent') for role in agent_roles])
+            recommendation_context += f"\n- Agent Roles: {roles_text}"
+    
     prompt = f"""Generate a Mermaid container diagram (C4 Level 2) for this automation requirement:
 
-REQUIREMENT: {requirement}
-
-RECOMMENDATIONS: {recommendations[0].get('reasoning', 'No recommendations available') if recommendations else 'No recommendations available'}
+REQUIREMENT: {requirement}{recommendation_context}
 
 {tech_stack_context}
 
@@ -796,9 +831,26 @@ Use the architecture explanation above to understand how components interact and
     else:
         app_logger.info("No architecture explanation available for wiring diagram")
 
+    # Build comprehensive recommendation context
+    recommendation_context = ""
+    if recommendations:
+        rec = recommendations[0]
+        recommendation_context = f"""
+SOLUTION ANALYSIS:
+- Pattern: {rec.get('pattern_id', 'Unknown')}
+- Feasibility: {rec.get('feasibility', 'Unknown')}
+- Confidence: {rec.get('confidence', 0):.1%}
+- Reasoning: {rec.get('reasoning', 'No reasoning available')}"""
+        
+        # Add agent roles if available
+        if rec.get('agent_roles'):
+            agent_roles = rec['agent_roles']
+            roles_text = ', '.join([role.get('name', 'Unknown Agent') for role in agent_roles])
+            recommendation_context += f"\n- Agent Roles: {roles_text}"
+
     prompt = f"""Generate a Mermaid technical wiring diagram showing how technology components connect and interact for this automation requirement:
 
-REQUIREMENT: {requirement}
+REQUIREMENT: {requirement}{recommendation_context}
 
 TECHNOLOGY STACK: {tech_stack_str}{architecture_context}
 
@@ -965,11 +1017,26 @@ async def build_sequence_diagram(requirement: str, recommendations: List[Dict],
         app_logger.info(f"Using recommendation tech stack context for sequence diagram: {len(tech_stack)} technologies")
         tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(tech_stack)}"
     
+    # Build comprehensive recommendation context
+    recommendation_context = ""
+    if recommendations:
+        rec = recommendations[0]
+        recommendation_context = f"""
+SOLUTION ANALYSIS:
+- Pattern: {rec.get('pattern_id', 'Unknown')}
+- Feasibility: {rec.get('feasibility', 'Unknown')}
+- Confidence: {rec.get('confidence', 0):.1%}
+- Reasoning: {rec.get('reasoning', 'No reasoning available')}"""
+        
+        # Add agent roles if available
+        if rec.get('agent_roles'):
+            agent_roles = rec['agent_roles']
+            roles_text = ', '.join([role.get('name', 'Unknown Agent') for role in agent_roles])
+            recommendation_context += f"\n- Agent Roles: {roles_text}"
+    
     prompt = f"""Generate a Mermaid sequence diagram for this automation requirement:
 
-REQUIREMENT: {requirement}
-
-RECOMMENDATIONS: {recommendations[0].get('reasoning', 'No recommendations available') if recommendations else 'No recommendations available'}
+REQUIREMENT: {requirement}{recommendation_context}
 
 {tech_stack_context}
 
@@ -1100,9 +1167,20 @@ async def build_agent_interaction_diagram(requirement: str, recommendations: Lis
         elif any(word in requirement_lower for word in ['resume', 'interview', 'candidate', 'hiring', 'recruitment']):
             domain_context = "DOMAIN: Human Resources"
         
+        # Build comprehensive recommendation context
+        recommendation_context = ""
+        if recommendations:
+            rec = recommendations[0]
+            recommendation_context = f"""
+SOLUTION ANALYSIS:
+- Pattern: {rec.get('pattern_id', 'Unknown')}
+- Feasibility: {rec.get('feasibility', 'Unknown')}
+- Confidence: {rec.get('confidence', 0):.1%}
+- Reasoning: {rec.get('reasoning', 'No reasoning available')}"""
+        
         prompt = f"""Create a Mermaid flowchart diagram showing how autonomous AI agents interact, coordinate, and make decisions for this specific requirement:
 
-REQUIREMENT: {requirement}
+REQUIREMENT: {requirement}{recommendation_context}
 
 {domain_context}
 {tech_stack_context}
@@ -1296,11 +1374,95 @@ async def build_infrastructure_diagram(requirement: str, recommendations: List[D
         app_logger.info(f"Using recommendation tech stack context for infrastructure diagram: {len(tech_stack)} technologies")
         tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(tech_stack)}"
     
-    prompt = f"""Generate a detailed and indepth infrastructure diagram specification for this automation requirement:
+    # Build comprehensive recommendation context
+    recommendation_context = ""
+    if recommendations:
+        rec = recommendations[0]
+        recommendation_context = f"""
+SOLUTION ANALYSIS:
+- Pattern: {rec.get('pattern_id', 'Unknown')}
+- Feasibility: {rec.get('feasibility', 'Unknown')}
+- Confidence: {rec.get('confidence', 0):.1%}
+- Reasoning: {rec.get('reasoning', 'No reasoning available')}"""
+        
+        # Add agent roles if available
+        if rec.get('agent_roles'):
+            agent_roles = rec['agent_roles']
+            roles_text = ', '.join([role.get('name', 'Unknown Agent') for role in agent_roles])
+            recommendation_context += f"\n- Agent Roles: {roles_text}"
+    
+    # Detect if this is an agentic AI system
+    is_agentic_system = False
+    agentic_keywords = ['langchain', 'crewai', 'langgraph', 'semantic kernel', 'agent', 'agentic', 'autonomous']
+    
+    if tech_stack_context:
+        tech_lower = tech_stack_context.lower()
+        is_agentic_system = any(keyword in tech_lower for keyword in agentic_keywords)
+    
+    if recommendation_context:
+        rec_lower = recommendation_context.lower()
+        is_agentic_system = is_agentic_system or any(keyword in rec_lower for keyword in agentic_keywords)
 
-REQUIREMENT: {requirement}
+    if is_agentic_system:
+        prompt = f"""Generate a detailed infrastructure diagram specification for this AGENTIC AI AUTOMATION requirement:
 
-RECOMMENDATIONS: {recommendations[0].get('reasoning', 'No recommendations available') if recommendations else 'No recommendations available'}
+REQUIREMENT: {requirement}{recommendation_context}
+
+{tech_stack_context}
+
+{f'''
+ARCHITECTURE EXPLANATION: {architecture_explanation}
+
+Use the architecture explanation above to understand infrastructure requirements and component deployment.''' if architecture_explanation else ''}
+
+CRITICAL: This is an AGENTIC AI SYSTEM. Focus on AI agent orchestration infrastructure, not traditional web services.
+
+Create a JSON specification showing AGENTIC AI INFRASTRUCTURE:
+- AI Agent Orchestration Platforms (LangChain, CrewAI, LangGraph, Semantic Kernel)
+- AI Model Services (OpenAI, Claude, GPT-4o, Assistants API)
+- Agent Communication & Coordination Systems
+- Knowledge Bases & Vector Databases (Neo4j, Pinecone, Weaviate)
+- Workflow Orchestration (Pega, Temporal, Airflow)
+- Rule Engines & Decision Systems (Drools, business rules)
+- Integration APIs (Salesforce, external systems)
+- Agent Memory & State Management
+- Multi-Agent Communication Buses
+
+IMPORTANT: Represent agentic frameworks as specialized infrastructure components, not generic compute services.
+
+Return a JSON object with this structure:
+{{
+  "title": "Infrastructure Diagram Title",
+  "clusters": [
+    {{
+      "provider": "aws|gcp|azure|k8s|onprem|agentic",
+      "name": "Cluster Name",
+      "nodes": [
+        {{"id": "unique_id", "type": "component_type", "label": "Display Label"}}
+      ]
+    }}
+  ],
+  "nodes": [
+    {{"id": "external_id", "type": "component_type", "provider": "provider", "label": "External Service"}}
+  ],
+  "edges": [
+    ["source_id", "target_id", "connection_label"]
+  ]
+}}
+
+Component types by provider:
+- AWS: lambda, ec2, rds, dynamodb, s3, apigateway, sqs, sns
+- GCP: functions, gce, sql, firestore, gcs, loadbalancing  
+- Azure: functions, vm, sql, cosmosdb, storage, loadbalancer
+- OnPrem: server, postgresql, mysql, mongodb, redis, nginx
+- Agentic: langchain_orchestrator, crewai_coordinator, agent_memory, vector_db, rule_engine, workflow_engine
+- SaaS: openai_api, claude_api, salesforce_api, semantic_kernel, assistants_api
+
+IMPORTANT: Return ONLY valid JSON without markdown formatting."""
+    else:
+        prompt = f"""Generate a detailed and indepth infrastructure diagram specification for this automation requirement:
+
+REQUIREMENT: {requirement}{recommendation_context}
 
 {tech_stack_context}
 
@@ -1381,12 +1543,32 @@ IMPORTANT: Return ONLY valid JSON without markdown formatting."""
         try:
             # Clean the response of any markdown formatting
             cleaned_response = response.strip()
+            
+            # Handle various markdown code block formats
             if cleaned_response.startswith('```json'):
                 cleaned_response = cleaned_response[7:]
+            elif cleaned_response.startswith('```'):
+                cleaned_response = cleaned_response[3:]
+            
             if cleaned_response.endswith('```'):
                 cleaned_response = cleaned_response[:-3]
+            
             cleaned_response = cleaned_response.strip()
             
+            # Additional cleaning for any remaining formatting
+            if not cleaned_response.startswith('{'):
+                # Find the first { character
+                start_idx = cleaned_response.find('{')
+                if start_idx != -1:
+                    cleaned_response = cleaned_response[start_idx:]
+            
+            if not cleaned_response.endswith('}'):
+                # Find the last } character
+                end_idx = cleaned_response.rfind('}')
+                if end_idx != -1:
+                    cleaned_response = cleaned_response[:end_idx + 1]
+            
+            app_logger.info(f"Parsing infrastructure JSON: {len(cleaned_response)} characters")
             return json.loads(cleaned_response)
         except json.JSONDecodeError as e:
             app_logger.error(f"Failed to parse infrastructure diagram JSON: {e}")
@@ -1438,11 +1620,26 @@ async def build_c4_diagram(requirement: str, recommendations: List[Dict],
         app_logger.info(f"Using recommendation tech stack context for C4 diagram: {len(tech_stack)} technologies")
         tech_stack_context = f"TECHNOLOGY CONTEXT: {', '.join(tech_stack)}"
     
+    # Build comprehensive recommendation context
+    recommendation_context = ""
+    if recommendations:
+        rec = recommendations[0]
+        recommendation_context = f"""
+SOLUTION ANALYSIS:
+- Pattern: {rec.get('pattern_id', 'Unknown')}
+- Feasibility: {rec.get('feasibility', 'Unknown')}
+- Confidence: {rec.get('confidence', 0):.1%}
+- Reasoning: {rec.get('reasoning', 'No reasoning available')}"""
+        
+        # Add agent roles if available
+        if rec.get('agent_roles'):
+            agent_roles = rec['agent_roles']
+            roles_text = ', '.join([role.get('name', 'Unknown Agent') for role in agent_roles])
+            recommendation_context += f"\n- Agent Roles: {roles_text}"
+    
     prompt = f"""Generate a proper C4 diagram using Mermaid's C4 syntax for this automation requirement:
 
-REQUIREMENT: {requirement}
-
-RECOMMENDATIONS: {recommendations[0].get('reasoning', 'No recommendations available') if recommendations else 'No recommendations available'}
+REQUIREMENT: {requirement}{recommendation_context}
 
 {tech_stack_context}
 
@@ -3146,6 +3343,111 @@ verify_ssl = True
                 st.error(f"❌ Error getting status: {error_msg}")
                 st.info("🔄 The page will continue to refresh automatically.")
     
+    def handle_automation_assessment(self, assessment, requires_user_decision, proceeding_with_traditional):
+        """Handle automation suitability assessment results."""
+        suitability = assessment.get('suitability', 'not_suitable')
+        confidence = assessment.get('confidence', 0.0)
+        reasoning = assessment.get('reasoning', '')
+        recommended_approach = assessment.get('recommended_approach', '')
+        challenges = assessment.get('challenges', [])
+        next_steps = assessment.get('next_steps', [])
+        warning_message = assessment.get('warning_message')
+        
+        st.subheader("🔍 Automation Suitability Assessment")
+        
+        # Show assessment results with appropriate styling
+        if suitability == 'agentic':
+            st.success("✅ **Suitable for Agentic AI Automation**")
+        elif suitability == 'traditional':
+            st.info("🔧 **Suitable for Traditional Automation**")
+        elif suitability == 'hybrid':
+            st.info("🔄 **Suitable for Hybrid Automation Approach**")
+        else:
+            st.warning("⚠️ **May Not Be Suitable for Automation**")
+        
+        # Show confidence level
+        confidence_color = "green" if confidence >= 0.8 else "orange" if confidence >= 0.6 else "red"
+        st.markdown(f"**Confidence Level:** :{confidence_color}[{confidence:.1%}]")
+        
+        # Show reasoning
+        with st.expander("📋 Assessment Details", expanded=True):
+            st.write("**Reasoning:**")
+            st.write(reasoning)
+            
+            st.write("**Recommended Approach:**")
+            st.write(recommended_approach)
+            
+            if challenges:
+                st.write("**Potential Challenges:**")
+                for challenge in challenges:
+                    st.write(f"• {challenge}")
+            
+            if next_steps:
+                st.write("**Recommended Next Steps:**")
+                for step in next_steps:
+                    st.write(f"• {step}")
+        
+        # Show warning if present
+        if warning_message:
+            st.warning(f"⚠️ **Warning:** {warning_message}")
+        
+        # Handle user decision requirement
+        if requires_user_decision:
+            st.markdown("---")
+            st.subheader("🤔 Your Decision")
+            
+            if suitability == 'not_suitable':
+                st.error("**This requirement appears to be unsuitable for automation.** However, you can still proceed if you'd like to explore potential solutions.")
+            else:
+                st.warning("**The automation assessment has some concerns.** Please review the details above before proceeding.")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("🚀 Proceed Anyway", type="primary", help="Continue with analysis despite concerns"):
+                    self.proceed_with_analysis_anyway()
+            
+            with col2:
+                if st.button("🔄 Revise Requirement", help="Go back and modify your requirement"):
+                    self.restart_analysis()
+        
+        elif proceeding_with_traditional:
+            st.success("✅ **Proceeding with traditional automation analysis...**")
+            st.info("The system will now analyze your requirement using traditional automation patterns instead of agentic AI.")
+            # The session phase has already been updated to MATCHING, so the UI will refresh and show progress
+        
+        else:
+            # Assessment complete, proceed automatically
+            st.success("✅ **Assessment complete - proceeding to pattern matching...**")
+    
+    def proceed_with_analysis_anyway(self):
+        """Proceed with analysis despite automation suitability concerns."""
+        try:
+            # Force advance the session to MATCHING phase
+            asyncio.run(self.make_api_request(
+                "POST",
+                f"/sessions/{st.session_state.session_id}/force_advance",
+                {"target_phase": "MATCHING", "user_override": True}
+            ))
+            
+            st.success("✅ Proceeding with analysis...")
+            st.rerun()
+            
+        except Exception as e:
+            st.error(f"❌ Error proceeding with analysis: {str(e)}")
+    
+    def restart_analysis(self):
+        """Restart the analysis process."""
+        # Clear session state and return to input
+        st.session_state.session_id = None
+        st.session_state.current_phase = None
+        st.session_state.progress = 0
+        st.session_state.recommendations = None
+        st.session_state.qa_questions = []
+        
+        st.success("✅ Analysis restarted - please provide a new requirement")
+        st.rerun()
+
     def render_qa_section(self):
         """Render Q&A interaction section."""
         st.subheader("❓ Clarifying Questions")
@@ -3180,17 +3482,27 @@ verify_ssl = True
                 # Debug message (hidden by default)
                 if st.session_state.get('show_qa_debug', False):
                     st.write(f"**Debug:** Generating questions for session {st.session_state.session_id}")
-                with st.spinner("🤖 AI is generating personalized questions for your requirement..."):
+                with st.spinner("🤖 AI is analyzing your requirement for automation suitability..."):
                     response = asyncio.run(self.make_api_request(
                         "GET",
                         f"/qa/{st.session_state.session_id}/questions"
                     ))
+                    
                     questions = response.get('questions', [])
+                    automation_assessment = response.get('automation_assessment')
+                    requires_user_decision = response.get('requires_user_decision', False)
+                    proceeding_with_traditional = response.get('proceeding_with_traditional', False)
+                    
                     if questions:
+                        # Normal Q&A flow - we have agentic questions to ask
                         st.session_state.qa_questions = questions
                         # Cache the questions to prevent regeneration
                         st.session_state[questions_cache_key] = questions
-                        st.success(f"✅ Generated {len(questions)} questions")
+                        st.success(f"✅ Generated {len(questions)} questions for agentic AI assessment")
+                    elif automation_assessment:
+                        # Handle automation assessment results
+                        self.handle_automation_assessment(automation_assessment, requires_user_decision, proceeding_with_traditional)
+                        return
                     else:
                         st.info("No additional questions needed - proceeding to analysis...")
                         return
@@ -3217,48 +3529,53 @@ verify_ssl = True
         
         # Show questions if we have them
         if st.session_state.qa_questions:
-            answers = {}
-            for idx, q in enumerate(st.session_state.qa_questions):
-                # Create unique key using index and question hash to prevent Streamlit key conflicts
-                # This handles cases where multiple questions might have the same field ID
-                unique_key = f"qa_{idx}_{hash(q['question'])}"
-                
-                if q["type"] == "text":
-                    # Use text_area for longer responses and to avoid password manager interference
-                    question_text = q["question"]
-                    # Add context to prevent password manager confusion
-                    if "api" in question_text.lower() or "password" in question_text.lower():
-                        help_text = "This is not a password field - please describe your requirements"
-                    else:
-                        help_text = "Please provide details to help improve the recommendation accuracy"
+            # Use a form to prevent API calls on every keystroke
+            with st.form(key="qa_form", clear_on_submit=False):
+                answers = {}
+                for idx, q in enumerate(st.session_state.qa_questions):
+                    # Create unique key using index and question hash to prevent Streamlit key conflicts
+                    # This handles cases where multiple questions might have the same field ID
+                    unique_key = f"qa_{idx}_{hash(q['question'])}"
                     
-                    answers[q["id"]] = st.text_area(
-                        question_text, 
-                        key=unique_key,
-                        height=100,
-                        help=help_text,
-                        placeholder="Enter your response here..."
-                    )
-                elif q["type"] == "select":
-                    answers[q["id"]] = st.selectbox(q["question"], q["options"], key=unique_key)
-            
-            # Check if all questions are answered
-            answered_count = sum(1 for answer in answers.values() if answer and answer.strip())
-            total_questions = len(st.session_state.qa_questions)
-            
-            # Debug information
-            if st.session_state.get('debug_qa', False):
-                st.write("**Debug - Answer Status:**")
-                for q_id, answer in answers.items():
-                    status = "✅" if answer and answer.strip() else "❌"
-                    st.write(f"{status} {q_id}: '{answer}'")
-            
-            st.write(f"📝 Answered: {answered_count}/{total_questions} questions")
-            
-            # Submit button
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                if st.button("🚀 Submit Answers", type="primary", use_container_width=True):
+                    if q["type"] == "text":
+                        # Use text_area for longer responses and to avoid password manager interference
+                        question_text = q["question"]
+                        # Add context to prevent password manager confusion
+                        if "api" in question_text.lower() or "password" in question_text.lower():
+                            help_text = "This is not a password field - please describe your requirements"
+                        else:
+                            help_text = "Please provide details to help improve the recommendation accuracy"
+                        
+                        answers[q["id"]] = st.text_area(
+                            question_text, 
+                            key=unique_key,
+                            height=100,
+                            help=help_text,
+                            placeholder="Enter your response here..."
+                        )
+                    elif q["type"] == "select":
+                        answers[q["id"]] = st.selectbox(q["question"], q["options"], key=unique_key)
+                
+                # Check if all questions are answered
+                answered_count = sum(1 for answer in answers.values() if answer and answer.strip())
+                total_questions = len(st.session_state.qa_questions)
+                
+                # Debug information
+                if st.session_state.get('debug_qa', False):
+                    st.write("**Debug - Answer Status:**")
+                    for q_id, answer in answers.items():
+                        status = "✅" if answer and answer.strip() else "❌"
+                        st.write(f"{status} {q_id}: '{answer}'")
+                
+                st.write(f"📝 Answered: {answered_count}/{total_questions} questions")
+                
+                # Submit button inside the form
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    submit_button = st.form_submit_button("🚀 Submit Answers", type="primary", use_container_width=True)
+                
+                # Handle form submission
+                if submit_button:
                     if answered_count == 0:
                         st.warning("Please answer at least one question before submitting.")
                     else:
@@ -3440,10 +3757,24 @@ verify_ssl = True
         
         # Solution Overview - Both Traditional and Agentic
         if rec.get('recommendations') and len(rec['recommendations']) > 0:
-            # Check if this is suitable for agentic AI
-            reasoning = rec.get("reasoning", "").lower()
-            agentic_keywords = ["agent", "autonomous", "agentic", "multi-agent", "reasoning", "decision-making"]
-            is_agentic = any(keyword in reasoning for keyword in agentic_keywords)
+            # Check necessity assessment first
+            necessity_assessment = None
+            solution_type = None
+            
+            # Look for necessity assessment in recommendations
+            for recommendation in rec['recommendations']:
+                if hasattr(recommendation, 'necessity_assessment') and recommendation.necessity_assessment:
+                    necessity_assessment = recommendation.necessity_assessment
+                    solution_type = necessity_assessment.recommended_solution_type.value
+                    break
+            
+            # Fallback to keyword-based detection if no necessity assessment
+            if not necessity_assessment:
+                reasoning = rec.get("reasoning", "").lower()
+                agentic_keywords = ["agent", "autonomous", "agentic", "multi-agent", "reasoning", "decision-making"]
+                is_agentic = any(keyword in reasoning for keyword in agentic_keywords)
+            else:
+                is_agentic = solution_type in ["agentic_ai", "hybrid"]
             
             # Also check recommendations for agent_roles
             agent_roles_found = []
@@ -3492,8 +3823,75 @@ verify_ssl = True
                 if st.session_state.get('debug_mode', False):
                     st.info(f"🔍 Debug: Found {len(agent_roles_found)} unique agents after deduplication and validation")
             
+            # Display necessity assessment if available
+            if necessity_assessment:
+                st.subheader("🔍 Solution Type Assessment")
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric(
+                        "Agentic Necessity", 
+                        f"{necessity_assessment.agentic_necessity_score:.0%}",
+                        help="How much this requirement needs autonomous agent capabilities"
+                    )
+                
+                with col2:
+                    st.metric(
+                        "Traditional Suitability", 
+                        f"{necessity_assessment.traditional_suitability_score:.0%}",
+                        help="How well this fits traditional automation approaches"
+                    )
+                
+                with col3:
+                    st.metric(
+                        "Assessment Confidence", 
+                        f"{necessity_assessment.confidence_level:.0%}",
+                        help="Confidence in the solution type recommendation"
+                    )
+                
+                # Show recommendation reasoning
+                if necessity_assessment.recommendation_reasoning:
+                    st.info(f"**Assessment:** {necessity_assessment.recommendation_reasoning}")
+                
+                # Show detailed justifications in expandable sections
+                with st.expander("📋 Detailed Assessment Factors"):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.write("**Agentic AI Factors:**")
+                        for justification in necessity_assessment.agentic_justification:
+                            st.write(f"• {justification}")
+                    
+                    with col2:
+                        st.write("**Traditional Automation Factors:**")
+                        for justification in necessity_assessment.traditional_justification:
+                            st.write(f"• {justification}")
+                
+                st.markdown("---")
+            
             # Display solution type and overview
-            if is_agentic:
+            if solution_type == "traditional_automation":
+                st.subheader("⚙️ Traditional Automation Solution")
+                st.success("✅ This requirement is best suited for traditional automation approaches.")
+                
+                st.markdown("""
+                **Traditional Automation Approach:** Your solution will use established workflow automation, 
+                business process management, and integration technologies. This approach is more cost-effective, 
+                faster to implement, and easier to maintain for predictable, rule-based processes.
+                """)
+                
+            elif solution_type == "hybrid":
+                st.subheader("🔄 Hybrid Solution")
+                st.info("🔀 This requirement benefits from a hybrid approach combining traditional automation with selective autonomous capabilities.")
+                
+                st.markdown("""
+                **Hybrid Approach:** Your solution will combine traditional automation for predictable workflows 
+                with autonomous AI agents for complex decision-making and exception handling. This provides 
+                the reliability of traditional automation with the adaptability of agentic AI where needed.
+                """)
+                
+            elif is_agentic:
                 st.subheader("🤖 Agentic AI Solution")
                 st.success("🎉 This requirement is suitable for autonomous AI agent implementation!")
                 
@@ -4840,7 +5238,7 @@ verify_ssl = True
                         st.error("No API key found. Please configure your provider in the sidebar.")
                         return
                 
-                st.write(f"**Generating diagram for:** {requirement_text[:100]}...")
+                st.write(f"**Generating diagram for:** {requirement_text}")
                 
                 # Get enhanced analysis data for diagram generation
                 enhanced_data = self.get_enhanced_analysis_data()
@@ -7682,7 +8080,7 @@ verify_ssl = True
                             for tech_id, tech_info in list(technologies.items())[:5]:
                                 st.write(f"• **{tech_info.get('name', tech_id)}** ({tech_id})")
                                 st.write(f"  Category: {tech_info.get('category', 'unknown')}")
-                                st.write(f"  Description: {tech_info.get('description', 'No description')[:100]}...")
+                                st.write(f"  Description: {tech_info.get('description', 'No description')}")
                             
                             if len(technologies) > 5:
                                 st.write(f"... and {len(technologies) - 5} more technologies")
