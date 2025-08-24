@@ -1,0 +1,61 @@
+{
+  "scan_id": "scan_20250824_201342_ef5b3afc",
+  "scan_type": "configuration_security",
+  "start_time": "2025-08-24T20:13:42.061330",
+  "end_time": "2025-08-24T20:13:42.064407",
+  "duration_seconds": 0.003077,
+  "issues": [
+    {
+      "id": "perm_config.yaml",
+      "title": "Insecure file permissions: config.yaml",
+      "description": "File config.yaml is world-readable (permissions: 644)",
+      "severity": "medium",
+      "category": "file_permissions",
+      "file_path": "config.yaml",
+      "line_number": null,
+      "code_snippet": null,
+      "recommendation": "Restrict file permissions to owner only",
+      "cwe_id": "CWE-732",
+      "timestamp": "2025-08-24T20:13:42.061380"
+    },
+    {
+      "id": "perm_requirements.txt",
+      "title": "Insecure file permissions: requirements.txt",
+      "description": "File requirements.txt is world-readable (permissions: 644)",
+      "severity": "medium",
+      "category": "file_permissions",
+      "file_path": "requirements.txt",
+      "line_number": null,
+      "code_snippet": null,
+      "recommendation": "Restrict file permissions to owner only",
+      "cwe_id": "CWE-732",
+      "timestamp": "2025-08-24T20:13:42.061400"
+    },
+    {
+      "id": "perm_docker-compose.yml",
+      "title": "Insecure file permissions: docker-compose.yml",
+      "description": "File docker-compose.yml is world-readable (permissions: 644)",
+      "severity": "medium",
+      "category": "file_permissions",
+      "file_path": "docker-compose.yml",
+      "line_number": null,
+      "code_snippet": null,
+      "recommendation": "Restrict file permissions to owner only",
+      "cwe_id": "CWE-732",
+      "timestamp": "2025-08-24T20:13:42.061409"
+    }
+  ],
+  "summary": {
+    "total_issues": 3,
+    "severity_breakdown": {
+      "low": 0,
+      "medium": 3,
+      "high": 0,
+      "critical": 0
+    },
+    "category_breakdown": {
+      "file_permissions": 3
+    },
+    "risk_score": 30.0
+  }
+}

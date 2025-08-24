@@ -1,0 +1,134 @@
+{
+  "version": "1.0",
+  "description": "Dynamic component mapping rules for infrastructure diagrams",
+  "mappings": [
+    {
+      "technology_pattern": "(langchain|crewai|autogen|semantic[_-]?kernel)",
+      "component_type": "compute",
+      "deployment_model": "onprem",
+      "specific_component": "Server",
+      "tags": [
+        "ai",
+        "orchestration",
+        "framework"
+      ]
+    },
+    {
+      "technology_pattern": "(openai|claude|gpt|anthropic|huggingface).*api",
+      "component_type": "saas",
+      "deployment_model": "saas",
+      "specific_component": "Snowflake",
+      "tags": [
+        "ai",
+        "api",
+        "external"
+      ]
+    },
+    {
+      "technology_pattern": "(vector|embedding|faiss|pinecone|weaviate|chroma)",
+      "component_type": "database",
+      "deployment_model": "onprem",
+      "specific_component": "MongoDB",
+      "tags": [
+        "vector",
+        "database",
+        "ai"
+      ]
+    },
+    {
+      "technology_pattern": "(knowledge[_-]?base|neo4j|graph)",
+      "component_type": "database",
+      "deployment_model": "onprem",
+      "specific_component": "PostgreSQL",
+      "tags": [
+        "knowledge",
+        "graph",
+        "database"
+      ]
+    },
+    {
+      "technology_pattern": "(rule[_-]?engine|drools|decision)",
+      "component_type": "compute",
+      "deployment_model": "onprem",
+      "specific_component": "Server",
+      "tags": [
+        "rules",
+        "decision",
+        "engine"
+      ]
+    },
+    {
+      "technology_pattern": "(workflow|airflow|temporal|zeebe)",
+      "component_type": "compute",
+      "deployment_model": "onprem",
+      "specific_component": "Server",
+      "tags": [
+        "workflow",
+        "orchestration"
+      ]
+    },
+    {
+      "technology_pattern": "(memory|cache|redis|memcached)",
+      "component_type": "database",
+      "deployment_model": "onprem",
+      "specific_component": "MongoDB",
+      "tags": [
+        "memory",
+        "cache"
+      ]
+    },
+    {
+      "technology_pattern": "(agent[_-]?memory|conversation[_-]?memory)",
+      "component_type": "database",
+      "deployment_model": "onprem",
+      "specific_component": "MongoDB",
+      "tags": [
+        "ai",
+        "memory",
+        "agent"
+      ]
+    },
+    {
+      "technology_pattern": ".*api$",
+      "component_type": "saas",
+      "deployment_model": "saas",
+      "specific_component": "Snowflake",
+      "tags": [
+        "api",
+        "external",
+        "integration"
+      ]
+    },
+    {
+      "technology_pattern": "(lambda|function|serverless)",
+      "component_type": "compute",
+      "deployment_model": "aws",
+      "specific_component": "Lambda",
+      "tags": [
+        "serverless",
+        "compute"
+      ]
+    },
+    {
+      "technology_pattern": "(kubernetes|k8s|container)",
+      "component_type": "compute",
+      "deployment_model": "k8s",
+      "specific_component": "Pod",
+      "tags": [
+        "container",
+        "orchestration"
+      ]
+    },
+    {
+      "technology_pattern": "(quantum|qiskit|cirq).*",
+      "component_type": "compute",
+      "deployment_model": "onprem",
+      "specific_component": "Server",
+      "tags": [
+        "quantum",
+        "computing",
+        "experimental"
+      ]
+    }
+  ]
+}

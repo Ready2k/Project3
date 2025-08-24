@@ -29,7 +29,10 @@
     "FastAPI",
     "PostgreSQL with audit trails"
   ],
-  "related_patterns": ["APAT-002", "APAT-015"],
+  "related_patterns": [
+    "APAT-002",
+    "APAT-015"
+  ],
   "confidence_score": 0.95,
   "constraints": {
     "banned_tools": [
@@ -49,7 +52,7 @@
   "autonomy_level": 0.95,
   "reasoning_types": [
     "logical",
-    "causal", 
+    "causal",
     "analogical",
     "case_based",
     "probabilistic"
@@ -92,7 +95,7 @@
   },
   "learning_mechanisms": [
     "feedback_incorporation",
-    "pattern_recognition", 
+    "pattern_recognition",
     "performance_optimization",
     "strategy_adaptation"
   ],
