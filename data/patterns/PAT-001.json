@@ -53,5 +53,6 @@
   ],
   "llm_recommended_approach": "Run local summarization and NER models; apply PII redaction before inference; use embeddings+FAISS for clause retrieval; require human approval before release.",
   "enhanced_by_llm": true,
-  "enhanced_from_session": "seed-2025-08-12"
+  "enhanced_from_session": "seed-2025-08-12",
+  "color": "🟡"
 }

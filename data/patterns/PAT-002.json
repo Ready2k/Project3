@@ -50,5 +50,6 @@
   ],
   "llm_recommended_approach": "Use OCR with light OpenCV pre-processing when needed; apply rule+ML extraction; validate via jsonschema and PO/budget checks; queue exceptions to AP reviewers.",
   "enhanced_by_llm": true,
-  "enhanced_from_session": "seed-2025-08-12"
+  "enhanced_from_session": "seed-2025-08-12",
+  "color": "🟡"
 }

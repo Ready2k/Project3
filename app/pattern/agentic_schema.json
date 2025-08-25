@@ -9,7 +9,7 @@
   "properties": {
     "pattern_id": {
       "type": "string", 
-      "pattern": "^APAT-[0-9]{3,}$"
+      "pattern": "^(PAT|APAT)-[0-9]{3,}$"
     },
     "name": {"type": "string"},
     "description": {"type": "string"},
@@ -21,12 +21,92 @@
       "items": {"type": "string"}
     },
     "input_requirements": {
-      "type": "array", 
-      "items": {"type": "string"}
+      "anyOf": [
+        {
+          "type": "array", 
+          "items": {"type": "string"}
+        },
+        {
+          "type": "object",
+          "properties": {
+            "functional_requirements": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Core functional inputs needed"
+            },
+            "technical_requirements": {
+              "type": "array", 
+              "items": {"type": "string"},
+              "description": "Technical specifications and constraints"
+            },
+            "data_requirements": {
+              "type": "array",
+              "items": {"type": "string"}, 
+              "description": "Data inputs, formats, and quality requirements"
+            },
+            "integration_requirements": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Required system integrations and APIs"
+            }
+          }
+        }
+      ],
+      "description": "Detailed input requirements - can be simple array or structured object"
     },
     "tech_stack": {
-      "type": "array", 
-      "items": {"type": "string"}
+      "anyOf": [
+        {
+          "type": "array", 
+          "items": {"type": "string"}
+        },
+        {
+          "type": "object",
+          "properties": {
+            "agentic_frameworks": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Agent orchestration and reasoning frameworks"
+            },
+            "reasoning_engines": {
+              "type": "array", 
+              "items": {"type": "string"},
+              "description": "Specialized reasoning and knowledge engines"
+            },
+            "core_technologies": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Primary implementation technologies and frameworks"
+            },
+            "data_processing": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Data processing, ML, and analytics technologies"
+            },
+            "infrastructure": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Deployment, scaling, and infrastructure technologies"
+            },
+            "integration_apis": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "External APIs and integration technologies"
+            },
+            "security_compliance": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Security, authentication, and compliance technologies"
+            },
+            "monitoring_observability": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Monitoring, logging, and observability tools"
+            }
+          }
+        }
+      ],
+      "description": "Technology stack - can be simple array or detailed categorized object"
     },
     "related_patterns": {
       "type": "array", 

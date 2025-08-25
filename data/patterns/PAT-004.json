@@ -49,5 +49,6 @@
   ],
   "llm_recommended_approach": "Build a tone memory via embeddings; use RAG prompts; validate output against jsonschema for structure; require editor sign-off.",
   "enhanced_by_llm": true,
-  "enhanced_from_session": "seed-2025-08-12"
+  "enhanced_from_session": "seed-2025-08-12",
+  "color": "🟡"
 }

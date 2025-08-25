@@ -6847,6 +6847,12 @@ verify_ssl = True
         """Render the pattern library management interface."""
         st.header("📚 Pattern Library Management")
         
+        # Color legend for pattern indicators
+        st.markdown("""
+        **🎨 Pattern Color Guide:**
+        🔴 Not Automatable / Manual processes  •  🟡 Partially Automatable / Traditional automation  •  🟢 Fully Automatable / AI-enhanced  •  🔵 Autonomous Agentic AI
+        """)
+        
         # Handle navigation from Pattern Analytics
         if st.session_state.get('navigate_to_pattern_library') and st.session_state.get('selected_pattern_id'):
             selected_pattern_id = st.session_state.selected_pattern_id
@@ -6866,14 +6872,21 @@ verify_ssl = True
             The **Pattern Library** is a collection of reusable solution templates that help assess automation feasibility. 
             Each pattern represents a proven approach to automating specific types of business processes.
             
+            ### 🎨 **Pattern Categories by Color:**
+            
+            - **🔵 Blue (APAT-*)**: Autonomous Agentic AI patterns - fully autonomous agents that operate independently with 95%+ automation
+            - **🟢 Green (PAT-*)**: Fully Automatable AI-enhanced solutions - can be completely automated with high confidence
+            - **🟡 Yellow (PAT-*)**: Partially Automatable traditional automation - requires some human oversight or approval steps
+            - **🔴 Red (PAT-*)**: Not Automatable manual processes - primarily human-driven with AI assistance
+            
             ### 🏷️ **Pattern Components Explained:**
             
-            - **Pattern ID**: Unique identifier (e.g., PAT-001, PAT-002)
+            - **Pattern ID**: Unique identifier (PAT-001 for traditional, APAT-001 for autonomous agents)
             - **Name**: Descriptive title of the automation pattern
             - **Description**: Detailed explanation of what the pattern automates
             - **Domain**: Business area (e.g., legal_compliance, finance, customer_service)
-            - **Feasibility**: Automation potential (Automatable, Fully Automatable, Partially Automatable, Not Automatable)
-            - **Pattern Types**: Tags/categories describing the automation approach (e.g., api_integration, nlp_processing, human_in_loop)
+            - **Feasibility**: Automation potential (Fully Automatable, Partially Automatable, Not Automatable)
+            - **Pattern Types**: Tags/categories describing the automation approach
             - **Tech Stack**: Technologies typically used to implement this pattern
             - **Complexity**: Implementation difficulty (Low, Medium, High)
             - **Estimated Effort**: Time required to implement (e.g., 2-4 weeks)
@@ -6881,20 +6894,17 @@ verify_ssl = True
             
             ### 🎯 **How Patterns Are Used:**
             When you submit a requirement, the system:
-            1. Matches your requirement against these patterns
-            2. Suggests the most relevant automation approaches
+            1. Matches your requirement against these patterns using AI similarity matching
+            2. Suggests the most relevant automation approaches (traditional → AI-enhanced → autonomous)
             3. Provides technology recommendations based on proven solutions
-            4. Estimates feasibility based on similar past implementations
+            4. Estimates feasibility and generates implementation guidance
             
-            ### 💡 **Pattern Types (Tags):**
-            Pattern types are like tags that categorize the automation approach:
-            - `api_integration` - Connects to external systems via APIs
-            - `nlp_processing` - Uses natural language processing
-            - `human_in_loop` - Requires human oversight or approval
-            - `data_extraction` - Extracts information from documents
-            - `workflow_automation` - Automates business processes
-            - `pii_redaction` - Handles sensitive data protection
-            - `summarization` - Creates summaries of content
+            ### 💡 **Common Pattern Types (Tags):**
+            - **Autonomous Agents**: `agentic_reasoning`, `autonomous_decision`, `continuous_learning`
+            - **AI Processing**: `nlp_processing`, `summarization`, `pii_detection`, `analysis`
+            - **Integration**: `api_integration`, `data_extraction`, `workflow_automation`
+            - **Human Oversight**: `human_in_loop`, `approval_workflow`, `manual_review`
+            - **Security**: `pii_redaction`, `policy_enforcement`, `security_validation`
             """)
         
         # Load patterns using the pattern loader
@@ -7025,16 +7035,26 @@ verify_ssl = True
         
         # Display patterns
         for idx, pattern in enumerate(filtered_patterns):
-            # Create a more informative header with feasibility indicator
-            feasibility = pattern.get('feasibility', 'Unknown')
-            feasibility_emoji = {
-                'Automatable': '🟢',
-                'Partially Automatable': '🟡', 
-                'Not Automatable': '🔴'
-            }.get(feasibility, '⚪')
+            # Use the new color field if available, otherwise fall back to feasibility color
+            pattern_color = pattern.get('color')
+            if not pattern_color:
+                # Fallback to feasibility-based color for patterns without color field
+                pattern_id = pattern.get('pattern_id', '')
+                feasibility = pattern.get('feasibility', 'Unknown')
+                
+                # APAT patterns get blue
+                if pattern_id.startswith('APAT-'):
+                    pattern_color = '🔵'
+                else:
+                    pattern_color = {
+                        'Automatable': '🟢',
+                        'Partially Automatable': '🟡', 
+                        'Not Automatable': '🔴',
+                        'Fully Automatable': '🟢'
+                    }.get(feasibility, '🟡')
             
             pattern_id = pattern.get('pattern_id', 'Unknown')
-            pattern_header = f"{feasibility_emoji} {pattern_id} - {pattern.get('name', 'Unnamed Pattern')}"
+            pattern_header = f"{pattern_color} {pattern_id} - {pattern.get('name', 'Unnamed Pattern')}"
             
             # Check if this pattern should be highlighted (navigated from analytics)
             is_highlighted = st.session_state.get('highlight_pattern_id') == pattern_id
@@ -7088,6 +7108,7 @@ verify_ssl = True
                     
                     # Use metrics for key information
                     domain = pattern.get('domain', 'Unknown')
+                    feasibility = pattern.get('feasibility', 'Unknown')
                     complexity = pattern.get('complexity', 'Unknown')
                     effort = pattern.get('estimated_effort', 'Unknown')
                     confidence = pattern.get('confidence_score', 'Unknown')
@@ -7318,6 +7339,7 @@ verify_ssl = True
                         continue
             next_agentic_number = max(agentic_numbers) + 1 if agentic_numbers else 1
             display_pattern_id = f"APAT-{next_agentic_number:03d}"
+
         else:
             display_pattern_id = next_pattern_id
 
@@ -7593,6 +7615,40 @@ verify_ssl = True
         except Exception as e:
             st.error(f"❌ Error creating pattern: {str(e)}")
             app_logger.error(f"Pattern creation error: {e}")
+    
+    def render_enhanced_pattern_management(self):
+        """Render the enhanced pattern management interface."""
+        try:
+            from app.pattern.enhanced_loader import EnhancedPatternLoader
+            from app.services.pattern_enhancement_service import PatternEnhancementService
+            from app.ui.enhanced_pattern_management import render_enhanced_pattern_management
+            from app.api import create_llm_provider, ProviderConfig
+            
+            # Initialize enhanced pattern loader
+            enhanced_loader = EnhancedPatternLoader("data/patterns")
+            
+            # Create LLM provider for enhancement service
+            provider_config = ProviderConfig(
+                provider="openai",
+                model="gpt-4o",
+                api_key=os.getenv("OPENAI_API_KEY", ""),
+                endpoint_url=None,
+                region=None
+            )
+            llm_provider = create_llm_provider(provider_config)
+            
+            # Initialize enhancement service
+            enhancement_service = PatternEnhancementService(enhanced_loader, llm_provider)
+            
+            # Render the enhanced pattern management UI
+            render_enhanced_pattern_management(enhanced_loader, enhancement_service)
+            
+        except ImportError as e:
+            st.error(f"❌ Enhanced pattern management not available: {e}")
+            st.info("💡 This feature requires the enhanced pattern system to be properly installed.")
+        except Exception as e:
+            st.error(f"❌ Error loading enhanced pattern management: {e}")
+            app_logger.error(f"Enhanced pattern management error: {e}")
     
     def render_technology_catalog_management(self):
         """Render the technology catalog management interface."""
@@ -8205,7 +8261,7 @@ verify_ssl = True
         self.render_provider_panel()
         
         # Main content area
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["📝 Analysis", "📊 Diagrams", "📈 Observability", "📚 Pattern Library", "🔧 Technology Catalog", "⚙️ Schema Config", "🔧 System Config", "ℹ️ About"])
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs(["📝 Analysis", "📊 Diagrams", "📈 Observability", "📚 Pattern Library", "🚀 Enhanced Patterns", "🔧 Technology Catalog", "⚙️ Schema Config", "🔧 System Config", "ℹ️ About"])
         
         with tab1:
             # Input methods
@@ -8261,18 +8317,21 @@ verify_ssl = True
             self.render_pattern_library_management()
         
         with tab5:
-            self.render_technology_catalog_management()
+            self.render_enhanced_pattern_management()
         
         with tab6:
+            self.render_technology_catalog_management()
+        
+        with tab7:
             from app.ui.schema_management import render_schema_management
             render_schema_management()
         
-        with tab7:
+        with tab8:
             # System Configuration
             from app.ui.system_configuration import render_system_configuration
             render_system_configuration()
         
-        with tab8:
+        with tab9:
             st.markdown("""
             ## About Automated AI Assessment (AAA)
             
