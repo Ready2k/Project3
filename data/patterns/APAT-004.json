@@ -32,7 +32,10 @@
     "Twilio for customer communications",
     "Microsoft Graph for notifications"
   ],
-  "related_patterns": ["APAT-001", "APAT-003"],
+  "related_patterns": [
+    "APAT-001",
+    "APAT-003"
+  ],
   "confidence_score": 0.96,
   "constraints": {
     "banned_tools": [
@@ -143,5 +146,6 @@
   ],
   "llm_recommended_approach": "Deploy autonomous agent with comprehensive access to decision matrix, customer data, and system APIs. Implement sophisticated reasoning capabilities for policy interpretation and exception handling. Use multi-channel communication for customer interaction. Maintain detailed audit trails for compliance and continuous improvement.",
   "enhanced_by_llm": true,
-  "enhanced_from_session": "agentic-transformation-2025"
+  "enhanced_from_session": "agentic-transformation-2025",
+  "color": "🔵"
 }

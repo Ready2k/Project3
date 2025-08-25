@@ -59,10 +59,18 @@ class PatternLoader:
         """Validate a pattern against the appropriate schema."""
         pattern_id = pattern.get("pattern_id", "")
         
-        # Use agentic schema for APAT patterns, traditional schema for PAT patterns
+        # Use appropriate schema based on pattern type and content
         if pattern_id.startswith("APAT-"):
             schema_to_use = self.agentic_schema
             schema_type = "agentic"
+        elif pattern_id.startswith("PAT-"):
+            # Check if PAT pattern has agentic capabilities
+            if any(key in pattern for key in ["autonomy_level", "reasoning_types", "decision_boundaries"]):
+                schema_to_use = self.agentic_schema
+                schema_type = "agentic"
+            else:
+                schema_to_use = self.schema
+                schema_type = "traditional"
         else:
             schema_to_use = self.schema
             schema_type = "traditional"
@@ -94,7 +102,8 @@ class PatternLoader:
                 continue
             
             # Only load files that match the PAT-* or APAT-* pattern
-            if not (pattern_file.name.startswith('PAT-') or pattern_file.name.startswith('APAT-')):
+            if not (pattern_file.name.startswith('PAT-') or 
+                   pattern_file.name.startswith('APAT-')):
                 app_logger.debug(f"Skipping non-pattern file: {pattern_file.name}")
                 continue
             

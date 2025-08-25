@@ -49,5 +49,6 @@
   ],
   "llm_recommended_approach": "Pull from mailbox, extract fields with hybrid rules+NLP, validate via jsonschema, upsert into OMS; route low-confidence to human queue.",
   "enhanced_by_llm": true,
-  "enhanced_from_session": "seed-2025-08-12"
+  "enhanced_from_session": "seed-2025-08-12",
+  "color": "🟡"
 }

@@ -128,5 +128,6 @@
   ],
   "llm_recommended_approach": "Deploy agent with comprehensive legal knowledge graph, implement multi-step reasoning verification, use confidence thresholds for autonomous vs. escalated decisions, maintain detailed audit trails for all decisions and reasoning paths.",
   "enhanced_by_llm": true,
-  "enhanced_from_session": "agentic-transformation-2025"
+  "enhanced_from_session": "agentic-transformation-2025",
+  "color": "🔵"
 }

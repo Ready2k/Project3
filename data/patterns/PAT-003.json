@@ -49,5 +49,6 @@
   ],
   "llm_recommended_approach": "Detect language, redact PII, translate, classify using historical data, and route via queue; capture feedback loops from agents to continuously improve.",
   "enhanced_by_llm": true,
-  "enhanced_from_session": "seed-2025-08-12"
+  "enhanced_from_session": "seed-2025-08-12",
+  "color": "🟡"
 }

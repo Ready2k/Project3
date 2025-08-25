@@ -1,12 +1,12 @@
 {
   "pattern_id": "APAT-003",
-  "name": "Autonomous Customer Support Resolution Agent", 
+  "name": "Autonomous Customer Support Resolution Agent",
   "description": "Fully autonomous AI agent that handles customer support tickets end-to-end across multiple languages and channels. The agent uses advanced reasoning to understand complex issues, accesses knowledge bases and system APIs to investigate problems, implements solutions directly, and follows up to ensure resolution. Resolves 95% of tickets autonomously through sophisticated problem-solving and system integration capabilities.",
   "feasibility": "Fully Automatable",
   "pattern_type": [
     "agentic_reasoning",
     "autonomous_decision",
-    "problem_solving", 
+    "problem_solving",
     "system_integration",
     "customer_communication",
     "solution_implementation",
@@ -16,7 +16,7 @@
     "multi_channel_customer_communications",
     "product_knowledge_base",
     "system_access_apis",
-    "customer_history_database", 
+    "customer_history_database",
     "solution_authority_matrix"
   ],
   "tech_stack": [
@@ -29,7 +29,10 @@
     "MongoDB for conversation state",
     "Twilio/SendGrid for customer communication"
   ],
-  "related_patterns": ["APAT-001", "APAT-004"],
+  "related_patterns": [
+    "APAT-001",
+    "APAT-004"
+  ],
   "confidence_score": 0.94,
   "constraints": {
     "banned_tools": [
@@ -45,7 +48,7 @@
   },
   "domain": "customer_support",
   "complexity": "High",
-  "estimated_effort": "6-10 weeks", 
+  "estimated_effort": "6-10 weeks",
   "autonomy_level": 0.95,
   "reasoning_types": [
     "logical",
@@ -57,7 +60,7 @@
   "decision_boundaries": {
     "autonomous_decisions": [
       "Diagnose technical issues through system analysis",
-      "Implement account changes and configurations", 
+      "Implement account changes and configurations",
       "Process refunds and billing adjustments under $500",
       "Escalate or transfer between product teams",
       "Schedule follow-up communications",
@@ -75,7 +78,7 @@
   "exception_handling_strategy": {
     "autonomous_resolution_approaches": [
       "Search knowledge base for similar historical cases",
-      "Apply diagnostic reasoning to identify root causes", 
+      "Apply diagnostic reasoning to identify root causes",
       "Use system APIs to investigate and resolve issues",
       "Implement step-by-step troubleshooting procedures",
       "Consult multiple knowledge sources for comprehensive solutions"
@@ -95,12 +98,12 @@
     "feedback_incorporation",
     "pattern_recognition",
     "performance_optimization",
-    "strategy_adaptation", 
+    "strategy_adaptation",
     "continuous_improvement"
   ],
   "self_monitoring_capabilities": [
     "performance_tracking",
-    "error_detection", 
+    "error_detection",
     "quality_assessment",
     "resource_monitoring"
   ],
@@ -128,5 +131,6 @@
   ],
   "llm_recommended_approach": "Implement comprehensive diagnostic reasoning framework, provide extensive system API access for direct problem resolution, use sentiment analysis for customer communication optimization, maintain detailed case resolution knowledge base for continuous learning.",
   "enhanced_by_llm": true,
-  "enhanced_from_session": "agentic-transformation-2025"
+  "enhanced_from_session": "agentic-transformation-2025",
+  "color": "🔵"
 }

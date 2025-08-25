@@ -1,0 +1,543 @@
+{
+    "$schema": "https://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+        "pattern_id",
+        "name",
+        "description",
+        "feasibility",
+        "pattern_type",
+        "input_requirements",
+        "tech_stack",
+        "confidence_score"
+    ],
+    "properties": {
+        "pattern_id": {
+            "type": "string",
+            "pattern": "^(PAT|APAT|EPAT)-[0-9]{3,}$",
+            "description": "Pattern identifier: PAT-XXX (traditional), APAT-XXX (agentic), EPAT-XXX (enhanced)"
+        },
+        "name": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "feasibility": {
+            "enum": [
+                "Automatable",
+                "Fully Automatable",
+                "Partially Automatable",
+                "Not Automatable"
+            ]
+        },
+        "pattern_type": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "input_requirements": {
+            "anyOf": [
+                {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "functional_requirements": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Core functional inputs needed"
+                        },
+                        "technical_requirements": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Technical specifications and constraints"
+                        },
+                        "data_requirements": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Data inputs, formats, and quality requirements"
+                        },
+                        "integration_requirements": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Required system integrations and APIs"
+                        }
+                    }
+                }
+            ],
+            "description": "Detailed input requirements - can be simple array or structured object"
+        },
+        "tech_stack": {
+            "anyOf": [
+                {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "agentic_frameworks": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Agent orchestration and reasoning frameworks"
+                        },
+                        "reasoning_engines": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Specialized reasoning and knowledge engines"
+                        },
+                        "core_technologies": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Primary implementation technologies and frameworks"
+                        },
+                        "data_processing": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Data processing, ML, and analytics technologies"
+                        },
+                        "infrastructure": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Deployment, scaling, and infrastructure technologies"
+                        },
+                        "integration_apis": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "External APIs and integration technologies"
+                        },
+                        "security_compliance": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Security, authentication, and compliance technologies"
+                        },
+                        "monitoring_observability": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Monitoring, logging, and observability tools"
+                        }
+                    }
+                }
+            ],
+            "description": "Technology stack - can be simple array or detailed categorized object"
+        },
+        "implementation_guidance": {
+            "type": "object",
+            "properties": {
+                "architecture_decisions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Key architectural decisions and rationale"
+                },
+                "technical_challenges": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Anticipated technical challenges and mitigation strategies"
+                },
+                "deployment_considerations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Deployment patterns, scaling, and operational considerations"
+                },
+                "performance_requirements": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Performance, latency, and throughput requirements"
+                },
+                "security_considerations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Security architecture and threat mitigation"
+                },
+                "testing_strategy": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Testing approaches, validation, and quality assurance"
+                }
+            },
+            "description": "Detailed implementation guidance for developers"
+        },
+        "effort_breakdown": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "mvp_effort": {
+                            "type": "string",
+                            "description": "Minimum viable product effort estimate"
+                        },
+                        "full_implementation_effort": {
+                            "type": "string",
+                            "description": "Complete implementation effort estimate"
+                        },
+                        "phase_breakdown": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "phase_name": {
+                                        "type": "string"
+                                    },
+                                    "duration": {
+                                        "type": "string"
+                                    },
+                                    "deliverables": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "dependencies": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "description": "Detailed phase-by-phase breakdown"
+                        },
+                        "risk_factors": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Factors that could impact effort estimates"
+                        }
+                    }
+                }
+            ],
+            "description": "Effort estimation - can be simple string or detailed breakdown"
+        },
+        "related_patterns": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "confidence_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+        },
+        "constraints": {
+            "type": "object",
+            "properties": {
+                "banned_tools": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "required_integrations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "compliance_requirements": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "performance_constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "budget_constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "timeline_constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "domain": {
+            "type": "string"
+        },
+        "complexity": {
+            "enum": [
+                "Low",
+                "Medium",
+                "High",
+                "Very High"
+            ]
+        },
+        "estimated_effort": {
+            "type": "string"
+        },
+        "autonomy_level": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Level of autonomous operation (0.0 = fully human-dependent, 1.0 = fully autonomous)"
+        },
+        "reasoning_types": {
+            "type": "array",
+            "items": {
+                "enum": [
+                    "logical",
+                    "causal",
+                    "temporal",
+                    "spatial",
+                    "analogical",
+                    "case_based",
+                    "probabilistic",
+                    "strategic",
+                    "collaborative",
+                    "creative",
+                    "ethical",
+                    "contextual"
+                ]
+            },
+            "description": "Types of reasoning the agent needs to perform"
+        },
+        "decision_boundaries": {
+            "type": "object",
+            "properties": {
+                "autonomous_decisions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Decisions the agent can make independently"
+                },
+                "escalation_triggers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Conditions that require escalation"
+                },
+                "decision_authority_level": {
+                    "enum": [
+                        "low",
+                        "medium",
+                        "high",
+                        "full"
+                    ],
+                    "description": "Level of decision-making authority"
+                },
+                "approval_workflows": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Required approval processes for certain decisions"
+                }
+            }
+        },
+        "exception_handling_strategy": {
+            "type": "object",
+            "properties": {
+                "autonomous_resolution_approaches": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Methods the agent uses to resolve exceptions autonomously"
+                },
+                "reasoning_fallbacks": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Alternative reasoning approaches when primary methods fail"
+                },
+                "escalation_criteria": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Specific criteria that trigger human escalation"
+                },
+                "recovery_mechanisms": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "How the agent recovers from failures or errors"
+                }
+            }
+        },
+        "learning_mechanisms": {
+            "type": "array",
+            "items": {
+                "enum": [
+                    "feedback_incorporation",
+                    "pattern_recognition",
+                    "performance_optimization",
+                    "strategy_adaptation",
+                    "continuous_improvement",
+                    "reinforcement_learning",
+                    "transfer_learning",
+                    "meta_learning"
+                ]
+            },
+            "description": "How the agent learns and improves over time"
+        },
+        "self_monitoring_capabilities": {
+            "type": "array",
+            "items": {
+                "enum": [
+                    "performance_tracking",
+                    "error_detection",
+                    "quality_assessment",
+                    "resource_monitoring",
+                    "predictive_maintenance",
+                    "response_time_monitoring",
+                    "accuracy_monitoring",
+                    "cost_monitoring",
+                    "security_monitoring"
+                ]
+            },
+            "description": "Agent's ability to monitor and assess its own performance"
+        },
+        "agent_architecture": {
+            "enum": [
+                "single_agent",
+                "multi_agent_collaborative",
+                "hierarchical_agents",
+                "swarm_intelligence",
+                "federated_agents",
+                "pipeline_agents",
+                "reactive_agents"
+            ],
+            "description": "Recommended agent architecture pattern"
+        },
+        "coordination_requirements": {
+            "anyOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "communication_protocols": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "coordination_mechanisms": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "conflict_resolution": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "data_sharing_patterns": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "synchronization_requirements": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "Requirements for multi-agent coordination (if applicable)"
+        },
+        "workflow_automation": {
+            "type": "object",
+            "properties": {
+                "automated_processes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Processes that can be fully automated"
+                },
+                "human_in_loop_processes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Processes requiring human oversight or approval"
+                },
+                "trigger_conditions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Conditions that initiate automated workflows"
+                },
+                "workflow_dependencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Dependencies between different workflow steps"
+                }
+            },
+            "description": "Workflow automation capabilities and requirements"
+        }
+    },
+    "additionalProperties": true
+}

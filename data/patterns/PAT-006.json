@@ -52,5 +52,6 @@
   ],
   "llm_recommended_approach": "Insert a gateway service that enforces redaction via Presidio and OPA before any external call; monitor with audit logs and sampling.",
   "enhanced_by_llm": true,
-  "enhanced_from_session": "seed-2025-08-12"
+  "enhanced_from_session": "seed-2025-08-12",
+  "color": "🟢"
 }
