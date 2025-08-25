@@ -62,8 +62,9 @@ class InputPreprocessor:
             '𝐯': 'v', '𝐰': 'w', '𝐱': 'x', '𝐲': 'y', '𝐳': 'z',
         }
         
-        # Base64 detection patterns
-        self.base64_pattern = re.compile(r'[A-Za-z0-9+/]{4,}={0,2}')
+        # Base64 detection patterns - more precise to avoid false positives
+        # Base64 strings are typically longer and have specific characteristics
+        self.base64_pattern = re.compile(r'(?:^|\s)([A-Za-z0-9+/]{16,}={0,2})(?:\s|$)')
         
         # URL detection patterns
         self.url_pattern = re.compile(
@@ -114,7 +115,11 @@ class InputPreprocessor:
         
         for match in matches:
             # Skip very short matches that are likely false positives
-            if len(match) < 8:
+            if len(match) < 16:
+                continue
+            
+            # Skip if it looks like a normal English word or business term
+            if self._looks_like_normal_text(match):
                 continue
             
             try:
@@ -122,8 +127,10 @@ class InputPreprocessor:
                 decoded_bytes = base64.b64decode(match, validate=True)
                 decoded_str = decoded_bytes.decode('utf-8', errors='ignore')
                 
-                # Only consider it valid if it contains meaningful text
-                if len(decoded_str.strip()) > 0 and any(c.isalpha() for c in decoded_str):
+                # Only consider it valid if it contains meaningful text and looks suspicious
+                if (len(decoded_str.strip()) > 0 and 
+                    any(c.isalpha() for c in decoded_str) and
+                    self._looks_like_suspicious_payload(decoded_str)):
                     decoded_content.append((match, decoded_str))
                     app_logger.info(f"Detected base64 content: {match[:20]}... -> {decoded_str[:50]}...")
                     
@@ -132,6 +139,58 @@ class InputPreprocessor:
                 continue
         
         return decoded_content
+    
+    def _looks_like_normal_text(self, text: str) -> bool:
+        """Check if text looks like normal English words rather than base64."""
+        # Common English word patterns that might match base64 regex
+        normal_patterns = [
+            r'^[a-z]+$',  # All lowercase (common words)
+            r'^[A-Z][a-z]+$',  # Capitalized words
+            r'^[a-z]+ing$',  # Words ending in -ing
+            r'^[a-z]+ed$',   # Words ending in -ed
+            r'^[a-z]+er$',   # Words ending in -er
+            r'^[a-z]+ly$',   # Words ending in -ly
+        ]
+        
+        text_lower = text.lower()
+        
+        # Check against patterns
+        for pattern in normal_patterns:
+            if re.match(pattern, text_lower):
+                return True
+        
+        # Check if it's a common business/technical term
+        business_terms = [
+            'scanning', 'barcodes', 'supplier', 'scanners', 'workflow', 
+            'approval', 'android', 'mobile', 'device', 'inventory',
+            'threshold', 'postgresql', 'database', 'system', 'process'
+        ]
+        
+        if text_lower in business_terms:
+            return True
+        
+        # If it has too many vowels or consonants in a row, likely normal text
+        vowel_count = sum(1 for c in text_lower if c in 'aeiou')
+        consonant_count = len(text) - vowel_count
+        
+        # Base64 typically has a more random distribution
+        if vowel_count > len(text) * 0.6 or consonant_count > len(text) * 0.8:
+            return True
+        
+        return False
+    
+    def _looks_like_suspicious_payload(self, decoded_str: str) -> bool:
+        """Check if decoded string looks like a suspicious payload."""
+        decoded_lower = decoded_str.lower()
+        
+        # Look for suspicious keywords that might indicate an attack
+        suspicious_keywords = [
+            'ignore', 'system', 'prompt', 'instruction', 'command', 'execute',
+            'shell', 'admin', 'root', 'password', 'token', 'secret', 'key',
+            'bypass', 'override', 'disable', 'enable', 'access', 'privilege'
+        ]
+        
+        return any(keyword in decoded_lower for keyword in suspicious_keywords)
     
     def detect_url_encoding(self, text: str) -> List[Tuple[str, str]]:
         """Detect and decode URL-encoded content. Returns list of (original, decoded) tuples."""

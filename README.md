@@ -542,7 +542,7 @@ LOGGING_LEVEL=INFO
 
 ### YAML Configuration
 
-Edit `config.yaml` for advanced settings:
+Edit configuration files in `config/` directory for advanced settings:
 
 ```yaml
 provider: openai
@@ -640,12 +640,25 @@ mypy app/ --ignore-missing-imports
 
 ## Architecture
 
-### Components
+### System Architecture
 
-- **FastAPI Backend**: REST API with async endpoints and advanced security
-- **Streamlit Frontend**: Interactive web interface with professional debug controls
+The AAA system has been refactored into a modular, maintainable architecture:
+
+#### Backend Components
+- **FastAPI API** (`app/api.py`): REST API with async endpoints and advanced security
+- **Service Layer** (`app/services/`): Business logic and LLM integrations
+- **Configuration Management** (`app/config/`): Hierarchical configuration system with environment overrides
+- **Core Infrastructure** (`app/core/`): Service registry and dependency injection
 - **Pattern Library**: JSON-based reusable solution patterns with CRUD management
 - **Technology Catalog**: Centralized database of 55+ technologies with rich metadata
+
+#### Frontend Components
+- **Main Application** (`app/ui/main_app.py`): Application orchestrator with tab management
+- **Tab Components** (`app/ui/tabs/`): Individual feature tabs (Analysis, Q&A, Results, etc.)
+- **UI Components** (`app/ui/components/`): Reusable UI elements (diagrams, exports, session management)
+- **Utilities** (`app/ui/utils/`): UI helper functions (Mermaid, forms, validation)
+
+#### Core Features
 - **FAISS Index**: Vector similarity search for pattern matching
 - **Q&A System**: LLM-powered question generation with robust caching
 - **Tech Stack Generator**: LLM-driven intelligent technology recommendations
@@ -655,6 +668,11 @@ mypy app/ --ignore-missing-imports
 - **State Management**: Session persistence with diskcache/Redis
 - **Export System**: JSON, Markdown, and interactive HTML result export
 - **Audit System**: Complete LLM message logging and observability
+
+#### Configuration System
+- **Hierarchical Configuration**: `config/base.yaml` with environment-specific overrides
+- **Environment Support**: Development, testing, production, and local configurations
+- **Environment Variables**: `AAA_` prefixed variables for runtime overrides
 
 ### Request Flow
 
@@ -729,7 +747,7 @@ Access via the **🔧 System Config** tab:
 4. **Configuration Preview**: Live YAML preview of current settings
 
 #### Configuration Persistence
-Settings are automatically saved to `system_config.yaml`:
+Settings are managed through the hierarchical configuration system in `config/`:
 ```yaml
 autonomy:
   min_autonomy_threshold: 0.7
@@ -838,7 +856,7 @@ See [TROUBLESHOOTING.md](documents/TROUBLESHOOTING.md) for comprehensive debuggi
 
 - API logs: Check console output from uvicorn
 - Streamlit logs: Check browser console and terminal
-- Application logs: Configured via `config.yaml` logging section
+- Application logs: Configured via `config/base.yaml` logging section
 
 ## Changelog
 

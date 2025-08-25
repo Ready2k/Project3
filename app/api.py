@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
 
 from app.config import Settings, load_settings
+from app.config.settings import get_config, load_config as load_new_config
 from app.embeddings.factory import create_embedding_provider
 from app.embeddings.index import FAISSIndex
 from app.exporters.service import ExportService
@@ -59,21 +60,21 @@ class ProviderConfig(BaseModel):
     
     @field_validator('provider')
     @classmethod
-    def validate_provider(cls, v):
+    def validate_provider(cls, v: str) -> str:
         if not input_validator.validate_provider_name(v):
             raise ValueError('Invalid provider name')
         return v.lower()
     
     @field_validator('model')
     @classmethod
-    def validate_model(cls, v):
+    def validate_model(cls, v: str) -> str:
         if not input_validator.validate_model_name(v):
             raise ValueError('Invalid model name')
         return v
     
     @field_validator('api_key')
     @classmethod
-    def validate_api_key(cls, v, info):
+    def validate_api_key(cls, v: Optional[str], info: Any) -> Optional[str]:
         if v is not None:
             # Get provider from context if available
             provider = 'openai'  # Default fallback
@@ -137,7 +138,7 @@ jira_service: Optional[JiraService] = None
 
 # Global exception handler for security
 @app.exception_handler(ValueError)
-async def validation_exception_handler(request: Request, exc: ValueError):
+async def validation_exception_handler(request: Request, exc: ValueError) -> Response:
     """Handle validation errors with security logging."""
     client_ip = request.client.host if request.client else "unknown"
     app_logger.warning(f"Validation error from {client_ip}: {str(exc)}")
@@ -151,7 +152,7 @@ async def validation_exception_handler(request: Request, exc: ValueError):
 
 
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
+async def http_exception_handler(request: Request, exc: HTTPException) -> Response:
     """Handle HTTP exceptions with security headers."""
     response = Response(
         content=f'{{"error": "HTTP Error", "message": "{exc.detail}"}}',
@@ -163,14 +164,14 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 # Health check endpoints (no authentication required)
 @app.get("/health")
-async def health_check(response: Response):
+async def health_check(response: Response) -> Dict[str, str]:
     """Basic health check endpoint for monitoring."""
     # Add security headers
     SecurityHeaders.add_security_headers(response)
     return {"status": "healthy", "version": f"AAA-{__version__}", "release_name": RELEASE_NAME}
 
 @app.get("/health/detailed")
-async def detailed_health_check(response: Response):
+async def detailed_health_check(response: Response) -> Dict[str, Any]:
     """Detailed health check with all system components."""
     from app.health.health_checker import get_health_checker
     
@@ -292,7 +293,19 @@ def get_settings() -> Settings:
     """Get application settings."""
     global settings
     if settings is None:
-        settings = load_settings()
+        try:
+            # Try to load new configuration system first
+            new_config_result = load_new_config()
+            if new_config_result.is_success:
+                app_logger.info("Using new configuration system")
+                # For now, still use legacy settings but log the new config is available
+                settings = load_settings()
+            else:
+                app_logger.warning(f"New config system failed: {new_config_result.error}, falling back to legacy")
+                settings = load_settings()
+        except Exception as e:
+            app_logger.warning(f"Error loading new config: {e}, using legacy settings")
+            settings = load_settings()
     return settings
 
 
@@ -342,7 +355,7 @@ async def get_pattern_matcher() -> PatternMatcher:
     return pattern_matcher
 
 
-def create_llm_provider(provider_config: Optional[ProviderConfig] = None, session_id: str = "unknown"):
+def create_llm_provider(provider_config: Optional[ProviderConfig] = None, session_id: str = "unknown") -> Any:
     """Create LLM provider based on configuration with audit logging."""
     from app.utils.audit_integration import create_audited_provider
     
@@ -531,7 +544,7 @@ class IngestRequest(BaseModel):
     
     @field_validator('source')
     @classmethod
-    def validate_source(cls, v):
+    def validate_source(cls, v: str) -> str:
         allowed_sources = ["text", "file", "jira"]
         if v not in allowed_sources:
             raise ValueError(f'Invalid source. Must be one of: {allowed_sources}')
@@ -539,7 +552,7 @@ class IngestRequest(BaseModel):
     
     @field_validator('payload')
     @classmethod
-    def validate_payload(cls, v):
+    def validate_payload(cls, v: Dict[str, Any]) -> Dict[str, Any]:
         # Sanitize the payload dictionary
         return security_validator.sanitize_dict(v)
 
@@ -560,7 +573,7 @@ class QARequest(BaseModel):
     
     @field_validator('answers')
     @classmethod
-    def validate_answers(cls, v):
+    def validate_answers(cls, v: Dict[str, str]) -> Dict[str, str]:
         # Sanitize answers and check for reasonable limits
         if len(v) > 20:  # Max 20 answers per request
             raise ValueError('Too many answers in single request')
@@ -608,14 +621,14 @@ class ExportRequest(BaseModel):
     
     @field_validator('session_id')
     @classmethod
-    def validate_session_id(cls, v):
+    def validate_session_id(cls, v: str) -> str:
         if not input_validator.validate_session_id(v):
             raise ValueError('Invalid session ID format')
         return v
     
     @field_validator('format')
     @classmethod
-    def validate_format(cls, v):
+    def validate_format(cls, v: str) -> str:
         if not input_validator.validate_export_format(v):
             raise ValueError('Invalid export format')
         return v.lower()
@@ -671,7 +684,7 @@ class ModelDiscoveryRequest(BaseModel):
     
     @field_validator('provider')
     @classmethod
-    def validate_provider(cls, v):
+    def validate_provider(cls, v: str) -> str:
         if not input_validator.validate_provider_name(v):
             raise ValueError('Invalid provider name')
         return v.lower()
@@ -726,7 +739,7 @@ class JiraTestRequest(BaseModel):
     
     @field_validator('base_url')
     @classmethod
-    def validate_base_url(cls, v):
+    def validate_base_url(cls, v: Optional[str]) -> Optional[str]:
         """Validate and normalize base URL."""
         if v is not None:
             v = v.rstrip('/')
@@ -736,7 +749,7 @@ class JiraTestRequest(BaseModel):
     
     @field_validator('auth_type')
     @classmethod
-    def validate_auth_type(cls, v):
+    def validate_auth_type(cls, v: str) -> str:
         """Validate authentication type."""
         allowed_types = ["api_token", "pat", "sso", "basic"]
         if v not in allowed_types:
@@ -745,7 +758,7 @@ class JiraTestRequest(BaseModel):
     
     @field_validator('custom_port')
     @classmethod
-    def validate_custom_port(cls, v):
+    def validate_custom_port(cls, v: Optional[int]) -> Optional[int]:
         """Validate custom port range."""
         if v is not None and (v < 1 or v > 65535):
             raise ValueError('Custom port must be between 1 and 65535')
@@ -753,7 +766,7 @@ class JiraTestRequest(BaseModel):
     
     @field_validator('timeout')
     @classmethod
-    def validate_timeout(cls, v):
+    def validate_timeout(cls, v: int) -> int:
         """Validate timeout value."""
         if v < 1:
             raise ValueError('Timeout must be at least 1 second')
@@ -811,7 +824,7 @@ class JiraFetchRequest(JiraTestRequest):
     
     @field_validator('ticket_key')
     @classmethod
-    def validate_ticket_key(cls, v):
+    def validate_ticket_key(cls, v: str) -> str:
         """Validate Jira ticket key format."""
         if not v or not isinstance(v, str):
             raise ValueError('Ticket key is required and must be a string')

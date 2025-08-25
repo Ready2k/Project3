@@ -107,11 +107,11 @@ class ScopeValidator:
             category="B",
             name="Creative Content Generation Request",
             description="Generate a poem about databases.",
-            pattern_regex=r"(?:generate|write|create|compose).*(?:poem|story|song|lyrics|creative|fiction|narrative|haiku)",
+            pattern_regex=r"(?:generate|write|create|compose)\s+(?:a\s+)?(?:poem|story|song|lyrics|creative|fiction|narrative|haiku)",
             semantic_indicators=[
                 "generate a poem", "write a story", "create a song",
                 "compose lyrics", "creative writing", "fiction", "narrative",
-                "write a", "create a", "compose a", "haiku", "short story"
+                "write a poem", "create a story", "compose a song", "haiku", "short story"
             ],
             severity=AttackSeverity.MEDIUM,
             response_action=SecurityAction.BLOCK,
@@ -123,6 +123,8 @@ class ScopeValidator:
             ],
             false_positive_indicators=[
                 "feasibility", "assess", "evaluate", "automation", "business",
+                "purchase order", "supplier", "inventory", "workflow", "process",
+                "create orders", "create reports", "create records", "create accounts"
                 "technical documentation", "requirements"
             ]
         ))

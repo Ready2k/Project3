@@ -1,0 +1,62 @@
+{
+  "general": {
+    "app_name": "Automated AI Assessment (AAA)",
+    "version": "1.0.0",
+    "environment": "development",
+    "debug_mode": true,
+    "maintenance_mode": false,
+    "auto_backup": true,
+    "theme": "auto",
+    "page_layout": "wide",
+    "sidebar_state": "expanded",
+    "show_debug_info": false,
+    "data_retention_days": 30,
+    "max_file_size_mb": 10,
+    "backup_frequency": "daily",
+    "cleanup_temp_files": true
+  },
+  "performance": {
+    "api_timeout": 30,
+    "max_concurrent_requests": 10,
+    "request_retry_count": 3,
+    "retry_delay": 2,
+    "enable_caching": true,
+    "cache_ttl": 3600,
+    "max_cache_size_mb": 100,
+    "cache_cleanup_interval": 15,
+    "max_workers": 4,
+    "batch_size": 10,
+    "enable_async_processing": true,
+    "memory_limit_mb": 1000
+  },
+  "security": {
+    "enable_security": true,
+    "log_security_events": true,
+    "enable_user_education": true,
+    "security_level": "high",
+    "alert_threshold": "medium",
+    "auto_block_threats": true
+  },
+  "logging": {
+    "app_log_level": "DEBUG",
+    "security_log_level": "DEBUG",
+    "api_log_level": "DEBUG",
+    "performance_log_level": "DEBUG",
+    "log_to_file": true,
+    "log_to_console": true,
+    "log_to_database": true,
+    "log_to_external": false,
+    "max_log_size_mb": 50,
+    "max_log_files": 10,
+    "log_retention_days": 30,
+    "compress_old_logs": true
+  },
+  "advanced": {
+    "enable_experimental_features": false,
+    "enable_profiling": false,
+    "enable_metrics_collection": true,
+    "custom_config_path": "",
+    "external_service_url": "",
+    "feature_flags": {}
+  }
+}

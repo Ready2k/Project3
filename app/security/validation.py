@@ -21,20 +21,31 @@ class SecurityValidator:
             re.compile(r'<script[^>]*>.*?</script>', re.IGNORECASE | re.DOTALL),  # XSS
             re.compile(r'javascript:', re.IGNORECASE),  # JavaScript URLs
             re.compile(r'on\w+\s*=', re.IGNORECASE),  # Event handlers
-            re.compile(r'(union|select|insert|update|delete|drop|create|alter)\s+', re.IGNORECASE),  # SQL injection
+            re.compile(r'\b(union\s+select|select\s+\*\s+from|insert\s+into|update\s+set|delete\s+from|drop\s+table|alter\s+table)\b', re.IGNORECASE),  # SQL injection (more specific patterns)
             re.compile(r'(\.\./|\.\.\\)', re.IGNORECASE),  # Path traversal
             re.compile(r'(eval|exec|system|shell_exec)\s*\(', re.IGNORECASE),  # Code injection
         ]
         
         # Formula injection patterns (Excel/Sheets/CSV injection)
+        # More precise patterns to avoid false positives with legitimate business content
         self.formula_injection_patterns = [
-            re.compile(r'^=', re.IGNORECASE),  # Starts with equals
-            re.compile(r'^@', re.IGNORECASE),  # Starts with at symbol
-            re.compile(r'^\+', re.IGNORECASE),  # Starts with plus
-            re.compile(r'^-', re.IGNORECASE),  # Starts with minus
+            # Dangerous formula functions (high confidence)
             re.compile(r'=\s*(WEBSERVICE|HYPERLINK|IMPORTXML|IMPORTHTML|IMPORTDATA|IMPORTRANGE|IMPORTFEED)', re.IGNORECASE),  # Dangerous functions
             re.compile(r'=\s*(CMD|SYSTEM|SHELL|EXEC)', re.IGNORECASE),  # Command execution
             re.compile(r'=\s*(DDE|DDEAUTO)', re.IGNORECASE),  # Dynamic Data Exchange
+            
+            # Formula starts - but only if they look like actual formulas, not business content
+            re.compile(r'^=\s*[A-Z]+\s*\(', re.IGNORECASE),  # Starts with equals followed by function call
+            re.compile(r'^@\s*[A-Z]+\s*\(', re.IGNORECASE),  # Starts with @ followed by function call
+            re.compile(r'^\+\s*[A-Z]+\s*\(', re.IGNORECASE),  # Starts with + followed by function call
+            
+            # Only flag minus if it looks like a formula, not a bullet point
+            re.compile(r'^-\s*[A-Z]+\s*\(', re.IGNORECASE),  # Starts with minus followed by function call
+            re.compile(r'^-\s*\d+', re.IGNORECASE),  # Starts with minus followed by number (negative number formula)
+            
+            # Suspicious formula patterns
+            re.compile(r'=.*\bWEBSERVICE\b.*\(', re.IGNORECASE),  # WEBSERVICE function anywhere
+            re.compile(r'=.*\bHYPERLINK\b.*\(', re.IGNORECASE),  # HYPERLINK function anywhere
         ]
         
         # Banned tools/technologies that should never appear in outputs
@@ -84,6 +95,38 @@ class SecurityValidator:
             re.compile(r'\b(extract|dump|steal|harvest)\s+(data|information|files?|credentials?)\b', re.IGNORECASE),
         ]
     
+    def _is_business_context(self, text: str, pattern_match: str) -> bool:
+        """Check if a pattern match is in a legitimate business context."""
+        # Convert to lowercase for case-insensitive checking
+        text_lower = text.lower()
+        match_lower = pattern_match.lower()
+        
+        # Business context indicators
+        business_indicators = [
+            'purchase order', 'create order', 'update inventory', 'delete record',
+            'select product', 'create user', 'update profile', 'business process',
+            'workflow', 'automation', 'requirement', 'user story', 'feature',
+            'application', 'system', 'database', 'api', 'service'
+        ]
+        
+        # Check if the match is surrounded by business context
+        for indicator in business_indicators:
+            if indicator in text_lower:
+                return True
+        
+        # Check if it's part of a longer business phrase
+        business_phrases = [
+            f'create {match_lower}', f'update {match_lower}', f'delete {match_lower}',
+            f'{match_lower} order', f'{match_lower} record', f'{match_lower} user',
+            f'{match_lower} product', f'{match_lower} item'
+        ]
+        
+        for phrase in business_phrases:
+            if phrase in text_lower:
+                return True
+        
+        return False
+
     def sanitize_string(self, text: str, max_length: int = 10000) -> str:
         """Sanitize string input by removing/escaping dangerous content."""
         if not isinstance(text, str):
@@ -102,9 +145,16 @@ class SecurityValidator:
         
         # Check for malicious patterns
         for pattern in self.malicious_patterns:
-            if pattern.search(text):
-                app_logger.warning(f"Potentially malicious pattern detected and removed: {pattern.pattern}")
-                text = pattern.sub('[REMOVED_SUSPICIOUS_CONTENT]', text)
+            matches = pattern.finditer(text)
+            for match in matches:
+                match_text = match.group(0)
+                # Check if this is in a legitimate business context
+                if not self._is_business_context(text, match_text):
+                    app_logger.warning(f"Potentially malicious pattern detected and removed: {pattern.pattern}")
+                    text = pattern.sub('[REMOVED_SUSPICIOUS_CONTENT]', text)
+                    break  # Only log once per pattern
+                else:
+                    app_logger.debug(f"Pattern '{match_text}' detected but allowed in business context")
         
         # Check for formula injection patterns and sanitize
         for pattern in self.formula_injection_patterns:
@@ -246,6 +296,10 @@ class SecurityValidator:
             line = line.strip()
             if not line:
                 continue
+            
+            # Skip obvious legitimate business content patterns
+            if self._is_legitimate_business_content(line):
+                continue
                 
             for pattern in self.formula_injection_patterns:
                 if pattern.search(line):
@@ -257,6 +311,49 @@ class SecurityValidator:
             return True, found_formulas
         
         return False, []
+    
+    def _is_legitimate_business_content(self, line: str) -> bool:
+        """Check if a line is legitimate business content that should not be flagged as formula injection."""
+        line = line.strip()
+        
+        # Common legitimate patterns that start with special characters
+        legitimate_patterns = [
+            # Bullet points and lists
+            re.compile(r'^-\s+[a-zA-Z]', re.IGNORECASE),  # "- Some text"
+            re.compile(r'^-\s*[A-Za-z][^()]*$', re.IGNORECASE),  # "- Business requirement" (no parentheses)
+            
+            # Markdown and documentation
+            re.compile(r'^-{2,}', re.IGNORECASE),  # "---" (horizontal rule)
+            re.compile(r'^-\s*\*\*.*\*\*', re.IGNORECASE),  # "- **Bold text**"
+            
+            # Business content with dashes
+            re.compile(r'^-\s+[A-Z][a-z]+\s+[a-z]', re.IGNORECASE),  # "- Device management"
+            re.compile(r'^-\s+\w+\s+\w+', re.IGNORECASE),  # "- Two or more words"
+            
+            # Email signatures and contact info
+            re.compile(r'^-+\s*$', re.IGNORECASE),  # Just dashes
+            
+            # Common business phrases that might start with special chars
+            re.compile(r'^-\s+(Current|Today|The|This|All|Each|Some|Many)', re.IGNORECASE),
+        ]
+        
+        for pattern in legitimate_patterns:
+            if pattern.match(line):
+                return True
+        
+        # If line starts with - but doesn't contain function calls or suspicious patterns, likely legitimate
+        if line.startswith('-') and not re.search(r'[()=]', line):
+            return True
+        
+        # If line starts with - and contains common business words, likely legitimate
+        business_keywords = ['device', 'data', 'user', 'system', 'process', 'workflow', 'api', 'integration', 
+                           'requirement', 'business', 'customer', 'order', 'inventory', 'supplier', 'email',
+                           'mobile', 'android', 'scanner', 'barcode', 'threshold', 'approval', 'manager']
+        
+        if line.startswith('-') and any(keyword in line.lower() for keyword in business_keywords):
+            return True
+        
+        return False
     
     def sanitize_dict(self, data: Dict[str, Any], max_depth: int = 10) -> Dict[str, Any]:
         """Recursively sanitize dictionary values."""

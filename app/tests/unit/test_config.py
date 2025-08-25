@@ -6,77 +6,137 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from app.config import Settings, load_settings
+from app.config.settings import ConfigurationManager, AppConfig, Environment, LogLevel
 from app.utils.redact import PIIRedactor
 
 
-class TestSettings:
-    def test_default_settings(self):
-        """Test that default settings are loaded correctly."""
-        settings = Settings()
-        assert settings.provider == "openai"
-        assert settings.model == "gpt-4o"
-        assert settings.pattern_library_path == Path("./data/patterns")
-        assert settings.export_path == Path("./exports")
-        assert settings.timeouts.llm == 20
-        assert settings.timeouts.http == 10
-        assert settings.logging.level == "INFO"
-        assert settings.logging.redact_pii is True
+class TestConfigurationManager:
+    def test_default_config(self):
+        """Test that default configuration is loaded correctly."""
+        config = AppConfig()
+        assert config.environment == Environment.DEVELOPMENT
+        assert config.log_level == LogLevel.INFO
+        assert config.host == "0.0.0.0"
+        assert config.port == 8000
+        assert config.database.host == "localhost"
+        assert config.database.port == 5432
+        assert config.cache.type == "diskcache"
+        assert config.ui.page_title == "Automated AI Assessment"
 
     def test_env_override(self):
         """Test that environment variables override defaults."""
         with patch.dict(os.environ, {
-            'PROVIDER': 'bedrock',
-            'MODEL': 'claude-3',
-            'LOGGING_LEVEL': 'DEBUG'
+            'AAA_ENVIRONMENT': 'production',
+            'AAA_LOG_LEVEL': 'ERROR',
+            'AAA_PORT': '9000',
+            'AAA_DATABASE__HOST': 'db.example.com'
         }):
-            settings = Settings()
-            assert settings.provider == "bedrock"
-            assert settings.model == "claude-3"
-            assert settings.logging.level == "DEBUG"
+            manager = ConfigurationManager()
+            result = manager.load_config()
+            assert result.is_success
+            
+            config = result.value
+            assert config.environment == Environment.PRODUCTION
+            assert config.log_level == LogLevel.ERROR
+            assert config.port == 9000
+            assert config.database.host == "db.example.com"
 
     def test_yaml_config_loading(self):
         """Test loading configuration from YAML file."""
         config_data = {
-            'provider': 'claude',
-            'model': 'claude-3-sonnet',
-            'constraints': {
-                'unavailable_tools': ['selenium', 'playwright']
+            'environment': 'testing',
+            'debug': True,
+            'database': {
+                'host': 'test-db',
+                'port': 5433
             },
-            'timeouts': {
-                'llm': 30,
-                'http': 15
-            }
+            'llm_providers': [
+                {
+                    'name': 'test_provider',
+                    'model': 'test-model',
+                    'timeout': 10
+                }
+            ]
         }
         
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            yaml.dump(config_data, f)
-            config_path = f.name
-        
-        try:
-            settings = load_settings(config_path=config_path)
-            assert settings.provider == "claude"
-            assert settings.model == "claude-3-sonnet"
-            assert "selenium" in settings.constraints.unavailable_tools
-            assert settings.timeouts.llm == 30
-        finally:
-            os.unlink(config_path)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+            base_config_path = config_dir / "base.yaml"
+            
+            with open(base_config_path, 'w') as f:
+                yaml.dump(config_data, f)
+            
+            manager = ConfigurationManager(config_dir)
+            result = manager.load_config()
+            assert result.is_success
+            
+            config = result.value
+            assert config.environment == Environment.TESTING
+            assert config.debug is True
+            assert config.database.host == "test-db"
+            assert config.database.port == 5433
+            assert len(config.llm_providers) == 1
+            assert config.llm_providers[0].name == "test_provider"
 
     def test_env_precedence_over_yaml(self):
         """Test that environment variables take precedence over YAML."""
-        config_data = {'provider': 'claude', 'model': 'claude-3'}
+        config_data = {
+            'environment': 'development',
+            'port': 8000,
+            'database': {'host': 'yaml-db'}
+        }
         
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            yaml.dump(config_data, f)
-            config_path = f.name
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+            base_config_path = config_dir / "base.yaml"
+            
+            with open(base_config_path, 'w') as f:
+                yaml.dump(config_data, f)
+            
+            with patch.dict(os.environ, {
+                'AAA_ENVIRONMENT': 'production',
+                'AAA_DATABASE__HOST': 'env-db'
+            }):
+                manager = ConfigurationManager(config_dir)
+                result = manager.load_config()
+                assert result.is_success
+                
+                config = result.value
+                assert config.environment == Environment.PRODUCTION  # env wins
+                assert config.port == 8000  # yaml value
+                assert config.database.host == "env-db"  # env wins
+
+    def test_hierarchical_config_loading(self):
+        """Test hierarchical configuration loading (base + environment)."""
+        base_config = {
+            'debug': False,
+            'port': 8000,
+            'database': {'host': 'base-db', 'port': 5432}
+        }
         
-        try:
-            with patch.dict(os.environ, {'PROVIDER': 'openai'}):
-                settings = load_settings(config_path=config_path)
-                assert settings.provider == "openai"  # env wins
-                assert settings.model == "claude-3"   # yaml value
-        finally:
-            os.unlink(config_path)
+        env_config = {
+            'debug': True,
+            'database': {'host': 'env-db'}  # port should remain from base
+        }
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+            
+            with open(config_dir / "base.yaml", 'w') as f:
+                yaml.dump(base_config, f)
+            
+            with open(config_dir / "testing.yaml", 'w') as f:
+                yaml.dump(env_config, f)
+            
+            manager = ConfigurationManager(config_dir)
+            result = manager.load_config("testing")
+            assert result.is_success
+            
+            config = result.value
+            assert config.debug is True  # from env config
+            assert config.port == 8000  # from base config
+            assert config.database.host == "env-db"  # from env config
+            assert config.database.port == 5432  # from base config
 
 
 class TestPIIRedactor:

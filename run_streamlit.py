@@ -1,43 +1,49 @@
 #!/usr/bin/env python3
-"""Script to run the Streamlit UI for Automated AI Assessment (AAA)."""
+"""
+Streamlit application runner for the AAA system.
 
-import subprocess
+This script starts the Streamlit UI with the new modular architecture.
+"""
+
 import sys
+import os
 from pathlib import Path
-from app.utils.logger import app_logger
+
+# Add the project root to Python path
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
+
+# Set environment variables for Streamlit
+os.environ.setdefault('STREAMLIT_SERVER_PORT', '8501')
+os.environ.setdefault('STREAMLIT_SERVER_ADDRESS', '0.0.0.0')
+os.environ.setdefault('STREAMLIT_BROWSER_SERVER_ADDRESS', 'localhost')
 
 def main():
     """Run the Streamlit application."""
-    
-    # Get the directory containing this script
-    script_dir = Path(__file__).parent
-    streamlit_app = script_dir / "streamlit_app.py"
-    
-    if not streamlit_app.exists():
-        app_logger.error(f"Streamlit app not found at {streamlit_app}")
-        sys.exit(1)
-    
-    # Run Streamlit with browser auto-open
-    cmd = [
-        sys.executable, "-m", "streamlit", "run", 
-        str(streamlit_app),
-        "--server.port", "8501",
-        "--server.address", "0.0.0.0",
-        "--browser.serverAddress", "localhost"
-    ]
-    
-    app_logger.info("🚀 Starting Automated AI Assessment (AAA) Streamlit UI...")
-    app_logger.info("📱 The app will automatically open in your browser at: http://localhost:8501")
-    app_logger.info("🔧 Make sure the FastAPI backend is running at: http://localhost:8000")
-    app_logger.info("💡 If the browser doesn't open automatically, visit: http://localhost:8501")
-    app_logger.info(f"Command: {' '.join(cmd)}")
-    
     try:
-        subprocess.run(cmd, check=True)
-    except KeyboardInterrupt:
-        app_logger.info("Streamlit app stopped by user")
-    except subprocess.CalledProcessError as e:
-        app_logger.error(f"Error running Streamlit: {e}")
+        # Import streamlit
+        import streamlit as st
+        from streamlit.web import cli as stcli
+        
+        # Configure Streamlit to run our main app
+        sys.argv = [
+            "streamlit",
+            "run",
+            "streamlit_app.py",
+            "--server.port=8501",
+            "--server.address=0.0.0.0",
+            "--browser.serverAddress=localhost"
+        ]
+        
+        # Run Streamlit
+        stcli.main()
+        
+    except ImportError as e:
+        print(f"❌ Error importing Streamlit: {e}")
+        print("💡 Please install Streamlit: pip install streamlit")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Error starting Streamlit: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

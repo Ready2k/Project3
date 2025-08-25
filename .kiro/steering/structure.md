@@ -8,7 +8,7 @@
 ├── exports/                # Generated export files
 ├── cache/                  # Diskcache storage
 ├── scripts/                # Utility scripts (cleanup, maintenance)
-├── config.yaml            # Application configuration
+├── config/                 # Hierarchical configuration directory
 ├── requirements.txt        # Python dependencies
 ├── Makefile               # Build and development commands
 ├── pytest.ini            # Test configuration
@@ -74,10 +74,13 @@
 
 ## Configuration Files
 
-### Application Config (`config.yaml`)
+### Application Config (`config/`)
+- `config/base.yaml` - Default configuration for all environments
+- `config/development.yaml` - Development-specific overrides
+- `config/production.yaml` - Production-specific overrides
+- `config/local.yaml` - Local development overrides (git-ignored)
 - Provider settings (OpenAI, Bedrock, Claude)
-- Model configurations
-- Timeouts and constraints
+- Model configurations, timeouts, and constraints
 - Logging and audit settings
 
 ### Environment Variables (`.env`)

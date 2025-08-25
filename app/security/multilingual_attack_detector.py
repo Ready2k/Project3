@@ -155,7 +155,7 @@ class MultilingualAttackDetector(AttackDetector):
     def _initialize_language_patterns(self) -> Dict[str, re.Pattern]:
         """Initialize language detection patterns."""
         return {
-            'chinese': re.compile(r'[\u4e00-\u9fff\u3400-\u4dbf\u20000-\u2a6df\u2a700-\u2b73f\u2b740-\u2b81f\u2b820-\u2ceaf\uf900-\ufaff\u3300-\u33ff\ufe30-\ufe4f\uf900-\ufaff\u2f800-\u2fa1f]+'),
+            'chinese': re.compile(r'[\u4e00-\u9fff\u3400-\u4dbf\U00020000-\U0002a6df\U0002a700-\U0002b73f\U0002b740-\U0002b81f\U0002b820-\U0002ceaf\uf900-\ufaff\u3300-\u33ff\ufe30-\ufe4f\U0002f800-\U0002fa1f]+'),
             'japanese': re.compile(r'[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf\uff66-\uff9f]+'),
             'korean': re.compile(r'[\uac00-\ud7af\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\ud7b0-\ud7ff]+'),
             'arabic': re.compile(r'[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufeff]+'),
@@ -406,9 +406,17 @@ class MultilingualAttackDetector(AttackDetector):
         """Detect languages present in the text."""
         detected = []
         
+        # More conservative language detection to avoid false positives
         for lang_name, pattern in self.language_patterns.items():
-            if pattern.search(text):
-                detected.append(lang_name)
+            matches = pattern.findall(text)
+            if matches:
+                # Require a minimum number of characters for CJK languages to avoid false positives
+                if lang_name in ['chinese', 'japanese', 'korean']:
+                    total_chars = sum(len(match) for match in matches)
+                    if total_chars >= 3:  # At least 3 CJK characters
+                        detected.append(lang_name)
+                else:
+                    detected.append(lang_name)
         
         # Also detect common European languages by character patterns
         if re.search(r'[àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ]', text, re.IGNORECASE):
@@ -420,11 +428,28 @@ class MultilingualAttackDetector(AttackDetector):
             detected.append('latin')
         
         # Special handling for mixed scripts - if we have both CJK and Latin, keep both
+        # But only if we have substantial CJK content
         has_cjk = any(lang in detected for lang in ['chinese', 'japanese', 'korean'])
         has_latin = re.search(r'[a-zA-Z]', text)
         
         if has_cjk and has_latin and 'latin' not in detected:
             detected.append('latin')
+        
+        # If we only detected 'latin' and no other languages, this is likely English-only content
+        # Don't trigger multilingual detection for pure English
+        if detected == ['latin']:
+            # Check if this is actually multilingual by looking for business terms in other languages
+            has_foreign_business_terms = False
+            for category, keywords in self.business_keywords.items():
+                for keyword in keywords:
+                    if keyword.lower() in text.lower() and not keyword.isascii():
+                        has_foreign_business_terms = True
+                        break
+                if has_foreign_business_terms:
+                    break
+            
+            if not has_foreign_business_terms:
+                return []  # Don't trigger multilingual detection for pure English
         
         return detected
     

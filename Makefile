@@ -10,6 +10,35 @@ lint:
 	ruff app/
 	mypy app/ --ignore-missing-imports
 
+# Run comprehensive code quality checks
+quality:
+	python3 scripts/code_quality_check.py
+
+# Run quality checks with JSON output
+quality-json:
+	python3 scripts/code_quality_check.py --json --output quality-report.json
+
+# Run quality checks and fail on errors
+quality-strict:
+	python3 scripts/code_quality_check.py --fail-on-error
+
+# Install pre-commit hooks
+install-hooks:
+	pre-commit install
+	pre-commit install --hook-type commit-msg
+
+# Run pre-commit on all files
+pre-commit-all:
+	pre-commit run --all-files
+
+# Validate enhanced pattern system
+validate-patterns:
+	python3 scripts/validate_pattern_system.py
+
+# Validate patterns with JSON output
+validate-patterns-json:
+	python3 scripts/validate_pattern_system.py --json --output pattern-validation-report.json
+
 # Run tests
 test:
 	python3 -m pytest app/tests/ -v --cov=app --cov-report=html --cov-report=term

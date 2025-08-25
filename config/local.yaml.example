@@ -1,0 +1,43 @@
+# Local configuration overrides
+# Copy this file to local.yaml and customize for your local development environment
+# local.yaml is ignored by git and will override all other configuration
+
+# Example: Override LLM provider settings
+# provider: "claude"
+# model: "claude-3-haiku-20240307"
+
+# Example: Override database settings
+# database:
+#   host: "localhost"
+#   port: 5432
+#   name: "my_local_db"
+#   username: "myuser"
+#   password: "mypassword"
+
+# Example: Override security settings for local development
+# security:
+#   enable_prompt_defense: false
+#   max_input_length: 50000
+
+# Example: Override cache settings
+# cache:
+#   type: "memory"
+#   size_limit: 268435456  # 256MB
+
+# Example: Override UI settings
+# ui:
+#   show_debug: true
+#   theme: "dark"
+
+# Example: Override logging
+# logging:
+#   level: DEBUG
+
+# Example: Disable features for local testing
+# enable_analytics: false
+# enable_jira_integration: false
+
+# Example: Override advanced prompt defense for testing
+# advanced_prompt_defense:
+#   enabled: false
+#   log_all_detections: false

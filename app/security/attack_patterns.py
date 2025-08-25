@@ -92,6 +92,11 @@ class SecurityDecision:
     technical_details: str = ""
     detection_results: List[DetectionResult] = field(default_factory=list)
     guidance_data: Optional[Any] = None
+    
+    @property
+    def is_safe(self) -> bool:
+        """Check if the input is considered safe."""
+        return self.action == SecurityAction.PASS
 
 
 class AttackPatternDatabase:

@@ -1,342 +1,367 @@
-"""Results display UI component."""
+"""Results display component for results visualization."""
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, List, Optional, Any
+
 import streamlit as st
 
+from app.ui.components.base import BaseComponent
+
+# Import logger for error handling
 from app.utils.logger import app_logger
-from app.ui.mermaid_diagrams import mermaid_generator
 
 
-class ResultsDisplayComponent:
-    """Handles display of analysis results and recommendations."""
+class ResultsDisplayComponent(BaseComponent):
+    """Component for displaying analysis results."""
     
-    def __init__(self):
-        self.export_formats = {
-            "json": {"name": "JSON", "icon": "📄", "description": "Machine-readable format"},
-            "markdown": {"name": "Markdown", "icon": "📝", "description": "Human-readable documentation"},
-            "html": {"name": "HTML", "icon": "🌐", "description": "Interactive web format"},
-            "comprehensive": {"name": "Comprehensive", "icon": "📊", "description": "Complete analysis report"}
-        }
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        super().__init__(config)
     
-    def render_feasibility_assessment(self, feasibility: str, reasoning: str):
-        """Render feasibility assessment section."""
-        st.subheader("🎯 Feasibility Assessment")
-        
-        # Determine color based on feasibility
-        if "fully automatable" in feasibility.lower():
-            st.success(f"✅ **{feasibility}**")
-        elif "partially automatable" in feasibility.lower():
-            st.warning(f"⚠️ **{feasibility}**")
-        else:
-            st.error(f"❌ **{feasibility}**")
-        
-        if reasoning:
-            with st.expander("🧠 Reasoning Details"):
-                st.write(reasoning)
-    
-    def render_recommendations(self, recommendations: List[Dict[str, Any]]):
-        """Render recommendations section."""
-        st.subheader("💡 Recommendations")
+    def render(self, **kwargs) -> Any:
+        """Render the results display component."""
+        recommendations = kwargs.get('recommendations')
         
         if not recommendations:
-            st.info("No recommendations available yet.")
+            st.info("No results to display.")
             return
         
-        for i, rec in enumerate(recommendations, 1):
-            with st.expander(f"📋 Recommendation {i}: {rec.get('pattern_name', 'Unknown Pattern')}", expanded=i==1):
-                
-                # Pattern information
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.write(f"**Pattern ID:** {rec.get('pattern_id', 'N/A')}")
-                    st.write(f"**Confidence:** {rec.get('confidence', 0):.1%}")
-                
-                with col2:
-                    st.write(f"**Complexity:** {rec.get('complexity', 'Unknown')}")
-                    st.write(f"**Effort:** {rec.get('estimated_effort', 'Unknown')}")
-                
-                # Description
-                if rec.get('description'):
-                    st.write("**Description:**")
-                    st.write(rec['description'])
-                
-                # Reasoning
-                if rec.get('reasoning'):
-                    st.write("**Why this pattern fits:**")
-                    st.write(rec['reasoning'])
-                
-                # Implementation guidance
-                if rec.get('implementation_guidance'):
-                    st.write("**Implementation Guidance:**")
-                    for guidance in rec['implementation_guidance']:
-                        st.write(f"• {guidance}")
-                
-                # Agent roles (if available)
-                if rec.get('agent_roles'):
-                    self._render_agent_roles(rec['agent_roles'])
+        self.render_overview(recommendations)
     
-    def _render_agent_roles(self, agent_roles: List[Dict[str, Any]]):
-        """Render agent roles information."""
-        st.write("**🤖 Agent Roles:**")
+    def render_overview(self, recommendations: Dict[str, Any]):
+        """Render results overview with key metrics."""
+        st.subheader("📊 Analysis Overview")
         
-        for role in agent_roles:
-            with st.container():
-                st.write(f"**{role.get('name', 'Unknown Agent')}**")
-                
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.write(f"*Autonomy Level:* {role.get('autonomy_level', 0):.1%}")
-                    st.write(f"*Responsibility:* {role.get('responsibility', 'N/A')}")
-                
-                with col2:
-                    if role.get('capabilities'):
-                        st.write("*Capabilities:*")
-                        for cap in role['capabilities']:
-                            st.write(f"  • {cap}")
-                
-                st.divider()
-    
-    def render_tech_stack(self, tech_stack: List[str]):
-        """Render technology stack section."""
-        st.subheader("🛠️ Technology Stack")
+        # Extract key metrics
+        feasibility = recommendations.get('feasibility', {})
+        pattern_matches = recommendations.get('pattern_matches', [])
+        tech_stack = recommendations.get('tech_stack', {})
         
-        if not tech_stack:
-            st.info("No technology recommendations available yet.")
-            return
-        
-        # Group technologies by category (if possible)
-        categorized_tech = self._categorize_technologies(tech_stack)
-        
-        if len(categorized_tech) > 1:
-            # Show categorized view
-            for category, technologies in categorized_tech.items():
-                with st.expander(f"📦 {category}", expanded=True):
-                    for tech in technologies:
-                        st.write(f"• {tech}")
-        else:
-            # Show simple list
-            for tech in tech_stack:
-                st.write(f"• {tech}")
-    
-    def _categorize_technologies(self, tech_stack: List[str]) -> Dict[str, List[str]]:
-        """Categorize technologies by type."""
-        categories = {
-            "Programming Languages": [],
-            "Frameworks & Libraries": [],
-            "Databases": [],
-            "Cloud Services": [],
-            "Tools & Utilities": [],
-            "Other": []
-        }
-        
-        # Simple categorization based on common patterns
-        for tech in tech_stack:
-            tech_lower = tech.lower()
-            
-            if any(lang in tech_lower for lang in ['python', 'javascript', 'java', 'go', 'rust', 'c++']):
-                categories["Programming Languages"].append(tech)
-            elif any(fw in tech_lower for fw in ['react', 'vue', 'angular', 'django', 'flask', 'fastapi', 'express']):
-                categories["Frameworks & Libraries"].append(tech)
-            elif any(db in tech_lower for db in ['postgresql', 'mysql', 'mongodb', 'redis', 'elasticsearch']):
-                categories["Databases"].append(tech)
-            elif any(cloud in tech_lower for cloud in ['aws', 'azure', 'gcp', 'docker', 'kubernetes']):
-                categories["Cloud Services"].append(tech)
-            elif any(tool in tech_lower for tool in ['git', 'jenkins', 'terraform', 'ansible']):
-                categories["Tools & Utilities"].append(tech)
-            else:
-                categories["Other"].append(tech)
-        
-        # Remove empty categories
-        return {k: v for k, v in categories.items() if v}
-    
-    def render_diagrams_section(self, requirements: Dict[str, Any], recommendations: List[Dict[str, Any]], tech_stack: List[str]):
-        """Render diagrams section."""
-        st.subheader("📊 Architecture Diagrams")
-        
-        diagram_types = [
-            ("Context Diagram", "High-level system context"),
-            ("Container Diagram", "System containers and relationships"),
-            ("Sequence Diagram", "Process flow and interactions"),
-            ("Tech Stack Wiring", "Technology connections and data flow")
-        ]
-        
-        selected_diagram = st.selectbox(
-            "Select Diagram Type",
-            [dt[0] for dt in diagram_types],
-            format_func=lambda x: f"{x} - {dict(diagram_types)[x]}"
-        )
-        
-        if st.button(f"🎨 Generate {selected_diagram}"):
-            self._generate_and_display_diagram(selected_diagram, requirements, recommendations, tech_stack)
-    
-    def _generate_and_display_diagram(self, diagram_type: str, requirements: Dict[str, Any], recommendations: List[Dict[str, Any]], tech_stack: List[str]):
-        """Generate and display a specific diagram type."""
-        try:
-            with st.spinner(f"🎨 Generating {diagram_type}..."):
-                
-                # Get provider config from session state
-                provider_config = st.session_state.get('provider_config', {})
-                
-                if diagram_type == "Context Diagram":
-                    prompt = self._build_context_diagram_prompt(requirements, recommendations, tech_stack)
-                elif diagram_type == "Container Diagram":
-                    prompt = self._build_container_diagram_prompt(requirements, recommendations, tech_stack)
-                elif diagram_type == "Sequence Diagram":
-                    prompt = self._build_sequence_diagram_prompt(requirements, recommendations)
-                elif diagram_type == "Tech Stack Wiring":
-                    prompt = self._build_tech_wiring_prompt(tech_stack, requirements)
-                else:
-                    st.error(f"Unknown diagram type: {diagram_type}")
-                    return
-                
-                # Generate diagram using async function
-                import asyncio
-                try:
-                    loop = asyncio.get_event_loop()
-                    mermaid_code = loop.run_until_complete(
-                        mermaid_generator.make_llm_request(prompt, provider_config, f"{diagram_type.lower()}_generation")
-                    )
-                    
-                    if mermaid_code:
-                        st.success(f"✅ {diagram_type} generated successfully!")
-                        mermaid_generator.render_mermaid_diagram(mermaid_code)
-                    else:
-                        st.error("Failed to generate diagram - empty response")
-                        
-                except Exception as e:
-                    st.error(f"Failed to generate diagram: {str(e)}")
-                    app_logger.error(f"Diagram generation error: {e}")
-                    
-        except Exception as e:
-            st.error(f"Error generating {diagram_type}: {str(e)}")
-            app_logger.error(f"Diagram generation error: {e}")
-    
-    def _build_context_diagram_prompt(self, requirements: Dict[str, Any], recommendations: List[Dict[str, Any]], tech_stack: List[str]) -> str:
-        """Build prompt for context diagram generation."""
-        requirement_text = requirements.get('description', 'Automation requirement')
-        tech_context = ', '.join(tech_stack[:5]) if tech_stack else 'Various technologies'
-        
-        return f"""Generate a Mermaid context diagram (C4 Level 1) for this automation requirement:
-
-REQUIREMENT: {requirement_text}
-
-TECHNOLOGY CONTEXT: {tech_context}
-
-Create a context diagram showing:
-- The user/actor who will use the system
-- The main system being automated
-- External systems it needs to integrate with
-- Data sources it needs to access
-
-Use Mermaid flowchart syntax. Start with "flowchart LR" and use:
-- Circles for people: user([User Name])
-- Rectangles for systems: system[System Name]
-- Cylinders for databases: db[(Database)]
-
-Return ONLY the raw Mermaid code without markdown formatting."""
-    
-    def _build_container_diagram_prompt(self, requirements: Dict[str, Any], recommendations: List[Dict[str, Any]], tech_stack: List[str]) -> str:
-        """Build prompt for container diagram generation."""
-        requirement_text = requirements.get('description', 'Automation requirement')
-        tech_context = ', '.join(tech_stack[:8]) if tech_stack else 'Various technologies'
-        
-        return f"""Generate a Mermaid container diagram for this automation requirement:
-
-REQUIREMENT: {requirement_text}
-
-TECHNOLOGIES: {tech_context}
-
-Create a container diagram showing:
-- Web applications, APIs, databases, and services
-- How containers communicate with each other
-- Technology choices for each container
-
-Use Mermaid flowchart syntax with appropriate shapes and connections.
-Return ONLY the raw Mermaid code without markdown formatting."""
-    
-    def _build_sequence_diagram_prompt(self, requirements: Dict[str, Any], recommendations: List[Dict[str, Any]]) -> str:
-        """Build prompt for sequence diagram generation."""
-        requirement_text = requirements.get('description', 'Automation requirement')
-        
-        return f"""Generate a Mermaid sequence diagram for this automation process:
-
-REQUIREMENT: {requirement_text}
-
-Create a sequence diagram showing:
-- The main actors/participants in the process
-- The sequence of interactions and API calls
-- Decision points and alternative flows
-- Error handling scenarios
-
-Use Mermaid sequenceDiagram syntax.
-Return ONLY the raw Mermaid code without markdown formatting."""
-    
-    def _build_tech_wiring_prompt(self, tech_stack: List[str], requirements: Dict[str, Any]) -> str:
-        """Build prompt for technology wiring diagram."""
-        tech_context = ', '.join(tech_stack) if tech_stack else 'Various technologies'
-        requirement_text = requirements.get('description', 'Automation requirement')
-        
-        return f"""Generate a Mermaid tech stack wiring diagram showing how these technologies connect:
-
-TECHNOLOGIES: {tech_context}
-
-REQUIREMENT CONTEXT: {requirement_text}
-
-Create a diagram showing:
-- Data flow between components with labeled arrows (HTTP, SQL, API calls)
-- Component types (services, databases, external APIs) with appropriate symbols
-- Authentication flows and security layers
-- Message queues and async processing connections
-
-Use Mermaid flowchart syntax with clear labels and connection types.
-Return ONLY the raw Mermaid code without markdown formatting."""
-    
-    def render_export_options(self, session_id: str, api_integration):
-        """Render export options section."""
-        st.subheader("📤 Export Results")
-        
-        col1, col2 = st.columns(2)
+        # Metrics row
+        col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            export_format = st.selectbox(
-                "Export Format",
-                list(self.export_formats.keys()),
-                format_func=lambda x: f"{self.export_formats[x]['icon']} {self.export_formats[x]['name']}"
+            feasibility_score = feasibility.get('score', 0)
+            st.metric(
+                "Feasibility Score",
+                f"{feasibility_score}%",
+                delta=None,
+                help="Overall automation feasibility score"
             )
         
         with col2:
-            st.write(f"**{self.export_formats[export_format]['description']}**")
-        
-        if st.button(f"📥 Export as {self.export_formats[export_format]['name']}", type="primary"):
-            api_integration.export_results_with_ui_feedback(session_id, export_format)
-    
-    def render_results_summary(self, session_summary: Dict[str, Any]):
-        """Render a summary of current results."""
-        st.subheader("📋 Results Summary")
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.metric("Session Progress", f"{session_summary.get('progress', 0)}%")
-        
-        with col2:
-            recommendations_count = len(st.session_state.get('recommendations', []))
-            st.metric("Recommendations", recommendations_count)
+            pattern_count = len(pattern_matches)
+            st.metric(
+                "Pattern Matches",
+                pattern_count,
+                delta=None,
+                help="Number of matching solution patterns"
+            )
         
         with col3:
-            tech_count = len(st.session_state.get('tech_stack', []))
-            st.metric("Technologies", tech_count)
+            tech_count = len(tech_stack.get('technologies', []))
+            st.metric(
+                "Technologies",
+                tech_count,
+                delta=None,
+                help="Number of recommended technologies"
+            )
         
-        # Status indicators
-        status_items = [
-            ("Requirements", session_summary.get('has_requirements', False)),
-            ("Q&A Complete", session_summary.get('qa_complete', False)),
-            ("Recommendations", session_summary.get('has_recommendations', False))
-        ]
+        with col4:
+            confidence = recommendations.get('confidence', 0)
+            st.metric(
+                "Confidence",
+                f"{confidence}%",
+                delta=None,
+                help="Confidence in the recommendations"
+            )
         
-        st.write("**Analysis Status:**")
-        for item, status in status_items:
-            icon = "✅" if status else "⏳"
-            st.write(f"{icon} {item}")
+        # Feasibility status
+        st.divider()
+        self._render_feasibility_status(feasibility)
+    
+    def render_summary(self, recommendations: Dict[str, Any]):
+        """Render detailed summary of results."""
+        st.subheader("📋 Analysis Summary")
+        
+        # Feasibility assessment
+        feasibility = recommendations.get('feasibility', {})
+        
+        st.write("**Feasibility Assessment:**")
+        st.write(feasibility.get('assessment', 'No assessment available'))
+        
+        # Key insights
+        insights = feasibility.get('insights', [])
+        if insights:
+            st.write("**Key Insights:**")
+            for insight in insights:
+                st.write(f"• {insight}")
+        
+        # Challenges and considerations
+        challenges = feasibility.get('challenges', [])
+        if challenges:
+            st.write("**Challenges & Considerations:**")
+            for challenge in challenges:
+                st.write(f"⚠️ {challenge}")
+        
+        # Recommended approach
+        approach = feasibility.get('recommended_approach', '')
+        if approach:
+            st.write("**Recommended Approach:**")
+            st.write(approach)
+        
+        # Next steps
+        next_steps = feasibility.get('next_steps', [])
+        if next_steps:
+            st.write("**Next Steps:**")
+            for i, step in enumerate(next_steps, 1):
+                st.write(f"{i}. {step}")
+    
+    def render_architecture(self, recommendations: Dict[str, Any]):
+        """Render architecture and technical details."""
+        st.subheader("🏗️ Technical Architecture")
+        
+        # Technology stack
+        tech_stack = recommendations.get('tech_stack', {})
+        self._render_tech_stack(tech_stack)
+        
+        st.divider()
+        
+        # Pattern matches
+        pattern_matches = recommendations.get('pattern_matches', [])
+        self._render_pattern_matches(pattern_matches)
+        
+        st.divider()
+        
+        # Architecture explanation
+        architecture = recommendations.get('architecture', {})
+        self._render_architecture_explanation(architecture)
+    
+    def _render_feasibility_status(self, feasibility: Dict[str, Any]):
+        """Render feasibility status with color coding."""
+        status = feasibility.get('status', 'Unknown')
+        score = feasibility.get('score', 0)
+        
+        # Color coding based on feasibility
+        if score >= 80:
+            status_color = "🟢"
+            status_text = "Highly Automatable"
+        elif score >= 60:
+            status_color = "🟡"
+            status_text = "Moderately Automatable"
+        elif score >= 40:
+            status_color = "🟠"
+            status_text = "Partially Automatable"
+        else:
+            status_color = "🔴"
+            status_text = "Limited Automation Potential"
+        
+        st.markdown(f"### {status_color} {status_text}")
+        
+        # Progress bar for feasibility score
+        progress = score / 100.0
+        st.progress(progress)
+        
+        # Status description
+        description = feasibility.get('description', '')
+        if description:
+            st.write(description)
+    
+    def _render_tech_stack(self, tech_stack: Dict[str, Any]):
+        """Render technology stack recommendations."""
+        st.write("**🔧 Recommended Technology Stack**")
+        
+        technologies = tech_stack.get('technologies', [])
+        categories = tech_stack.get('categories', {})
+        
+        if categories:
+            # Group technologies by category
+            for category, techs in categories.items():
+                if techs:
+                    with st.expander(f"{category} ({len(techs)} technologies)"):
+                        for tech in techs:
+                            if isinstance(tech, dict):
+                                st.write(f"**{tech.get('name', 'Unknown')}**")
+                                if tech.get('description'):
+                                    st.write(f"   {tech['description']}")
+                            else:
+                                st.write(f"• {tech}")
+        else:
+            # Simple list of technologies
+            for tech in technologies:
+                if isinstance(tech, dict):
+                    st.write(f"• **{tech.get('name', 'Unknown')}** - {tech.get('description', '')}")
+                else:
+                    st.write(f"• {tech}")
+    
+    def _render_pattern_matches(self, pattern_matches: List[Dict]):
+        """Render matching solution patterns."""
+        st.write("**📚 Matching Solution Patterns**")
+        
+        if not pattern_matches:
+            st.info("No matching patterns found.")
+            return
+        
+        for i, pattern in enumerate(pattern_matches):
+            with st.expander(f"Pattern {i+1}: {pattern.get('name', 'Unnamed Pattern')}", expanded=i == 0):
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.write("**Description:**")
+                    st.write(pattern.get('description', 'No description available'))
+                    
+                    # Pattern tags
+                    tags = pattern.get('tags', [])
+                    if tags:
+                        st.write("**Tags:**")
+                        tag_str = " • ".join([f"`{tag}`" for tag in tags])
+                        st.markdown(tag_str)
+                
+                with col2:
+                    # Pattern metrics
+                    similarity = pattern.get('similarity_score', 0)
+                    st.metric("Similarity", f"{similarity:.1%}")
+                    
+                    feasibility = pattern.get('feasibility', 'Unknown')
+                    st.write(f"**Feasibility:** {feasibility}")
+                    
+                    pattern_id = pattern.get('pattern_id', 'Unknown')
+                    st.write(f"**Pattern ID:** {pattern_id}")
+    
+    def _render_architecture_explanation(self, architecture: Dict[str, Any]):
+        """Render architecture explanation."""
+        st.write("**🏗️ Architecture Explanation**")
+        
+        explanation = architecture.get('explanation', '')
+        if explanation:
+            st.write(explanation)
+        else:
+            st.info("No architecture explanation available.")
+        
+        # Components
+        components = architecture.get('components', [])
+        if components:
+            st.write("**System Components:**")
+            for component in components:
+                if isinstance(component, dict):
+                    st.write(f"• **{component.get('name', 'Unknown')}** - {component.get('description', '')}")
+                else:
+                    st.write(f"• {component}")
+        
+        # Data flow
+        data_flow = architecture.get('data_flow', '')
+        if data_flow:
+            st.write("**Data Flow:**")
+            st.write(data_flow)
+        
+        # Integration points
+        integrations = architecture.get('integrations', [])
+        if integrations:
+            st.write("**Integration Points:**")
+            for integration in integrations:
+                st.write(f"• {integration}")
+    
+    def render_comparison(self, recommendations_list: List[Dict[str, Any]]):
+        """Render comparison between multiple recommendations."""
+        if len(recommendations_list) < 2:
+            st.info("Need at least 2 recommendations for comparison.")
+            return
+        
+        st.subheader("⚖️ Recommendations Comparison")
+        
+        # Create comparison table
+        comparison_data = []
+        
+        for i, rec in enumerate(recommendations_list):
+            feasibility = rec.get('feasibility', {})
+            tech_count = len(rec.get('tech_stack', {}).get('technologies', []))
+            pattern_count = len(rec.get('pattern_matches', []))
+            
+            comparison_data.append({
+                'Option': f'Option {i+1}',
+                'Feasibility Score': f"{feasibility.get('score', 0)}%",
+                'Status': feasibility.get('status', 'Unknown'),
+                'Technologies': tech_count,
+                'Patterns': pattern_count,
+                'Confidence': f"{rec.get('confidence', 0)}%"
+            })
+        
+        st.table(comparison_data)
+        
+        # Detailed comparison
+        for i, rec in enumerate(recommendations_list):
+            with st.expander(f"Option {i+1} Details"):
+                self.render_summary(rec)
+    
+    def render_export_preview(self, recommendations: Dict[str, Any], format_type: str):
+        """Render preview of export data."""
+        st.subheader(f"📤 {format_type.upper()} Export Preview")
+        
+        if format_type == "json":
+            import json
+            preview_data = json.dumps(recommendations, indent=2)
+            st.code(preview_data, language="json")
+        
+        elif format_type == "markdown":
+            preview_data = self._format_as_markdown(recommendations)
+            st.markdown(preview_data)
+        
+        elif format_type == "html":
+            preview_data = self._format_as_html(recommendations)
+            st.components.v1.html(preview_data, height=400, scrolling=True)
+    
+    def _format_as_markdown(self, recommendations: Dict[str, Any]) -> str:
+        """Format recommendations as Markdown."""
+        feasibility = recommendations.get('feasibility', {})
+        
+        markdown = f"""# Analysis Results
+        
+## Feasibility Assessment
+- **Score:** {feasibility.get('score', 0)}%
+- **Status:** {feasibility.get('status', 'Unknown')}
+- **Assessment:** {feasibility.get('assessment', 'No assessment available')}
+
+## Technology Stack
+"""
+        
+        tech_stack = recommendations.get('tech_stack', {})
+        technologies = tech_stack.get('technologies', [])
+        
+        for tech in technologies:
+            if isinstance(tech, dict):
+                markdown += f"- **{tech.get('name', 'Unknown')}**: {tech.get('description', '')}\n"
+            else:
+                markdown += f"- {tech}\n"
+        
+        return markdown
+    
+    def _format_as_html(self, recommendations: Dict[str, Any]) -> str:
+        """Format recommendations as HTML."""
+        feasibility = recommendations.get('feasibility', {})
+        
+        html = f"""
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h1>Analysis Results</h1>
+            
+            <h2>Feasibility Assessment</h2>
+            <p><strong>Score:</strong> {feasibility.get('score', 0)}%</p>
+            <p><strong>Status:</strong> {feasibility.get('status', 'Unknown')}</p>
+            <p><strong>Assessment:</strong> {feasibility.get('assessment', 'No assessment available')}</p>
+            
+            <h2>Technology Stack</h2>
+            <ul>
+        """
+        
+        tech_stack = recommendations.get('tech_stack', {})
+        technologies = tech_stack.get('technologies', [])
+        
+        for tech in technologies:
+            if isinstance(tech, dict):
+                html += f"<li><strong>{tech.get('name', 'Unknown')}</strong>: {tech.get('description', '')}</li>"
+            else:
+                html += f"<li>{tech}</li>"
+        
+        html += """
+            </ul>
+        </div>
+        """
+        
+        return html

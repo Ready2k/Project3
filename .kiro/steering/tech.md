@@ -121,7 +121,7 @@ make help       # Show all available commands
 
 ## Configuration
 
-- **YAML Config**: `config.yaml` for application settings
+- **YAML Config**: `config/` directory with hierarchical configuration files
 - **Environment Variables**: `.env` file for API keys and overrides
 - **Pydantic Settings**: Type-safe configuration management
 - **Technology Catalog**: `data/technologies.json` for technology metadata

@@ -15,7 +15,7 @@ services:
       - ./data:/app/data
       - ./exports:/app/exports
       - ./cache:/app/cache
-      - ./config.yaml:/app/config.yaml
+      - ./config:/app/config
       - ./.env:/app/.env
     environment:
       - PYTHONPATH=/app
@@ -34,7 +34,7 @@ services:
       - ./run_streamlit.py:/app/run_streamlit.py
       - ./data:/app/data
       - ./exports:/app/exports
-      - ./config.yaml:/app/config.yaml
+      - ./config:/app/config
       - ./.env:/app/.env
     environment:
       - PYTHONPATH=/app

@@ -1,23 +1,8 @@
-"""Core application infrastructure."""
+"""
+Core infrastructure for the AAA system.
 
-from .dependency_injection import (
-    ServiceContainer,
-    ServiceProvider,
-    ServiceScope,
-    get_service_container,
-    resolve_service,
-    register_service,
-    inject,
-    configure_services
-)
+This module contains core infrastructure components like service registry,
+dependency injection, and other foundational elements.
+"""
 
-__all__ = [
-    'ServiceContainer',
-    'ServiceProvider', 
-    'ServiceScope',
-    'get_service_container',
-    'resolve_service',
-    'register_service',
-    'inject',
-    'configure_services'
-]
+__version__ = "1.0.0"

@@ -124,6 +124,9 @@ cache/
 *.mapping.pkl
 .streamlit/
 
+# Local configuration overrides
+config/local.yaml
+
 # IDE
 .vscode/
 .idea/

@@ -22,7 +22,8 @@ class PerformanceBenchmark:
     
     async def benchmark_caching_performance(self) -> Dict[str, Any]:
         """Benchmark caching performance improvement."""
-        print("🔄 Benchmarking caching performance...")
+        from app.utils.logger import app_logger
+        app_logger.info("🔄 Benchmarking caching performance...")
         
         config = AdvancedPromptDefenseConfig()
         config.enable_caching = True
@@ -62,7 +63,7 @@ class PerformanceBenchmark:
     
     async def benchmark_parallel_vs_sequential(self) -> Dict[str, Any]:
         """Benchmark parallel vs sequential detection performance."""
-        print("⚡ Benchmarking parallel vs sequential performance...")
+        app_logger.info("⚡ Benchmarking parallel vs sequential performance...")
         
         test_input = """
         I need to assess the automation potential for our complex business process that involves:
@@ -111,7 +112,7 @@ class PerformanceBenchmark:
     
     async def benchmark_latency_target_compliance(self) -> Dict[str, Any]:
         """Benchmark compliance with <50ms latency target."""
-        print("🎯 Benchmarking latency target compliance...")
+        app_logger.info("🎯 Benchmarking latency target compliance...")
         
         config = AdvancedPromptDefenseConfig()
         config.enable_caching = True
@@ -160,7 +161,7 @@ class PerformanceBenchmark:
     
     async def benchmark_memory_efficiency(self) -> Dict[str, Any]:
         """Benchmark memory usage efficiency."""
-        print("💾 Benchmarking memory efficiency...")
+        app_logger.info("💾 Benchmarking memory efficiency...")
         
         config = AdvancedPromptDefenseConfig()
         config.enable_caching = True
@@ -186,7 +187,7 @@ class PerformanceBenchmark:
     
     async def benchmark_concurrent_performance(self) -> Dict[str, Any]:
         """Benchmark performance under concurrent load."""
-        print("🚀 Benchmarking concurrent performance...")
+        app_logger.info("🚀 Benchmarking concurrent performance...")
         
         config = AdvancedPromptDefenseConfig()
         config.enable_caching = True
@@ -222,8 +223,8 @@ class PerformanceBenchmark:
     
     async def run_full_benchmark(self) -> Dict[str, Any]:
         """Run complete performance benchmark suite."""
-        print("🏁 Starting comprehensive performance benchmark...")
-        print("=" * 60)
+        app_logger.info("🏁 Starting comprehensive performance benchmark...")
+        app_logger.info("=" * 60)
         
         results = {}
         
@@ -238,54 +239,54 @@ class PerformanceBenchmark:
     
     def print_benchmark_results(self, results: Dict[str, Any]) -> None:
         """Print formatted benchmark results."""
-        print("\n" + "=" * 60)
-        print("📊 PERFORMANCE BENCHMARK RESULTS")
-        print("=" * 60)
+        app_logger.info("\n" + "=" * 60)
+        app_logger.info("📊 PERFORMANCE BENCHMARK RESULTS")
+        app_logger.info("=" * 60)
         
         # Caching Performance
         caching = results['caching']
-        print(f"\n🔄 CACHING PERFORMANCE:")
-        print(f"   Cache Miss Avg:     {caching['avg_cache_miss_ms']:.2f}ms")
-        print(f"   Cache Hit Avg:      {caching['avg_cache_hit_ms']:.2f}ms")
-        print(f"   Improvement Ratio:  {caching['improvement_ratio']:.2f}x faster")
-        print(f"   Cache Hit Rate:     {caching['cache_hit_rate']:.1f}%")
+        app_logger.info(f"\n🔄 CACHING PERFORMANCE:")
+        app_logger.info(f"   Cache Miss Avg:     {caching['avg_cache_miss_ms']:.2f}ms")
+        app_logger.info(f"   Cache Hit Avg:      {caching['avg_cache_hit_ms']:.2f}ms")
+        app_logger.info(f"   Improvement Ratio:  {caching['improvement_ratio']:.2f}x faster")
+        app_logger.info(f"   Cache Hit Rate:     {caching['cache_hit_rate']:.1f}%")
         
         # Parallel vs Sequential
         parallel = results['parallel_vs_sequential']
-        print(f"\n⚡ PARALLEL vs SEQUENTIAL:")
-        print(f"   Parallel Avg:       {parallel['avg_parallel_ms']:.2f}ms")
-        print(f"   Sequential Avg:     {parallel['avg_sequential_ms']:.2f}ms")
-        print(f"   Speedup Ratio:      {parallel['speedup_ratio']:.2f}x faster")
-        print(f"   Efficiency Gain:    {parallel['parallel_efficiency']:.1f}%")
+        app_logger.info(f"\n⚡ PARALLEL vs SEQUENTIAL:")
+        app_logger.info(f"   Parallel Avg:       {parallel['avg_parallel_ms']:.2f}ms")
+        app_logger.info(f"   Sequential Avg:     {parallel['avg_sequential_ms']:.2f}ms")
+        app_logger.info(f"   Speedup Ratio:      {parallel['speedup_ratio']:.2f}x faster")
+        app_logger.info(f"   Efficiency Gain:    {parallel['parallel_efficiency']:.1f}%")
         
         # Latency Target Compliance
         latency = results['latency_compliance']
-        print(f"\n🎯 LATENCY TARGET COMPLIANCE:")
-        print(f"   Overall Avg:        {latency['overall_avg_latency_ms']:.2f}ms")
-        print(f"   Target Compliance:  {latency['target_compliance_percent']:.1f}%")
-        print(f"   Meets <50ms Target: {'✅ YES' if latency['meets_target_overall'] else '❌ NO'}")
+        app_logger.info(f"\n🎯 LATENCY TARGET COMPLIANCE:")
+        app_logger.info(f"   Overall Avg:        {latency['overall_avg_latency_ms']:.2f}ms")
+        app_logger.info(f"   Target Compliance:  {latency['target_compliance_percent']:.1f}%")
+        app_logger.info(f"   Meets <50ms Target: {'✅ YES' if latency['meets_target_overall'] else '❌ NO'}")
         
         for case_name, case_data in latency['case_results'].items():
             status = "✅" if case_data['meets_target'] else "❌"
-            print(f"   {case_name:15} {case_data['avg_latency_ms']:6.2f}ms {status}")
+            app_logger.info(f"   {case_name:15} {case_data['avg_latency_ms']:6.2f}ms {status}")
         
         # Memory Efficiency
         memory = results['memory_efficiency']
-        print(f"\n💾 MEMORY EFFICIENCY:")
-        print(f"   Cache Utilization:  {memory['cache_utilization_percent']:.1f}%")
-        print(f"   Memory Usage:       {memory['memory_usage_mb']:.1f}MB")
-        print(f"   Total Validations:  {memory['total_validations']}")
+        app_logger.info(f"\n💾 MEMORY EFFICIENCY:")
+        app_logger.info(f"   Cache Utilization:  {memory['cache_utilization_percent']:.1f}%")
+        app_logger.info(f"   Memory Usage:       {memory['memory_usage_mb']:.1f}MB")
+        app_logger.info(f"   Total Validations:  {memory['total_validations']}")
         
         # Concurrent Performance
         concurrent = results['concurrent_performance']
-        print(f"\n🚀 CONCURRENT PERFORMANCE:")
-        print(f"   Total Time:         {concurrent['total_time_ms']:.2f}ms")
-        print(f"   Avg Latency:        {concurrent['avg_latency_ms']:.2f}ms")
-        print(f"   Throughput:         {concurrent['throughput_per_second']:.1f} validations/sec")
-        print(f"   All Successful:     {'✅ YES' if concurrent['all_successful'] else '❌ NO'}")
+        app_logger.info(f"\n🚀 CONCURRENT PERFORMANCE:")
+        app_logger.info(f"   Total Time:         {concurrent['total_time_ms']:.2f}ms")
+        app_logger.info(f"   Avg Latency:        {concurrent['avg_latency_ms']:.2f}ms")
+        app_logger.info(f"   Throughput:         {concurrent['throughput_per_second']:.1f} validations/sec")
+        app_logger.info(f"   All Successful:     {'✅ YES' if concurrent['all_successful'] else '❌ NO'}")
         
         # Overall Assessment
-        print(f"\n🏆 OVERALL ASSESSMENT:")
+        app_logger.info(f"\n🏆 OVERALL ASSESSMENT:")
         meets_latency = latency['meets_target_overall']
         good_caching = caching['improvement_ratio'] > 2.0
         good_parallel = parallel['speedup_ratio'] > 1.2
@@ -293,13 +294,13 @@ class PerformanceBenchmark:
         
         score = sum([meets_latency, good_caching, good_parallel, good_throughput])
         
-        print(f"   Latency Target:     {'✅' if meets_latency else '❌'} <50ms average")
-        print(f"   Caching Effective:  {'✅' if good_caching else '❌'} >2x improvement")
-        print(f"   Parallel Speedup:   {'✅' if good_parallel else '❌'} >1.2x faster")
-        print(f"   High Throughput:    {'✅' if good_throughput else '❌'} >10 val/sec")
-        print(f"   Overall Score:      {score}/4 {'🌟' if score >= 3 else '⚠️'}")
+        app_logger.info(f"   Latency Target:     {'✅' if meets_latency else '❌'} <50ms average")
+        app_logger.info(f"   Caching Effective:  {'✅' if good_caching else '❌'} >2x improvement")
+        app_logger.info(f"   Parallel Speedup:   {'✅' if good_parallel else '❌'} >1.2x faster")
+        app_logger.info(f"   High Throughput:    {'✅' if good_throughput else '❌'} >10 val/sec")
+        app_logger.info(f"   Overall Score:      {score}/4 {'🌟' if score >= 3 else '⚠️'}")
         
-        print("\n" + "=" * 60)
+        app_logger.info("\n" + "=" * 60)
 
 
 async def main():

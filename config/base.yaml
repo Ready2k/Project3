@@ -1,0 +1,318 @@
+# Base configuration for AAA system
+# This file contains default settings that apply to all environments
+
+# Application settings
+version: "2.1.0"
+release_name: "Technology Catalog"
+provider: "openai"
+model: "gpt-4o"
+pattern_library_path: "./data/patterns"
+export_path: "./exports"
+
+app:
+  debug: false
+  log_level: INFO
+  host: "0.0.0.0"
+  port: 8000
+  workers: 1
+
+database:
+  host: localhost
+  port: 5432
+  name: aaa_db
+  pool_size: 10
+  max_overflow: 20
+
+cache:
+  type: diskcache
+  directory: cache
+  size_limit: 1073741824  # 1GB
+  ttl_seconds: 3600
+
+security:
+  enable_prompt_defense: true
+  max_input_length: 10000
+  rate_limit_requests: 100
+  rate_limit_window: 3600
+  allowed_origins:
+    - "*"
+
+ui:
+  page_title: "Automated AI Assessment"
+  page_icon: "🤖"
+  layout: wide
+  sidebar_state: expanded
+  theme: light
+  show_debug: false
+
+# Logging configuration
+logging:
+  level: INFO
+  redact_pii: true
+
+# Timeout configuration
+timeouts:
+  llm: 20
+  http: 10
+
+# Constraints configuration
+constraints:
+  unavailable_tools: []
+
+# Embedding configuration
+embedding:
+  provider: hash_based
+  model_name: all-MiniLM-L6-v2
+  dimension: 384
+  cache_embeddings: true
+  fallback_provider: hash_based
+
+# AWS Bedrock configuration
+bedrock:
+  region: eu-west-2
+
+# Advanced prompt defense configuration
+advanced_prompt_defense:
+  enabled: true
+  detection_confidence_threshold: 0.7
+  flag_threshold: 0.5
+  block_threshold: 0.9
+  max_validation_time_ms: 100
+  enable_caching: true
+  cache_ttl_seconds: 300
+  parallel_detection: true
+  log_all_detections: true
+  metrics_enabled: true
+  alert_on_attacks: true
+  educational_messages: true
+  provide_user_guidance: true
+  appeal_mechanism: true
+  attack_pack_version: v2
+  
+  # Individual detector configurations
+  overt_injection:
+    confidence_threshold: 0.8
+    enabled: true
+    sensitivity: high
+    custom_settings:
+      check_instruction_override: true
+      check_role_manipulation: true
+      check_system_access: true
+  
+  covert_injection:
+    confidence_threshold: 0.7
+    enabled: true
+    sensitivity: high
+    custom_settings:
+      check_markdown_links: true
+      decode_base64: true
+      detect_zero_width: true
+      normalize_unicode: true
+  
+  multilingual_attack_detector:
+    confidence_threshold: 0.7
+    enabled: true
+    sensitivity: medium
+    custom_settings:
+      detect_language_switching: true
+      normalize_unicode: true
+      supported_languages:
+        - en
+        - es
+        - fr
+        - de
+        - zh
+        - ja
+  
+  context_attack_detector:
+    confidence_threshold: 0.8
+    enabled: true
+    sensitivity: high
+    custom_settings:
+      detect_buried_instructions: true
+      lorem_ipsum_threshold: 0.3
+      max_input_length: 10000
+      scan_entire_input: true
+  
+  data_egress_detector:
+    confidence_threshold: 0.9
+    enabled: true
+    sensitivity: high
+    custom_settings:
+      detect_canary_extraction: true
+      protect_environment_vars: true
+      protect_system_prompt: true
+      protect_user_data: true
+  
+  business_logic_protector:
+    confidence_threshold: 0.9
+    enabled: true
+    sensitivity: high
+    custom_settings:
+      monitor_configuration_access: true
+      protect_provider_settings: true
+      protect_safety_toggles: true
+      protect_system_parameters: true
+  
+  protocol_tampering_detector:
+    confidence_threshold: 0.6
+    enabled: true
+    sensitivity: medium
+    custom_settings:
+      check_unauthorized_fields: true
+      prevent_format_manipulation: true
+      validate_json_requests: true
+  
+  scope_validator:
+    confidence_threshold: 0.6
+    enabled: true
+    sensitivity: medium
+    custom_settings:
+      allowed_business_domains:
+        - feasibility
+        - automation
+        - assessment
+      blocked_tasks:
+        - summarization
+        - translation
+        - code_generation
+        - creative_writing
+
+llm_providers:
+  - name: openai
+    model: gpt-4
+    timeout: 30
+    max_retries: 3
+    temperature: 0.7
+  - name: claude
+    model: claude-3-sonnet-20240229
+    timeout: 30
+    max_retries: 3
+    temperature: 0.7
+
+default_llm_provider: openai
+
+# Feature flags
+enable_analytics: true
+enable_exports: true
+enable_jira_integration: true
+
+# System configuration for autonomy assessment
+autonomy:
+  agentic_necessity_threshold: 0.6
+  autonomy_boost_multiplier: 1.1
+  confidence_boost_factor: 1.2
+  decision_independence_weight: 0.25
+  exception_handling_weight: 0.2
+  fully_automatable_threshold: 0.8
+  high_autonomy_boost_threshold: 0.7
+  hybrid_zone_threshold: 0.1
+  learning_adaptation_weight: 0.15
+  min_autonomy_threshold: 0.7
+  partially_automatable_threshold: 0.6
+  reasoning_capability_weight: 0.3
+  self_monitoring_weight: 0.1
+  traditional_suitability_threshold: 0.7
+
+# LLM generation settings
+llm_generation:
+  api_request_timeout: 30.0
+  frequency_penalty: 0.0
+  http_timeout: 10
+  llm_timeout: 20
+  max_tokens: 1000
+  presence_penalty: 0.0
+  temperature: 0.3
+  top_p: 1.0
+
+# Pattern matching configuration
+pattern_matching:
+  autonomy_level_weight: 0.4
+  confidence_weight: 0.2
+  decision_independence_weight: 0.2
+  excellent_fit_threshold: 0.8
+  exception_handling_weight: 0.1
+  good_fit_threshold: 0.6
+  high_similarity_threshold: 0.7
+  learning_potential_weight: 0.05
+  moderate_similarity_threshold: 0.4
+  moderate_tag_match_threshold: 0.4
+  reasoning_capability_weight: 0.25
+  strong_tag_match_threshold: 0.7
+  tag_weight: 0.3
+  vector_weight: 0.5
+
+# Rate limiting configuration
+rate_limiting:
+  default_burst_limit: 25
+  default_burst_window_seconds: 60
+  default_requests_per_day: 10000
+  default_requests_per_hour: 1000
+  default_requests_per_minute: 60
+  enterprise_burst_limit: 100
+  enterprise_requests_per_day: 100000
+  enterprise_requests_per_hour: 10000
+  enterprise_requests_per_minute: 300
+  ip_burst_limit: 15
+  ip_requests_per_day: 5000
+  ip_requests_per_hour: 500
+  ip_requests_per_minute: 30
+  premium_burst_limit: 40
+  premium_requests_per_day: 30000
+  premium_requests_per_hour: 3000
+  premium_requests_per_minute: 120
+
+# Recommendations configuration
+recommendations:
+  autonomy_boost_factor: 0.2
+  conceptual_similarity_threshold: 0.7
+  min_recommendation_confidence: 0.7
+  multi_agent_boost: 0.1
+  new_pattern_creation_threshold: 0.7
+  pattern_enhancement_similarity_threshold: 0.7
+  reasoning_boost_amount: 0.1
+  reasoning_boost_threshold: 3
+  tech_stack_inclusion_threshold: 0.6
+
+# Deployment configuration
+deployment:
+  active_attack_pack_version: v2
+  alert_channels: []
+  beta_user_percentage: 10.0
+  canary_user_percentage: 1.0
+  config_version: "1.0"
+  deployment_environment: production
+  gradual_rollout_enabled: true
+  health_check_enabled: true
+  health_check_endpoints:
+    - /health/security
+    - /health/detectors
+    - /health/performance
+  health_check_interval_seconds: 30
+  health_check_timeout_seconds: 10
+  metrics_retention_days: 30
+  monitoring_enabled: true
+  staged_user_percentage: 50.0
+  
+  # Rollback configuration
+  rollback_config:
+    cooldown_minutes: 30
+    enabled: true
+    max_rollbacks_per_day: 5
+    notification_channels: []
+    triggers:
+      health_check_failure:
+        check_interval_seconds: 30
+        consecutive_failures: 3
+      high_error_rate:
+        min_requests: 100
+        threshold: 0.05
+        window_minutes: 5
+      high_false_positive_rate:
+        min_requests: 50
+        threshold: 0.1
+        window_minutes: 10
+      high_latency:
+        min_requests: 100
+        threshold_ms: 200
+        window_minutes: 5

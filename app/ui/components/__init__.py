@@ -1,11 +1,7 @@
-"""UI components package for AAA Streamlit interface."""
+"""
+Reusable UI components for the AAA system.
 
-from .provider_config import ProviderConfigComponent
-from .session_management import SessionManagementComponent
-from .results_display import ResultsDisplayComponent
+This module contains all reusable UI components following the BaseComponent interface.
+"""
 
-__all__ = [
-    'ProviderConfigComponent',
-    'SessionManagementComponent', 
-    'ResultsDisplayComponent'
-]
+__version__ = "1.0.0"

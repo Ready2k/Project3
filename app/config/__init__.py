@@ -1,120 +1,66 @@
-"""Configuration package initialization."""
+"""
+Configuration management for the AAA system.
 
-# Import legacy Settings from the old config.py file using importlib
-import importlib.util
+This module provides unified configuration management with hierarchical loading
+and environment-specific overrides.
+"""
+
+# Import from the legacy config.py for backward compatibility
+import sys
 from pathlib import Path
 
-# Load the legacy config.py file
-config_path = Path(__file__).parent.parent / "config.py"
-spec = importlib.util.spec_from_file_location("app.config_legacy", config_path)
-config_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(config_module)
+# Add the parent directory to import the legacy config
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# Import Settings and load_settings from the legacy config module
-Settings = config_module.Settings
-load_settings = config_module.load_settings
+try:
+    from config import (
+        Settings,
+        JiraConfig,
+        JiraAuthType,
+        JiraDeploymentType,
+        BedrockConfig,
+        EmbeddingProvider,
+        load_settings
+    )
+except ImportError:
+    # Fallback to direct import
+    import importlib.util
+    config_path = Path(__file__).parent.parent / "config.py"
+    spec = importlib.util.spec_from_file_location("config", config_path)
+    config_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(config_module)
+    
+    Settings = config_module.Settings
+    JiraConfig = config_module.JiraConfig
+    JiraAuthType = config_module.JiraAuthType
+    JiraDeploymentType = config_module.JiraDeploymentType
+    BedrockConfig = config_module.BedrockConfig
+    EmbeddingProvider = config_module.EmbeddingProvider
+    load_settings = config_module.load_settings
 
-# Import other classes and enums from the legacy config module
-EmbeddingProvider = config_module.EmbeddingProvider
-EmbeddingConfig = config_module.EmbeddingConfig
-ConstraintsConfig = config_module.ConstraintsConfig
-DetectorConfig = config_module.DetectorConfig
-AdvancedPromptDefenseConfig = config_module.AdvancedPromptDefenseConfig
-FeatureFlagConfig = config_module.FeatureFlagConfig
-RollbackTriggerConfig = config_module.RollbackTriggerConfig
-RollbackConfig = config_module.RollbackConfig
-AttackPackMetadata = config_module.AttackPackMetadata
-AttackPackVersion = config_module.AttackPackVersion
-DeploymentConfig = config_module.DeploymentConfig
-TimeoutConfig = config_module.TimeoutConfig
-LoggingConfig = config_module.LoggingConfig
-AuditConfig = config_module.AuditConfig
-BedrockConfig = config_module.BedrockConfig
-JiraAuthType = config_module.JiraAuthType
-JiraDeploymentType = config_module.JiraDeploymentType
-JiraConfig = config_module.JiraConfig
-
-from .system_config import (
-    AutonomyConfig,
-    PatternMatchingConfig, 
-    LLMGenerationConfig,
-    RecommendationConfig,
-    SystemConfiguration,
-    SystemConfigurationManager
-)
-
-from .environments import (
-    Environment,
-    EnvironmentConfig,
+# Import from the new settings module
+from .settings import (
     ConfigurationManager,
-    DatabaseConfig,
-    RedisConfig,
-    SecurityConfig,
-    LoggingConfig,
-    MonitoringConfig,
-    CacheConfig,
-    APIConfig,
-    UIConfig,
+    AppConfig,
     get_config_manager,
-    get_current_config,
-    set_environment,
-    reload_current_config,
-    get_development_config,
-    get_testing_config,
-    get_staging_config,
-    get_production_config
+    get_config,
+    load_config
 )
 
+__version__ = "1.0.0"
+
+# Expose the main classes for backward compatibility
 __all__ = [
-    # Legacy configuration (from config.py)
     'Settings',
-    'load_settings',
-    'EmbeddingProvider',
-    'EmbeddingConfig',
-    'ConstraintsConfig',
-    'DetectorConfig',
-    'AdvancedPromptDefenseConfig',
-    'FeatureFlagConfig',
-    'RollbackTriggerConfig',
-    'RollbackConfig',
-    'AttackPackMetadata',
-    'AttackPackVersion',
-    'DeploymentConfig',
-    'TimeoutConfig',
-    'LoggingConfig',
-    'AuditConfig',
-    'BedrockConfig',
+    'JiraConfig', 
     'JiraAuthType',
     'JiraDeploymentType',
-    'JiraConfig',
-    
-    # System configuration
-    'AutonomyConfig',
-    'PatternMatchingConfig',
-    'LLMGenerationConfig', 
-    'RecommendationConfig',
-    'SystemConfiguration',
-    'SystemConfigurationManager',
-    
-    # Environment configuration
-    'Environment',
-    'EnvironmentConfig',
+    'BedrockConfig',
+    'EmbeddingProvider',
+    'load_settings',
     'ConfigurationManager',
-    'DatabaseConfig',
-    'RedisConfig',
-    'SecurityConfig',
-    'MonitoringConfig',
-    'CacheConfig',
-    'APIConfig',
-    'UIConfig',
-    
-    # Configuration functions
+    'AppConfig',
     'get_config_manager',
-    'get_current_config',
-    'set_environment',
-    'reload_current_config',
-    'get_development_config',
-    'get_testing_config',
-    'get_staging_config',
-    'get_production_config'
+    'get_config',
+    'load_config'
 ]

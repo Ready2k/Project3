@@ -359,7 +359,7 @@ python manage_schema.py export team_config.json                # Share configura
 
 **Configuration Integration**:
 - **Pydantic Models**: Full integration with existing Settings system
-- **YAML Configuration**: Comprehensive security settings in config.yaml
+- **YAML Configuration**: Comprehensive security settings in config/base.yaml
 - **Environment Overrides**: Support for environment-based configuration
 - **Validation**: Proper error handling and configuration validation
 

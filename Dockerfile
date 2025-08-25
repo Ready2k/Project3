@@ -50,7 +50,7 @@ ENV PATH=/root/.local/bin:$PATH
 # Copy application code
 COPY app/ ./app/
 COPY data/ ./data/
-COPY config.yaml .
+COPY config/ ./config/
 COPY streamlit_app.py .
 COPY run_streamlit.py .
 

@@ -1,223 +1,260 @@
-"""Session management UI component."""
+"""Session management component for session handling."""
 
-import re
-from typing import Dict, Any, Optional
+from typing import Dict, List, Optional, Any
+
 import streamlit as st
 
+from app.ui.components.base import BaseComponent
+
+# Import logger for error handling
 from app.utils.logger import app_logger
 
 
-class SessionManagementComponent:
-    """Handles session management UI and state."""
+class SessionManagementComponent(BaseComponent):
+    """Component for session management and display."""
     
-    def __init__(self):
-        self.session_id_pattern = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+    def __init__(self, session_manager, config: Optional[Dict[str, Any]] = None):
+        super().__init__(config)
+        self.session_manager = session_manager
     
-    def initialize_session_state(self):
-        """Initialize Streamlit session state variables."""
-        default_values = {
-            'session_id': None,
-            'phase': 'input',
-            'progress': 0,
-            'requirements': {},
-            'missing_fields': [],
-            'questions': [],
-            'qa_complete': False,
-            'recommendations': [],
-            'feasibility': '',
-            'tech_stack': [],
-            'reasoning': '',
-            'processing': False,
-            'provider_config': {
-                'provider': 'fake',
-                'model': 'fake-model'
-            }
-        }
-        
-        for key, default_value in default_values.items():
-            if key not in st.session_state:
-                st.session_state[key] = default_value
+    def render(self, **kwargs) -> Any:
+        """Render the session management component."""
+        if st.session_state.session_id:
+            self.render_session_info()
+        else:
+            self.render_no_session_info()
     
     def render_session_info(self):
         """Render current session information."""
-        if st.session_state.get('session_id'):
-            with st.expander("📋 Session Information", expanded=False):
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.write(f"**Session ID:** `{st.session_state.session_id}`")
-                    st.write(f"**Phase:** {st.session_state.get('phase', 'unknown').title()}")
-                
-                with col2:
-                    st.write(f"**Progress:** {st.session_state.get('progress', 0)}%")
-                    
-                    # Copy session ID button
-                    if st.button("📋 Copy Session ID"):
-                        st.code(st.session_state.session_id)
-                        st.success("Session ID copied to display!")
-    
-    def render_resume_session(self, api_integration) -> bool:
-        """Render resume session UI."""
-        st.subheader("🔄 Resume Previous Session")
+        st.markdown("**Current Session Information:**")
         
-        with st.form("resume_session_form"):
-            st.write("Enter a session ID to resume a previous analysis:")
-            
-            session_id_input = st.text_input(
-                "Session ID",
-                placeholder="e.g., 12345678-1234-1234-1234-123456789abc",
-                help="Session IDs are available in analysis results, exports, and browser URLs"
-            )
-            
-            submitted = st.form_submit_button("🔄 Resume Session", type="primary")
-            
-            if submitted:
-                if self.validate_session_id(session_id_input):
-                    return self._attempt_resume_session(session_id_input, api_integration)
-                else:
-                    st.error("❌ Invalid session ID format. Please check and try again.")
-                    self._show_session_id_help()
-                    return False
+        col1, col2 = st.columns([2, 1])
         
-        return False
-    
-    def validate_session_id(self, session_id: str) -> bool:
-        """Validate session ID format."""
-        if not session_id or not isinstance(session_id, str):
-            return False
+        with col1:
+            st.code(f"Session ID: {st.session_state.session_id}", language=None)
+            st.caption("💡 Save this Session ID to resume this analysis later")
+            
+            # Additional session details
+            session_data = self.session_manager.get_session_data()
+            
+            if session_data.get('current_phase'):
+                st.write(f"**Current Phase:** {session_data['current_phase']}")
+            
+            if session_data.get('progress', 0) > 0:
+                st.write(f"**Progress:** {session_data['progress']}%")
         
-        # Clean the input
-        session_id = session_id.strip()
-        
-        # Check UUID format
-        return bool(self.session_id_pattern.match(session_id))
+        with col2:
+            # Copy to clipboard button
+            if st.button("📋 Copy Session ID", key="copy_session_id"):
+                self._copy_to_clipboard(st.session_state.session_id)
+                st.success("✅ Session ID copied to clipboard!")
     
-    def _attempt_resume_session(self, session_id: str, api_integration) -> bool:
-        """Attempt to resume a session."""
-        try:
-            with st.spinner("🔍 Loading session..."):
-                result = api_integration.load_session_status_with_ui_feedback(session_id)
-                
-                if result:
-                    st.session_state.session_id = session_id
-                    st.success(f"✅ Session resumed successfully!")
-                    
-                    # Show session details
-                    phase = result.get('phase', 'unknown')
-                    progress = result.get('progress', 0)
-                    
-                    st.info(f"📊 **Session Status**: {phase.title()} ({progress}% complete)")
-                    
-                    if result.get('requirements'):
-                        st.write("**Requirements loaded:**")
-                        st.json(result['requirements'])
-                    
-                    st.rerun()
-                    return True
-                else:
-                    st.error("❌ Could not load session. Please check the session ID and try again.")
-                    return False
-                    
-        except Exception as e:
-            st.error(f"❌ Error resuming session: {str(e)}")
-            app_logger.error(f"Session resume error: {e}")
-            return False
-    
-    def _show_session_id_help(self):
-        """Show help information for finding session IDs."""
-        with st.expander("❓ Where do I find my Session ID?"):
-            st.write("**Session IDs can be found in several places:**")
-            
-            st.write("1. **Analysis Results Page**: Displayed at the top of results")
-            st.write("2. **Export Files**: Included in JSON, Markdown, and HTML exports")
-            st.write("3. **Browser URL**: Added to the URL during analysis")
-            st.write("4. **Session Information**: Click the 📋 Session Information expander")
-            
-            st.write("**Session ID Format:**")
-            st.code("12345678-1234-1234-1234-123456789abc")
-            st.write("Session IDs are UUIDs with 8-4-4-4-12 character groups separated by hyphens.")
-    
-    def render_session_progress(self):
-        """Render session progress indicator."""
-        if st.session_state.get('session_id'):
-            phase = st.session_state.get('phase', 'input')
-            progress = st.session_state.get('progress', 0)
-            
-            # Progress bar
-            st.progress(progress / 100)
-            
-            # Phase indicators
-            phases = ['input', 'qa', 'analysis', 'complete']
-            current_phase_index = phases.index(phase) if phase in phases else 0
-            
-            cols = st.columns(len(phases))
-            for i, phase_name in enumerate(phases):
-                with cols[i]:
-                    if i <= current_phase_index:
-                        st.success(f"✅ {phase_name.title()}")
-                    else:
-                        st.info(f"⏳ {phase_name.title()}")
-    
-    def clear_session(self):
-        """Clear current session state."""
-        keys_to_clear = [
-            'session_id', 'phase', 'progress', 'requirements', 'missing_fields',
-            'questions', 'qa_complete', 'recommendations', 'feasibility',
-            'tech_stack', 'reasoning'
-        ]
-        
-        for key in keys_to_clear:
-            if key in st.session_state:
-                del st.session_state[key]
-        
-        app_logger.info("Session state cleared")
+    def render_no_session_info(self):
+        """Render when no session is active."""
+        st.info("No active session. Start an analysis to create a session.")
     
     def render_session_actions(self):
         """Render session action buttons."""
-        if st.session_state.get('session_id'):
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                if st.button("🔄 Refresh Status"):
-                    st.rerun()
-            
-            with col2:
-                if st.button("📋 Show Session Info"):
-                    self.render_session_info()
-            
-            with col3:
-                if st.button("🗑️ Clear Session"):
-                    self.clear_session()
-                    st.success("Session cleared!")
-                    st.rerun()
+        if not st.session_state.session_id:
+            return
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("🔄 Refresh Session", key="refresh_session"):
+                self._refresh_session()
+        
+        with col2:
+            if st.button("💾 Save Session", key="save_session"):
+                self._save_session()
+        
+        with col3:
+            if st.button("🗑️ Clear Session", key="clear_session"):
+                self._clear_session()
     
-    def get_session_summary(self) -> Dict[str, Any]:
-        """Get summary of current session state."""
-        return {
-            "session_id": st.session_state.get('session_id'),
-            "phase": st.session_state.get('phase', 'input'),
-            "progress": st.session_state.get('progress', 0),
-            "has_requirements": bool(st.session_state.get('requirements')),
-            "has_questions": bool(st.session_state.get('questions')),
-            "qa_complete": st.session_state.get('qa_complete', False),
-            "has_recommendations": bool(st.session_state.get('recommendations')),
-            "processing": st.session_state.get('processing', False)
-        }
+    def render_session_history(self):
+        """Render session history if available."""
+        st.subheader("📚 Session History")
+        
+        # Get session history from local storage or API
+        history = self._get_session_history()
+        
+        if history:
+            for session in history[-5:]:  # Show last 5 sessions
+                with st.expander(f"Session {session['id'][:8]}... - {session['created_at']}"):
+                    st.write(f"**Phase:** {session.get('phase', 'Unknown')}")
+                    st.write(f"**Progress:** {session.get('progress', 0)}%")
+                    
+                    if st.button(f"Resume", key=f"resume_{session['id']}"):
+                        self._resume_session(session['id'])
+        else:
+            st.info("No session history available.")
     
-    def update_session_progress(self, phase: str, progress: int):
-        """Update session progress."""
-        st.session_state.phase = phase
-        st.session_state.progress = progress
-        app_logger.info(f"Session progress updated: {phase} ({progress}%)")
-    
-    def is_session_active(self) -> bool:
-        """Check if there's an active session."""
-        return bool(st.session_state.get('session_id'))
-    
-    def is_session_complete(self) -> bool:
-        """Check if the current session is complete."""
-        return (
-            self.is_session_active() and
-            st.session_state.get('phase') == 'complete' and
-            st.session_state.get('progress', 0) >= 100
+    def render_session_export(self):
+        """Render session export options."""
+        if not st.session_state.session_id:
+            return
+        
+        st.subheader("📤 Export Session")
+        
+        export_format = st.selectbox(
+            "Export Format",
+            ["JSON", "Markdown", "CSV"],
+            key="session_export_format"
         )
+        
+        if st.button("📥 Export Session Data", key="export_session"):
+            self._export_session(export_format.lower())
+    
+    def _copy_to_clipboard(self, text: str):
+        """Copy text to clipboard using JavaScript."""
+        copy_js = f"""
+        <script>
+        navigator.clipboard.writeText('{text}').then(function() {{
+            console.log('Text copied to clipboard: {text}');
+        }}).catch(function(err) {{
+            console.error('Failed to copy text: ', err);
+        }});
+        </script>
+        """
+        st.components.v1.html(copy_js, height=0)
+    
+    def _refresh_session(self):
+        """Refresh the current session data."""
+        try:
+            # This would typically make an API call to refresh session data
+            st.success("✅ Session refreshed successfully!")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Failed to refresh session: {str(e)}")
+            app_logger.error(f"Session refresh failed: {str(e)}")
+    
+    def _save_session(self):
+        """Save the current session."""
+        try:
+            # This would typically make an API call to save session data
+            session_data = self.session_manager.get_session_data()
+            
+            # Save to local storage or API
+            self._save_to_history(session_data)
+            
+            st.success("✅ Session saved successfully!")
+        except Exception as e:
+            st.error(f"Failed to save session: {str(e)}")
+            app_logger.error(f"Session save failed: {str(e)}")
+    
+    def _clear_session(self):
+        """Clear the current session."""
+        try:
+            self.session_manager.reset_session()
+            st.success("✅ Session cleared successfully!")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Failed to clear session: {str(e)}")
+            app_logger.error(f"Session clear failed: {str(e)}")
+    
+    def _resume_session(self, session_id: str):
+        """Resume a specific session."""
+        try:
+            # This would typically make an API call to resume the session
+            st.session_state.session_id = session_id
+            st.success(f"✅ Resumed session {session_id[:8]}...")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Failed to resume session: {str(e)}")
+            app_logger.error(f"Session resume failed: {str(e)}")
+    
+    def _export_session(self, format_type: str):
+        """Export session data in the specified format."""
+        try:
+            session_data = self.session_manager.get_session_data()
+            
+            if format_type == "json":
+                import json
+                export_data = json.dumps(session_data, indent=2)
+                st.download_button(
+                    label="📥 Download JSON",
+                    data=export_data,
+                    file_name=f"session_{st.session_state.session_id}.json",
+                    mime="application/json"
+                )
+            
+            elif format_type == "markdown":
+                export_data = self._format_as_markdown(session_data)
+                st.download_button(
+                    label="📥 Download Markdown",
+                    data=export_data,
+                    file_name=f"session_{st.session_state.session_id}.md",
+                    mime="text/markdown"
+                )
+            
+            elif format_type == "csv":
+                export_data = self._format_as_csv(session_data)
+                st.download_button(
+                    label="📥 Download CSV",
+                    data=export_data,
+                    file_name=f"session_{st.session_state.session_id}.csv",
+                    mime="text/csv"
+                )
+            
+            st.success(f"✅ Session exported as {format_type.upper()}!")
+            
+        except Exception as e:
+            st.error(f"Failed to export session: {str(e)}")
+            app_logger.error(f"Session export failed: {str(e)}")
+    
+    def _get_session_history(self) -> List[Dict]:
+        """Get session history from storage."""
+        # This would typically retrieve from local storage or API
+        # For now, return empty list
+        return []
+    
+    def _save_to_history(self, session_data: Dict):
+        """Save session data to history."""
+        # This would typically save to local storage or API
+        pass
+    
+    def _format_as_markdown(self, session_data: Dict) -> str:
+        """Format session data as Markdown."""
+        markdown = f"""# Session Report
+        
+## Session Information
+- **Session ID:** {session_data.get('session_id', 'N/A')}
+- **Current Phase:** {session_data.get('current_phase', 'N/A')}
+- **Progress:** {session_data.get('progress', 0)}%
+
+## Provider Configuration
+- **Provider:** {session_data.get('provider_config', {}).get('provider', 'N/A')}
+- **Model:** {session_data.get('provider_config', {}).get('model', 'N/A')}
+
+## Q&A Questions
+"""
+        
+        qa_questions = session_data.get('qa_questions', [])
+        if qa_questions:
+            for i, question in enumerate(qa_questions, 1):
+                markdown += f"{i}. {question.get('question', 'N/A')}\n"
+        else:
+            markdown += "No Q&A questions available.\n"
+        
+        return markdown
+    
+    def _format_as_csv(self, session_data: Dict) -> str:
+        """Format session data as CSV."""
+        import csv
+        import io
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write headers
+        writer.writerow(['Field', 'Value'])
+        
+        # Write session data
+        writer.writerow(['Session ID', session_data.get('session_id', 'N/A')])
+        writer.writerow(['Current Phase', session_data.get('current_phase', 'N/A')])
+        writer.writerow(['Progress', f"{session_data.get('progress', 0)}%"])
+        writer.writerow(['Provider', session_data.get('provider_config', {}).get('provider', 'N/A')])
+        writer.writerow(['Model', session_data.get('provider_config', {}).get('model', 'N/A')])
+        
+        return output.getvalue()

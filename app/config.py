@@ -396,7 +396,11 @@ class Settings(BaseSettings):
         updated_by="system"
     ))
 
-    model_config = {"env_file": ".env", "env_nested_delimiter": "_"}
+    model_config = {
+        "env_file": ".env", 
+        "env_nested_delimiter": "_",
+        "extra": "ignore"  # Ignore extra environment variables
+    }
 
 
 def load_settings(config_path: Optional[str] = None) -> Settings:
