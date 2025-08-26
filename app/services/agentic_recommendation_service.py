@@ -757,6 +757,9 @@ class AgenticRecommendationService:
             necessity_assessment=necessity_assessment  # Include the assessment
         )
         
+        # Save the traditional pattern (fire and forget - don't block on save)
+        asyncio.create_task(self._save_traditional_pattern(requirements, necessity_assessment, tech_stack, reasoning, session_id))
+        
         app_logger.info(f"Created traditional automation recommendation with confidence {necessity_assessment.confidence_level:.2f}")
         
         return [recommendation]
@@ -1287,4 +1290,96 @@ Respond with ONLY the responsibility statement, no other text."""
             
         except Exception as e:
             app_logger.error(f"Failed to save multi-agent APAT pattern {multi_agent_pattern.get('pattern_id', 'unknown')}: {e}")
+            return False
+
+    async def _save_traditional_pattern(self, 
+                                      requirements: Dict[str, Any],
+                                      necessity_assessment: AgenticNecessityAssessment,
+                                      tech_stack: List[str],
+                                      reasoning: str,
+                                      session_id: str) -> bool:
+        """Save traditional automation pattern to the pattern library."""
+        try:
+            pattern_library_path = Path("data/patterns")
+            pattern_library_path.mkdir(parents=True, exist_ok=True)
+            
+            # Check if TRAD-AUTO-001 already exists
+            pattern_file_path = pattern_library_path / "TRAD-AUTO-001.json"
+            if pattern_file_path.exists():
+                app_logger.info("TRAD-AUTO-001 pattern already exists, skipping save")
+                return True
+            
+            # Create traditional automation pattern
+            traditional_pattern = {
+                "pattern_id": "TRAD-AUTO-001",
+                "name": "Traditional Workflow Automation",
+                "description": "Conventional automation approach using established workflow engines, APIs, and integration tools for predictable, rule-based processes.",
+                "feasibility": "Fully Automatable",
+                "tech_stack": tech_stack,
+                "reasoning": reasoning,
+                "category": "Traditional Automation",
+                "tags": ["workflow", "automation", "integration", "api", "traditional"],
+                "autonomy_level": 0.3,  # Low autonomy - rule-based
+                "complexity": "Medium",
+                "implementation_time": "2-4 weeks",
+                "maintenance_effort": "Low",
+                "use_cases": [
+                    "Data processing workflows",
+                    "API integrations", 
+                    "File processing automation",
+                    "Scheduled tasks",
+                    "Simple business process automation"
+                ],
+                "advantages": [
+                    "Lower complexity and faster implementation",
+                    "Proven reliability and stability",
+                    "Cost-effective maintenance",
+                    "Well-established tooling and expertise",
+                    "Predictable behavior and outcomes"
+                ],
+                "limitations": [
+                    "Limited adaptability to changing requirements",
+                    "Requires manual intervention for exceptions",
+                    "Cannot handle complex reasoning or decision-making",
+                    "Rigid rule-based logic",
+                    "Limited learning capabilities"
+                ],
+                "when_to_use": [
+                    "Predictable, rule-based processes",
+                    "Well-defined workflows with clear steps",
+                    "Limited exception handling requirements",
+                    "Cost-sensitive implementations",
+                    "Quick deployment needs"
+                ],
+                "upgrade_path": "Consider agentic AI when requirements include complex reasoning, exception handling, or adaptive behavior",
+                "metadata": {
+                    "creation_session": session_id,
+                    "necessity_score": necessity_assessment.traditional_suitability_score,
+                    "confidence_level": necessity_assessment.confidence_level,
+                    "solution_type": "traditional_automation",
+                    "created_timestamp": str(Path().cwd().stat().st_mtime)
+                }
+            }
+            
+            # Save to file
+            with open(pattern_file_path, 'w', encoding='utf-8') as f:
+                json.dump(traditional_pattern, f, indent=2, ensure_ascii=False)
+            
+            app_logger.info(f"Successfully saved traditional automation pattern TRAD-AUTO-001 to {pattern_file_path}")
+            
+            # Log pattern match for analytics
+            try:
+                log_pattern_match(
+                    session_id=session_id,
+                    pattern_id="TRAD-AUTO-001",
+                    match_score=necessity_assessment.traditional_suitability_score,
+                    match_type="traditional_automation"
+                )
+            except Exception as e:
+                app_logger.warning(f"Failed to log pattern match for TRAD-AUTO-001: {e}")
+            
+            return True
+            
+        except Exception as e:
+            app_logger.error(f"Failed to save traditional automation pattern TRAD-AUTO-001: {e}")
             return False

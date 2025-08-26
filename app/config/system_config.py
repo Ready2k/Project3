@@ -30,9 +30,9 @@ class AutonomyConfig:
     autonomy_boost_multiplier: float = 1.1
     
     # Agentic necessity assessment thresholds
-    agentic_necessity_threshold: float = 0.6
-    traditional_suitability_threshold: float = 0.7
-    hybrid_zone_threshold: float = 0.1
+    agentic_necessity_threshold: float = 0.4  # More inclusive for agentic solutions
+    traditional_suitability_threshold: float = 0.6  # Slightly lower traditional threshold
+    hybrid_zone_threshold: float = 0.15  # Wider hybrid zone
 
 
 @dataclass

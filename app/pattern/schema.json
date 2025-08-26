@@ -14,7 +14,7 @@
   "properties": {
     "pattern_id": {
       "type": "string",
-      "pattern": "^PAT-[0-9]{3,}$"
+      "pattern": "^(PAT-[0-9]{3,}|TRAD-AUTO-[0-9]{3,})$"
     },
     "name": {
       "type": "string"

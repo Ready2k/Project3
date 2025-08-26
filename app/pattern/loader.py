@@ -61,27 +61,64 @@ class PatternLoader:
         
         # Use appropriate schema based on pattern type and content
         if pattern_id.startswith("APAT-"):
+            # APAT patterns must use agentic schema
             schema_to_use = self.agentic_schema
             schema_type = "agentic"
+            
+            try:
+                jsonschema.validate(pattern, schema_to_use)
+                app_logger.debug(f"Pattern {pattern_id} validated successfully using {schema_type} schema")
+                return
+            except jsonschema.ValidationError as e:
+                raise PatternValidationError(f"Pattern validation failed ({schema_type} schema): {e.message}")
+            except Exception as e:
+                raise PatternValidationError(f"Pattern validation error ({schema_type} schema): {e}")
+                
         elif pattern_id.startswith("PAT-"):
-            # Check if PAT pattern has agentic capabilities
-            if any(key in pattern for key in ["autonomy_level", "reasoning_types", "decision_boundaries"]):
-                schema_to_use = self.agentic_schema
-                schema_type = "agentic"
-            else:
-                schema_to_use = self.schema
-                schema_type = "traditional"
+            # For PAT patterns, try agentic schema first if it has agentic fields, then fall back to traditional
+            has_agentic_fields = any(key in pattern for key in ["autonomy_level", "reasoning_types", "decision_boundaries"])
+            
+            if has_agentic_fields:
+                # Try agentic schema first
+                try:
+                    jsonschema.validate(pattern, self.agentic_schema)
+                    app_logger.debug(f"Pattern {pattern_id} validated successfully using agentic schema")
+                    return
+                except jsonschema.ValidationError as e:
+                    app_logger.debug(f"Pattern {pattern_id} failed agentic validation, trying traditional schema: {e.message}")
+                    # Fall through to traditional validation
+                except Exception as e:
+                    app_logger.debug(f"Pattern {pattern_id} agentic validation error, trying traditional schema: {e}")
+                    # Fall through to traditional validation
+            
+            # Use traditional schema (either as fallback or primary choice)
+            try:
+                jsonschema.validate(pattern, self.schema)
+                app_logger.debug(f"Pattern {pattern_id} validated successfully using traditional schema")
+                return
+            except jsonschema.ValidationError as e:
+                raise PatternValidationError(f"Pattern validation failed (traditional schema): {e.message}")
+            except Exception as e:
+                raise PatternValidationError(f"Pattern validation error (traditional schema): {e}")
+        elif pattern_id.startswith("TRAD-"):
+            # TRAD patterns use traditional schema
+            try:
+                jsonschema.validate(pattern, self.schema)
+                app_logger.debug(f"Pattern {pattern_id} validated successfully using traditional schema")
+                return
+            except jsonschema.ValidationError as e:
+                raise PatternValidationError(f"Pattern validation failed (traditional schema): {e.message}")
+            except Exception as e:
+                raise PatternValidationError(f"Pattern validation error (traditional schema): {e}")
         else:
-            schema_to_use = self.schema
-            schema_type = "traditional"
-        
-        try:
-            jsonschema.validate(pattern, schema_to_use)
-            app_logger.debug(f"Pattern {pattern_id} validated successfully using {schema_type} schema")
-        except jsonschema.ValidationError as e:
-            raise PatternValidationError(f"Pattern validation failed ({schema_type} schema): {e.message}")
-        except Exception as e:
-            raise PatternValidationError(f"Pattern validation error ({schema_type} schema): {e}")
+            # Unknown pattern type, use traditional schema
+            try:
+                jsonschema.validate(pattern, self.schema)
+                app_logger.debug(f"Pattern {pattern_id} validated successfully using traditional schema")
+            except jsonschema.ValidationError as e:
+                raise PatternValidationError(f"Pattern validation failed (traditional schema): {e.message}")
+            except Exception as e:
+                raise PatternValidationError(f"Pattern validation error (traditional schema): {e}")
     
     def load_patterns(self) -> List[Dict[str, Any]]:
         """Load all patterns from the library directory."""
@@ -101,9 +138,10 @@ class PatternLoader:
                 app_logger.debug(f"Skipping deleted pattern file: {pattern_file.name}")
                 continue
             
-            # Only load files that match the PAT-* or APAT-* pattern
+            # Only load files that match the PAT-*, APAT-*, or TRAD-* pattern
             if not (pattern_file.name.startswith('PAT-') or 
-                   pattern_file.name.startswith('APAT-')):
+                   pattern_file.name.startswith('APAT-') or
+                   pattern_file.name.startswith('TRAD-')):
                 app_logger.debug(f"Skipping non-pattern file: {pattern_file.name}")
                 continue
             

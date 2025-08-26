@@ -1,0 +1,41 @@
+{
+  "pattern_id": "TRAD-AUTO-001",
+  "name": "Traditional Workflow Automation",
+  "description": "Conventional automation approach using established workflow engines, APIs, and integration tools for predictable, rule-based processes.",
+  "feasibility": "Automatable",
+  "pattern_type": [
+    "workflow_automation",
+    "api_integration",
+    "data_processing",
+    "traditional_automation"
+  ],
+  "input_requirements": [
+    "Clear business rules and processes",
+    "Defined data sources and formats",
+    "API endpoints or integration points",
+    "Predictable workflow steps"
+  ],
+  "tech_stack": [
+    "PostgreSQL",
+    "REST API",
+    "Barcode Scanner",
+    "Android SDK"
+  ],
+  "confidence_score": 0.85,
+  "reasoning": "Traditional automation is suitable for this predictable workflow with clear rules and established processes.",
+  "category": "Traditional Automation",
+  "tags": [
+    "workflow",
+    "automation",
+    "integration",
+    "api",
+    "traditional"
+  ],
+  "autonomy_level": 0.3,
+  "complexity": "Medium",
+  "implementation_time": "2-4 weeks",
+  "maintenance_effort": "Low",
+  "domain": "Inventory Management",
+  "estimated_effort": "2-4 weeks",
+  "related_patterns": []
+}

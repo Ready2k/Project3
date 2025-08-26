@@ -21,7 +21,7 @@ class SecurityValidator:
             re.compile(r'<script[^>]*>.*?</script>', re.IGNORECASE | re.DOTALL),  # XSS
             re.compile(r'javascript:', re.IGNORECASE),  # JavaScript URLs
             re.compile(r'on\w+\s*=', re.IGNORECASE),  # Event handlers
-            re.compile(r'(union|select|insert|update|delete|drop|create|alter)\s+', re.IGNORECASE),  # SQL injection
+            re.compile(r'(union\s+select|select\s+\*|insert\s+into|update\s+set|delete\s+from|drop\s+(table|database|schema)|create\s+(table|database|schema|index)|alter\s+(table|database))', re.IGNORECASE),  # SQL injection
             re.compile(r'(\.\./|\.\.\\)', re.IGNORECASE),  # Path traversal
             re.compile(r'(eval|exec|system|shell_exec)\s*\(', re.IGNORECASE),  # Code injection
         ]
@@ -29,9 +29,9 @@ class SecurityValidator:
         # Formula injection patterns (Excel/Sheets/CSV injection)
         self.formula_injection_patterns = [
             re.compile(r'^=', re.IGNORECASE),  # Starts with equals
-            re.compile(r'^@', re.IGNORECASE),  # Starts with at symbol
-            re.compile(r'^\+', re.IGNORECASE),  # Starts with plus
-            re.compile(r'^-', re.IGNORECASE),  # Starts with minus
+            re.compile(r'^@[A-Z]', re.IGNORECASE),  # Starts with at symbol followed by letter (not email)
+            re.compile(r'^\+[0-9]', re.IGNORECASE),  # Starts with plus followed by number (not bullet)
+            re.compile(r'^-[0-9]', re.IGNORECASE),  # Starts with minus followed by number (not bullet point)
             re.compile(r'=\s*(WEBSERVICE|HYPERLINK|IMPORTXML|IMPORTHTML|IMPORTDATA|IMPORTRANGE|IMPORTFEED)', re.IGNORECASE),  # Dangerous functions
             re.compile(r'=\s*(CMD|SYSTEM|SHELL|EXEC)', re.IGNORECASE),  # Command execution
             re.compile(r'=\s*(DDE|DDEAUTO)', re.IGNORECASE),  # Dynamic Data Exchange

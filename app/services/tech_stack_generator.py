@@ -273,7 +273,7 @@ Focus on technologies that directly address the requirements.""",
 **Available Technologies from Similar Patterns:**
 {pattern_tech_summary}
 
-**Available Technologies in Organization:**
+**Available Technologies in Organization (PREFER THESE):**
 {available_tech_summary}
 
 **CRITICAL CONSTRAINTS (MUST BE ENFORCED):**
@@ -286,21 +286,38 @@ Focus on technologies that directly address the requirements.""",
 
 **CRITICAL INSTRUCTIONS:**
 1. Analyze the requirements carefully
-2. **NEVER recommend any technology listed in "Banned/Prohibited Technologies"**
-3. **MUST include all "Required Integrations" in your recommendations**
-4. Consider compliance requirements when selecting technologies
-5. Respect data sensitivity level and deployment preferences
-6. Consider budget constraints (prefer open source if specified)
-7. Select technologies that directly address the needs
-8. Prefer technologies from similar patterns when suitable
-9. Only suggest technologies that are necessary and justified
-10. Provide 5-12 technologies maximum
+2. **STRONGLY PREFER technologies from "Available Technologies in Organization" list above**
+3. **NEVER recommend any technology listed in "Banned/Prohibited Technologies"**
+4. **MUST include all "Required Integrations" in your recommendations**
+5. Consider compliance requirements when selecting technologies
+6. Respect data sensitivity level and deployment preferences
+7. Consider budget constraints (prefer open source if specified)
+8. Select technologies that directly address the needs
+9. Prefer technologies from similar patterns when suitable
+10. Only suggest technologies that are necessary and justified
+11. Provide 5-12 technologies maximum
+12. **Use EXACT technology names from the "Available Technologies" list when possible**
+
+**TECHNOLOGY SELECTION PRIORITY:**
+1. First choice: Technologies from "Available Technologies in Organization" 
+2. Second choice: Technologies from "Available Technologies from Similar Patterns"
+3. Last resort: Other well-known technologies (but these will be categorized as "Other")
 
 **CONSTRAINT ENFORCEMENT:**
-- If a technology is banned, find suitable alternatives
-- If budget is "Low (Open source preferred)", prioritize open source solutions
+- If a technology is banned, find suitable alternatives from the available technologies list
+- If budget is "Low (Open source preferred)", prioritize open source solutions from available list
 - If deployment is "On-premises only", avoid cloud-only services
 - If data sensitivity is "Confidential" or "Restricted", prioritize secure, enterprise-grade solutions
+
+**IMPORTANT:** Use exact technology names from the lists above. For example:
+- Use "Prometheus" not "PrometheusClient" 
+- Use "GitHub Actions" not "Github Actions"
+- Use "HashiCorp Vault" not "Vault"
+- Use "Grafana Loki" not "Loki"
+- Use "Slack API" not "Slack"
+- Use "LangGraph" not "Langgraph"
+- Use "Jaeger" not "Jaeger Tracing"
+- Use "Jira API" not "JIRA API"
 
 Respond with a JSON object containing:
 {{

@@ -6843,15 +6843,24 @@ verify_ssl = True
         except Exception as e:
             st.error(f"❌ Error loading admin data: {str(e)}")
     
-    def render_pattern_library_management(self):
-        """Render the pattern library management interface."""
+    def render_unified_pattern_management(self):
+        """Render the unified pattern management interface."""
         st.header("📚 Pattern Library Management")
         
-        # Color legend for pattern indicators
-        st.markdown("""
-        **🎨 Pattern Color Guide:**
-        🔴 Not Automatable / Manual processes  •  🟡 Partially Automatable / Traditional automation  •  🟢 Fully Automatable / AI-enhanced  •  🔵 Autonomous Agentic AI
-        """)
+        # Color legend and quick navigation
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.markdown("""
+            **🎨 Pattern Color Guide:**
+            🔴 Not Automatable / Manual processes  •  🟡 Partially Automatable / Traditional automation  •  🟢 Fully Automatable / AI-enhanced  •  🔵 Autonomous Agentic AI
+            """)
+        with col2:
+            st.markdown("""
+            **🚀 Quick Actions:**
+            • View & filter patterns
+            • Enhance with AI
+            • Analyze usage trends
+            """)
         
         # Handle navigation from Pattern Analytics
         if st.session_state.get('navigate_to_pattern_library') and st.session_state.get('selected_pattern_id'):
@@ -6920,8 +6929,14 @@ verify_ssl = True
             st.error(f"❌ Error loading patterns: {str(e)}")
             return
         
-        # Management tabs
-        view_tab, edit_tab, create_tab = st.tabs(["👀 View Patterns", "✏️ Edit Pattern", "➕ Create Pattern"])
+        # Unified management tabs - all pattern functionality in one place
+        view_tab, edit_tab, create_tab, enhance_tab, analytics_tab = st.tabs([
+            "👀 View Patterns", 
+            "✏️ Edit Pattern", 
+            "➕ Create Pattern", 
+            "🚀 Enhance Patterns",
+            "📊 Pattern Analytics"
+        ])
         
         with view_tab:
             self.render_pattern_viewer(patterns)
@@ -6931,6 +6946,12 @@ verify_ssl = True
         
         with create_tab:
             self.render_pattern_creator(pattern_loader)
+            
+        with enhance_tab:
+            self.render_pattern_enhancement_tab()
+            
+        with analytics_tab:
+            self.render_pattern_analytics_tab()
     
     def render_pattern_viewer(self, patterns: list):
         """Render the pattern viewer interface."""
@@ -6952,8 +6973,9 @@ verify_ssl = True
         with col1:
             st.metric("Total Patterns", len(patterns))
         with col2:
-            automatable = len([p for p in patterns if p.get('feasibility') == 'Automatable'])
-            st.metric("Automatable", automatable)
+            # Count both "Automatable" and "Fully Automatable" patterns
+            fully_auto = len([p for p in patterns if p.get('feasibility') in ['Automatable', 'Fully Automatable']])
+            st.metric("Fully Automatable", fully_auto)
         with col3:
             partial = len([p for p in patterns if p.get('feasibility') == 'Partially Automatable'])
             st.metric("Partially Automatable", partial)
@@ -7616,39 +7638,63 @@ verify_ssl = True
             st.error(f"❌ Error creating pattern: {str(e)}")
             app_logger.error(f"Pattern creation error: {e}")
     
-    def render_enhanced_pattern_management(self):
-        """Render the enhanced pattern management interface."""
+    def render_pattern_enhancement_tab(self):
+        """Render the pattern enhancement functionality."""
         try:
             from app.pattern.enhanced_loader import EnhancedPatternLoader
             from app.services.pattern_enhancement_service import PatternEnhancementService
-            from app.ui.enhanced_pattern_management import render_enhanced_pattern_management
+            from app.ui.enhanced_pattern_management import render_pattern_enhancement
             from app.api import create_llm_provider, ProviderConfig
             
             # Initialize enhanced pattern loader
             enhanced_loader = EnhancedPatternLoader("data/patterns")
             
             # Create LLM provider for enhancement service
-            provider_config = ProviderConfig(
-                provider="openai",
-                model="gpt-4o",
-                api_key=os.getenv("OPENAI_API_KEY", ""),
-                endpoint_url=None,
-                region=None
-            )
-            llm_provider = create_llm_provider(provider_config)
+            try:
+                provider_config = ProviderConfig(
+                    provider="openai",
+                    model="gpt-4o",
+                    api_key=os.getenv("OPENAI_API_KEY"),
+                    endpoint_url=None,
+                    region=None
+                )
+                llm_provider = create_llm_provider(provider_config)
+            except Exception as provider_error:
+                app_logger.warning(f"Failed to create LLM provider, using mock: {provider_error}")
+                from app.llm.fakes import FakeLLM
+                llm_provider = FakeLLM({})
             
             # Initialize enhancement service
             enhancement_service = PatternEnhancementService(enhanced_loader, llm_provider)
             
-            # Render the enhanced pattern management UI
-            render_enhanced_pattern_management(enhanced_loader, enhancement_service)
+            # Render the pattern enhancement UI
+            render_pattern_enhancement(enhanced_loader, enhancement_service)
             
         except ImportError as e:
-            st.error(f"❌ Enhanced pattern management not available: {e}")
+            st.error(f"❌ Pattern enhancement not available: {e}")
             st.info("💡 This feature requires the enhanced pattern system to be properly installed.")
         except Exception as e:
-            st.error(f"❌ Error loading enhanced pattern management: {e}")
-            app_logger.error(f"Enhanced pattern management error: {e}")
+            st.error(f"❌ Error loading pattern enhancement: {e}")
+            app_logger.error(f"Pattern enhancement error: {e}")
+    
+    def render_pattern_analytics_tab(self):
+        """Render the pattern analytics functionality."""
+        try:
+            from app.pattern.enhanced_loader import EnhancedPatternLoader
+            from app.ui.enhanced_pattern_management import render_pattern_analytics
+            
+            # Initialize enhanced pattern loader
+            enhanced_loader = EnhancedPatternLoader("data/patterns")
+            
+            # Render the pattern analytics UI
+            render_pattern_analytics(enhanced_loader)
+            
+        except ImportError as e:
+            st.error(f"❌ Pattern analytics not available: {e}")
+            st.info("💡 This feature requires the enhanced pattern system to be properly installed.")
+        except Exception as e:
+            st.error(f"❌ Error loading pattern analytics: {e}")
+            app_logger.error(f"Pattern analytics error: {e}")
     
     def render_technology_catalog_management(self):
         """Render the technology catalog management interface."""
@@ -8261,7 +8307,7 @@ verify_ssl = True
         self.render_provider_panel()
         
         # Main content area
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs(["📝 Analysis", "📊 Diagrams", "📈 Observability", "📚 Pattern Library", "🚀 Enhanced Patterns", "🔧 Technology Catalog", "⚙️ Schema Config", "🔧 System Config", "ℹ️ About"])
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["📝 Analysis", "📊 Diagrams", "📈 Observability", "📚 Pattern Library", "� Technology Catalog", "⚙️ Schema Config", "🔧 System Config", "ℹ️ About"])
         
         with tab1:
             # Input methods
@@ -8283,18 +8329,48 @@ verify_ssl = True
                     st.caption("💡 Save this Session ID to resume this analysis later")
                 
                 with col2:
-                    # Copy to clipboard button (using JavaScript)
+                    # Copy to clipboard button with fallback
                     if st.button("📋 Copy Session ID"):
-                        # Use JavaScript to copy to clipboard
+                        # Use JavaScript with better error handling and fallback
                         copy_js = f"""
                         <script>
-                        navigator.clipboard.writeText('{st.session_state.session_id}').then(function() {{
-                            console.log('Session ID copied to clipboard');
-                        }});
+                        function copyToClipboard() {{
+                            const sessionId = '{st.session_state.session_id}';
+                            
+                            if (navigator.clipboard && window.isSecureContext) {{
+                                // Use modern clipboard API
+                                navigator.clipboard.writeText(sessionId).then(function() {{
+                                    console.log('Session ID copied to clipboard successfully');
+                                    window.parent.postMessage({{type: 'copy_success'}}, '*');
+                                }}).catch(function(err) {{
+                                    console.error('Failed to copy: ', err);
+                                    window.parent.postMessage({{type: 'copy_failed'}}, '*');
+                                }});
+                            }} else {{
+                                // Fallback for older browsers or non-secure contexts
+                                const textArea = document.createElement('textarea');
+                                textArea.value = sessionId;
+                                document.body.appendChild(textArea);
+                                textArea.select();
+                                try {{
+                                    document.execCommand('copy');
+                                    console.log('Session ID copied using fallback method');
+                                    window.parent.postMessage({{type: 'copy_success'}}, '*');
+                                }} catch (err) {{
+                                    console.error('Fallback copy failed: ', err);
+                                    window.parent.postMessage({{type: 'copy_failed'}}, '*');
+                                }}
+                                document.body.removeChild(textArea);
+                            }}
+                        }}
+                        copyToClipboard();
                         </script>
                         """
                         st.components.v1.html(copy_js, height=0)
-                        st.success("✅ Session ID copied to clipboard!")
+                        
+                        # Show manual copy option as primary method
+                        st.info("💡 **Manual Copy Recommended**: Select and copy the Session ID above")
+                        st.caption("Note: Automatic clipboard copying may not work in all browsers. If the copy button doesn't work, please manually select and copy the Session ID displayed above.")
                 
                 # Reset button
                 if st.button("🔄 Start New Analysis"):
@@ -8314,24 +8390,21 @@ verify_ssl = True
             self.render_observability_dashboard()
         
         with tab4:
-            self.render_pattern_library_management()
+            self.render_unified_pattern_management()
         
         with tab5:
-            self.render_enhanced_pattern_management()
-        
-        with tab6:
             self.render_technology_catalog_management()
         
-        with tab7:
+        with tab6:
             from app.ui.schema_management import render_schema_management
             render_schema_management()
         
-        with tab8:
+        with tab7:
             # System Configuration
             from app.ui.system_configuration import render_system_configuration
             render_system_configuration()
         
-        with tab9:
+        with tab8:
             st.markdown("""
             ## About Automated AI Assessment (AAA)
             
@@ -8350,7 +8423,7 @@ verify_ssl = True
             - 🎯 **Constraint-Aware**: Filters banned tools and applies business constraints
             
             ### 🆕 Advanced Features:
-            - 📚 **Pattern Library Management**: Complete CRUD interface for solution patterns
+            - 📚 **Unified Pattern Management**: Complete CRUD interface with pattern enhancement, analytics, and comparison tools
             - 📈 **Enhanced Observability Dashboard**: Provider metrics, usage analytics, LLM message tracking
             - 🔍 **Enhanced Diagram Viewing**: Browser export, interactive controls, SVG download
             - 🏷️ **Pattern Type Filtering**: Filter by automation approach tags
@@ -8372,8 +8445,8 @@ verify_ssl = True
             ### 📊 Observability:
             Monitor system performance, LLM usage, and pattern analytics in the Observability tab.
             
-            ### 📚 Pattern Management:
-            View, edit, create, and delete solution patterns in the Pattern Library tab.
+            ### 📚 Unified Pattern Management:
+            Complete pattern lifecycle management in one place - view, edit, create, enhance, and analyze patterns with integrated analytics.
             
             ### 🎯 Built for Enterprise:
             - **Audit Logging**: Comprehensive tracking of all LLM interactions

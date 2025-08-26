@@ -1,6 +1,6 @@
 {
   "pattern_id": "PAT-006",
-  "name": "PII Redaction & Data Loss Prevention Pipeline",
+  "name": "PII Redaction &amp; Data Loss Prevention Pipeline",
   "description": "Automatic detection and redaction/pseudonymization of PII before data leaves the secure boundary or is processed by external services.",
   "feasibility": "Automatable",
   "pattern_type": [
@@ -50,8 +50,30 @@
     "Entity boundary errors in noisy text.",
     "Coordinating redaction across microservices."
   ],
-  "llm_recommended_approach": "Insert a gateway service that enforces redaction via Presidio and OPA before any external call; monitor with audit logs and sampling.",
+  "llm_recommended_approach": "[REMOVED_SUSPICIOUS_CONTENT]a gateway service that enforces redaction via Presidio and OPA before any external call; monitor with audit logs and sampling.",
   "enhanced_by_llm": true,
   "enhanced_from_session": "seed-2025-08-12",
-  "color": "🟢"
+  "color": "\ud83d\udfe2",
+  "autonomy_level": 0.85,
+  "reasoning_types": [
+    "logical",
+    "causal",
+    "probabilistic"
+  ],
+  "decision_boundaries": {
+    "autonomous_decisions": [
+      "Process routine tasks within defined parameters",
+      "Apply business rules and validation logic",
+      "Generate reports and notifications"
+    ],
+    "escalation_triggers": [
+      "Exceptions outside normal parameters",
+      "High-value or high-risk decisions",
+      "User requests for human review"
+    ],
+    "decision_authority_level": "medium"
+  },
+  "agent_architecture": "single_agent",
+  "enhanced_from_pattern": "PAT-006",
+  "enhancement_type": "agentic"
 }

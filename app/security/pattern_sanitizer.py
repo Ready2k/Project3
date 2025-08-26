@@ -222,20 +222,24 @@ class PatternSanitizer:
             Tuple of (is_security_testing, reason)
         """
         try:
-            # Try to get existing event loop
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If we're already in an async context, we can't use run_until_complete
-                # Fall back to legacy validation
-                app_logger.debug("Already in async context, using legacy pattern validation")
-                return self.is_security_testing_pattern(pattern)
-            else:
-                return loop.run_until_complete(self.validate_pattern_with_advanced_defense(pattern))
-        except RuntimeError:
-            # No event loop, create one
-            return asyncio.run(self.validate_pattern_with_advanced_defense(pattern))
+            # Use thread-based approach to avoid event loop conflicts
+            from concurrent.futures import ThreadPoolExecutor
+            
+            def run_in_thread():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    return loop.run_until_complete(self.validate_pattern_with_advanced_defense(pattern))
+                finally:
+                    loop.close()
+            
+            with ThreadPoolExecutor() as executor:
+                future = executor.submit(run_in_thread)
+                return future.result(timeout=30)  # 30 second timeout
+                
         except Exception as e:
             app_logger.error(f"Sync advanced defense pattern validation failed: {e}")
+            # Fall back to legacy validation
             return self.is_security_testing_pattern(pattern)
     
     def sanitize_pattern_for_storage_enhanced(self, pattern: Dict[str, Any]) -> Tuple[bool, Dict[str, Any], str]:
