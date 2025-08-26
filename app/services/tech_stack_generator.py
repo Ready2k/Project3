@@ -463,8 +463,23 @@ Respond with a JSON object containing:
                 tech = str(tech)
                 app_logger.warning(f"Tech stack item was {type(tech)}, converted to string: {tech}")
             
-            # Check if technology is banned
-            if any(banned.lower() in tech.lower() for banned in banned_tools):
+            # Check if technology is banned (exact match or word boundary match)
+            tech_lower = tech.lower()
+            is_banned = False
+            
+            for banned in banned_tools:
+                banned_lower = banned.lower()
+                # Check for exact match first
+                if tech_lower == banned_lower:
+                    is_banned = True
+                    break
+                # Check if banned tool is a complete word within the tech name
+                import re
+                if re.search(r'\b' + re.escape(banned_lower) + r'\b', tech_lower):
+                    is_banned = True
+                    break
+            
+            if is_banned:
                 app_logger.warning(f"Skipping banned technology: {tech}")
                 continue
             
@@ -536,7 +551,23 @@ Respond with a JSON object containing:
                 tech = str(tech)
                 app_logger.warning(f"Tech stack item was {type(tech)}, converted to string: {tech}")
             
-            if tech not in seen and not any(banned.lower() in tech.lower() for banned in banned_tools):
+            # Check if technology is banned (exact match or word boundary match)
+            tech_lower = tech.lower()
+            is_banned = False
+            
+            for banned in banned_tools:
+                banned_lower = banned.lower()
+                # Check for exact match first
+                if tech_lower == banned_lower:
+                    is_banned = True
+                    break
+                # Check if banned tool is a complete word within the tech name
+                import re
+                if re.search(r'\b' + re.escape(banned_lower) + r'\b', tech_lower):
+                    is_banned = True
+                    break
+            
+            if tech not in seen and not is_banned:
                 validated_tech_stack.append(tech)
                 seen.add(tech)
         

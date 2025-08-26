@@ -317,266 +317,132 @@ def _looks_like_mermaid_code(code: str) -> bool:
     
     return True
 
+def _fix_malformed_sequence_diagram(code: str) -> str:
+    """Fix sequence diagrams that are generated without proper line breaks."""
+    if not code:
+        return code
+    
+    import re
+    
+    # Check if this is a sequence diagram
+    lines = code.split('\n')
+    first_line = lines[0].strip().lower()
+    
+    if not first_line.startswith('sequencediagram'):
+        return code
+    
+    # If it's properly formatted (multiple lines with reasonable length), don't change it
+    if len(lines) > 3 and all(len(line) < 150 for line in lines[:5]):
+        return code
+    
+    # If it's all on one line or has very long lines, it needs fixing
+    if len(lines) == 1 or any(len(line) > 150 for line in lines[:3]):
+        # Simple but effective approach: use regex to add line breaks at key points
+        content = code
+        
+        # Remove the initial 'sequenceDiagram' if present
+        if content.lower().startswith('sequencediagram'):
+            content = content[15:]
+        
+        # Add line breaks before key sequence diagram elements
+        # Add line break before each participant
+        content = re.sub(r'participant\s+', '\nparticipant ', content)
+        
+        # Add line break before each message (arrows) - simpler approach
+        # Look for patterns like "ActorA->>ActorB:" or "ActorA-->>ActorB:"
+        content = re.sub(r'([A-Za-z_][A-Za-z0-9_]*\s*(?:->>?\+?|-->>?\+?)\s*[A-Za-z_][A-Za-z0-9_]*\s*:)', r'\n\1', content)
+        
+        # Add line break before alt blocks
+        content = re.sub(r'alt\s+', '\nalt ', content)
+        
+        # Add line break before else
+        content = re.sub(r'else\s+', '\nelse ', content)
+        
+        # Add line break before end
+        content = re.sub(r'end([A-Z])', r'\nend\n\1', content)
+        content = re.sub(r'end$', r'\nend', content)
+        
+        # Add line break before notes
+        content = re.sub(r'note\s+(over|left|right)', r'\nnote \1', content)
+        
+        # Reconstruct the diagram
+        result = 'sequenceDiagram' + content
+        
+        # Clean up multiple consecutive newlines and add proper indentation
+        lines = result.split('\n')
+        fixed_lines = []
+        in_alt_block = False
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Check for alt/else/end to manage indentation
+            if line.startswith('alt '):
+                in_alt_block = True
+                fixed_lines.append(f'    {line}')
+            elif line == 'else':
+                fixed_lines.append(f'    {line}')
+            elif line == 'end':
+                fixed_lines.append(f'    {line}')
+                in_alt_block = False
+            elif line.startswith('sequenceDiagram'):
+                fixed_lines.append(line)
+            elif line.startswith('participant '):
+                fixed_lines.append(f'    {line}')
+            else:
+                # Messages and other content
+                if in_alt_block:
+                    fixed_lines.append(f'        {line}')
+                else:
+                    fixed_lines.append(f'    {line}')
+        
+        # Add empty line after participants
+        result_lines = []
+        participant_section = True
+        
+        for line in fixed_lines:
+            result_lines.append(line)
+            
+            # Add empty line after the last participant
+            if participant_section and line.strip().startswith('participant '):
+                # Check if next line is not a participant
+                current_index = fixed_lines.index(line)
+                if current_index + 1 < len(fixed_lines):
+                    next_line = fixed_lines[current_index + 1].strip()
+                    if not next_line.startswith('participant '):
+                        result_lines.append('')
+                        participant_section = False
+        
+        return '\n'.join(result_lines)
+    
+    return code
+
 def _clean_mermaid_code(mermaid_code: str) -> str:
-    """Clean and format Mermaid code to ensure proper syntax."""
+    """Ultra-minimal cleaning - just return the LLM response with basic cleanup."""
     if not mermaid_code:
         return "flowchart TB\n    error[No diagram generated]"
     
-    # First, extract only the Mermaid code from mixed responses
-    code = _extract_mermaid_code(mermaid_code.strip())
+    code = mermaid_code.strip()
     
-    # Remove any remaining markdown code blocks
+    # Remove markdown code blocks if present
     if code.startswith('```mermaid'):
         code = code.replace('```mermaid', '').replace('```', '').strip()
     elif code.startswith('```'):
         code = code.replace('```', '').strip()
     
-    # Clean problematic Unicode characters that can cause Mermaid v10.2.4 issues
+    # Only remove problematic Unicode that breaks Mermaid
     import re
-    # Replace common problematic Unicode characters with safe alternatives
-    unicode_replacements = {
-        '👤': 'User',
-        '🤖': 'Agent',
-        '🎯': 'Target',
-        '🔬': 'Specialist',
-        '📋': 'Task',
-        '💬': 'Comm',
-        '🔄': 'Loop',
-        '⚡': 'Action',
-        '🧠': 'Brain',
-        '📊': 'Monitor',
-        '🔍': 'Process'
-    }
-    
-    for emoji, replacement in unicode_replacements.items():
-        code = code.replace(emoji, replacement)
-    
-    # Remove any remaining non-ASCII characters
     code = re.sub(r'[^\x00-\x7F]+', '', code)
     
-    # Detect diagram type early for better handling
-    first_line = code.split('\n')[0].lower().strip() if code else ""
-    is_c4_diagram = any(first_line.startswith(c4_type) for c4_type in ['c4context', 'c4container', 'c4component', 'c4dynamic'])
+    # If empty after cleaning, return error
+    if not code.strip():
+        return "flowchart TB\n    error[Empty diagram generated]"
     
-    # Handle malformed code that's all on one line or has missing line breaks
-    # Look for common Mermaid patterns and add line breaks
-    if '\n' not in code or (len(code.split('\n')) < 3 and len(code) > 100):
-        # For severely malformed code, return appropriate fallback based on diagram type
-        if is_c4_diagram or 'c4' in code.lower():
-            return """C4Context
-    title Diagram Generation Error
-    
-    Person(user, "User", "System user requesting diagram")
-    System(error_system, "Error System", "Diagram generation failed due to malformed code")
-    System_Ext(llm, "LLM Provider", "Generated invalid diagram syntax")
-    
-    Rel(user, error_system, "Encountered error")
-    Rel(llm, error_system, "Provided malformed code")
-    
-    %% Suggestions for resolution
-    %% 1. Try generating again
-    %% 2. Switch to OpenAI provider  
-    %% 3. Simplify your requirement"""
-        else:
-            return """flowchart TB
-    error[Diagram Generation Error]
-    note[The LLM generated malformed diagram code]
-    
-    error --> note
-    
-    fix1[Try generating again]
-    fix2[Switch to OpenAI provider]
-    fix3[Simplify your requirement]
-    
-    note --> fix1
-    note --> fix2
-    note --> fix3"""
-    
-    # Basic cleaning: fix common issues
-    import re
-    
-    lines = code.split('\n')
-    cleaned_lines = []
-    
-    # Detect diagram type (already detected above, but keep for consistency)
-    first_line = lines[0].lower().strip() if lines else ""
-    is_sequence_diagram = first_line.startswith('sequencediagram')
-    
-    for i, line in enumerate(lines):
-        # Skip empty lines and comments
-        if not line.strip() or line.strip().startswith('%%'):
-            cleaned_lines.append(line)
-            continue
-        
-        # C4-specific cleaning rules
-        if is_c4_diagram:
-            # Clean up C4 element syntax - ensure proper formatting
-            line_stripped = line.strip()
-            
-            # Fix common C4 element formatting issues
-            # Ensure proper spacing around parentheses in C4 elements
-            c4_elements = ['Person', 'System', 'Container', 'Component', 'Rel', 'RelNote',
-                          'System_Ext', 'Container_Ext', 'Component_Ext', 'Person_Ext',
-                          'Enterprise_Boundary', 'System_Boundary', 'Container_Boundary']
-            
-            for element in c4_elements:
-                # Fix missing spaces around commas in C4 elements (3 parameters)
-                pattern = rf'({element})\s*\(\s*([^,]+?)\s*,\s*([^,]+?)\s*,\s*([^,)]+?)\s*\)'
-                match = re.search(pattern, line_stripped, re.IGNORECASE)
-                if match:
-                    # Clean up each parameter by removing extra spaces
-                    param1 = match.group(2).strip()
-                    param2 = match.group(3).strip()
-                    param3 = match.group(4).strip()
-                    line_stripped = re.sub(pattern, rf'{element}({param1}, {param2}, {param3})', line_stripped, flags=re.IGNORECASE)
-                    continue
-                
-                # Fix 4-parameter C4 elements (like Rel with technology)
-                pattern_4 = rf'({element})\s*\(\s*([^,]+?)\s*,\s*([^,]+?)\s*,\s*([^,]+?)\s*,\s*([^,)]+?)\s*\)'
-                match_4 = re.search(pattern_4, line_stripped, re.IGNORECASE)
-                if match_4:
-                    # Clean up each parameter by removing extra spaces
-                    param1 = match_4.group(2).strip()
-                    param2 = match_4.group(3).strip()
-                    param3 = match_4.group(4).strip()
-                    param4 = match_4.group(5).strip()
-                    line_stripped = re.sub(pattern_4, rf'{element}({param1}, {param2}, {param3}, {param4})', line_stripped, flags=re.IGNORECASE)
-            
-            # Ensure C4 title statements are properly formatted
-            if line_stripped.lower().startswith('title '):
-                # Remove extra spaces and ensure single space after 'title'
-                line_stripped = re.sub(r'title\s+', 'title ', line_stripped, flags=re.IGNORECASE)
-            
-            # Clean up UpdateLayout statements
-            if line_stripped.lower().startswith('updatelayout'):
-                line_stripped = re.sub(r'updatelayout\s*\(\s*([^)]*)\s*\)', r'UpdateLayout(\1)', line_stripped, flags=re.IGNORECASE)
-            
-            cleaned_lines.append(line_stripped)
-            continue
-        
-        # For sequence diagrams, remove stray 'end' statements that don't belong to alt blocks
-        if is_sequence_diagram and line.strip() == 'end':
-            # Look backwards to see if there's a matching 'alt' without an 'end'
-            alt_count = 0
-            end_count = 0
-            for prev_line in cleaned_lines:
-                if prev_line.strip().startswith('alt '):
-                    alt_count += 1
-                elif prev_line.strip() == 'end':
-                    end_count += 1
-            
-            # Only keep this 'end' if we have more 'alt' than 'end' statements
-            if alt_count > end_count:
-                cleaned_lines.append(line)
-            # Otherwise skip this stray 'end' statement
-            continue
-            
-        # For flowchart arrows, ensure proper spacing (but not for C4 diagrams)
-        if not is_sequence_diagram and not is_c4_diagram and '-->' in line and not ('-->>' in line or '-->|' in line):
-            # Only fix simple arrows in flowcharts, not sequence diagrams, C4 diagrams, or labeled arrows
-            line = re.sub(r'(\w+)-->(\w+)', r'\1 --> \2', line)
-        
-        cleaned_lines.append(line)
-    
-    code = '\n'.join(cleaned_lines)
-    
-    # If still looks malformed, return a fallback
-    lines = [line.strip() for line in code.split('\n') if line.strip()]
-    if len(lines) < 2:
-        # Check if this was supposed to be a C4 diagram
-        if is_c4_diagram or any('c4' in line.lower() for line in lines):
-            return """C4Context
-    title Error in C4 Diagram Generation
-    
-    Person(user, "User", "System user requesting diagram")
-    System(error_system, "Error System", "Diagram generation encountered formatting issues")
-    System_Ext(llm_provider, "LLM Provider", "Generated incomplete or malformed C4 syntax")
-    
-    Rel(user, error_system, "Requested diagram")
-    Rel(llm_provider, error_system, "Provided invalid syntax")
-    
-    %% Resolution suggestions:
-    %% 1. Try generating the diagram again
-    %% 2. Switch to a different LLM provider (OpenAI recommended for C4)
-    %% 3. Simplify the requirement description
-    %% 4. Check if the requirement is suitable for C4 modeling"""
-        else:
-            return """flowchart TB
-    error[Diagram Generation Error]
-    note[The generated diagram had formatting issues]
-    
-    error --> note
-    
-    note2[Please try generating again or use a different LLM provider]
-    note --> note2"""
-    
-    # Check if it starts with a valid diagram declaration
-    first_line = lines[0].lower()
-    valid_diagram_starts = ['flowchart', 'graph', 'sequencediagram', 'c4context', 'c4container', 'c4component', 'c4dynamic']
-    if not any(first_line.startswith(start) for start in valid_diagram_starts):
-        lines.insert(0, 'flowchart TB')
-    
-    # Add proper indentation for non-declaration lines
-    formatted_lines = []
-    for i, line in enumerate(lines):
-        # Check if this is a diagram declaration or special line that shouldn't be indented
-        is_declaration = (i == 0 or 
-                         line.startswith('subgraph') or 
-                         line.startswith('end') or
-                         line.startswith('participant') or
-                         line.lower().startswith('flowchart') or
-                         line.lower().startswith('sequencediagram') or
-                         any(line.lower().startswith(c4_type) for c4_type in ['c4context', 'c4container', 'c4component', 'c4dynamic']) or
-                         line.startswith('%%'))  # Comments
-        
-        # C4 diagrams don't need indentation for their elements
-        is_c4_element = any(line.lower().strip().startswith(element) for element in 
-                           ['person', 'system', 'container', 'component', 'rel', 'title', 'updatelayout'])
-        
-        if is_declaration or (is_c4_diagram and is_c4_element):
-            formatted_lines.append(line)
-        else:
-            # Add indentation if not already present (for flowcharts and sequence diagrams)
-            if not line.startswith('    ') and not line.startswith('\t'):
-                formatted_lines.append('    ' + line)
-            else:
-                formatted_lines.append(line)
-    
-    result = '\n'.join(formatted_lines)
-    
-    # Validate the final result
-    is_valid, error_msg = _validate_mermaid_syntax(result)
-    if not is_valid:
-        # Provide C4-specific error fallback if this was a C4 diagram
-        if is_c4_diagram or any('c4' in result.lower() for result in result.split('\n')[:3]):
-            return f"""C4Context
-    title C4 Diagram Syntax Error
-    
-    Person(user, "User", "Requested C4 diagram")
-    System(validator, "Syntax Validator", "Detected syntax issues in generated C4 code")
-    System_Ext(llm_provider, "LLM Provider", "Generated invalid C4 syntax")
-    
-    Rel(user, validator, "Submitted diagram for validation")
-    Rel(llm_provider, validator, "Provided code with errors")
-    
-    %% Error Details: {error_msg}
-    %% 
-    %% Troubleshooting steps:
-    %% 1. Try generating again with OpenAI (best C4 support)
-    %% 2. Ensure requirement is suitable for C4 modeling
-    %% 3. Check for proper C4 element syntax (Person, System, Container, Rel)
-    %% 4. Verify relationship definitions are complete"""
-        else:
-            return f"""flowchart TB
-    error[Diagram Syntax Error]
-    details[{error_msg}]
-    
-    error --> details
-    
-    note[Please try generating again with a different LLM provider]
-    details --> note"""
-    
-    return result
+    # Return as-is - let Mermaid handle everything else
+    return code
+
 
 async def build_context_diagram(requirement: str, recommendations: List[Dict],
                                enhanced_tech_stack: Optional[List[str]] = None,
@@ -1050,12 +916,20 @@ ARCHITECTURE EXPLANATION: {architecture_explanation}
 
 Use the architecture explanation above to understand the data flow and component interactions for the sequence.''' if architecture_explanation else ''}
 
-Create a sequence diagram showing the step-by-step flow of the automated process:
-- User interactions
-- System calls and responses
-- Database operations
-- External API calls
-- Decision points and alternatives
+Create a DETAILED sequence diagram showing the comprehensive step-by-step flow of the automated process:
+- Initial user interactions and input validation
+- Authentication and authorization steps
+- Data retrieval and validation from multiple sources
+- Business logic processing and rule evaluation
+- Database operations (queries, updates, transactions)
+- External API calls with request/response details
+- Error handling and exception scenarios
+- Decision points with alternative flows (use alt/else blocks)
+- Notifications and user feedback
+- Logging and audit trail steps
+- Final response and cleanup operations
+
+IMPORTANT: Include 8-15 detailed interaction steps, not just 3-4 high-level ones. Show the internal system processing, data transformations, and all significant operations that would occur in a real implementation.
 
 Use Mermaid sequenceDiagram syntax:
 - participant A as Actor Name
@@ -1064,22 +938,43 @@ Use Mermaid sequenceDiagram syntax:
 - alt/else for conditions
 - Note over A: Comments
 
-Example format:
+Example format (showing detailed interactions):
 sequenceDiagram
     participant W as Worker (Android Scanner)
     participant API as FastAPI Orchestrator
+    participant Auth as Authentication Service
     participant DB as PostgreSQL (Inventory/Thresholds)
+    participant Cache as Redis Cache
     participant ERP as ERP API
+    participant Notify as Notification Service
+    participant Log as Audit Logger
     
-    W->>API: POST /scan {{sku, qty, location, ts}}
-    API->>DB: GET inventory, reorder_threshold, supplier
-    API-->>API: Apply rules (seasonality, high-value gate)
-    alt Below threshold & not seasonal
-        API->>ERP: Create purchase order {{sku, qty, supplier}}
-        ERP-->>API: PO ID
-    else High-value item
-        API-->>W: Event (Approval required)
+    W->>API: POST /scan {{sku, qty, location, ts, worker_id}}
+    API->>Auth: Validate worker credentials
+    Auth-->>API: Authentication token valid
+    API->>Log: Log scan attempt {{worker_id, sku, timestamp}}
+    API->>Cache: Check cached inventory for SKU
+    Cache-->>API: Cache miss - no data
+    API->>DB: SELECT inventory, reorder_threshold, supplier WHERE sku = ?
+    DB-->>API: {{current_qty: 45, threshold: 50, supplier: "ACME Corp"}}
+    API->>DB: UPDATE inventory SET current_qty = current_qty + scanned_qty
+    DB-->>API: Update successful
+    API-->>API: Calculate reorder_needed = (45 + qty < 50)
+    
+    alt Reorder needed AND not seasonal item
+        API->>ERP: POST /purchase-orders {{sku, qty: 100, supplier: "ACME Corp"}}
+        ERP-->>API: {{po_id: "PO-2024-001", status: "pending"}}
+        API->>DB: INSERT purchase_order {{po_id, sku, qty, status}}
+        API->>Notify: Send notification to procurement team
+        Notify-->>API: Notification sent
+    else High-value item OR seasonal restriction
+        API->>Notify: Send approval request to manager
+        Notify-->>API: Approval request queued
+        API-->>W: {{status: "approval_required", message: "Manager approval needed"}}
     end
+    
+    API->>Log: Log transaction completion {{sku, action, result}}
+    API-->>W: {{status: "success", inventory_updated: true, po_created: true}}
 
 CRITICAL FORMATTING REQUIREMENTS:
 1. Start with "sequenceDiagram" on its own line
@@ -1092,23 +987,46 @@ CRITICAL FORMATTING REQUIREMENTS:
 8. Return ONLY the raw Mermaid code without markdown formatting (no ```mermaid blocks)
 9. DO NOT include any explanations, descriptions, or text before/after the Mermaid code
 10. Start your response immediately with the diagram declaration
-11. End your response immediately after the last diagram line"""
+11. End your response immediately after the last diagram line
+12. NEVER put everything on one line - each element must be on its own line with proper line breaks
+13. Each participant, message, and control structure must be on a separate line"""
 
     try:
         provider_config = st.session_state.get('provider_config', {})
         if provider_config.get('provider') == 'fake':
             return """sequenceDiagram
-  participant U as User
-  participant S as System
-  participant D as Database
-  participant E as External API
-  
-  U->>S: Trigger automation
-  S->>D: Query data
-  D-->>S: Return data
-  S->>E: Process request
-  E-->>S: Response
-  S-->>U: Result"""
+    participant U as User (Colleague)
+    participant UI as Web Interface
+    participant Auth as Authentication Service
+    participant API as FastAPI Backend
+    participant Valid as Input Validator
+    participant DB as PostgreSQL Database
+    participant Cache as Redis Cache
+    participant Ext as External Recording API
+    participant Queue as Message Queue
+    participant Notify as Notification Service
+    participant Log as Audit Logger
+    
+    U->>UI: Initiate conversation recording
+    UI->>Auth: Validate user session
+    Auth-->>UI: Session valid - return user details
+    UI->>API: POST /start-recording {{user_id, customer_id, call_type}}
+    API->>Valid: Validate input parameters
+    Valid-->>API: Validation successful
+    API->>Log: Log recording initiation {{user_id, timestamp}}
+    API->>Cache: Check for existing active recordings
+    Cache-->>API: No active recordings found
+    API->>DB: INSERT recording_session {{user_id, customer_id, status: 'starting'}}
+    DB-->>API: Session ID: REC-2024-001
+    API->>Ext: POST /api/recordings/start {{session_id, metadata}}
+    Ext-->>API: {{recording_url, stream_key, status: 'active'}}
+    API->>DB: UPDATE recording_session SET recording_url, status = 'active'
+    API->>Cache: Cache active recording {{session_id, recording_url}}
+    API->>Queue: Publish recording_started event
+    Queue->>Notify: Send notification to supervisor
+    Notify-->>Queue: Notification sent
+    API-->>UI: {{session_id: 'REC-2024-001', status: 'recording', recording_url}}
+    UI-->>U: Display recording status and controls"""
         
         response = await make_llm_request(prompt, provider_config)
         return _clean_mermaid_code(response.strip())
