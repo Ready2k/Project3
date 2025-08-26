@@ -1295,7 +1295,18 @@ class JiraService:
             # Use detected API version or default
             api_version = self.api_version or "3"
             
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            # Get SSL verification and proxy configuration
+            verify_config = self.ssl_handler.get_httpx_verify_config()
+            proxy_config = self.proxy_handler.get_httpx_proxy_config()
+            
+            # Create client with proper SSL and proxy configuration
+            client_config = {
+                "timeout": self.timeout,
+                "verify": verify_config,
+                "proxies": proxy_config
+            }
+            
+            async with httpx.AsyncClient(**client_config) as client:
                 # Construct transitions API URL
                 url = self.api_version_manager.build_endpoint(
                     self.base_url, f"issue/{ticket_key}/transitions", api_version
