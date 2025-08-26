@@ -211,11 +211,30 @@ class JiraConfig(BaseModel):
     password: Optional[str] = None
     personal_access_token: Optional[str] = None
     
-    # Network configuration
-    verify_ssl: bool = True
+    # Network configuration with environment variable support
+    verify_ssl: bool = Field(default=True)
     ca_cert_path: Optional[str] = None
     proxy_url: Optional[str] = None
     timeout: int = 30
+    
+    def __init__(self, **data):
+        """Initialize with environment variable overrides for SSL settings."""
+        # Check for environment variable override for SSL verification
+        env_verify_ssl = os.getenv('JIRA_VERIFY_SSL', '').lower()
+        if env_verify_ssl in ('false', '0', 'no', 'off', 'disabled'):
+            data['verify_ssl'] = False
+            print("🌍 Environment variable JIRA_VERIFY_SSL detected - SSL verification DISABLED")
+        elif env_verify_ssl in ('true', '1', 'yes', 'on', 'enabled'):
+            data['verify_ssl'] = True
+            print("🌍 Environment variable JIRA_VERIFY_SSL detected - SSL verification ENABLED")
+        
+        # Check for environment variable override for CA certificate path
+        env_ca_cert = os.getenv('JIRA_CA_CERT_PATH')
+        if env_ca_cert:
+            data['ca_cert_path'] = env_ca_cert
+            print(f"🌍 Environment variable JIRA_CA_CERT_PATH detected - Using CA cert: {env_ca_cert}")
+        
+        super().__init__(**data)
     
     # SSO configuration
     use_sso: bool = False
