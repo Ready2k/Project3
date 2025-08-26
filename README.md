@@ -40,6 +40,7 @@ Interactive GUI + API system that judges if user stories/requirements are automa
 ### 📊 **Visualization & Documentation** *(Enhanced in v2.7.0)*
 - 📈 **AI-Generated Architecture Diagrams**: Context, Container, Sequence, C4 Architecture, and Tech Stack Wiring diagrams using Mermaid with enhanced viewing options, v10.2.4 compatibility, and robust LLM response extraction
 - 🏗️ **Infrastructure Diagrams**: Cloud architecture diagrams with vendor-specific icons (AWS, GCP, Azure) using mingrammer/diagrams
+- 📐 **Draw.io Export**: Export all diagram types to Draw.io format for professional customization, team collaboration, and presentation-ready documentation
 - 📚 **Enhanced Technology Catalog Management**: Complete CRUD interface with advanced filtering, bulk operations, and analytics for managing 55+ technologies across 17 categories
 - 📊 **Enhanced Pattern Analytics Dashboard**: Real-time analytics with improved filtering, pattern comparison tools, and comprehensive usage metrics
 - 🔧 **Enhanced Pattern Management System**: Advanced pattern management with bulk operations, validation, comparison tools, and statistics dashboard
@@ -196,6 +197,30 @@ make install
 python3 -m pip install -r requirements.txt
 ```
 
+#### System Dependencies
+
+**For Infrastructure Diagrams (Optional):**
+
+Infrastructure diagrams require Graphviz to be installed on your system:
+
+```bash
+# Windows
+choco install graphviz
+# or
+winget install graphviz
+
+# macOS
+brew install graphviz
+
+# Linux (Ubuntu/Debian)
+sudo apt-get install graphviz
+
+# Verify installation
+dot -V
+```
+
+**Note:** If Graphviz is not installed, you can still use all other diagram types (Context, Container, Sequence, C4, Tech Stack Wiring, Agent Interaction). See `GRAPHVIZ_INSTALLATION_GUIDE.md` for detailed instructions.
+
 ### Running the Application
 
 #### Option 1: Using Make (Recommended)
@@ -279,13 +304,14 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
    - Export results in JSON or Markdown format
 
 5. **Generate Diagrams** (Diagrams Tab):
-   - Create AI-generated architecture diagrams with enhanced viewing
+   - Create AI-generated architecture diagrams with enhanced viewing and **Draw.io export**
    - Context Diagram: System boundaries and external integrations
    - Container Diagram: Internal components and data flow
    - Sequence Diagram: Step-by-step process flow with decision points
    - C4 Diagram: Proper C4 architecture model using standardized C4 syntax and conventions
    - Infrastructure Diagram: Cloud architecture with vendor-specific icons (AWS, GCP, Azure)
    - Tech Stack Wiring Diagram: Technical component connections and data flows
+   - **📐 Export to Draw.io**: All diagrams can be exported to Draw.io format for professional customization
 
 6. **Monitor Performance** (Observability Tab):
    - View API call statistics and response times
