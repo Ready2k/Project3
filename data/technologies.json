@@ -87,7 +87,8 @@
         "fastapi",
         "django",
         "express",
-        "spring"
+        "spring",
+        "flask"
       ]
     },
     "infrastructure": {
@@ -109,7 +110,10 @@
         "stripe",
         "vercel",
         "supabase",
-        "custom_internal"
+        "custom_internal",
+        "pandas",
+        "numpy",
+        "react"
       ]
     },
     "languages": {
@@ -917,6 +921,22 @@
         "ml_serving"
       ]
     },
+    "flask": {
+      "added_date": "2025-08-26",
+      "alternatives": [],
+      "auto_generated": true,
+      "category": "frameworks",
+      "description": "Technology component: Flask",
+      "integrates_with": [],
+      "license": "unknown",
+      "maturity": "unknown",
+      "name": "Flask",
+      "tags": [
+        "framework",
+        "web"
+      ],
+      "use_cases": []
+    },
     "gcp": {
       "alternatives": [
         "aws",
@@ -1606,6 +1626,19 @@
         "microservices"
       ]
     },
+    "numpy": {
+      "added_date": "2025-08-26",
+      "alternatives": [],
+      "auto_generated": true,
+      "category": "integration",
+      "description": "Technology component: NumPy",
+      "integrates_with": [],
+      "license": "unknown",
+      "maturity": "unknown",
+      "name": "NumPy",
+      "tags": [],
+      "use_cases": []
+    },
     "oauth2": {
       "alternatives": [
         "jwt",
@@ -1725,6 +1758,19 @@
         "secure_communication",
         "identity_verification"
       ]
+    },
+    "pandas": {
+      "added_date": "2025-08-26",
+      "alternatives": [],
+      "auto_generated": true,
+      "category": "integration",
+      "description": "Technology component: Pandas",
+      "integrates_with": [],
+      "license": "unknown",
+      "maturity": "unknown",
+      "name": "Pandas",
+      "tags": [],
+      "use_cases": []
     },
     "pega_workflow": {
       "alternatives": [
@@ -1943,6 +1989,19 @@
         "microservices",
         "event_driven"
       ]
+    },
+    "react": {
+      "added_date": "2025-08-26",
+      "alternatives": [],
+      "auto_generated": true,
+      "category": "integration",
+      "description": "Technology component: React",
+      "integrates_with": [],
+      "license": "unknown",
+      "maturity": "unknown",
+      "name": "React",
+      "tags": [],
+      "use_cases": []
     },
     "redis": {
       "alternatives": [
