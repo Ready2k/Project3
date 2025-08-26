@@ -1,6 +1,6 @@
 {
   "pattern_id": "PAT-004",
-  "name": "Brand-Tone Co‑Writing for Marketing Content",
+  "name": "Brand-Tone Co\u2011Writing for Marketing Content",
   "description": "Assist marketers with drafts that match brand tone by grounding generation on past content and brand guidelines; requires editor approval before publishing.",
   "feasibility": "Partially Automatable",
   "pattern_type": [
@@ -50,5 +50,27 @@
   "llm_recommended_approach": "Build a tone memory via embeddings; use RAG prompts; validate output against jsonschema for structure; require editor sign-off.",
   "enhanced_by_llm": true,
   "enhanced_from_session": "seed-2025-08-12",
-  "color": "🟡"
+  "color": "\ud83d\udfe1",
+  "autonomy_level": 0.65,
+  "reasoning_types": [
+    "logical",
+    "causal",
+    "probabilistic"
+  ],
+  "decision_boundaries": {
+    "autonomous_decisions": [
+      "Process routine tasks within defined parameters",
+      "Apply business rules and validation logic",
+      "Generate reports and notifications"
+    ],
+    "escalation_triggers": [
+      "Exceptions outside normal parameters",
+      "High-value or high-risk decisions",
+      "User requests for human review"
+    ],
+    "decision_authority_level": "medium"
+  },
+  "agent_architecture": "single_agent",
+  "enhanced_from_pattern": "PAT-004",
+  "enhancement_type": "agentic"
 }

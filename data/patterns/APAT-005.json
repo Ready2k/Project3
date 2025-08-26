@@ -1,0 +1,47 @@
+{
+  "pattern_id": "APAT-005",
+  "name": "Multi-Agent Coordinator_Based System",
+  "description": "Multi-agent system with 6 specialized agents for **Title:** P1 Incident – Autonomous Triage &amp;amp; Remediation (Agentic)\n\n**User Story**\nAs an on-call SRE, I want an agent to detect critical production incidents, correlate them to recent changes, propose a safe remediation plan, obtain approval, execute it, verify recovery, and record an audit trail, so that MTTR is reduced without compromising safety.\n\n**Description / Scope**\n\n* Detect anomalies on `payments-api` using metrics (5xx rate, p95 latency) and logs/traces.\n* Correlate anomalies with recent changes (deploys, feature-flag toggles, config changes).\n* Propose a ranked remediation plan (e.g., toggle feature OFF, rollback last deploy), including risk, blast radius, and rollback.\n* Request human approval in Slack/Teams; execute only after approval.\n* Verify recovery via metrics; if not recovered, escalate or propose next plan.\n* Create/update a Jira incident and store a full audit (who/what/when, evidence, outcomes).\n\n**Acceptance Criteria (Given/When/Then)**\n\n1. **Detection**\n\n   * Given a spike where `5xx_rate &amp;gt; 3× baseline` **and** `p95 &amp;gt; threshold` within 10 minutes,\n   * When the agent evaluates signals,\n   * Then it opens/updates a P1 incident context and attaches evidence (metric values/graphs, top error logs, trace IDs).\n\n2. **Correlation**\n\n   * Given change events in the last 30 minutes (deploys, flags),\n   * When the agent analyzes timing and signals,\n   * Then it ranks hypotheses (e.g., feature flag ON vs. latest deploy) with confidence scores and reasons.\n\n3. **Plan Generation**\n\n   * Given at least one safe playbook exists,\n   * When the agent drafts a plan,\n   * Then the plan includes playbook ID, parameters, risk level, expected impact, verification query, and rollback steps.\n\n4. **Approval Flow**\n\n   * Given policy requires approval for prod,\n   * When the agent posts an approval card to Slack/Teams,\n   * Then execution only occurs after a human clicks **Approve** (1 approver minimum), or the item times out and escalates.\n\n5. **Execution &amp;amp; Idempotency**\n\n   * Given approval is granted,\n   * When the agent calls the runner,\n   * Then the action executes with an idempotency key; repeat submissions are no-ops; secrets are never logged.\n\n6. **Verification &amp;amp; Escalation**\n\n   * Given the plan has run,\n   * When the agent polls verification metrics,\n   * Then success is declared when `5xx` returns to baseline±10% within 10 minutes; otherwise it proposes the next ranked plan or escalates.\n\n7. **Audit &amp;amp; Ticketing**\n\n   * Given any step occurs,\n   * When the incident closes or moves state,\n   * Then Jira is updated with timeline, evidence links, decision rationale, approver, plan/rollback hashes, and final outcome.\n\n**Integrations (minimum)**\n\n* Metrics: Prometheus/Datadog (read-only).\n* Logs/Traces: Loki/ELK + Jaeger/Tempo (read-only).\n* Change events: CI/CD (GitHub/GitLab/Argo), Feature-flags (e.g., LaunchDarkly).\n* Approvals: Slack/Teams interactive message.\n* Execution: Runbook runner (e.g., Kubernetes/feature-flag API).\n* Ticketing: Jira (create/update incident).\n\n**Auth &amp;amp; Security**\n\n* OAuth2/service accounts; least privilege; read-only for observability; scoped execution role for runner.\n* Secrets from Vault/Secrets Manager; short-lived tokens; PII redaction in logs.\n* Signed webhook verification; all actions audit-logged with `session_id`.\n\n**SLAs / Non-Functional**\n\n* Detection decision within **2 minutes** of eligible signals.\n* First remediation plan within **5 minutes** of detection.\n* Verification window up to **10 minutes** post-execution.\n* Control plane availability **≥ 99.5%**.\n* No secrets in logs; error handling uses retries with backoff and jitter; rate-limit aware.\n\n**Edge Cases**\n\n* Metrics API returns 429/5xx → retry with backoff; do not duplicate execution.\n* Approval not received in 5 minutes → escalate to on-call and do not execute.\n* Conflicting signals (multiple services changed) → show ranked hypotheses with confidence and proceed with the top safe plan only.\n\n**Out of Scope**\n\n* Auto-execute in prod without human approval.\n* Building custom ML beyond seasonal baselines/change-point detection.\n\n**Definition of Done**\n\n* Demo in staging: detect → correlate → plan → approve → execute → verify → Jira updated → complete audit present.\n* Unit/integration tests cover allow/deny paths, idempotency, retries, and approval timeout.\n",
+  "feasibility": "Fully Automatable",
+  "pattern_type": [
+    "multi_agent_system",
+    "coordinator_based"
+  ],
+  "autonomy_level": 0.875,
+  "reasoning_capabilities": [
+    "collaborative_reasoning",
+    "distributed_decision_making",
+    "system_coordination"
+  ],
+  "decision_scope": {
+    "autonomous_decisions": [
+      "agent_coordination",
+      "task_distribution",
+      "resource_allocation",
+      "exception_handling"
+    ],
+    "escalation_triggers": [
+      "system_wide_failures",
+      "conflicting_agent_decisions",
+      "resource_exhaustion"
+    ]
+  },
+  "exception_handling": "Multi-agent collaborative resolution with system-level escalation",
+  "learning_mechanisms": [
+    "inter_agent_learning",
+    "system_optimization",
+    "performance_adaptation"
+  ],
+  "tech_stack": [
+    "LangChain",
+    "Haystack",
+    "Apache Kafka",
+    "Redis",
+    "Docker",
+    "Kubernetes"
+  ],
+  "agent_architecture": {
+    "type": "coordinator_based",
+    "agent_count": 6,
+    "communication_protocols": [
+      

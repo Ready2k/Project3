@@ -51,5 +51,27 @@
   "llm_recommended_approach": "Use OCR with light OpenCV pre-processing when needed; apply rule+ML extraction; validate via jsonschema and PO/budget checks; queue exceptions to AP reviewers.",
   "enhanced_by_llm": true,
   "enhanced_from_session": "seed-2025-08-12",
-  "color": "🟡"
+  "color": "\ud83d\udfe1",
+  "autonomy_level": 0.65,
+  "reasoning_types": [
+    "logical",
+    "causal",
+    "probabilistic"
+  ],
+  "decision_boundaries": {
+    "autonomous_decisions": [
+      "Process routine tasks within defined parameters",
+      "Apply business rules and validation logic",
+      "Generate reports and notifications"
+    ],
+    "escalation_triggers": [
+      "Exceptions outside normal parameters",
+      "High-value or high-risk decisions",
+      "User requests for human review"
+    ],
+    "decision_authority_level": "medium"
+  },
+  "agent_architecture": "single_agent",
+  "enhanced_from_pattern": "PAT-002",
+  "enhancement_type": "agentic"
 }

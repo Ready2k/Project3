@@ -19,8 +19,8 @@
     "AWS Translate or on-prem NMT",
     "scikit-learn or HuggingFace text-classification",
     "FastAPI",
-    "Apache Kafka or RabbitMQ",
-    "PostgreSQL"
+    "PostgreSQL",
+    "Redis"
   ],
   "related_patterns": [],
   "confidence_score": 0.9,
@@ -50,5 +50,39 @@
   "llm_recommended_approach": "Detect language, redact PII, translate, classify using historical data, and route via queue; capture feedback loops from agents to continuously improve.",
   "enhanced_by_llm": true,
   "enhanced_from_session": "seed-2025-08-12",
-  "color": "🟡"
+  "color": "\ud83d\udfe1",
+  "autonomy_level": 0.65,
+  "reasoning_types": [
+    "logical",
+    "causal",
+    "probabilistic"
+  ],
+  "decision_boundaries": {
+    "autonomous_decisions": [
+      "Process routine tasks within defined parameters",
+      "Apply business rules and validation logic",
+      "Generate reports and notifications"
+    ],
+    "escalation_triggers": [
+      "Exceptions outside normal parameters",
+      "High-value or high-risk decisions",
+      "User requests for human review"
+    ],
+    "decision_authority_level": "medium"
+  },
+  "agent_architecture": "single_agent",
+  "enhanced_from_pattern": "PAT-003",
+  "enhancement_type": "technical",
+  "implementation_guidance": {
+    "architecture_decisions": [
+      "Use microservices architecture for scalability",
+      "Implement event-driven patterns for loose coupling",
+      "Apply cloud-native design principles"
+    ],
+    "technical_challenges": [
+      "Ensuring system scalability and performance",
+      "Managing data consistency across services",
+      "Implementing robust error handling and recovery"
+    ]
+  }
 }

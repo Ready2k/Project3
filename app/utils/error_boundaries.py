@@ -234,7 +234,26 @@ class AsyncOperationManager:
     def __init__(self, max_concurrent: int = 10, timeout_seconds: float = 30.0):
         self.max_concurrent = max_concurrent
         self.timeout_seconds = timeout_seconds
-        self.semaphore = asyncio.Semaphore(max_concurrent)
+        self._semaphore = None
+    
+    @property
+    def semaphore(self):
+        """Lazy initialization of semaphore to avoid event loop issues at import time."""
+        if self._semaphore is None:
+            try:
+                # Try to create semaphore in current context
+                self._semaphore = asyncio.Semaphore(self.max_concurrent)
+            except RuntimeError as e:
+                if "no current event loop" in str(e).lower():
+                    # If no event loop, we'll create the semaphore when actually needed
+                    # For now, create a placeholder that will be replaced when used in async context
+                    app_logger.warning("No event loop available for semaphore creation, will create when needed")
+                    self._semaphore = None
+                    return None
+                else:
+                    raise
+        
+        return self._semaphore
     
     @error_boundary("batch_async_operations", fallback_value=[], timeout_seconds=60.0)
     async def execute_batch(self, operations: list, operation_name: str = "batch_operation") -> list:
@@ -247,6 +266,10 @@ class AsyncOperationManager:
         Returns:
             List of results (None for failed operations)
         """
+        # Ensure semaphore is created in async context if it wasn't created earlier
+        if self._semaphore is None:
+            self._semaphore = asyncio.Semaphore(self.max_concurrent)
+        
         async def bounded_operation(coro):
             async with self.semaphore:
                 try:
@@ -269,5 +292,12 @@ class AsyncOperationManager:
         return results
 
 
-# Global instance for convenience
-async_manager = AsyncOperationManager()
+# Global instance for convenience - lazy initialization to avoid event loop issues
+_async_manager = None
+
+def get_async_manager() -> AsyncOperationManager:
+    """Get the global async manager instance with lazy initialization."""
+    global _async_manager
+    if _async_manager is None:
+        _async_manager = AsyncOperationManager()
+    return _async_manager

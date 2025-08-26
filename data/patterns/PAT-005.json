@@ -1,7 +1,7 @@
 {
   "pattern_id": "PAT-005",
-  "name": "Email Order Extraction & Fulfillment Orchestration",
-  "description": "Parse incoming order emails, normalize data, validate inventory/payment, and create orders in the fulfillment system with exception queues.",
+  "name": "Email Order Extraction &amp; Fulfillment Orchestration",
+  "description": "Parse incoming order emails, normalize data, validate inventory/payment, and [REMOVED_SUSPICIOUS_CONTENT]orders in the fulfillment system with exception queues.",
   "feasibility": "Partially Automatable",
   "pattern_type": [
     "email_ingestion",
@@ -50,5 +50,27 @@
   "llm_recommended_approach": "Pull from mailbox, extract fields with hybrid rules+NLP, validate via jsonschema, upsert into OMS; route low-confidence to human queue.",
   "enhanced_by_llm": true,
   "enhanced_from_session": "seed-2025-08-12",
-  "color": "🟡"
+  "color": "\ud83d\udfe1",
+  "autonomy_level": 0.65,
+  "reasoning_types": [
+    "logical",
+    "causal",
+    "probabilistic"
+  ],
+  "decision_boundaries": {
+    "autonomous_decisions": [
+      "Process routine tasks within defined parameters",
+      "Apply business rules and validation logic",
+      "Generate reports and notifications"
+    ],
+    "escalation_triggers": [
+      "Exceptions outside normal parameters",
+      "High-value or high-risk decisions",
+      "User requests for human review"
+    ],
+    "decision_authority_level": "medium"
+  },
+  "agent_architecture": "single_agent",
+  "enhanced_from_pattern": "PAT-005",
+  "enhancement_type": "agentic"
 }

@@ -31,7 +31,7 @@ class PatternMigrationManager:
         provider_config = ProviderConfig(
             provider="openai",
             model="gpt-4o",
-            api_key=os.getenv("OPENAI_API_KEY", ""),
+            api_key=os.getenv("OPENAI_API_KEY"),
             endpoint_url=None,
             region=None
         )

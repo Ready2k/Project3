@@ -4,42 +4,80 @@ import streamlit as st
 import json
 from typing import Any, Dict, List, Optional
 import asyncio
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 from app.pattern.enhanced_loader import EnhancedPatternLoader
 from app.services.pattern_enhancement_service import PatternEnhancementService
 from app.utils.logger import app_logger
 
 
+def run_async_in_thread(coro):
+    """Run an async coroutine in a separate thread with its own event loop."""
+    def run_in_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(coro)
+        except Exception as e:
+            app_logger.error(f"Error running async operation: {e}")
+            raise
+        finally:
+            loop.close()
+    
+    try:
+        with ThreadPoolExecutor() as executor:
+            future = executor.submit(run_in_thread)
+            return future.result(timeout=300)  # 5 minute timeout
+    except Exception as e:
+        app_logger.error(f"Failed to run async operation in thread: {e}")
+        raise
+
+
 def render_enhanced_pattern_management(pattern_loader: EnhancedPatternLoader, 
                                      enhancement_service: PatternEnhancementService):
     """Render the enhanced pattern management interface."""
     
-    st.header("🚀 Enhanced Pattern Management")
-    st.markdown("Manage patterns with rich technical details and autonomous agent capabilities")
-    
-    # Create tabs for different management functions
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📊 Pattern Overview", 
-        "🔧 Enhance Patterns", 
-        "📋 Pattern Comparison",
-        "📈 Pattern Analytics",
-        "⚙️ Bulk Operations"
-    ])
-    
-    with tab1:
-        render_pattern_overview(pattern_loader)
-    
-    with tab2:
-        render_pattern_enhancement(pattern_loader, enhancement_service)
-    
-    with tab3:
-        render_pattern_comparison(pattern_loader)
-    
-    with tab4:
-        render_pattern_analytics(pattern_loader)
-    
-    with tab5:
-        render_bulk_operations(pattern_loader, enhancement_service)
+    try:
+        st.header("🚀 Enhanced Pattern Management")
+        st.markdown("Manage patterns with rich technical details and autonomous agent capabilities")
+        
+        # Create tabs for different management functions
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+            "📊 Pattern Overview", 
+            "🔧 Enhance Patterns", 
+            "📋 Pattern Comparison",
+            "📈 Pattern Analytics",
+            "⚙️ Bulk Operations"
+        ])
+        
+        with tab1:
+            render_pattern_overview(pattern_loader)
+        
+        with tab2:
+            render_pattern_enhancement(pattern_loader, enhancement_service)
+        
+        with tab3:
+            render_pattern_comparison(pattern_loader)
+        
+        with tab4:
+            render_pattern_analytics(pattern_loader)
+        
+        with tab5:
+            render_bulk_operations(pattern_loader, enhancement_service)
+            
+    except Exception as e:
+        st.error(f"❌ Error in enhanced pattern management: {e}")
+        app_logger.error(f"Enhanced pattern management error: {e}")
+        
+        # Show a helpful message
+        st.info("💡 Try refreshing the page or check the application logs for more details.")
+        
+        # Show debug info in expander
+        with st.expander("Debug Information"):
+            st.code(str(e))
+            import traceback
+            st.code(traceback.format_exc())
 
 
 def render_pattern_overview(pattern_loader: EnhancedPatternLoader):
@@ -47,8 +85,13 @@ def render_pattern_overview(pattern_loader: EnhancedPatternLoader):
     
     st.subheader("Pattern Library Overview")
     
-    # Get pattern statistics
-    stats = pattern_loader.get_pattern_statistics()
+    try:
+        # Get pattern statistics
+        stats = pattern_loader.get_pattern_statistics()
+    except Exception as e:
+        st.error(f"❌ Failed to load pattern statistics: {e}")
+        app_logger.error(f"Pattern statistics error: {e}")
+        return
     
     # Display key metrics
     col1, col2, col3, col4 = st.columns(4)
@@ -102,8 +145,13 @@ def render_pattern_enhancement(pattern_loader: EnhancedPatternLoader,
     
     st.subheader("Pattern Enhancement")
     
-    # Get enhancement candidates
-    candidates = enhancement_service.get_enhancement_candidates()
+    try:
+        # Get enhancement candidates
+        candidates = enhancement_service.get_enhancement_candidates()
+    except Exception as e:
+        st.error(f"❌ Failed to get enhancement candidates: {e}")
+        app_logger.error(f"Enhancement candidates error: {e}")
+        return
     
     if not candidates:
         st.info("All patterns are already enhanced! 🎉")
@@ -118,15 +166,50 @@ def render_pattern_enhancement(pattern_loader: EnhancedPatternLoader,
         help="Full: Both technical details and agentic capabilities, Technical: Implementation details only, Agentic: Autonomous capabilities only"
     )
     
+    # Show enhancement type description
+    if enhancement_type == "agentic":
+        st.info("🤖 **Agentic Enhancement**: Will add autonomous agent capabilities, decision-making logic, and self-monitoring features to patterns.")
+    elif enhancement_type == "technical":
+        st.info("⚙️ **Technical Enhancement**: Will add detailed implementation guidance, code examples, and technical specifications.")
+    elif enhancement_type == "full":
+        st.info("🚀 **Full Enhancement**: Will add both technical implementation details and autonomous agent capabilities.")
+    
+    # Filter candidates based on enhancement type if needed
+    filtered_candidates = candidates
+    if enhancement_type == "agentic":
+        # Prioritize patterns that would benefit most from agentic capabilities
+        filtered_candidates = [c for c in candidates if 
+                             c.get('complexity', 'low') in ['medium', 'high'] or
+                             'agentic' in str(c.get('missing_capabilities', [])).lower()]
+    elif enhancement_type == "technical":
+        # Prioritize patterns missing technical details
+        filtered_candidates = [c for c in candidates if 
+                             'technical' in str(c.get('missing_capabilities', [])).lower() or
+                             not c.get('has_implementation_details', False)]
+    
     # Pattern selection for enhancement
     selected_patterns = []
     
+    # Show filtered results count
+    if len(filtered_candidates) != len(candidates):
+        st.success(f"🎯 Filtered to {len(filtered_candidates)} patterns most suitable for {enhancement_type} enhancement")
+    
     with st.expander("Select Patterns to Enhance", expanded=True):
-        for candidate in candidates[:10]:  # Show top 10 candidates
+        display_candidates = filtered_candidates[:10]  # Show top 10 filtered candidates
+        
+        if not display_candidates:
+            st.warning(f"No patterns found that would benefit from {enhancement_type} enhancement.")
+            return
+            
+        for candidate in display_candidates:
             col1, col2, col3, col4 = st.columns([1, 3, 2, 2])
             
             with col1:
-                selected = st.checkbox("", key=f"enhance_{candidate['pattern_id']}")
+                selected = st.checkbox(
+                    f"Select {candidate['pattern_id']}", 
+                    key=f"enhance_{candidate['pattern_id']}",
+                    label_visibility="collapsed"
+                )
                 if selected:
                     selected_patterns.append(candidate['pattern_id'])
             
@@ -144,6 +227,14 @@ def render_pattern_enhancement(pattern_loader: EnhancedPatternLoader,
                     st.write("Missing:")
                     for cap in missing[:2]:  # Show first 2
                         st.write(f"• {cap.replace('has_', '').replace('_', ' ').title()}")
+                
+                # Show what this enhancement type will add
+                if enhancement_type == "agentic":
+                    st.write("🤖 Will add: Agent logic")
+                elif enhancement_type == "technical":
+                    st.write("⚙️ Will add: Tech details")
+                elif enhancement_type == "full":
+                    st.write("🚀 Will add: Both")
     
     # Enhancement action
     if selected_patterns:
@@ -151,27 +242,41 @@ def render_pattern_enhancement(pattern_loader: EnhancedPatternLoader,
         
         if st.button("🚀 Enhance Selected Patterns", type="primary"):
             with st.spinner("Enhancing patterns... This may take a few minutes."):
-                # Run enhancement
-                results = asyncio.run(
-                    enhancement_service.batch_enhance_patterns(selected_patterns, enhancement_type)
-                )
-                
-                # Display results
-                if results["successful"]:
-                    st.success(f"✅ Successfully enhanced {len(results['successful'])} patterns!")
+                try:
+                    # Run enhancement in separate thread to avoid event loop conflicts
+                    results = run_async_in_thread(
+                        enhancement_service.batch_enhance_patterns(selected_patterns, enhancement_type)
+                    )
                     
-                    for result in results["successful"]:
-                        st.write(f"• {result['original_id']} → {result['enhanced_id']}")
-                
-                if results["failed"]:
-                    st.error(f"❌ Failed to enhance {len(results['failed'])} patterns:")
+                    # Display results
+                    if results["successful"]:
+                        st.success(f"✅ Successfully enhanced {len(results['successful'])} patterns!")
+                        
+                        for result in results["successful"]:
+                            st.write(f"• {result['original_id']} → {result['enhanced_id']}")
                     
-                    for result in results["failed"]:
-                        st.write(f"• {result['pattern_id']}: {result['error']}")
-                
-                # Refresh pattern cache
-                pattern_loader.refresh_cache()
-                st.rerun()
+                    if results["failed"]:
+                        st.error(f"❌ Failed to enhance {len(results['failed'])} patterns:")
+                        
+                        for result in results["failed"]:
+                            st.write(f"• {result['pattern_id']}: {result['error']}")
+                    
+                    # Refresh pattern cache
+                    pattern_loader.refresh_cache()
+                    try:
+                        st.rerun()
+                    except AttributeError:
+                        # Fallback for older Streamlit versions
+                        st.experimental_rerun()
+                    
+                except Exception as e:
+                    st.error(f"❌ Enhancement failed: {e}")
+                    app_logger.error(f"Pattern enhancement error: {e}")
+                    
+                    with st.expander("Error Details"):
+                        st.code(str(e))
+                        import traceback
+                        st.code(traceback.format_exc())
 
 
 def render_pattern_comparison(pattern_loader: EnhancedPatternLoader):
@@ -287,7 +392,27 @@ def render_pattern_analytics(pattern_loader: EnhancedPatternLoader):
     st.subheader("Complexity Score Distribution")
     
     complexity_scores = [p.get('_complexity_score', 0.5) for p in patterns]
-    st.histogram(complexity_scores, bins=20)
+    if complexity_scores:
+        try:
+            import numpy as np
+            import pandas as pd
+            
+            # Create histogram data
+            hist, bin_edges = np.histogram(complexity_scores, bins=20)
+            bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+            
+            # Create DataFrame for chart
+            hist_df = pd.DataFrame({
+                'Complexity Score': [f"{edge:.2f}" for edge in bin_centers],
+                'Count': hist
+            }).set_index('Complexity Score')
+            
+            st.bar_chart(hist_df)
+        except ImportError as e:
+            st.error(f"❌ Missing required packages for histogram: {e}")
+            st.info("💡 Install numpy and pandas to view complexity distribution")
+    else:
+        st.info("No complexity scores available")
     
     # Autonomy level distribution (for agentic patterns)
     agentic_patterns = [p for p in patterns if p.get('autonomy_level')]
@@ -295,7 +420,28 @@ def render_pattern_analytics(pattern_loader: EnhancedPatternLoader):
     if agentic_patterns:
         st.subheader("Autonomy Level Distribution")
         autonomy_scores = [p.get('autonomy_level', 0) for p in agentic_patterns]
-        st.histogram(autonomy_scores, bins=10)
+        
+        if autonomy_scores:
+            try:
+                import numpy as np
+                import pandas as pd
+                
+                # Create histogram data
+                hist, bin_edges = np.histogram(autonomy_scores, bins=10)
+                bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+                
+                # Create DataFrame for chart
+                hist_df = pd.DataFrame({
+                    'Autonomy Level': [f"{edge:.2f}" for edge in bin_centers],
+                    'Count': hist
+                }).set_index('Autonomy Level')
+                
+                st.bar_chart(hist_df)
+            except ImportError as e:
+                st.error(f"❌ Missing required packages for histogram: {e}")
+                st.info("💡 Install numpy and pandas to view autonomy distribution")
+        else:
+            st.info("No autonomy scores available")
     
     # Technology usage analysis
     st.subheader("Technology Usage Analysis")
@@ -378,21 +524,35 @@ def render_bulk_operations(pattern_loader: EnhancedPatternLoader,
         pattern_ids = [p.get('pattern_id') for p in filtered_patterns]
         
         with st.spinner(f"Enhancing {len(pattern_ids)} patterns... This may take several minutes."):
-            results = asyncio.run(
-                enhancement_service.batch_enhance_patterns(pattern_ids, enhancement_type)
-            )
-            
-            st.success(f"Bulk enhancement completed!")
-            st.write(f"✅ Successful: {len(results['successful'])}")
-            st.write(f"❌ Failed: {len(results['failed'])}")
-            
-            if results['failed']:
-                with st.expander("View Failed Enhancements"):
-                    for failure in results['failed']:
-                        st.write(f"• {failure['pattern_id']}: {failure['error']}")
-            
-            pattern_loader.refresh_cache()
-            st.rerun()
+            try:
+                results = run_async_in_thread(
+                    enhancement_service.batch_enhance_patterns(pattern_ids, enhancement_type)
+                )
+                
+                st.success(f"Bulk enhancement completed!")
+                st.write(f"✅ Successful: {len(results['successful'])}")
+                st.write(f"❌ Failed: {len(results['failed'])}")
+                
+                if results['failed']:
+                    with st.expander("View Failed Enhancements"):
+                        for failure in results['failed']:
+                            st.write(f"• {failure['pattern_id']}: {failure['error']}")
+                
+                pattern_loader.refresh_cache()
+                try:
+                    st.rerun()
+                except AttributeError:
+                    # Fallback for older Streamlit versions
+                    st.experimental_rerun()
+                
+            except Exception as e:
+                st.error(f"❌ Bulk enhancement failed: {e}")
+                app_logger.error(f"Bulk pattern enhancement error: {e}")
+                
+                with st.expander("Error Details"):
+                    st.code(str(e))
+                    import traceback
+                    st.code(traceback.format_exc())
     
     # Export operations
     st.markdown("### Export Operations")

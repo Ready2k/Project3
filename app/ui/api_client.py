@@ -14,7 +14,14 @@ class AAA_APIClient:
     
     def __init__(self, base_url: str = "http://localhost:8000"):
         self.base_url = base_url.rstrip('/')
-        self.async_manager = AsyncOperationManager(max_concurrent=5, timeout_seconds=30.0)
+        self._async_manager = None
+    
+    @property
+    def async_manager(self):
+        """Lazy initialization of async manager to avoid event loop issues."""
+        if self._async_manager is None:
+            self._async_manager = AsyncOperationManager(max_concurrent=5, timeout_seconds=30.0)
+        return self._async_manager
     
     @error_boundary("api_request", timeout_seconds=30.0, max_retries=2)
     async def make_request(self, method: str, endpoint: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
