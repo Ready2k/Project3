@@ -1718,7 +1718,7 @@ CRITICAL FORMATTING REQUIREMENTS:
 
 # Configuration
 API_BASE_URL = "http://localhost:8000"
-POLL_INTERVAL = 2  # seconds
+POLL_INTERVAL = 5  # seconds - reduced polling to stay under rate limits
 
 
 class AutomatedAIAssessmentUI:

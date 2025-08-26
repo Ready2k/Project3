@@ -47,10 +47,10 @@ rate_limiting:
   enterprise_requests_per_day: 100000
   enterprise_requests_per_hour: 10000
   enterprise_requests_per_minute: 300
-  ip_burst_limit: 15
+  ip_burst_limit: 50
   ip_requests_per_day: 5000
   ip_requests_per_hour: 500
-  ip_requests_per_minute: 30
+  ip_requests_per_minute: 60
   premium_burst_limit: 40
   premium_requests_per_day: 30000
   premium_requests_per_hour: 3000
