@@ -8049,8 +8049,11 @@ verify_ssl = True
             # Create LLM provider for enhancement service using user's configured provider
             try:
                 # Use the user's configured provider instead of hardcoded OpenAI
-                provider_config = st.session_state.get('provider_config')
-                if provider_config:
+                provider_config_dict = st.session_state.get('provider_config')
+                if provider_config_dict:
+                    # Convert dict to ProviderConfig model
+                    from app.api import ProviderConfig
+                    provider_config = ProviderConfig(**provider_config_dict)
                     llm_provider = create_llm_provider(provider_config)
                 else:
                     # Fallback to creating provider without config (uses settings defaults)
