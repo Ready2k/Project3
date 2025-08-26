@@ -29,6 +29,11 @@ try:
 except ImportError:
     OPENAI_AVAILABLE = False
 
+# Custom exception for security feedback
+class SecurityFeedbackException(Exception):
+    """Exception for enhanced security feedback that should be displayed with formatting."""
+    pass
+
 # Mermaid diagram functions (LLM-generated for specific requirements)
 async def make_llm_request(prompt: str, provider_config: Dict, purpose: str = "diagram_generation") -> str:
     """Make a request to the LLM for diagram generation using audited provider."""
@@ -1858,7 +1863,20 @@ class AutomatedAIAssessmentUI:
             if response.status_code == 404:
                 raise ValueError("Session not found")
             elif response.status_code != 200:
-                raise ValueError(f"API error: {response.status_code} - {response.text}")
+                # Try to parse the error response for enhanced security feedback
+                try:
+                    error_data = response.json()
+                    if error_data.get("type") == "security_feedback":
+                        # This is enhanced security feedback - format it nicely
+                        message = error_data.get("message", "Security validation failed")
+                        raise SecurityFeedbackException(message)
+                    else:
+                        # Standard error
+                        error_msg = error_data.get("message", response.text)
+                        raise ValueError(f"API error: {response.status_code} - {error_msg}")
+                except (ValueError, KeyError):
+                    # Fallback to raw response text
+                    raise ValueError(f"API error: {response.status_code} - {response.text}")
             
             return response.json()
     
@@ -3167,6 +3185,11 @@ verify_ssl = True
                 # Start polling for progress
                 st.rerun()
         
+        except SecurityFeedbackException as e:
+            st.session_state.processing = False
+            # Display enhanced security feedback with proper formatting
+            st.error("❌ Error submitting requirements: Security validation failed")
+            st.markdown(str(e))
         except Exception as e:
             st.session_state.processing = False
             st.error(f"❌ Error submitting requirements: {str(e)}")
@@ -5238,7 +5261,9 @@ verify_ssl = True
                         st.error("No API key found. Please configure your provider in the sidebar.")
                         return
                 
-                st.write(f"**Generating diagram for:** {requirement_text}")
+                # Show requirements in a collapsible expander to save space
+                with st.expander("📋 View Original Requirements", expanded=False):
+                    st.write(requirement_text)
                 
                 # Get enhanced analysis data for diagram generation
                 enhanced_data = self.get_enhanced_analysis_data()
