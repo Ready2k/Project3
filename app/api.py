@@ -1,5 +1,6 @@
 """FastAPI application for Automated AI Assessment (AAA)."""
 
+import json
 import os
 import uuid
 from datetime import datetime
@@ -148,6 +149,34 @@ async def validation_exception_handler(request: Request, exc: ValueError):
         media_type="application/json"
     )
     return SecurityHeaders.add_security_headers(response)
+
+# Custom exception handler for HTTP exceptions with enhanced security feedback
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions with enhanced security feedback formatting."""
+    client_ip = request.client.host if request.client else "unknown"
+    
+    # Check if this is a security-related error that needs special formatting
+    if exc.status_code == 400 and "🔒" in str(exc.detail):
+        # This is our enhanced security feedback - return it as-is for proper formatting
+        app_logger.warning(f"Security validation failed from {client_ip}")
+        
+        response = Response(
+            content=f'{{"error": "Security Validation", "message": {json.dumps(str(exc.detail))}, "type": "security_feedback"}}',
+            status_code=400,
+            media_type="application/json"
+        )
+        return SecurityHeaders.add_security_headers(response)
+    else:
+        # Standard HTTP exception handling
+        app_logger.warning(f"HTTP error {exc.status_code} from {client_ip}: {str(exc.detail)}")
+        
+        response = Response(
+            content=f'{{"error": "HTTP Error", "message": "{str(exc.detail)}"}}',
+            status_code=exc.status_code,
+            media_type="application/json"
+        )
+        return SecurityHeaders.add_security_headers(response)
 
 
 @app.exception_handler(HTTPException)

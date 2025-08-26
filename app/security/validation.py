@@ -220,19 +220,12 @@ class SecurityValidator:
             violations['out_of_scope'] = out_of_scope_patterns
         
         if violations:
-            violation_types = list(violations.keys())
-            if 'formula_injection' in violations:
-                reason = "Formula injection attempt detected - spreadsheet formulas and executable content are not permitted"
-            elif 'ssrf' in violations:
-                reason = "SSRF attempt detected - requests to cloud metadata services and internal endpoints are not permitted"
-            elif 'malicious_intent' in violations:
-                reason = "Security testing/penetration testing requests are not permitted - this system is for legitimate business automation only"
-            elif 'out_of_scope' in violations:
-                reason = "Request appears to be for security testing rather than business automation - please provide legitimate business requirements"
-            else:
-                reason = f"Security policy violations detected: {', '.join(violation_types)}"
+            # Generate intelligent feedback without exposing malicious content to LLMs
+            from app.security.intelligent_feedback import SecurityFeedbackGenerator
+            feedback_generator = SecurityFeedbackGenerator()
+            detailed_feedback = feedback_generator.generate_feedback(violations)
             
-            return False, reason, violations
+            return False, detailed_feedback, violations
         
         return True, "Valid business automation requirement", {}
     

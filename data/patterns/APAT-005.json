@@ -28,9 +28,9 @@
   },
   "exception_handling": "Multi-agent collaborative resolution with system-level escalation",
   "learning_mechanisms": [
-    "inter_agent_learning",
-    "system_optimization",
-    "performance_adaptation"
+    "reinforcement_learning",
+    "performance_optimization",
+    "strategy_adaptation"
   ],
   "tech_stack": [
     "LangChain",
@@ -40,8 +40,114 @@
     "Docker",
     "Kubernetes"
   ],
-  "agent_architecture": {
-    "type": "coordinator_based",
-    "agent_count": 6,
+  "agent_architecture": "hierarchical_agents",
+  "input_requirements": [
+    "incident_detection_metrics",
+    "change_event_logs",
+    "remediation_playbooks",
+    "approval_workflows",
+    "audit_requirements"
+  ],
+  "related_patterns": [
+    "APAT-001",
+    "APAT-002"
+  ],
+  "confidence_score": 0.92,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": [
+      "Prometheus/Datadog",
+      "Slack/Teams",
+      "Jira",
+      "Kubernetes API",
+      "CI/CD systems"
+    ]
+  },
+  "domain": "incident_management",
+  "complexity": "High",
+  "estimated_effort": "8-12 weeks",
+  "reasoning_types": [
+    "logical",
+    "causal",
+    "collaborative"
+  ],
+  "decision_boundaries": {
+    "autonomous_decisions": [
+      "incident_detection",
+      "correlation_analysis",
+      "remediation_planning",
+      "verification_checks"
+    ],
+    "escalation_triggers": [
+      "approval_timeout",
+      "verification_failure",
+      "conflicting_signals"
+    ],
+    "decision_authority_level": "medium"
+  },
+  "exception_handling_strategy": {
+    "autonomous_resolution_approaches": [
+      "multi_agent_consensus",
+      "fallback_procedures",
+      "escalation_workflows"
+    ],
+    "reasoning_fallbacks": [
+      "conservative_approach",
+      "human_approval_required"
+    ],
+    "escalation_criteria": [
+      "high_risk_operations",
+      "uncertain_correlation",
+      "approval_denied"
+    ]
+  },
+  "self_monitoring_capabilities": [
+    "performance_tracking",
+    "response_time_monitoring",
+    "accuracy_monitoring",
+    "resource_monitoring"
+  ],
+  "coordination_requirements": {
     "communication_protocols": [
-      
+      "message_passing",
+      "event_driven",
+      "shared_state"
+    ],
+    "coordination_mechanisms": [
+      "hierarchical_coordination",
+      "consensus_based_decisions",
+      "load_balancing"
+    ],
+    "conflict_resolution": [
+      "consensus_based_decisions",
+      "escalation_to_coordinator",
+      "priority_based_resolution"
+    ],
+    "agent_count": 6,
+    "architecture_type": "coordinator_based"
+  },
+  "agentic_frameworks": [
+    "LangChain",
+    "CrewAI"
+  ],
+  "reasoning_engines": [
+    "Apache Kafka",
+    "Redis"
+  ],
+  "created_from_session": "incident-management-2025",
+  "auto_generated": true,
+  "llm_insights": [
+    "Multi-agent coordination enables parallel processing of incident response",
+    "Approval workflows ensure safety while maintaining automation benefits",
+    "Correlation analysis improves accuracy of root cause identification"
+  ],
+  "llm_challenges": [
+    "Coordinating multiple agents during high-pressure incidents",
+    "Balancing speed with safety in automated remediation",
+    "Handling conflicting signals from multiple monitoring sources"
+  ],
+  "llm_recommended_approach": "Implement hierarchical coordination with clear agent responsibilities, use consensus mechanisms for critical decisions, maintain human approval gates for production changes, implement comprehensive audit trails.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "incident-management-2025",
+  "color": "🟡"
+}
