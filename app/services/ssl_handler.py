@@ -97,15 +97,19 @@ class SSLHandler:
             Verification configuration for httpx (bool or path to CA bundle)
         """
         if not self.verify_ssl:
+            app_logger.warning("🚨 SSL verification DISABLED - returning False for httpx verify config")
             return False
         
         if self.ca_cert_path:
             ca_path = Path(self.ca_cert_path)
             if ca_path.exists():
+                app_logger.info(f"🔐 Using custom CA certificate: {ca_path}")
                 return str(ca_path)
             else:
+                app_logger.error(f"❌ CA certificate file not found: {ca_path}")
                 raise FileNotFoundError(f"CA certificate file not found: {ca_path}")
         
+        app_logger.info("🔐 Using system default CA bundle for SSL verification")
         return True  # Use default CA bundle
     
     async def validate_ssl_certificate(self, base_url: str) -> SSLValidationResult:

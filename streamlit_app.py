@@ -3638,14 +3638,59 @@ verify_ssl = True
         """Load and display final recommendations."""
         if st.session_state.recommendations is None:
             try:
-                # Show loading message for long operations
-                with st.spinner("🔄 Generating recommendations... This may take up to 2 minutes for complex requirements."):
-                    response = asyncio.run(self.make_api_request_with_timeout(
-                        "POST",
-                        "/recommend",
-                        {"session_id": st.session_state.session_id, "top_k": 3},
-                        timeout=120.0  # 2 minutes for recommendation generation
-                    ))
+                # Show progress indicator for recommendation generation
+                progress_placeholder = st.empty()
+                with progress_placeholder.container():
+                    st.info("🔄 **Generating AI Recommendations...**")
+                    st.caption("This may take up to 2 minutes for complex requirements")
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    
+                    # Simulate progress during the long-running operation
+                    import threading
+                    import time
+                    
+                    # Progress simulation function
+                    def simulate_progress():
+                        steps = [
+                            (10, "Analyzing requirements..."),
+                            (25, "Matching against pattern library..."),
+                            (40, "Evaluating feasibility..."),
+                            (55, "Generating tech stack recommendations..."),
+                            (70, "Creating architecture analysis..."),
+                            (85, "Finalizing recommendations...")
+                        ]
+                        
+                        for progress, message in steps:
+                            status_text.text(message)
+                            progress_bar.progress(progress)
+                            time.sleep(8)  # Spread over ~48 seconds of the 120 second timeout
+                    
+                    # Start progress simulation in background
+                    progress_thread = threading.Thread(target=simulate_progress)
+                    progress_thread.daemon = True
+                    progress_thread.start()
+                    
+                    try:
+                        response = asyncio.run(self.make_api_request_with_timeout(
+                            "POST",
+                            "/recommend",
+                            {"session_id": st.session_state.session_id, "top_k": 3},
+                            timeout=120.0  # 2 minutes for recommendation generation
+                        ))
+                        
+                        # Complete the progress
+                        status_text.text("Complete! ✅")
+                        progress_bar.progress(100)
+                        
+                    except Exception as e:
+                        # Update progress on error
+                        status_text.text("Error occurred during generation")
+                        progress_bar.progress(100)
+                        raise e
+                
+                # Clear progress indicator
+                progress_placeholder.empty()
                 st.session_state.recommendations = response
             except Exception as e:
                 error_msg = str(e)
@@ -4098,7 +4143,7 @@ verify_ssl = True
                                 st.write(f"**Debug Info:** Generated {len(architecture_mermaid)} characters of Mermaid code")
                                 st.write(f"**First line:** {architecture_mermaid.split(chr(10))[0] if architecture_mermaid else 'Empty'}")
                             
-                            self.render_mermaid(architecture_mermaid)
+                            self.render_mermaid(architecture_mermaid, "Agent Architecture Diagram")
                         except Exception as e:
                             st.error(f"Error rendering Mermaid diagram: {e}")
                             st.info("The diagram code above should work in mermaid.live - there may be a rendering issue in our tool.")
@@ -4131,7 +4176,7 @@ verify_ssl = True
                         st.info("💡 **Autonomous Loop:** This shows how your single agent processes requests through continuous learning and adaptation.")
                         
                         single_agent_mermaid = self._create_single_agent_mermaid(agent_roles_found[0])
-                        self.render_mermaid(single_agent_mermaid)
+                        self.render_mermaid(single_agent_mermaid, "Single Agent Workflow")
                         st.markdown("---")
                     
                     # Architecture principles in columns
@@ -4215,7 +4260,25 @@ verify_ssl = True
                 st.subheader("🛠️ Recommended Tech Stack")
             
             # Generate and show LLM-enhanced tech stack with explanations
-            enhanced_tech_stack, architecture_explanation = asyncio.run(self._generate_llm_tech_stack_and_explanation(rec['tech_stack']))
+            # Show progress indicator while generating tech stack
+            progress_placeholder = st.empty()
+            with progress_placeholder.container():
+                st.info("🔄 **Generating Enhanced Tech Stack Recommendations...**")
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                # Update progress during generation
+                status_text.text("Analyzing requirements and constraints...")
+                progress_bar.progress(25)
+                
+            enhanced_tech_stack, architecture_explanation = asyncio.run(
+                self._generate_llm_tech_stack_and_explanation_with_progress(
+                    rec['tech_stack'], progress_bar, status_text
+                )
+            )
+            
+            # Clear progress indicator once complete
+            progress_placeholder.empty()
             
             # If this is an agentic solution, ensure agentic frameworks are included
             if is_agentic:
@@ -4471,8 +4534,13 @@ verify_ssl = True
                 f"The components work together to handle data processing, "
                 f"system integration, and monitoring requirements.")
     
-    async def _generate_llm_tech_stack_and_explanation(self, original_tech_stack: List[str]) -> tuple[List[str], str]:
-        """Generate LLM-driven tech stack and explanation based on requirements."""
+    async def _generate_llm_tech_stack_and_explanation_with_progress(
+        self, 
+        original_tech_stack: List[str], 
+        progress_bar=None, 
+        status_text=None
+    ) -> tuple[List[str], str]:
+        """Generate LLM-driven tech stack and explanation with progress updates."""
         # Check if we already have cached results for this session
         session_id = st.session_state.get('session_id', 'unknown')
         cache_key = f"llm_tech_stack_{session_id}"
@@ -4480,12 +4548,21 @@ verify_ssl = True
         if cache_key in st.session_state:
             from app.utils.logger import app_logger
             app_logger.info("Using cached LLM tech stack and explanation")
+            if status_text:
+                status_text.text("Loading cached results...")
+            if progress_bar:
+                progress_bar.progress(100)
             return st.session_state[cache_key]
         
         try:
             # Import here to avoid circular imports
             from app.services.architecture_explainer import ArchitectureExplainer
             from app.api import create_llm_provider
+            
+            if status_text:
+                status_text.text("Preparing LLM provider...")
+            if progress_bar:
+                progress_bar.progress(40)
             
             # Get session requirements for context
             requirements = st.session_state.get('requirements', {})
@@ -4519,21 +4596,49 @@ verify_ssl = True
                     except Exception as e:
                         st.warning(f"Could not create LLM provider for tech stack generation: {e}")
             
+            if status_text:
+                status_text.text("Generating enhanced tech stack recommendations...")
+            if progress_bar:
+                progress_bar.progress(60)
+            
             # Create architecture explainer
             explainer = ArchitectureExplainer(llm_provider)
             
+            if status_text:
+                status_text.text("Analyzing architecture and generating explanations...")
+            if progress_bar:
+                progress_bar.progress(80)
+            
             # Generate both tech stack and explanation
             enhanced_tech_stack, explanation = await explainer.explain_architecture(original_tech_stack, requirements, session_id)
+            
+            if status_text:
+                status_text.text("Finalizing recommendations...")
+            if progress_bar:
+                progress_bar.progress(95)
             
             # Cache the results
             result = (enhanced_tech_stack, explanation)
             st.session_state[cache_key] = result
             
+            if status_text:
+                status_text.text("Complete! ✅")
+            if progress_bar:
+                progress_bar.progress(100)
+            
             return result
             
         except Exception as e:
+            if status_text:
+                status_text.text(f"Error occurred: {str(e)}")
+            if progress_bar:
+                progress_bar.progress(100)
             st.error(f"Failed to generate tech stack and explanation: {e}")
             return original_tech_stack, self._generate_fallback_architecture_explanation(original_tech_stack)
+
+    async def _generate_llm_tech_stack_and_explanation(self, original_tech_stack: List[str]) -> tuple[List[str], str]:
+        """Generate LLM-driven tech stack and explanation based on requirements."""
+        return await self._generate_llm_tech_stack_and_explanation_with_progress(original_tech_stack)
     
     def _update_recommendations_with_enhanced_data(self, enhanced_tech_stack: List[str], architecture_explanation: str):
         """Update stored recommendations with enhanced tech stack and architecture explanation."""
@@ -5320,7 +5425,22 @@ verify_ssl = True
                 if enhanced_data.get('has_enhanced_data'):
                     st.info("✨ Using enhanced analysis data for more accurate diagrams")
                 
-                with st.spinner(f"🤖 Generating {diagram_type.lower()} using AI..."):
+                # Show progress indicator for diagram generation
+                progress_placeholder = st.empty()
+                with progress_placeholder.container():
+                    st.info(f"🤖 **Generating {diagram_type}...**")
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    
+                    status_text.text("Preparing diagram generation...")
+                    progress_bar.progress(20)
+                    
+                    status_text.text(f"Analyzing requirements for {diagram_type.lower()}...")
+                    progress_bar.progress(40)
+                    
+                    status_text.text("Generating diagram with AI...")
+                    progress_bar.progress(60)
+                    
                     if diagram_type == "Context Diagram":
                         mermaid_code = asyncio.run(build_context_diagram(requirement_text, recommendations, enhanced_tech_stack, architecture_explanation))
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
@@ -5350,7 +5470,16 @@ verify_ssl = True
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_spec'] = infrastructure_spec
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "infrastructure"
                     
-                    st.success("✅ Diagram generated successfully!")
+                    status_text.text("Finalizing diagram...")
+                    progress_bar.progress(90)
+                    
+                    status_text.text("Complete! ✅")
+                    progress_bar.progress(100)
+                
+                # Clear progress indicator
+                progress_placeholder.empty()
+                
+                st.success("✅ Diagram generated successfully!")
                     
             except Exception as e:
                 # If enhanced data was used and generation failed, try without enhanced data
@@ -5359,7 +5488,19 @@ verify_ssl = True
                     app_logger.warning(f"Diagram generation failed with enhanced data: {e}. Retrying without enhanced data.")
                     
                     try:
-                        with st.spinner(f"🔄 Retrying {diagram_type.lower()} generation..."):
+                        # Show progress indicator for retry
+                        retry_progress_placeholder = st.empty()
+                        with retry_progress_placeholder.container():
+                            st.info(f"🔄 **Retrying {diagram_type} generation with basic data...**")
+                            retry_progress_bar = st.progress(0)
+                            retry_status_text = st.empty()
+                            
+                            retry_status_text.text("Preparing retry with basic data...")
+                            retry_progress_bar.progress(30)
+                            
+                            retry_status_text.text("Generating diagram...")
+                            retry_progress_bar.progress(70)
+                            
                             if diagram_type == "Context Diagram":
                                 mermaid_code = asyncio.run(build_context_diagram(requirement_text, recommendations))
                                 st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
@@ -5389,7 +5530,13 @@ verify_ssl = True
                                 st.session_state[f'{diagram_type.lower().replace(" ", "_")}_spec'] = infrastructure_spec
                                 st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "infrastructure"
                             
-                            st.success("✅ Diagram generated successfully (using basic data)!")
+                            retry_status_text.text("Retry complete! ✅")
+                            retry_progress_bar.progress(100)
+                        
+                        # Clear retry progress indicator
+                        retry_progress_placeholder.empty()
+                        
+                        st.success("✅ Diagram generated successfully (using basic data)!")
                             
                     except Exception as retry_e:
                         st.error(f"❌ Error generating diagram (retry also failed): {str(retry_e)}")
@@ -5430,7 +5577,7 @@ verify_ssl = True
                         st.code(mermaid_code, language="mermaid")
                         st.info("💡 If the diagram above is blank, try copying this code to [mermaid.live](https://mermaid.live) to test it")
                 
-                self.render_mermaid(mermaid_code)
+                self.render_mermaid(mermaid_code, diagram_type)
             
             # Add helpful context for the Tech Stack Wiring Diagram
             if diagram_type == "Tech Stack Wiring Diagram":
@@ -5510,7 +5657,7 @@ verify_ssl = True
                 with st.expander("View Mermaid Code"):
                     st.code(mermaid_code, language="mermaid")
     
-    def render_mermaid(self, mermaid_code: str):
+    def render_mermaid(self, mermaid_code: str, diagram_type: str = "Diagram"):
         """Render a Mermaid diagram with better viewing options."""
         import hashlib
         

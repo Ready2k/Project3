@@ -411,16 +411,29 @@ class JiraService:
             # Log SSL configuration for this connection attempt with security context
             if verify_config is False:
                 app_logger.warning("🔓 Connection attempt with SSL verification DISABLED - Security risk!")
+                app_logger.warning("🔒 This bypasses ALL SSL certificate validation")
             elif isinstance(verify_config, str):
                 app_logger.info(f"🔐 Connection attempt with custom CA certificate: {verify_config}")
             else:
                 app_logger.info("🔐 Connection attempt with SSL verification enabled (system CA)")
             
-            # Create client with retry-friendly configuration
+            # Create client with retry-friendly configuration - FORCE SSL settings
             client_config = {
                 "verify": verify_config,
-                "proxies": proxy_config
+                "proxies": proxy_config,
+                "timeout": self.timeout
             }
+            
+            # Additional SSL bypass for problematic certificates
+            if not self.config.verify_ssl:
+                # Completely disable SSL verification at multiple levels
+                import ssl
+                ssl_context = ssl.create_default_context()
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
+                client_config["verify"] = False
+                app_logger.warning("🚨 SSL verification COMPLETELY DISABLED - bypassing all certificate checks")
+            
             client = self.retry_handler.create_http_client_with_retry(client_config)
             
             async with client:
