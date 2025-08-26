@@ -1589,7 +1589,7 @@ async def generate_recommendations(request: RecommendRequest, response: Response
         # Create response data
         response_data = RecommendResponse(
             feasibility=overall_feasibility,
-            recommendations=[rec.model_dump() for rec in recommendations],
+            recommendations=[rec.to_dict() for rec in recommendations],
             tech_stack=unique_tech_stack,
             reasoning=reasoning
         )
