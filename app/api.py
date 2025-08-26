@@ -379,7 +379,7 @@ def create_llm_provider(provider_config: Optional[ProviderConfig] = None, sessio
     base_provider = None
     
     app_logger.info(f"Creating LLM provider for session {session_id}")
-    app_logger.info(f"Provider config: {provider_config.dict() if provider_config else 'None'}")
+    app_logger.info(f"Provider config: {provider_config.model_dump() if provider_config else 'None'}")
     app_logger.info(f"Settings provider: {settings.provider}")
     
     if not provider_config:
@@ -871,7 +871,7 @@ async def ingest_requirements(request: IngestRequest, http_request: Request, res
         # Debug logging
         app_logger.info(f"🔍 Ingest request for session {session_id}")
         app_logger.info(f"Source: {request.source}")
-        app_logger.info(f"Provider config received: {request.provider_config.dict() if request.provider_config else 'None'}")
+        app_logger.info(f"Provider config received: {request.provider_config.model_dump() if request.provider_config else 'None'}")
         
         # Extract and validate requirements from payload
         requirements = {}
@@ -1005,7 +1005,7 @@ async def ingest_requirements(request: IngestRequest, http_request: Request, res
             recommendations=[],
             created_at=datetime.now(),
             updated_at=datetime.now(),
-            provider_config=request.provider_config.dict() if request.provider_config else None
+            provider_config=request.provider_config.model_dump() if request.provider_config else None
         )
         
         # Store provider configuration in session for later use
@@ -1105,7 +1105,7 @@ async def get_status(session_id: str, response: Response):
             missing_fields=session.missing_fields,
             requirements=session.requirements
         )
-        app_logger.info(f"Status response for {session_id}: {status_response.dict()}")
+        app_logger.info(f"Status response for {session_id}: {status_response.model_dump()}")
         
         # Add security headers
         SecurityHeaders.add_security_headers(response)
@@ -1589,13 +1589,13 @@ async def generate_recommendations(request: RecommendRequest, response: Response
         # Create response data
         response_data = RecommendResponse(
             feasibility=overall_feasibility,
-            recommendations=[rec.dict() for rec in recommendations],
+            recommendations=[rec.model_dump() for rec in recommendations],
             tech_stack=unique_tech_stack,
             reasoning=reasoning
         )
         
         # Validate output for banned tools
-        if not validate_output_security(response_data.dict()):
+        if not validate_output_security(response_data.model_dump()):
             app_logger.error(f"Security validation failed for recommendations in session {request.session_id}")
             raise HTTPException(
                 status_code=500, 

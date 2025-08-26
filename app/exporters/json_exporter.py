@@ -1,6 +1,7 @@
 """JSON export functionality."""
 
 import json
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -44,9 +45,9 @@ class JSONExporter(BaseExporter):
             "export_timestamp": datetime.now().isoformat(),
             "requirements": session.requirements,
             "feasibility_assessment": self._get_overall_feasibility(session),
-            "recommendations": [rec.dict() for rec in session.recommendations],
-            "pattern_matches": [match.dict() for match in session.matches],
-            "qa_history": [qa.dict() for qa in session.qa_history],
+            "recommendations": [rec.to_dict() for rec in session.recommendations],
+            "pattern_matches": [match.to_dict() for match in session.matches],
+            "qa_history": [qa.to_dict() for qa in session.qa_history],
             "processing_phases": {
                 "final_phase": session.phase.value,
                 "progress": session.progress

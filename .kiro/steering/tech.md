@@ -6,7 +6,7 @@
 - **FastAPI**: Async REST API framework with robust caching and security middleware
 - **Streamlit**: Interactive web UI framework with enhanced components and professional debug controls
 - **Streamlit-Mermaid**: Native Mermaid diagram rendering with v10.2.4 compatibility
-- **Pydantic**: Data validation, settings management, and security configuration
+- **Pydantic v2**: Data validation, settings management, and security configuration (>=2.5.0 with full v2 compatibility)
 - **FAISS**: Vector similarity search (faiss-cpu)
 - **Sentence Transformers**: Text embeddings
 - **SQLAlchemy**: Database ORM with audit logging

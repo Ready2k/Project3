@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.1] - 2025-08-26 - Pydantic v2 Compatibility Fix
+
+### Fixed
+- **Pydantic v2 Compatibility**: Resolved critical LLM provider creation failures
+  - Fixed `'dict' object has no attribute 'dict'` error preventing system initialization
+  - Updated all Pydantic model serialization from `.dict()` to `.model_dump()`
+  - Updated JSON serialization from `.json()` to `.model_dump_json()`
+  - Fixed dataclass serialization methods to use `to_dict()` instead of conflicting `dict()`
+  - Added proper imports for `asdict` and updated all affected modules
+  - Comprehensive test suite validation ensuring all components work correctly
+- **System Reliability**: LLM providers now initialize correctly without fallback to mock providers
+- **State Management**: Session state persistence and retrieval working properly
+- **Export Functionality**: JSON export system restored to full functionality
+
+### Changed
+- **Serialization Methods**: Clear separation between Pydantic models and dataclasses
+  - Pydantic models use `model_dump()` and `model_dump_json()`
+  - Dataclasses use `to_dict()` method for consistency
+- **Import Management**: Added necessary imports across all affected modules
+- **Test Suite**: Updated all tests to use Pydantic v2 compatible methods
+
+### Technical Details
+- Updated 6 locations in `app/api.py` for Pydantic model serialization
+- Fixed dataclass methods in `app/state/store.py` 
+- Updated export serialization in `app/exporters/json_exporter.py`
+- Fixed test files to use correct Pydantic v2 methods
+- Maintained full backward compatibility with existing data structures
+
 ## [2.7.0] - 2025-08-26 - Enhanced Pattern Management & System Improvements
 
 ### Added

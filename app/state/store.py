@@ -28,7 +28,7 @@ class QAExchange:
     answers: Dict[str, str]
     timestamp: datetime
     
-    def dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "questions": self.questions,
@@ -54,7 +54,7 @@ class PatternMatch:
     rationale: str
     confidence: float
     
-    def dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return asdict(self)
     
@@ -77,7 +77,7 @@ class Recommendation:
     agent_roles: Optional[List[Dict[str, Any]]] = None
     necessity_assessment: Optional[Any] = None  # AgenticNecessityAssessment
     
-    def dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return asdict(self)
     
@@ -102,7 +102,7 @@ class SessionState:
     updated_at: datetime
     provider_config: Optional[Dict[str, Any]] = None
     
-    def dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "session_id": self.session_id,
@@ -110,9 +110,9 @@ class SessionState:
             "progress": self.progress,
             "requirements": self.requirements,
             "missing_fields": self.missing_fields,
-            "qa_history": [qa.dict() for qa in self.qa_history],
-            "matches": [match.dict() for match in self.matches],
-            "recommendations": [rec.dict() for rec in self.recommendations],
+            "qa_history": [qa.to_dict() for qa in self.qa_history],
+            "matches": [match.to_dict() for match in self.matches],
+            "recommendations": [rec.to_dict() for rec in self.recommendations],
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
             "provider_config": self.provider_config
@@ -174,7 +174,7 @@ class DiskCacheStore(SessionStore):
     async def update_session(self, session_id: str, state: SessionState) -> None:
         """Store session to disk cache."""
         try:
-            self.cache.set(f"session:{session_id}", state.dict())
+            self.cache.set(f"session:{session_id}", state.to_dict())
         except Exception as e:
             raise RuntimeError(f"Failed to store session: {e}")
     
@@ -205,7 +205,7 @@ class RedisStore(SessionStore):
     async def update_session(self, session_id: str, state: SessionState) -> None:
         """Store session to Redis."""
         try:
-            data = json.dumps(state.dict())
+            data = json.dumps(state.to_dict())
             await self.redis.set(f"session:{session_id}", data, ex=3600)  # 1 hour TTL
         except Exception as e:
             raise RuntimeError(f"Failed to store session: {e}")
