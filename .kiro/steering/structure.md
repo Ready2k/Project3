@@ -23,15 +23,23 @@
 - `main.py` - Streamlit UI application
 - `config.py` - Pydantic settings and configuration management
 
-### Domain Packages
-- `embeddings/` - Text embedding and FAISS indexing
-- `exporters/` - Result export in JSON/Markdown/HTML formats
-- `llm/` - LLM provider implementations and abstractions
-- `pattern/` - Pattern loading, matching, and schema
-- `qa/` - LLM-powered question generation with robust caching
-- `services/` - Business logic, recommendations, and Jira integration
+### Domain Packages *(Enhanced in v2.7.0)*
+- `config/` - Enhanced configuration management with system configuration and environment handling
+- `core/` - Core system components including dependency injection
+- `diagrams/` - Dynamic component mapping and infrastructure diagram generation
+- `embeddings/` - Text embedding and FAISS indexing with enhanced performance
+- `exporters/` - Result export in JSON/Markdown/HTML formats with comprehensive reporting
+- `health/` - System health monitoring and diagnostics
+- `llm/` - LLM provider implementations with enhanced model discovery
+- `middleware/` - Rate limiting and request processing middleware
+- `monitoring/` - Performance monitoring and metrics collection
+- `pattern/` - Enhanced pattern loading, matching, schema management, and agentic pattern support
+- `qa/` - LLM-powered question generation with robust caching and enhanced templates
+- `services/` - Enhanced business logic with agentic services, multi-agent design, and advanced recommendations
 - `state/` - Session state management with multi-layer caching
-- `utils/` - Utilities (logging, audit, PII redaction)
+- `ui/` - Enhanced UI components with advanced pattern management and system configuration
+- `utils/` - Enhanced utilities (logging, audit, PII redaction, error boundaries)
+- `validation/` - Advanced validation components for agent display and system integrity
 - `security/` - Advanced prompt defense system with 8 specialized detectors
 
 ### Security Package (`app/security/`)
@@ -54,23 +62,34 @@
 - `attack_patterns.py` - Attack pattern definitions and validation
 - `input_preprocessor.py` - Input sanitization and preprocessing
 
-### Testing Structure (`app/tests/`)
-- `unit/` - Unit tests for individual components
-- `integration/` - Integration tests across components
-- `e2e/` - End-to-end workflow tests
+### Testing Structure (`app/tests/`) *(Enhanced in v2.7.0)*
+- `unit/` - Unit tests for individual components with enhanced coverage
+- `integration/` - Integration tests across components with agentic service testing
+- `e2e/` - End-to-end workflow tests with comprehensive scenarios
+- `performance/` - Performance testing for system optimization
+- `fixtures/` - Test fixtures and data for consistent testing
 
-## Data Organization (`data/`)
+## Data Organization (`data/`) *(Enhanced in v2.7.0)*
 
 ### Pattern Library (`data/patterns/`)
-- JSON files with pattern definitions (PAT-001.json, etc.)
-- Schema: pattern_id, name, description, feasibility, tech_stack
-- Used for pattern matching and recommendations
+- **Traditional Patterns**: PAT-001.json through PAT-006.json with enhanced metadata
+- **Agentic Patterns**: APAT-001.json through APAT-005.json for autonomous agent solutions
+- **Traditional Automation**: TRAD-AUTO-001.json for traditional automation patterns
+- **Enhanced Schema**: pattern_id, name, description, feasibility, tech_stack, autonomy_assessment, reasoning_types
+- **Rich Metadata**: Includes agentic capabilities, multi-agent design, and enhanced technical details
+- Used for intelligent pattern matching and agentic recommendations
 
-### Technology Catalog (`data/technologies.json`)
-- Centralized database of 55+ technologies with rich metadata
-- Schema: name, category, description, tags, maturity, license, alternatives, integrations, use_cases
-- Automatic backup creation (`technologies.json.backup`)
-- Used for LLM context and tech stack recommendations
+### Technology Catalog (`data/technologies.json`) *(Expanded)*
+- Centralized database of 60+ technologies with rich metadata across 18+ categories
+- **Enhanced Schema**: name, category, description, tags, maturity, license, alternatives, integrations, use_cases, agentic_capabilities
+- **New Categories**: Agentic AI & Multi-Agent Systems, Enhanced Infrastructure & DevOps
+- Automatic backup creation (`technologies.json.backup`) with versioning
+- Used for LLM context, tech stack recommendations, and agentic technology selection
+
+### Additional Data Files
+- `agentic_technologies.json` - Specialized agentic AI technology catalog
+- `component_mapping_rules.json` - Dynamic component mapping rules for diagrams
+- `attack_packs/` - Security attack pattern definitions for testing
 
 ## Configuration Files
 
