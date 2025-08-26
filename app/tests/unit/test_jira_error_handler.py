@@ -351,9 +351,9 @@ class TestJiraErrorDetail:
         )
         
         # Test that the model can be serialized to dict
-        error_dict = error_detail.dict()
+        error_dict = error_detail.model_dump()
         assert error_dict["error_type"] == "connection_timeout"  # Enum value, not name
         
         # Test that the model can be serialized to JSON
-        error_json = error_detail.json()
+        error_json = error_detail.model_dump_json()
         assert "connection_timeout" in error_json

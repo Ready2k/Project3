@@ -1,4 +1,6 @@
 import asyncio
+import json
+from dataclasses import asdict
 from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -246,7 +248,7 @@ class TestRedisStore:
         
         # Mock Redis get to return stored data
         import json
-        stored_data = json.dumps(state.dict())
+        stored_data = json.dumps(state.to_dict())
         mock_redis.get.return_value = stored_data.encode()
         
         # Retrieve session
