@@ -418,9 +418,22 @@ class InfrastructureDiagramGenerator:
                 try:
                     exec(compile(open(code_file).read(), code_file, 'exec'), namespace)
                 except Exception as exec_error:
-                    logger.error(f"Failed to execute diagram code: {exec_error}")
-                    logger.error(f"Generated Python code:\n{python_code}")
-                    raise RuntimeError(f"Diagram code execution failed: {exec_error}")
+                    # Check if this is a Graphviz-related error
+                    error_str = str(exec_error).lower()
+                    if any(keyword in error_str for keyword in ['dot', 'graphviz', 'windowspath']):
+                        logger.error(f"Graphviz not found: {exec_error}")
+                        raise RuntimeError(
+                            "Graphviz is required for infrastructure diagrams but not found on your system. "
+                            "Please install Graphviz:\n"
+                            "• Windows: choco install graphviz OR winget install graphviz\n"
+                            "• macOS: brew install graphviz\n"
+                            "• Linux: sudo apt-get install graphviz\n"
+                            "Then restart the application."
+                        )
+                    else:
+                        logger.error(f"Failed to execute diagram code: {exec_error}")
+                        logger.error(f"Generated Python code:\n{python_code}")
+                        raise RuntimeError(f"Diagram code execution failed: {exec_error}")
                 
                 # Find the generated diagram file
                 diagram_file = None

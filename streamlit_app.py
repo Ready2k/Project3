@@ -5185,8 +5185,33 @@ verify_ssl = True
         agentic_keywords = ["agent", "autonomous", "agentic", "multi-agent", "reasoning", "decision-making"]
         is_agentic = any(keyword in reasoning for keyword in agentic_keywords)
         
+        # Check if Graphviz is available for infrastructure diagrams
+        def check_graphviz_available():
+            """Check if Graphviz is available on the system."""
+            import subprocess
+            try:
+                subprocess.run(['dot', '-V'], capture_output=True, check=True, timeout=5)
+                return True
+            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+                return False
+        
+        def is_infrastructure_diagram(diagram_type_str):
+            """Check if the diagram type is Infrastructure Diagram (with or without warning)."""
+            return diagram_type_str.startswith("Infrastructure Diagram")
+        
+        graphviz_available = check_graphviz_available()
+        
         # Add agentic-specific diagram option if applicable
-        diagram_options = ["Context Diagram", "Container Diagram", "Sequence Diagram", "Tech Stack Wiring Diagram", "Infrastructure Diagram", "C4 Diagram"]
+        diagram_options = ["Context Diagram", "Container Diagram", "Sequence Diagram", "Tech Stack Wiring Diagram"]
+        
+        # Add Infrastructure Diagram with warning if Graphviz not available
+        if graphviz_available:
+            diagram_options.append("Infrastructure Diagram")
+        else:
+            diagram_options.append("Infrastructure Diagram ⚠️ (Requires Graphviz)")
+        
+        diagram_options.append("C4 Diagram")
+        
         if is_agentic:
             diagram_options.insert(3, "Agent Interaction Diagram")  # Insert after Sequence Diagram
         
@@ -5207,6 +5232,19 @@ verify_ssl = True
         }
         
         st.info(diagram_descriptions[diagram_type])
+        
+        # Show Graphviz warning if Infrastructure Diagram is selected without Graphviz
+        if is_infrastructure_diagram(diagram_type) and not graphviz_available:
+            st.warning("""
+            ⚠️ **Graphviz Required**: Infrastructure diagrams need Graphviz installed on your system.
+            
+            **Quick Install:**
+            - **Windows**: `choco install graphviz` or `winget install graphviz`
+            - **macOS**: `brew install graphviz`
+            - **Linux**: `sudo apt-get install graphviz`
+            
+            After installation, restart the application. You can still generate the diagram - it will show installation instructions if Graphviz is missing.
+            """)
         
         # Get current session data
         requirements = st.session_state.get('requirements', {})
@@ -5307,7 +5345,7 @@ verify_ssl = True
                         mermaid_code = asyncio.run(build_c4_diagram(requirement_text, recommendations, enhanced_tech_stack, architecture_explanation))
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
-                    else:  # Infrastructure Diagram
+                    elif is_infrastructure_diagram(diagram_type):  # Infrastructure Diagram
                         infrastructure_spec = asyncio.run(build_infrastructure_diagram(requirement_text, recommendations, enhanced_tech_stack, architecture_explanation))
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_spec'] = infrastructure_spec
                         st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "infrastructure"
@@ -5346,7 +5384,7 @@ verify_ssl = True
                                 mermaid_code = asyncio.run(build_c4_diagram(requirement_text, recommendations))
                                 st.session_state[f'{diagram_type.lower().replace(" ", "_")}_code'] = mermaid_code
                                 st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "mermaid"
-                            else:  # Infrastructure Diagram
+                            elif is_infrastructure_diagram(diagram_type):  # Infrastructure Diagram
                                 infrastructure_spec = asyncio.run(build_infrastructure_diagram(requirement_text, recommendations))
                                 st.session_state[f'{diagram_type.lower().replace(" ", "_")}_spec'] = infrastructure_spec
                                 st.session_state[f'{diagram_type.lower().replace(" ", "_")}_type'] = "infrastructure"
@@ -5527,10 +5565,14 @@ verify_ssl = True
             st.session_state[f"diagram_{diagram_id}"] = mermaid_code
         
         # Control buttons
-        col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+        col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
         with col2:
             if st.button("🔍 Large View", key=f"expand_{diagram_id}"):
                 st.session_state[f"show_large_{diagram_id}"] = not st.session_state.get(f"show_large_{diagram_id}", False)
+        
+        with col3:
+            if st.button("📐 Export Draw.io", key=f"drawio_{diagram_id}"):
+                self.export_to_drawio(mermaid_code, f"AAA {diagram_type}", diagram_id)
         
         with col3:
             if st.button("🌐 Open in Browser", key=f"browser_{diagram_id}"):
@@ -5609,11 +5651,16 @@ verify_ssl = True
                 )
             
             with col3:
-                # Link to Mermaid Live Editor
-                import urllib.parse
-                encoded_code = urllib.parse.quote(mermaid_code)
-                mermaid_live_url = f"https://mermaid.live/edit#{encoded_code}"
-                st.markdown(f"[🔗 Open in Mermaid Live]({mermaid_live_url})", unsafe_allow_html=True)
+                # Draw.io export button
+                if st.button("📐 Export to Draw.io", key=f"drawio_expanded_{diagram_id}"):
+                    self.export_to_drawio(mermaid_code, f"AAA Diagram", diagram_id)
+            
+            # Additional row for Mermaid Live link
+            st.markdown("---")
+            import urllib.parse
+            encoded_code = urllib.parse.quote(mermaid_code)
+            mermaid_live_url = f"https://mermaid.live/edit#{encoded_code}"
+            st.markdown(f"🔗 **[Open in Mermaid Live Editor]({mermaid_live_url})** - Test and modify your diagram online", unsafe_allow_html=True)
     
     def open_diagram_in_browser(self, mermaid_code: str, diagram_id: str):
         """Create and save a standalone HTML file for the diagram."""
@@ -5775,6 +5822,141 @@ verify_ssl = True
 </html>"""
     
 
+    def export_to_drawio(self, mermaid_code: str, diagram_title: str, diagram_id: str):
+        """Export Mermaid diagram to Draw.io format."""
+        try:
+            from app.exporters.drawio_exporter import DrawIOExporter
+            import tempfile
+            import os
+            
+            # Create exporter
+            exporter = DrawIOExporter()
+            
+            # Create temporary file
+            with tempfile.NamedTemporaryFile(suffix='.drawio', delete=False) as tmp_file:
+                temp_path = tmp_file.name[:-7]  # Remove .drawio extension
+            
+            try:
+                # Export to Draw.io format
+                drawio_file = exporter.export_mermaid_diagram(mermaid_code, diagram_title, temp_path)
+                
+                # Read the file content
+                with open(drawio_file, 'r', encoding='utf-8') as f:
+                    drawio_content = f.read()
+                
+                # Create download button
+                st.success("✅ Draw.io export ready!")
+                st.download_button(
+                    label="📐 Download Draw.io File",
+                    data=drawio_content,
+                    file_name=f"{diagram_title.replace(' ', '_')}_{diagram_id}.drawio",
+                    mime="application/xml",
+                    key=f"download_drawio_{diagram_id}"
+                )
+                
+                # Also create Mermaid file for direct import
+                st.download_button(
+                    label="📝 Download Mermaid File",
+                    data=mermaid_code,
+                    file_name=f"{diagram_title.replace(' ', '_')}_{diagram_id}.mmd",
+                    mime="text/plain",
+                    key=f"download_mermaid_{diagram_id}"
+                )
+                
+                st.info("""
+                **📐 How to use in Draw.io:**
+                1. Open [draw.io](https://app.diagrams.net/) or [diagrams.net](https://diagrams.net/)
+                2. Click "Open Existing Diagram"
+                3. Upload the downloaded .drawio file
+                4. Edit, customize, and enhance your diagram
+                
+                **Alternative:** Import the .mmd file directly using Draw.io's Mermaid import feature.
+                """)
+                
+            finally:
+                # Clean up temporary file
+                try:
+                    if os.path.exists(drawio_file):
+                        os.unlink(drawio_file)
+                except:
+                    pass
+                    
+        except ImportError:
+            st.error("❌ Draw.io export not available. Missing dependencies.")
+        except Exception as e:
+            st.error(f"❌ Failed to export to Draw.io: {str(e)}")
+            app_logger.error(f"Draw.io export failed: {e}")
+    
+    def export_infrastructure_to_drawio(self, infrastructure_spec: Dict[str, Any], diagram_title: str, diagram_id: str):
+        """Export Infrastructure diagram to Draw.io format."""
+        try:
+            from app.exporters.drawio_exporter import DrawIOExporter
+            import tempfile
+            import os
+            import json
+            
+            # Create exporter
+            exporter = DrawIOExporter()
+            
+            # Create temporary file
+            with tempfile.NamedTemporaryFile(suffix='.drawio', delete=False) as tmp_file:
+                temp_path = tmp_file.name[:-7]  # Remove .drawio extension
+            
+            try:
+                # Export to Draw.io format
+                drawio_file = exporter.export_infrastructure_diagram(infrastructure_spec, diagram_title, temp_path)
+                
+                # Read the file content
+                with open(drawio_file, 'r', encoding='utf-8') as f:
+                    drawio_content = f.read()
+                
+                # Create download buttons
+                st.success("✅ Draw.io export ready!")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.download_button(
+                        label="📐 Download Draw.io File",
+                        data=drawio_content,
+                        file_name=f"{diagram_title.replace(' ', '_')}_{diagram_id}.drawio",
+                        mime="application/xml",
+                        key=f"download_infra_drawio_{diagram_id}"
+                    )
+                
+                with col2:
+                    st.download_button(
+                        label="📋 Download JSON Spec",
+                        data=json.dumps(infrastructure_spec, indent=2),
+                        file_name=f"{diagram_title.replace(' ', '_')}_{diagram_id}.json",
+                        mime="application/json",
+                        key=f"download_infra_json_{diagram_id}"
+                    )
+                
+                st.info("""
+                **📐 How to use in Draw.io:**
+                1. Open [draw.io](https://app.diagrams.net/) or [diagrams.net](https://diagrams.net/)
+                2. Click "Open Existing Diagram"
+                3. Upload the downloaded .drawio file
+                4. The diagram will open with cloud provider icons and proper layout
+                5. Customize colors, add annotations, or modify the architecture
+                
+                **💡 Tip:** The JSON specification can be used with other architecture tools or for documentation.
+                """)
+                
+            finally:
+                # Clean up temporary file
+                try:
+                    if os.path.exists(drawio_file):
+                        os.unlink(drawio_file)
+                except:
+                    pass
+                    
+        except ImportError:
+            st.error("❌ Draw.io export not available. Missing dependencies.")
+        except Exception as e:
+            st.error(f"❌ Failed to export to Draw.io: {str(e)}")
+            app_logger.error(f"Infrastructure Draw.io export failed: {e}")
+
     def render_infrastructure_diagram(self, infrastructure_spec: Dict[str, Any], diagram_type: str):
         """Render an infrastructure diagram using mingrammer/diagrams."""
         import hashlib
@@ -5788,7 +5970,7 @@ verify_ssl = True
         diagram_id = hashlib.md5(spec_str.encode()).hexdigest()[:8]
         
         # Control buttons
-        col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+        col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
         with col2:
             if st.button("🔍 Large View", key=f"infra_expand_{diagram_id}"):
                 st.session_state[f"show_large_infra_{diagram_id}"] = not st.session_state.get(f"show_large_infra_{diagram_id}", False)
@@ -5796,6 +5978,10 @@ verify_ssl = True
         with col3:
             if st.button("💾 Download", key=f"infra_download_{diagram_id}"):
                 self.download_infrastructure_diagram(infrastructure_spec, diagram_id)
+        
+        with col4:
+            if st.button("📐 Export Draw.io", key=f"infra_drawio_{diagram_id}"):
+                self.export_infrastructure_to_drawio(infrastructure_spec, f"AAA {diagram_type}", diagram_id)
         
         with col4:
             if st.button("📋 Show Code", key=f"infra_code_{diagram_id}"):
@@ -5845,8 +6031,47 @@ verify_ssl = True
                     st.error("Failed to generate infrastructure diagram image")
                     
             except Exception as e:
-                st.error(f"Error generating infrastructure diagram: {str(e)}")
-                st.write("**Fallback:** Showing diagram specification as JSON")
+                error_str = str(e).lower()
+                if any(keyword in error_str for keyword in ['dot', 'graphviz', 'windowspath']):
+                    st.error("🔧 **Graphviz Required for Infrastructure Diagrams**")
+                    st.markdown("""
+                    Infrastructure diagrams require **Graphviz** to be installed on your system.
+                    
+                    **📥 Installation Instructions:**
+                    
+                    **Windows:**
+                    ```powershell
+                    # Option 1: Using Chocolatey (recommended)
+                    choco install graphviz
+                    
+                    # Option 2: Using winget
+                    winget install graphviz
+                    ```
+                    
+                    **macOS:**
+                    ```bash
+                    brew install graphviz
+                    ```
+                    
+                    **Linux (Ubuntu/Debian):**
+                    ```bash
+                    sudo apt-get install graphviz
+                    ```
+                    
+                    **✅ Verify Installation:**
+                    ```bash
+                    dot -V
+                    ```
+                    
+                    After installation, restart the application to use infrastructure diagrams.
+                    """)
+                    
+                    st.info("💡 **Alternative:** Use other diagram types (Context, Container, Sequence, C4) which don't require Graphviz.")
+                    
+                else:
+                    st.error(f"Error generating infrastructure diagram: {str(e)}")
+                
+                st.write("**📋 Diagram Specification (JSON):**")
                 st.json(infrastructure_spec)
                 
             finally:
@@ -7674,16 +7899,15 @@ verify_ssl = True
             # Initialize enhanced pattern loader
             enhanced_loader = EnhancedPatternLoader("data/patterns")
             
-            # Create LLM provider for enhancement service
+            # Create LLM provider for enhancement service using user's configured provider
             try:
-                provider_config = ProviderConfig(
-                    provider="openai",
-                    model="gpt-4o",
-                    api_key=os.getenv("OPENAI_API_KEY"),
-                    endpoint_url=None,
-                    region=None
-                )
-                llm_provider = create_llm_provider(provider_config)
+                # Use the user's configured provider instead of hardcoded OpenAI
+                provider_config = st.session_state.get('provider_config')
+                if provider_config:
+                    llm_provider = create_llm_provider(provider_config)
+                else:
+                    # Fallback to creating provider without config (uses settings defaults)
+                    llm_provider = create_llm_provider()
             except Exception as provider_error:
                 app_logger.warning(f"Failed to create LLM provider, using mock: {provider_error}")
                 from app.llm.fakes import FakeLLM
