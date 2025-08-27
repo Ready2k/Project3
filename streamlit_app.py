@@ -3925,7 +3925,7 @@ verify_ssl = True
                             
                             if any(keyword in role_lower for keyword in ['coordinator', 'manager', 'orchestrator', 'supervisor']):
                                 coordinator_agents.append(role)
-                            elif any(keyword in role_lower for keyword in ['specialist', 'expert', 'analyst', 'negotiator']):
+                            elif any(keyword in role_lower for keyword in ['specialist', 'expert', 'analyst', 'analytics', 'negotiator']):
                                 specialist_agents.append(role)
                             else:
                                 support_agents.append(role)
@@ -4801,13 +4801,36 @@ verify_ssl = True
             """)
             
         else:
-            st.markdown(f"""
-            **Complex Multi-Agent Workflow** ({len(agent_roles_found)} agents)
+            # Check if we actually have a coordinator agent
+            has_coordinator = any(
+                any(keyword in self._extract_agent_name(role).lower() 
+                    for keyword in ['coordinator', 'manager', 'orchestrator', 'supervisor'])
+                for role in agent_roles_found
+            )
             
-            `User Request` → **Coordinator** → **Specialist Agents** → **Integration** → `Comprehensive Solution`
-            
-            *Hierarchical coordination with parallel processing and intelligent task distribution.*
-            """)
+            if has_coordinator:
+                st.markdown(f"""
+                **Complex Multi-Agent Workflow** ({len(agent_roles_found)} agents)
+                
+                `User Request` → **Coordinator** → **Specialist Agents** → **Integration** → `Comprehensive Solution`
+                
+                *Hierarchical coordination with parallel processing and intelligent task distribution.*
+                """)
+            else:
+                # Show collaborative workflow instead
+                agent_names = [self._extract_agent_name(role) for role in agent_roles_found[:3]]
+                if len(agent_names) > 3:
+                    agent_display = f"{', '.join(agent_names[:2])}, and {len(agent_roles_found)-2} other agents"
+                else:
+                    agent_display = ' → '.join(agent_names)
+                
+                st.markdown(f"""
+                **Collaborative Multi-Agent Workflow** ({len(agent_roles_found)} agents)
+                
+                `User Request` → **{agent_display}** → **Integration** → `Comprehensive Solution`
+                
+                *Collaborative processing with specialized agents working in parallel and coordination.*
+                """)
         
         st.markdown("</div>", unsafe_allow_html=True)
     
@@ -5636,6 +5659,13 @@ verify_ssl = True
         
         # Control buttons
         col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
+        with col1:
+            if st.button("🔄 Redraw", key=f"redraw_{diagram_id}", help="Re-render the diagram using existing code"):
+                # Force re-render by incrementing a counter that changes the component key
+                current_redraw_count = st.session_state.get(f"redraw_count_{diagram_id}", 0)
+                st.session_state[f"redraw_count_{diagram_id}"] = current_redraw_count + 1
+                st.rerun()
+        
         with col2:
             if st.button("🔍 Large View", key=f"expand_{diagram_id}"):
                 st.session_state[f"show_large_{diagram_id}"] = not st.session_state.get(f"show_large_{diagram_id}", False)
@@ -5644,13 +5674,16 @@ verify_ssl = True
             if st.button("📐 Export Draw.io", key=f"drawio_{diagram_id}"):
                 self.export_to_drawio(mermaid_code, f"AAA {diagram_type}", diagram_id)
         
-        with col3:
+        with col4:
             if st.button("🌐 Open in Browser", key=f"browser_{diagram_id}"):
                 self.open_diagram_in_browser(mermaid_code, diagram_id)
         
-        with col4:
+        with col5:
             if st.button("📋 Show Code", key=f"code_{diagram_id}"):
                 st.session_state[f"show_code_{diagram_id}"] = not st.session_state.get(f"show_code_{diagram_id}", False)
+        
+        # Get redraw counter to force component refresh
+        redraw_count = st.session_state.get(f"redraw_count_{diagram_id}", 0)
         
         # Check if we should show large view
         show_large = st.session_state.get(f"show_large_{diagram_id}", False)
@@ -5663,10 +5696,10 @@ verify_ssl = True
                 import streamlit_mermaid as stmd
                 # Try different height formats for compatibility
                 try:
-                    stmd.st_mermaid(mermaid_code, height=700)
+                    stmd.st_mermaid(mermaid_code, height=700, key=f"large_{diagram_id}_{redraw_count}")
                 except TypeError:
                     # Fallback to string format if integer doesn't work
-                    stmd.st_mermaid(mermaid_code, height="700px")
+                    stmd.st_mermaid(mermaid_code, height="700px", key=f"large_{diagram_id}_{redraw_count}")
             except ImportError:
                 st.error("streamlit-mermaid not available. Please install it.")
                 st.code(mermaid_code, language="mermaid")
@@ -5680,10 +5713,10 @@ verify_ssl = True
                 import streamlit_mermaid as stmd
                 # Try different height formats for compatibility
                 try:
-                    stmd.st_mermaid(mermaid_code, height=500)
+                    stmd.st_mermaid(mermaid_code, height=500, key=f"regular_{diagram_id}_{redraw_count}")
                 except TypeError:
                     # Fallback to string format if integer doesn't work
-                    stmd.st_mermaid(mermaid_code, height="500px")
+                    stmd.st_mermaid(mermaid_code, height="500px", key=f"regular_{diagram_id}_{redraw_count}")
             except ImportError:
                 st.error("streamlit-mermaid not available. Please install it.")
                 # Show code as fallback
@@ -6041,6 +6074,13 @@ verify_ssl = True
         
         # Control buttons
         col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
+        with col1:
+            if st.button("🔄 Redraw", key=f"infra_redraw_{diagram_id}", help="Re-render the diagram using existing specification"):
+                # Force re-render by incrementing a counter that changes the component key
+                current_redraw_count = st.session_state.get(f"infra_redraw_count_{diagram_id}", 0)
+                st.session_state[f"infra_redraw_count_{diagram_id}"] = current_redraw_count + 1
+                st.rerun()
+        
         with col2:
             if st.button("🔍 Large View", key=f"infra_expand_{diagram_id}"):
                 st.session_state[f"show_large_infra_{diagram_id}"] = not st.session_state.get(f"show_large_infra_{diagram_id}", False)
@@ -6053,9 +6093,12 @@ verify_ssl = True
             if st.button("📐 Export Draw.io", key=f"infra_drawio_{diagram_id}"):
                 self.export_infrastructure_to_drawio(infrastructure_spec, f"AAA {diagram_type}", diagram_id)
         
-        with col4:
+        with col5:
             if st.button("📋 Show Code", key=f"infra_code_{diagram_id}"):
                 st.session_state[f"show_infra_code_{diagram_id}"] = not st.session_state.get(f"show_infra_code_{diagram_id}", False)
+        
+        # Get redraw counter to force diagram regeneration
+        infra_redraw_count = st.session_state.get(f"infra_redraw_count_{diagram_id}", 0)
         
         # Try to generate and display the infrastructure diagram
         try:
@@ -6063,8 +6106,8 @@ verify_ssl = True
             
             generator = InfrastructureDiagramGenerator()
             
-            # Create temporary file for the diagram
-            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+            # Create temporary file for the diagram with redraw counter to ensure uniqueness
+            with tempfile.NamedTemporaryFile(suffix=f'_{infra_redraw_count}.png', delete=False) as tmp_file:
                 temp_path = tmp_file.name[:-4]  # Remove .png extension
             
             try:
