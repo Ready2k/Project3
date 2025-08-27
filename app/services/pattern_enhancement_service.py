@@ -115,9 +115,24 @@ class PatternEnhancementService:
             # Merge enhancement data with existing pattern
             enhanced_pattern.update(enhancement_data)
             
-            # Ensure structured tech stack
-            if "tech_stack" in enhancement_data and isinstance(enhancement_data["tech_stack"], dict):
-                enhanced_pattern["tech_stack"] = enhancement_data["tech_stack"]
+            # Handle tech stack based on pattern type
+            pattern_id = pattern.get("pattern_id", "")
+            if "tech_stack" in enhancement_data:
+                if pattern_id.startswith("PAT-"):
+                    # For PAT-* patterns, flatten tech_stack to maintain traditional schema compatibility
+                    tech_stack_data = enhancement_data["tech_stack"]
+                    if isinstance(tech_stack_data, dict):
+                        # Flatten structured tech stack
+                        flattened_stack = []
+                        for category, technologies in tech_stack_data.items():
+                            if isinstance(technologies, list):
+                                flattened_stack.extend(technologies)
+                        enhanced_pattern["tech_stack"] = flattened_stack
+                    else:
+                        enhanced_pattern["tech_stack"] = tech_stack_data
+                else:
+                    # For APAT-* or EPAT-* patterns, keep structured format
+                    enhanced_pattern["tech_stack"] = enhancement_data["tech_stack"]
             
             # Add implementation guidance
             if "implementation_guidance" in enhancement_data:
@@ -213,15 +228,38 @@ class PatternEnhancementService:
         """Apply basic technical enhancements when LLM enhancement fails."""
         enhanced_pattern = pattern.copy()
         
-        # Convert simple tech stack to structured format
+        # For PAT-* patterns, keep tech_stack as flat array to maintain traditional schema compatibility
+        # Only use structured format for APAT-* or EPAT-* patterns
+        pattern_id = pattern.get("pattern_id", "")
         tech_stack = pattern.get("tech_stack", [])
-        if isinstance(tech_stack, list):
-            enhanced_pattern["tech_stack"] = {
-                "core_technologies": tech_stack[:3] if len(tech_stack) > 3 else tech_stack,
-                "data_processing": [t for t in tech_stack if any(keyword in t.lower() for keyword in ["ml", "ai", "data", "analytics"])],
-                "infrastructure": [t for t in tech_stack if any(keyword in t.lower() for keyword in ["aws", "azure", "gcp", "docker", "kubernetes"])],
-                "integration_apis": [t for t in tech_stack if "api" in t.lower()]
-            }
+        
+        if pattern_id.startswith("PAT-"):
+            # Keep as flat array for traditional schema compatibility
+            if isinstance(tech_stack, list):
+                # Add some additional technologies to enhance the stack
+                enhanced_tech_stack = tech_stack.copy()
+                if "FastAPI" not in enhanced_tech_stack:
+                    enhanced_tech_stack.append("FastAPI")
+                if "Docker" not in enhanced_tech_stack:
+                    enhanced_tech_stack.append("Docker")
+                enhanced_pattern["tech_stack"] = enhanced_tech_stack
+            else:
+                # If it's already structured, flatten it for traditional schema
+                flattened_stack = []
+                if isinstance(tech_stack, dict):
+                    for category, technologies in tech_stack.items():
+                        if isinstance(technologies, list):
+                            flattened_stack.extend(technologies)
+                enhanced_pattern["tech_stack"] = flattened_stack
+        else:
+            # For APAT-* or EPAT-* patterns, use structured format
+            if isinstance(tech_stack, list):
+                enhanced_pattern["tech_stack"] = {
+                    "core_technologies": tech_stack[:3] if len(tech_stack) > 3 else tech_stack,
+                    "data_processing": [t for t in tech_stack if any(keyword in t.lower() for keyword in ["ml", "ai", "data", "analytics"])],
+                    "infrastructure": [t for t in tech_stack if any(keyword in t.lower() for keyword in ["aws", "azure", "gcp", "docker", "kubernetes"])],
+                    "integration_apis": [t for t in tech_stack if "api" in t.lower()]
+                }
         
         # Add basic implementation guidance
         enhanced_pattern["implementation_guidance"] = {

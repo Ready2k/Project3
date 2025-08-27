@@ -1,7 +1,7 @@
 {
   "pattern_id": "PAT-002",
-  "name": "Invoice Intake, OCR, and ERP Posting",
-  "description": "Ingest digital and scanned invoices, extract key fields, validate against POs/budgets, and post to ERP with exception handling and human review for edge cases.",
+  "name": "Enhanced Invoice Intake, OCR, and ERP Posting",
+  "description": "Fully autonomous AI agent that ingest digital and scanned invoices, extract key fields, validate against pos/budgets, and post to erp with exception handling and human review for edge cases.",
   "feasibility": "Partially Automatable",
   "pattern_type": [
     "document_processing",
@@ -16,12 +16,8 @@
     "validation_rules_po_budget"
   ],
   "tech_stack": [
-    "Tesseract or AWS Textract",
-    "spaCy",
-    "jsonschema",
-    "FastAPI",
-    "Celery",
-    "PostgreSQL"
+    "Test Tech",
+    "Test API"
   ],
   "related_patterns": [],
   "confidence_score": 0.9,
@@ -73,5 +69,10 @@
   },
   "agent_architecture": "single_agent",
   "enhanced_from_pattern": "PAT-002",
-  "enhancement_type": "agentic"
+  "enhancement_type": "technical",
+  "implementation_guidance": {
+    "architecture_decisions": [
+      "Test decision"
+    ]
+  }
 }

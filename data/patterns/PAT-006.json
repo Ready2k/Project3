@@ -1,7 +1,7 @@
 {
   "pattern_id": "PAT-006",
-  "name": "PII Redaction &amp; Data Loss Prevention Pipeline",
-  "description": "Automatic detection and redaction/pseudonymization of PII before data leaves the secure boundary or is processed by external services.",
+  "name": "Enhanced PII Redaction &amp;amp; Data Loss Prevention Pipeline",
+  "description": "Fully autonomous AI agent that automatic detection and redaction/pseudonymization of pii before data leaves the secure boundary or is processed by external services.",
   "feasibility": "Automatable",
   "pattern_type": [
     "pii_detection",
@@ -16,10 +16,7 @@
   "tech_stack": [
     "Microsoft Presidio",
     "spaCy",
-    "FastAPI",
-    "OPA (Open Policy Agent)",
-    "Hashing/HSM-backed tokenization",
-    "Kafka or RabbitMQ"
+    "FastAPI"
   ],
   "related_patterns": [
     "PAT-101",
@@ -75,5 +72,17 @@
   },
   "agent_architecture": "single_agent",
   "enhanced_from_pattern": "PAT-006",
-  "enhancement_type": "agentic"
+  "enhancement_type": "full",
+  "implementation_guidance": {
+    "architecture_decisions": [
+      "Use microservices architecture for scalability",
+      "Implement event-driven patterns for loose coupling",
+      "Apply cloud-native design principles"
+    ],
+    "technical_challenges": [
+      "Ensuring system scalability and performance",
+      "Managing data consistency across services",
+      "Implementing robust error handling and recovery"
+    ]
+  }
 }

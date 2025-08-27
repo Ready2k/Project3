@@ -1,7 +1,7 @@
 {
   "pattern_id": "PAT-004",
-  "name": "Brand-Tone Co\u2011Writing for Marketing Content",
-  "description": "Assist marketers with drafts that match brand tone by grounding generation on past content and brand guidelines; requires editor approval before publishing.",
+  "name": "Enhanced Brand-Tone Co\u2011Writing for Marketing Content",
+  "description": "Fully autonomous AI agent that assist marketers with drafts that match brand tone by grounding generation on past content and brand guidelines; requires editor approval before publishing.",
   "feasibility": "Partially Automatable",
   "pattern_type": [
     "content_generation",
@@ -18,8 +18,7 @@
     "OpenAI/Claude (with DLP) or local LLM",
     "sentence-transformers",
     "FAISS",
-    "FastAPI",
-    "jsonschema"
+    "FastAPI"
   ],
   "related_patterns": [],
   "confidence_score": 0.86,
@@ -72,5 +71,17 @@
   },
   "agent_architecture": "single_agent",
   "enhanced_from_pattern": "PAT-004",
-  "enhancement_type": "agentic"
+  "enhancement_type": "full",
+  "implementation_guidance": {
+    "architecture_decisions": [
+      "Use microservices architecture for scalability",
+      "Implement event-driven patterns for loose coupling",
+      "Apply cloud-native design principles"
+    ],
+    "technical_challenges": [
+      "Ensuring system scalability and performance",
+      "Managing data consistency across services",
+      "Implementing robust error handling and recovery"
+    ]
+  }
 }

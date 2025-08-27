@@ -1137,7 +1137,7 @@ Respond with ONLY the responsibility statement, no other text."""
                                   requirements: Dict[str, Any],
                                   autonomy_assessment: AutonomyAssessment,
                                   session_id: str) -> bool:
-        """Save the new APAT pattern to the pattern library.
+        """Save the new APAT pattern to the pattern library with rich, detailed content.
         
         Args:
             enhanced_pattern: Enhanced pattern from pattern enhancer
@@ -1152,38 +1152,43 @@ Respond with ONLY the responsibility statement, no other text."""
             pattern_library_path = Path("data/patterns")
             pattern_library_path.mkdir(exist_ok=True)
             
-            # Create the APAT pattern structure similar to existing patterns
+            # Generate rich content using LLM
+            rich_content = await self._generate_rich_pattern_content(enhanced_pattern, requirements, autonomy_assessment)
+            
+            # Create the APAT pattern structure with rich, detailed content
             agentic_pattern = {
                 "pattern_id": enhanced_pattern["pattern_id"],
-                "name": enhanced_pattern.get("name", f"Autonomous Agent Pattern"),
-                "description": enhanced_pattern.get("description", requirements.get("description", "")),
+                "name": rich_content.get("name", enhanced_pattern.get("name", f"Autonomous Agent Pattern")),
+                "description": rich_content.get("description", self._sanitize_description(requirements.get("description", ""))),
                 "feasibility": enhanced_pattern.get("feasibility", "Fully Automatable"),
-                "pattern_type": enhanced_pattern.get("pattern_type", ["autonomous_agent"]),
-                "autonomy_level": enhanced_pattern.get("autonomy_level", 0.85),
-                "reasoning_capabilities": enhanced_pattern.get("reasoning_types", ["logical_reasoning", "pattern_matching"]),
-                "decision_scope": enhanced_pattern.get("decision_boundaries", {
-                    "autonomous_decisions": ["task_execution", "workflow_management", "exception_handling"],
-                    "escalation_triggers": ["critical_errors", "policy_violations", "resource_limits"]
-                }),
-                "exception_handling": "Autonomous resolution with escalation for critical failures",
-                "learning_mechanisms": ["feedback_incorporation", "pattern_recognition", "performance_optimization"],
-                "tech_stack": enhanced_pattern.get("agentic_frameworks", []) + enhanced_pattern.get("tech_stack", []),
-                "related_patterns": [],  # Will be populated as more patterns are created
+                "pattern_type": rich_content.get("pattern_type", enhanced_pattern.get("pattern_type", ["autonomous_agent"])),
+                "input_requirements": rich_content.get("input_requirements", self._generate_structured_requirements(requirements)),
+                "tech_stack": rich_content.get("tech_stack", self._generate_comprehensive_tech_stack(enhanced_pattern, requirements)),
+                "implementation_guidance": rich_content.get("implementation_guidance", self._generate_implementation_guidance()),
+                "effort_breakdown": rich_content.get("effort_breakdown", self._generate_effort_breakdown(requirements)),
+                "related_patterns": [],
                 "confidence_score": enhanced_pattern.get("autonomy_level", 0.85),
-                "constraints": {
-                    "min_autonomy_level": 0.8,
-                    "requires_human_oversight": False,
-                    "compliance_requirements": requirements.get("compliance_requirements", []),
-                    "data_sensitivity": requirements.get("data_sensitivity", "Internal")
-                },
-                "enhanced_pattern": {
-                    "creation_session": session_id,
-                    "autonomy_score": autonomy_assessment.overall_score,
-                    "reasoning_complexity": autonomy_assessment.reasoning_complexity.value,
-                    "decision_boundaries": autonomy_assessment.decision_boundaries,
-                    "workflow_coverage": autonomy_assessment.workflow_coverage,
-                    "created_timestamp": str(Path().cwd().stat().st_mtime)  # Simple timestamp
-                }
+                "constraints": rich_content.get("constraints", self._generate_comprehensive_constraints(requirements)),
+                "domain": self._extract_domain_from_requirements(requirements),
+                "complexity": self._determine_complexity(autonomy_assessment),
+                "estimated_effort": rich_content.get("estimated_effort", "8-12 weeks"),
+                "autonomy_level": enhanced_pattern.get("autonomy_level", 0.85),
+                "reasoning_types": enhanced_pattern.get("reasoning_types", ["logical", "causal", "probabilistic"]),
+                "decision_boundaries": rich_content.get("decision_boundaries", self._generate_decision_boundaries(autonomy_assessment)),
+                "exception_handling_strategy": rich_content.get("exception_handling_strategy", self._generate_exception_handling()),
+                "learning_mechanisms": enhanced_pattern.get("learning_mechanisms", ["feedback_incorporation", "pattern_recognition", "performance_optimization"]),
+                "self_monitoring_capabilities": enhanced_pattern.get("self_monitoring_capabilities", ["performance_tracking", "error_detection", "quality_assessment"]),
+                "agent_architecture": enhanced_pattern.get("agent_architecture", "single_agent"),
+                "coordination_requirements": rich_content.get("coordination_requirements"),
+                "workflow_automation": rich_content.get("workflow_automation", self._generate_workflow_automation(requirements)),
+                "created_from_session": session_id,
+                "auto_generated": True,
+                "llm_insights": rich_content.get("llm_insights", []),
+                "llm_challenges": rich_content.get("llm_challenges", []),
+                "llm_recommended_approach": rich_content.get("llm_recommended_approach", ""),
+                "enhanced_by_llm": True,
+                "enhanced_from_session": session_id,
+                "color": "🟡"
             }
             
             # Save to file with better error handling
@@ -1216,6 +1221,369 @@ Respond with ONLY the responsibility statement, no other text."""
         except Exception as e:
             app_logger.error(f"Failed to save APAT pattern {enhanced_pattern.get('pattern_id', 'unknown')}: {e}")
             return False
+    
+    async def _generate_rich_pattern_content(self, enhanced_pattern: Dict[str, Any], requirements: Dict[str, Any], autonomy_assessment: AutonomyAssessment) -> Dict[str, Any]:
+        """Generate rich, detailed content for APAT patterns using LLM."""
+        if not self.llm_provider:
+            return {}
+        
+        description = self._sanitize_description(requirements.get("description", ""))
+        
+        prompt = f"""You are an expert in autonomous AI agent systems. Generate comprehensive, detailed content for an agentic pattern based on the following requirements.
+
+REQUIREMENTS:
+{description}
+
+AUTONOMY ASSESSMENT:
+- Overall Score: {autonomy_assessment.overall_score:.2f}
+- Reasoning Complexity: {autonomy_assessment.reasoning_complexity.value}
+- Decision Boundaries: {autonomy_assessment.decision_boundaries}
+- Workflow Coverage: {autonomy_assessment.workflow_coverage}
+
+Generate a JSON response with the following detailed sections (follow the high-quality example of PAT-009):
+
+1. **name**: Descriptive, specific name (not generic)
+2. **description**: Rich, detailed description of what the autonomous agent will do
+3. **pattern_type**: Array of specific, relevant pattern types (8-15 items)
+4. **input_requirements**: Structured object with functional_requirements, technical_requirements, data_requirements, integration_requirements
+5. **tech_stack**: Comprehensive array of 20-35 specific technologies with versions and use cases
+6. **implementation_guidance**: Object with architecture_decisions, technical_challenges, deployment_considerations, performance_requirements, security_considerations, testing_strategy
+7. **effort_breakdown**: Object with mvp_effort, full_implementation_effort, phase_breakdown (3 phases), risk_factors
+8. **constraints**: Object with banned_tools, required_integrations, compliance_requirements, performance_constraints, budget_constraints, timeline_constraints
+9. **decision_boundaries**: Object with autonomous_decisions, escalation_triggers, decision_authority_level, approval_workflows
+10. **exception_handling_strategy**: Object with autonomous_resolution_approaches, reasoning_fallbacks, escalation_criteria, recovery_mechanisms
+11. **workflow_automation**: Object with automated_processes, human_in_loop_processes, trigger_conditions, workflow_dependencies
+12. **llm_insights**: Array of 3-5 specific insights about the pattern
+13. **llm_challenges**: Array of 3-4 specific challenges
+14. **llm_recommended_approach**: Detailed implementation approach
+15. **estimated_effort**: Realistic time estimate
+
+Make this as detailed and comprehensive as PAT-009. Focus on practical, implementable details with specific technologies, realistic constraints, and thorough guidance.
+
+Respond with ONLY the JSON object, no other text."""
+
+        try:
+            response = await self.llm_provider.generate(prompt, purpose="rich_pattern_generation")
+            return json.loads(response)
+        except Exception as e:
+            app_logger.error(f"Error generating rich pattern content: {e}")
+            return {}
+    
+    def _sanitize_description(self, description: str) -> str:
+        """Sanitize description to remove HTML entities and formatting issues."""
+        import html
+        
+        # Decode HTML entities
+        sanitized = html.unescape(description)
+        
+        # Remove problematic characters and formatting
+        sanitized = sanitized.replace('&amp;', '&')
+        sanitized = sanitized.replace('&lt;', '<')
+        sanitized = sanitized.replace('&gt;', '>')
+        sanitized = sanitized.replace('\u2013', '-')
+        sanitized = sanitized.replace('\u2014', '--')
+        
+        # Clean up excessive whitespace
+        sanitized = ' '.join(sanitized.split())
+        
+        return sanitized
+    
+    def _generate_structured_requirements(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate structured input requirements."""
+        return {
+            "functional_requirements": [
+                "Core business process automation",
+                "Decision-making capabilities",
+                "Exception handling and recovery"
+            ],
+            "technical_requirements": [
+                "High availability and reliability",
+                "Scalable architecture",
+                "Real-time processing capabilities"
+            ],
+            "data_requirements": [
+                "Structured data inputs",
+                "Data validation and quality checks",
+                "Audit trail and logging"
+            ],
+            "integration_requirements": [
+                "API connectivity",
+                "System interoperability",
+                "Security and authentication"
+            ]
+        }
+    
+    def _generate_comprehensive_tech_stack(self, enhanced_pattern: Dict[str, Any], requirements: Dict[str, Any]) -> List[str]:
+        """Generate comprehensive tech stack with specific technologies."""
+        base_stack = [
+            "LangChain for agent orchestration and reasoning chains",
+            "CrewAI for multi-agent coordination and task delegation",
+            "Microsoft Semantic Kernel for reasoning workflows",
+            "AutoGen for agent communication and collaboration",
+            "FastAPI for REST API development with async support",
+            "PostgreSQL for structured data storage and ACID compliance",
+            "Redis for caching and session state management",
+            "Docker for containerization and deployment",
+            "Kubernetes for orchestration and auto-scaling",
+            "Prometheus for monitoring and metrics collection",
+            "Grafana for visualization and dashboards",
+            "OAuth 2.0/OIDC for authentication and authorization",
+            "TLS 1.3 for secure data transmission",
+            "JSON Schema for data validation",
+            "OpenAPI 3.0 for API documentation"
+        ]
+        
+        # Add pattern-specific technologies
+        existing_tech = enhanced_pattern.get("tech_stack", [])
+        if isinstance(existing_tech, list):
+            base_stack.extend(existing_tech)
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        result = []
+        for tech in base_stack:
+            if tech not in seen:
+                seen.add(tech)
+                result.append(tech)
+        
+        return result[:25]  # Limit to reasonable number
+    
+    def _generate_implementation_guidance(self) -> Dict[str, Any]:
+        """Generate comprehensive implementation guidance."""
+        return {
+            "architecture_decisions": [
+                "Use microservices architecture for scalability and maintainability",
+                "Implement event-driven patterns for loose coupling",
+                "Apply cloud-native design principles for resilience",
+                "Use API-first design for integration flexibility"
+            ],
+            "technical_challenges": [
+                "Ensuring system scalability under varying loads",
+                "Managing data consistency across distributed services",
+                "Implementing robust error handling and recovery mechanisms",
+                "Balancing autonomous operation with safety constraints"
+            ],
+            "deployment_considerations": [
+                "Multi-environment deployment strategy (dev, staging, prod)",
+                "Blue-green deployment for zero-downtime updates",
+                "Auto-scaling based on demand and resource utilization",
+                "Comprehensive monitoring and alerting setup"
+            ],
+            "performance_requirements": [
+                "Sub-second response times for critical operations",
+                "99.9% uptime availability target",
+                "Horizontal scaling to handle increased load",
+                "Efficient resource utilization and cost optimization"
+            ],
+            "security_considerations": [
+                "End-to-end encryption for data in transit and at rest",
+                "Role-based access control and least privilege principles",
+                "Regular security audits and vulnerability assessments",
+                "Compliance with relevant data protection regulations"
+            ],
+            "testing_strategy": [
+                "Comprehensive unit testing for all components",
+                "Integration testing for system interactions",
+                "End-to-end testing for complete workflows",
+                "Performance testing under load conditions"
+            ]
+        }
+    
+    def _generate_effort_breakdown(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate detailed effort breakdown."""
+        return {
+            "mvp_effort": "6-8 weeks for core autonomous functionality",
+            "full_implementation_effort": "4-6 months for complete system with advanced features",
+            "phase_breakdown": [
+                {
+                    "phase_name": "Phase 1: Core Agent Development",
+                    "duration": "6-8 weeks",
+                    "deliverables": [
+                        "Basic autonomous agent with core reasoning capabilities",
+                        "Essential integrations and data processing",
+                        "Basic decision-making and exception handling",
+                        "Initial user interface and monitoring"
+                    ],
+                    "dependencies": [
+                        "Requirements finalization and validation",
+                        "Development environment setup",
+                        "Initial data sources and API access"
+                    ]
+                },
+                {
+                    "phase_name": "Phase 2: Advanced Features",
+                    "duration": "8-10 weeks",
+                    "deliverables": [
+                        "Enhanced reasoning and learning capabilities",
+                        "Advanced integrations and workflow automation",
+                        "Comprehensive monitoring and analytics",
+                        "Security hardening and compliance features"
+                    ],
+                    "dependencies": [
+                        "Phase 1 completion and validation",
+                        "User feedback and requirement refinements",
+                        "Performance testing and optimization"
+                    ]
+                },
+                {
+                    "phase_name": "Phase 3: Production Readiness",
+                    "duration": "4-6 weeks",
+                    "deliverables": [
+                        "Production deployment and scaling",
+                        "Comprehensive documentation and training",
+                        "Final testing and quality assurance",
+                        "Go-live support and monitoring"
+                    ],
+                    "dependencies": [
+                        "Phase 2 completion and user acceptance",
+                        "Production environment preparation",
+                        "Final security and compliance validation"
+                    ]
+                }
+            ],
+            "risk_factors": [
+                "Complexity of autonomous decision-making may require additional development time",
+                "Integration challenges with existing systems may extend timelines",
+                "Regulatory or compliance requirements may add complexity",
+                "User adoption and change management considerations"
+            ]
+        }
+    
+    def _generate_comprehensive_constraints(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate comprehensive constraints."""
+        return {
+            "banned_tools": [
+                "Unencrypted data storage or transmission",
+                "Deprecated or unsupported technologies",
+                "Third-party services without proper security validation"
+            ],
+            "required_integrations": [
+                "Authentication and authorization systems",
+                "Monitoring and logging infrastructure",
+                "Data backup and recovery systems",
+                "Security scanning and compliance tools"
+            ],
+            "compliance_requirements": [
+                "Data protection and privacy regulations",
+                "Industry-specific compliance standards",
+                "Security and audit requirements"
+            ],
+            "performance_constraints": [
+                "Response time requirements under normal load",
+                "Availability and uptime targets",
+                "Resource utilization limits",
+                "Scalability requirements"
+            ],
+            "budget_constraints": [
+                "Development and implementation costs",
+                "Ongoing operational expenses",
+                "Licensing and subscription fees",
+                "Infrastructure and hosting costs"
+            ],
+            "timeline_constraints": [
+                "Project delivery deadlines",
+                "Milestone and checkpoint requirements",
+                "Integration and testing windows",
+                "Go-live and deployment schedules"
+            ]
+        }
+    
+    def _generate_decision_boundaries(self, autonomy_assessment: AutonomyAssessment) -> Dict[str, Any]:
+        """Generate detailed decision boundaries."""
+        return {
+            "autonomous_decisions": [
+                "Routine task execution within defined parameters",
+                "Standard workflow processing and routing",
+                "Basic exception handling and recovery",
+                "Data validation and quality checks",
+                "Performance optimization and resource management"
+            ],
+            "escalation_triggers": [
+                "Exceptions outside normal operating parameters",
+                "High-value or high-risk decisions requiring approval",
+                "System errors or failures requiring intervention",
+                "User requests for manual review or override",
+                "Compliance or security violations detected"
+            ],
+            "decision_authority_level": "high" if autonomy_assessment.overall_score > 0.8 else "medium",
+            "approval_workflows": [
+                "High-value transactions require manager approval",
+                "System configuration changes require admin approval",
+                "Exception handling overrides require user confirmation"
+            ]
+        }
+    
+    def _generate_exception_handling(self) -> Dict[str, Any]:
+        """Generate comprehensive exception handling strategy."""
+        return {
+            "autonomous_resolution_approaches": [
+                "Retry mechanisms with exponential backoff",
+                "Fallback procedures for common failure scenarios",
+                "Alternative workflow paths when primary routes fail",
+                "Automatic recovery and self-healing capabilities"
+            ],
+            "reasoning_fallbacks": [
+                "Conservative decision-making when confidence is low",
+                "Escalation to human oversight for complex scenarios",
+                "Use of proven patterns and best practices",
+                "Graceful degradation of functionality when needed"
+            ],
+            "escalation_criteria": [
+                "Multiple consecutive failures or errors",
+                "Confidence levels below acceptable thresholds",
+                "Critical system or security issues detected",
+                "User satisfaction or performance metrics declining"
+            ],
+            "recovery_mechanisms": [
+                "Automatic system health monitoring and alerts",
+                "Rollback capabilities for failed changes",
+                "Data backup and restoration procedures",
+                "Emergency stop and manual override capabilities"
+            ]
+        }
+    
+    def _generate_workflow_automation(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate workflow automation details."""
+        return {
+            "automated_processes": [
+                "Data ingestion and preprocessing",
+                "Business rule application and validation",
+                "Workflow routing and task assignment",
+                "Status updates and notifications",
+                "Performance monitoring and reporting"
+            ],
+            "human_in_loop_processes": [
+                "High-value decision approvals",
+                "Exception review and resolution",
+                "Quality assurance and validation",
+                "System configuration and updates"
+            ],
+            "trigger_conditions": [
+                "Data availability and quality thresholds",
+                "Time-based scheduling and deadlines",
+                "Event-driven triggers from external systems",
+                "User actions and requests",
+                "System performance and health metrics"
+            ],
+            "workflow_dependencies": [
+                "Data source availability and accessibility",
+                "External system integration and connectivity",
+                "User permissions and authorization",
+                "System resources and capacity",
+                "Compliance and regulatory requirements"
+            ]
+        }
+    
+    def _determine_complexity(self, autonomy_assessment: AutonomyAssessment) -> str:
+        """Determine complexity level based on autonomy assessment."""
+        if autonomy_assessment.overall_score > 0.9:
+            return "Very High"
+        elif autonomy_assessment.overall_score > 0.7:
+            return "High"
+        elif autonomy_assessment.overall_score > 0.5:
+            return "Medium"
+        else:
+            return "Low"
     
     async def _save_multi_agent_pattern(self, 
                                       multi_agent_pattern: Dict[str, Any],
