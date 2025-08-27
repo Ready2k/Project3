@@ -2249,6 +2249,10 @@ class AutomatedAIAssessmentUI:
     
     def render_shared_constraints(self, key_prefix: str = ""):
         """Render shared technology constraints section for all input methods."""
+        # Use form reset counter to ensure fresh form inputs
+        reset_counter = st.session_state.get('form_reset_counter', 0)
+        unique_key_prefix = f"{key_prefix}_{reset_counter}_"
+        
         # Domain and Pattern Types
         col1, col2 = st.columns(2)
         
@@ -2256,7 +2260,7 @@ class AutomatedAIAssessmentUI:
             domain = st.selectbox(
                 "Domain (optional):",
                 ["", "finance", "hr", "marketing", "operations", "it", "customer-service"],
-                key=f"{key_prefix}domain",
+                key=f"{unique_key_prefix}domain",
                 help="Business domain for better pattern matching"
             )
         
@@ -2264,7 +2268,7 @@ class AutomatedAIAssessmentUI:
             pattern_types = st.multiselect(
                 "Pattern Types (optional):",
                 ["workflow", "data-processing", "integration", "notification", "approval"],
-                key=f"{key_prefix}pattern_types",
+                key=f"{unique_key_prefix}pattern_types",
                 help="Types of automation patterns to focus on"
             )
         
@@ -2279,7 +2283,7 @@ class AutomatedAIAssessmentUI:
                 height=100,
                 placeholder="Enter technologies that cannot be used, one per line:\nAzure\nOracle Database\nSalesforce\nWindows Server",
                 help="List any technologies, platforms, or tools that are banned or unavailable in your organization",
-                key=f"{key_prefix}restricted_tech"
+                key=f"{unique_key_prefix}restricted_tech"
             )
         
         with col4:
@@ -2288,7 +2292,7 @@ class AutomatedAIAssessmentUI:
                 height=100,
                 placeholder="Enter required systems to integrate with:\nActive Directory\nSAP\nExisting PostgreSQL\nAWS Lambda",
                 help="List any existing systems or technologies that must be integrated with",
-                key=f"{key_prefix}required_int"
+                key=f"{unique_key_prefix}required_int"
             )
         
         # Additional constraints
@@ -2300,14 +2304,14 @@ class AutomatedAIAssessmentUI:
                     "Compliance Requirements:",
                     ["GDPR", "HIPAA", "SOX", "PCI-DSS", "CCPA", "ISO-27001", "FedRAMP"],
                     help="Select applicable compliance standards",
-                    key=f"{key_prefix}compliance"
+                    key=f"{unique_key_prefix}compliance"
                 )
                 
                 data_sensitivity = st.selectbox(
                     "Data Sensitivity Level:",
                     ["", "Public", "Internal", "Confidential", "Restricted"],
                     help="Classification level of data being processed",
-                    key=f"{key_prefix}data_sensitivity"
+                    key=f"{unique_key_prefix}data_sensitivity"
                 )
             
             with col6:
@@ -2315,14 +2319,14 @@ class AutomatedAIAssessmentUI:
                     "Budget Constraints:",
                     ["", "Low (Open source preferred)", "Medium (Some commercial tools OK)", "High (Enterprise solutions OK)"],
                     help="Budget level for technology solutions",
-                    key=f"{key_prefix}budget"
+                    key=f"{unique_key_prefix}budget"
                 )
                 
                 deployment_preference = st.selectbox(
                     "Deployment Preference:",
                     ["", "Cloud-only", "On-premises only", "Hybrid", "No preference"],
                     help="Preferred deployment model",
-                    key=f"{key_prefix}deployment"
+                    key=f"{unique_key_prefix}deployment"
                 )
         
         return {
@@ -2559,36 +2563,41 @@ class AutomatedAIAssessmentUI:
         """Render enhanced Jira integration interface with Data Center support."""
         st.subheader("🎫 Jira Integration")
         
+        # Move deployment type and auth method outside form for dynamic updates
+        st.write("**Jira Configuration**")
+        
+        # Deployment Type Selection
+        col1, col2 = st.columns(2)
+        with col1:
+            deployment_type = st.selectbox(
+                "Deployment Type",
+                options=["auto_detect", "cloud", "data_center", "server"],
+                format_func=lambda x: {
+                    "auto_detect": "🔍 Auto-detect",
+                    "cloud": "☁️ Jira Cloud",
+                    "data_center": "🏢 Jira Data Center",
+                    "server": "🖥️ Jira Server"
+                }[x],
+                help="Select your Jira deployment type or let the system auto-detect",
+                key="jira_deployment_type"
+            )
+        
+        with col2:
+            auth_type = st.selectbox(
+                "Authentication Method👤",
+                options=["api_token", "pat", "sso", "basic"],
+                format_func=lambda x: {
+                    "api_token": "🔑 API Token (Cloud)",
+                    "pat": "🎫 Personal Access Token (Data Center)",
+                    "sso": "🔐 SSO/Current Session",
+                    "basic": "👤 Username/Password"
+                }[x],
+                help="Choose authentication method based on your Jira deployment",
+                key="jira_auth_type"
+            )
+        
+        # Now create the form with the rest of the fields
         with st.form("jira_form"):
-            st.write("**Jira Configuration**")
-            
-            # Deployment Type Selection
-            col1, col2 = st.columns(2)
-            with col1:
-                deployment_type = st.selectbox(
-                    "Deployment Type",
-                    options=["auto_detect", "cloud", "data_center", "server"],
-                    format_func=lambda x: {
-                        "auto_detect": "🔍 Auto-detect",
-                        "cloud": "☁️ Jira Cloud",
-                        "data_center": "🏢 Jira Data Center",
-                        "server": "🖥️ Jira Server"
-                    }[x],
-                    help="Select your Jira deployment type or let the system auto-detect"
-                )
-            
-            with col2:
-                auth_type = st.selectbox(
-                    "Authentication Method",
-                    options=["api_token", "pat", "sso", "basic"],
-                    format_func=lambda x: {
-                        "api_token": "🔑 API Token (Cloud)",
-                        "pat": "🎫 Personal Access Token (Data Center)",
-                        "sso": "🔐 SSO/Current Session",
-                        "basic": "👤 Username/Password"
-                    }[x],
-                    help="Choose authentication method based on your Jira deployment"
-                )
             
             # Base URL Configuration
             jira_base_url = st.text_input(
@@ -2600,13 +2609,16 @@ class AutomatedAIAssessmentUI:
             # Authentication Configuration (dynamic based on auth_type)
             st.write("**Authentication Details**")
             
+            # Get auth_type from session state since it's outside the form
+            current_auth_type = st.session_state.get("jira_auth_type", "api_token")
+            
             jira_email = None
             jira_api_token = None
             jira_username = None
             jira_password = None
             jira_personal_access_token = None
             
-            if auth_type == "api_token":
+            if current_auth_type == "api_token":
                 col1, col2 = st.columns(2)
                 with col1:
                     jira_email = st.text_input(
@@ -2621,14 +2633,14 @@ class AutomatedAIAssessmentUI:
                         help="Generate from Jira Account Settings > Security > API tokens"
                     )
             
-            elif auth_type == "pat":
+            elif current_auth_type == "pat":
                 jira_personal_access_token = st.text_input(
                     "Personal Access Token",
                     type="password",
                     help="Generate from Jira Data Center: Profile > Personal Access Tokens"
                 )
             
-            elif auth_type == "basic":
+            elif current_auth_type == "basic":
                 col1, col2 = st.columns(2)
                 with col1:
                     jira_username = st.text_input(
@@ -2643,7 +2655,7 @@ class AutomatedAIAssessmentUI:
                         help="Your Jira password (stored only for current session)"
                     )
             
-            elif auth_type == "sso":
+            elif current_auth_type == "sso":
                 st.info("🔐 SSO authentication will attempt to use your current browser session or Windows credentials")
                 use_sso = True
             else:
@@ -2738,6 +2750,10 @@ class AutomatedAIAssessmentUI:
             
             # Technology Constraints
             with st.expander("🚫 Technology Constraints (Optional)"):
+                # Use form reset counter for unique keys
+                reset_counter = st.session_state.get('form_reset_counter', 0)
+                jira_key_prefix = f"jira_{reset_counter}_"
+                
                 col3, col4 = st.columns(2)
                 
                 with col3:
@@ -2745,7 +2761,8 @@ class AutomatedAIAssessmentUI:
                         "Restricted/Banned Technologies:",
                         height=80,
                         placeholder="Enter technologies that cannot be used, one per line:\nAzure\nOracle Database\nSalesforce\nWindows Server",
-                        help="List any technologies, platforms, or tools that are banned or unavailable in your organization"
+                        help="List any technologies, platforms, or tools that are banned or unavailable in your organization",
+                        key=f"{jira_key_prefix}restricted_tech"
                     )
                 
                 with col4:
@@ -2753,7 +2770,8 @@ class AutomatedAIAssessmentUI:
                         "Required Integrations:",
                         height=80,
                         placeholder="Enter required systems to integrate with:\nActive Directory\nSAP\nExisting PostgreSQL\nAWS Lambda",
-                        help="List any existing systems or technologies that must be integrated with"
+                        help="List any existing systems or technologies that must be integrated with",
+                        key=f"{jira_key_prefix}required_int"
                     )
                 
                 # Additional constraints
@@ -2763,26 +2781,30 @@ class AutomatedAIAssessmentUI:
                     jira_compliance_requirements = st.multiselect(
                         "Compliance Requirements:",
                         ["GDPR", "HIPAA", "SOX", "PCI-DSS", "CCPA", "ISO-27001", "FedRAMP"],
-                        help="Select applicable compliance standards"
+                        help="Select applicable compliance standards",
+                        key=f"{jira_key_prefix}compliance"
                     )
                     
                     jira_data_sensitivity = st.selectbox(
                         "Data Sensitivity Level:",
                         ["", "Public", "Internal", "Confidential", "Restricted"],
-                        help="Classification level of data being processed"
+                        help="Classification level of data being processed",
+                        key=f"{jira_key_prefix}data_sensitivity"
                     )
                 
                 with col6:
                     jira_budget_constraints = st.selectbox(
                         "Budget Constraints:",
                         ["", "Low (Open source preferred)", "Medium (Some commercial tools OK)", "High (Enterprise solutions OK)"],
-                        help="Budget level for technology solutions"
+                        help="Budget level for technology solutions",
+                        key=f"{jira_key_prefix}budget"
                     )
                     
                     jira_deployment_preference = st.selectbox(
                         "Deployment Preference:",
                         ["", "Cloud-only", "On-premises only", "Hybrid", "No preference"],
-                        help="Preferred deployment model"
+                        help="Preferred deployment model",
+                        key=f"{jira_key_prefix}deployment"
                     )
             
             # Form submission buttons
@@ -2799,21 +2821,24 @@ class AutomatedAIAssessmentUI:
         
         # Handle test connection
         if test_connection:
+            # Get current auth type from session state
+            current_auth_type = st.session_state.get("jira_auth_type", "api_token")
+            
             # Validate required fields based on auth type
             validation_errors = []
             
             if not jira_base_url:
                 validation_errors.append("Base URL is required")
             
-            if auth_type == "api_token":
+            if current_auth_type == "api_token":
                 if not jira_email:
                     validation_errors.append("Email is required for API token authentication")
                 if not jira_api_token:
                     validation_errors.append("API token is required for API token authentication")
-            elif auth_type == "pat":
+            elif current_auth_type == "pat":
                 if not jira_personal_access_token:
                     validation_errors.append("Personal Access Token is required for PAT authentication")
-            elif auth_type == "basic":
+            elif current_auth_type == "basic":
                 if not jira_username:
                     validation_errors.append("Username is required for basic authentication")
                 if not jira_password:
@@ -2828,7 +2853,7 @@ class AutomatedAIAssessmentUI:
                         # Prepare request payload with all configuration options
                         test_payload = {
                             "base_url": jira_base_url,
-                            "auth_type": auth_type,
+                            "auth_type": current_auth_type,
                             
                             # Authentication fields
                             "email": jira_email,
@@ -2844,7 +2869,7 @@ class AutomatedAIAssessmentUI:
                             "timeout": int(timeout),
                             
                             # SSO configuration
-                            "use_sso": auth_type == "sso",
+                            "use_sso": current_auth_type == "sso",
                             
                             # Data Center configuration
                             "context_path": context_path if context_path else None,
@@ -2971,6 +2996,9 @@ verify_ssl = True
         
         # Handle fetch ticket
         if fetch_ticket:
+            # Get current auth type from session state
+            current_auth_type = st.session_state.get("jira_auth_type", "api_token")
+            
             # Validate required fields based on auth type
             validation_errors = []
             
@@ -2979,15 +3007,15 @@ verify_ssl = True
             if not jira_ticket_key:
                 validation_errors.append("Ticket key is required")
             
-            if auth_type == "api_token":
+            if current_auth_type == "api_token":
                 if not jira_email:
                     validation_errors.append("Email is required for API token authentication")
                 if not jira_api_token:
                     validation_errors.append("API token is required for API token authentication")
-            elif auth_type == "pat":
+            elif current_auth_type == "pat":
                 if not jira_personal_access_token:
                     validation_errors.append("Personal Access Token is required for PAT authentication")
-            elif auth_type == "basic":
+            elif current_auth_type == "basic":
                 if not jira_username:
                     validation_errors.append("Username is required for basic authentication")
                 if not jira_password:
@@ -3002,7 +3030,7 @@ verify_ssl = True
                         fetch_payload = {
                             "ticket_key": jira_ticket_key,
                             "base_url": jira_base_url,
-                            "auth_type": auth_type,
+                            "auth_type": current_auth_type,
                             
                             # Authentication fields
                             "email": jira_email,
@@ -3018,7 +3046,7 @@ verify_ssl = True
                             "timeout": int(timeout),
                             
                             # SSO configuration
-                            "use_sso": auth_type == "sso",
+                            "use_sso": current_auth_type == "sso",
                             
                             # Data Center configuration
                             "context_path": context_path if context_path else None,
@@ -3092,6 +3120,9 @@ verify_ssl = True
         
         # Handle submit analysis
         if submit_jira:
+            # Get current auth type from session state
+            current_auth_type = st.session_state.get("jira_auth_type", "api_token")
+            
             # Validate required fields based on auth type
             validation_errors = []
             
@@ -3100,15 +3131,15 @@ verify_ssl = True
             if not jira_ticket_key:
                 validation_errors.append("Ticket key is required")
             
-            if auth_type == "api_token":
+            if current_auth_type == "api_token":
                 if not jira_email:
                     validation_errors.append("Email is required for API token authentication")
                 if not jira_api_token:
                     validation_errors.append("API token is required for API token authentication")
-            elif auth_type == "pat":
+            elif current_auth_type == "pat":
                 if not jira_personal_access_token:
                     validation_errors.append("Personal Access Token is required for PAT authentication")
-            elif auth_type == "basic":
+            elif current_auth_type == "basic":
                 if not jira_username:
                     validation_errors.append("Username is required for basic authentication")
                 if not jira_password:
@@ -3490,6 +3521,12 @@ verify_ssl = True
         st.session_state.progress = 0
         st.session_state.recommendations = None
         st.session_state.qa_questions = []
+        st.session_state.requirements = None
+        
+        # Clear any cached constraint form values by incrementing a counter
+        if 'form_reset_counter' not in st.session_state:
+            st.session_state.form_reset_counter = 0
+        st.session_state.form_reset_counter += 1
         
         st.success("✅ Analysis restarted - please provide a new requirement")
         st.rerun()
@@ -3673,26 +3710,9 @@ verify_ssl = True
                     import threading
                     import time
                     
-                    # Progress simulation function
-                    def simulate_progress():
-                        steps = [
-                            (10, "Analyzing requirements..."),
-                            (25, "Matching against pattern library..."),
-                            (40, "Evaluating feasibility..."),
-                            (55, "Generating tech stack recommendations..."),
-                            (70, "Creating architecture analysis..."),
-                            (85, "Finalizing recommendations...")
-                        ]
-                        
-                        for progress, message in steps:
-                            status_text.text(message)
-                            progress_bar.progress(progress)
-                            time.sleep(8)  # Spread over ~48 seconds of the 120 second timeout
-                    
-                    # Start progress simulation in background
-                    progress_thread = threading.Thread(target=simulate_progress)
-                    progress_thread.daemon = True
-                    progress_thread.start()
+                    # Set initial progress state
+                    status_text.text("Generating recommendations...")
+                    progress_bar.progress(10)
                     
                     try:
                         response = asyncio.run(self.make_api_request_with_timeout(
@@ -8792,6 +8812,13 @@ verify_ssl = True
                     st.markdown("**Current Session Information:**")
                     st.code(f"Session ID: {st.session_state.session_id}", language=None)
                     st.caption("💡 Save this Session ID to resume this analysis later")
+                    
+                    # Debug: Show current session constraints if available
+                    if hasattr(st.session_state, 'requirements') and st.session_state.requirements:
+                        constraints = st.session_state.requirements.get('constraints', {})
+                        if constraints:
+                            with st.expander("🔍 Debug: Current Session Constraints"):
+                                st.json(constraints)
                 
                 with col2:
                     # Copy to clipboard button with fallback
