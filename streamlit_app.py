@@ -2247,29 +2247,28 @@ class AutomatedAIAssessmentUI:
         else:
             self.render_resume_session()
     
-    def render_text_input(self):
-        """Render text input interface."""
-        col1, col2 = st.columns([2, 1])
+    def render_shared_constraints(self, key_prefix: str = ""):
+        """Render shared technology constraints section for all input methods."""
+        # Domain and Pattern Types
+        col1, col2 = st.columns(2)
         
         with col1:
-            requirements_text = st.text_area(
-                "Enter your requirements:",
-                height=200,
-                placeholder="Describe the process or workflow you want to automate..."
+            domain = st.selectbox(
+                "Domain (optional):",
+                ["", "finance", "hr", "marketing", "operations", "it", "customer-service"],
+                key=f"{key_prefix}domain",
+                help="Business domain for better pattern matching"
             )
         
         with col2:
-            domain = st.selectbox(
-                "Domain (optional):",
-                ["", "finance", "hr", "marketing", "operations", "it", "customer-service"]
-            )
-            
             pattern_types = st.multiselect(
                 "Pattern Types (optional):",
-                ["workflow", "data-processing", "integration", "notification", "approval"]
+                ["workflow", "data-processing", "integration", "notification", "approval"],
+                key=f"{key_prefix}pattern_types",
+                help="Types of automation patterns to focus on"
             )
         
-        # Add constraints section
+        # Technology Constraints
         st.subheader("🚫 Technology Constraints")
         
         col3, col4 = st.columns(2)
@@ -2279,7 +2278,8 @@ class AutomatedAIAssessmentUI:
                 "Restricted/Banned Technologies:",
                 height=100,
                 placeholder="Enter technologies that cannot be used, one per line:\nAzure\nOracle Database\nSalesforce\nWindows Server",
-                help="List any technologies, platforms, or tools that are banned or unavailable in your organization"
+                help="List any technologies, platforms, or tools that are banned or unavailable in your organization",
+                key=f"{key_prefix}restricted_tech"
             )
         
         with col4:
@@ -2287,7 +2287,8 @@ class AutomatedAIAssessmentUI:
                 "Required Integrations:",
                 height=100,
                 placeholder="Enter required systems to integrate with:\nActive Directory\nSAP\nExisting PostgreSQL\nAWS Lambda",
-                help="List any existing systems or technologies that must be integrated with"
+                help="List any existing systems or technologies that must be integrated with",
+                key=f"{key_prefix}required_int"
             )
         
         # Additional constraints
@@ -2298,54 +2299,90 @@ class AutomatedAIAssessmentUI:
                 compliance_requirements = st.multiselect(
                     "Compliance Requirements:",
                     ["GDPR", "HIPAA", "SOX", "PCI-DSS", "CCPA", "ISO-27001", "FedRAMP"],
-                    help="Select applicable compliance standards"
+                    help="Select applicable compliance standards",
+                    key=f"{key_prefix}compliance"
                 )
                 
                 data_sensitivity = st.selectbox(
                     "Data Sensitivity Level:",
                     ["", "Public", "Internal", "Confidential", "Restricted"],
-                    help="Classification level of data being processed"
+                    help="Classification level of data being processed",
+                    key=f"{key_prefix}data_sensitivity"
                 )
             
             with col6:
                 budget_constraints = st.selectbox(
                     "Budget Constraints:",
                     ["", "Low (Open source preferred)", "Medium (Some commercial tools OK)", "High (Enterprise solutions OK)"],
-                    help="Budget level for technology solutions"
+                    help="Budget level for technology solutions",
+                    key=f"{key_prefix}budget"
                 )
                 
                 deployment_preference = st.selectbox(
                     "Deployment Preference:",
                     ["", "Cloud-only", "On-premises only", "Hybrid", "No preference"],
-                    help="Preferred deployment model"
+                    help="Preferred deployment model",
+                    key=f"{key_prefix}deployment"
                 )
+        
+        return {
+            "domain": domain if domain else None,
+            "pattern_types": pattern_types,
+            "restricted_technologies": restricted_technologies,
+            "required_integrations": required_integrations,
+            "compliance_requirements": compliance_requirements,
+            "data_sensitivity": data_sensitivity,
+            "budget_constraints": budget_constraints,
+            "deployment_preference": deployment_preference
+        }
+    
+    def build_constraints_object(self, constraint_data: Dict) -> Dict:
+        """Build constraints object from constraint data."""
+        constraints = {}
+        
+        # Parse restricted technologies and required integrations
+        if constraint_data.get("restricted_technologies"):
+            banned_tools = [tech.strip() for tech in constraint_data["restricted_technologies"].split('\n') if tech.strip()]
+            if banned_tools:
+                constraints["banned_tools"] = banned_tools
+        
+        if constraint_data.get("required_integrations"):
+            required_ints = [tech.strip() for tech in constraint_data["required_integrations"].split('\n') if tech.strip()]
+            if required_ints:
+                constraints["required_integrations"] = required_ints
+        
+        # Add other constraints
+        if constraint_data.get("compliance_requirements"):
+            constraints["compliance_requirements"] = constraint_data["compliance_requirements"]
+        if constraint_data.get("data_sensitivity"):
+            constraints["data_sensitivity"] = constraint_data["data_sensitivity"]
+        if constraint_data.get("budget_constraints"):
+            constraints["budget_constraints"] = constraint_data["budget_constraints"]
+        if constraint_data.get("deployment_preference"):
+            constraints["deployment_preference"] = constraint_data["deployment_preference"]
+        
+        return constraints if constraints else None
+
+    def render_text_input(self):
+        """Render text input interface."""
+        requirements_text = st.text_area(
+            "Enter your requirements:",
+            height=200,
+            placeholder="Describe the process or workflow you want to automate..."
+        )
+        
+        # Render shared constraints section
+        constraint_data = self.render_shared_constraints("text_")
         
         if st.button("🚀 Analyze Requirements", disabled=st.session_state.processing):
             if requirements_text.strip():
-                # Parse restricted technologies and required integrations
-                banned_tools = [tech.strip() for tech in restricted_technologies.split('\n') if tech.strip()] if restricted_technologies else []
-                required_ints = [tech.strip() for tech in required_integrations.split('\n') if tech.strip()] if required_integrations else []
-                
-                # Build constraints object
-                constraints = {}
-                if banned_tools:
-                    constraints["banned_tools"] = banned_tools
-                if required_ints:
-                    constraints["required_integrations"] = required_ints
-                if compliance_requirements:
-                    constraints["compliance_requirements"] = compliance_requirements
-                if data_sensitivity:
-                    constraints["data_sensitivity"] = data_sensitivity
-                if budget_constraints:
-                    constraints["budget_constraints"] = budget_constraints
-                if deployment_preference:
-                    constraints["deployment_preference"] = deployment_preference
+                constraints = self.build_constraints_object(constraint_data)
                 
                 self.submit_requirements("text", {
                     "text": requirements_text,
-                    "domain": domain if domain else None,
-                    "pattern_types": pattern_types,
-                    "constraints": constraints if constraints else None
+                    "domain": constraint_data["domain"],
+                    "pattern_types": constraint_data["pattern_types"],
+                    "constraints": constraints
                 })
             else:
                 st.error("Please enter some requirements text.")
@@ -2361,46 +2398,20 @@ class AutomatedAIAssessmentUI:
         if uploaded_file is not None:
             st.info(f"File: {uploaded_file.name} ({uploaded_file.size} bytes)")
             
-            # Add constraints section for file upload too
-            with st.expander("🚫 Technology Constraints (Optional)"):
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    restricted_technologies = st.text_area(
-                        "Restricted/Banned Technologies:",
-                        height=80,
-                        placeholder="Azure\nOracle Database\nSalesforce",
-                        help="Technologies that cannot be used",
-                        key="file_restricted_tech"
-                    )
-                
-                with col2:
-                    required_integrations = st.text_area(
-                        "Required Integrations:",
-                        height=80,
-                        placeholder="Active Directory\nExisting PostgreSQL\nAWS Lambda",
-                        help="Systems that must be integrated with",
-                        key="file_required_int"
-                    )
+            # Render shared constraints section
+            constraint_data = self.render_shared_constraints("file_")
             
             if st.button("🚀 Analyze File", disabled=st.session_state.processing):
                 try:
                     content = uploaded_file.read().decode('utf-8')
-                    
-                    # Parse constraints
-                    banned_tools = [tech.strip() for tech in restricted_technologies.split('\n') if tech.strip()] if restricted_technologies else []
-                    required_ints = [tech.strip() for tech in required_integrations.split('\n') if tech.strip()] if required_integrations else []
-                    
-                    constraints = {}
-                    if banned_tools:
-                        constraints["banned_tools"] = banned_tools
-                    if required_ints:
-                        constraints["required_integrations"] = required_ints
+                    constraints = self.build_constraints_object(constraint_data)
                     
                     self.submit_requirements("file", {
                         "content": content,
                         "filename": uploaded_file.name,
-                        "constraints": constraints if constraints else None
+                        "domain": constraint_data["domain"],
+                        "pattern_types": constraint_data["pattern_types"],
+                        "constraints": constraints
                     })
                 except Exception as e:
                     st.error(f"Error reading file: {str(e)}")
@@ -2703,6 +2714,76 @@ class AutomatedAIAssessmentUI:
                 placeholder="PROJ-123",
                 help="Jira ticket key (e.g., PROJ-123)"
             )
+            
+            # Add constraints section inside the form
+            st.write("---")  # Visual separator
+            st.write("**Analysis Configuration**")
+            
+            # Domain and Pattern Types
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                jira_domain = st.selectbox(
+                    "Domain (optional):",
+                    ["", "finance", "hr", "marketing", "operations", "it", "customer-service"],
+                    help="Business domain for better pattern matching"
+                )
+            
+            with col2:
+                jira_pattern_types = st.multiselect(
+                    "Pattern Types (optional):",
+                    ["workflow", "data-processing", "integration", "notification", "approval"],
+                    help="Types of automation patterns to focus on"
+                )
+            
+            # Technology Constraints
+            with st.expander("🚫 Technology Constraints (Optional)"):
+                col3, col4 = st.columns(2)
+                
+                with col3:
+                    jira_restricted_technologies = st.text_area(
+                        "Restricted/Banned Technologies:",
+                        height=80,
+                        placeholder="Enter technologies that cannot be used, one per line:\nAzure\nOracle Database\nSalesforce\nWindows Server",
+                        help="List any technologies, platforms, or tools that are banned or unavailable in your organization"
+                    )
+                
+                with col4:
+                    jira_required_integrations = st.text_area(
+                        "Required Integrations:",
+                        height=80,
+                        placeholder="Enter required systems to integrate with:\nActive Directory\nSAP\nExisting PostgreSQL\nAWS Lambda",
+                        help="List any existing systems or technologies that must be integrated with"
+                    )
+                
+                # Additional constraints
+                col5, col6 = st.columns(2)
+                
+                with col5:
+                    jira_compliance_requirements = st.multiselect(
+                        "Compliance Requirements:",
+                        ["GDPR", "HIPAA", "SOX", "PCI-DSS", "CCPA", "ISO-27001", "FedRAMP"],
+                        help="Select applicable compliance standards"
+                    )
+                    
+                    jira_data_sensitivity = st.selectbox(
+                        "Data Sensitivity Level:",
+                        ["", "Public", "Internal", "Confidential", "Restricted"],
+                        help="Classification level of data being processed"
+                    )
+                
+                with col6:
+                    jira_budget_constraints = st.selectbox(
+                        "Budget Constraints:",
+                        ["", "Low (Open source preferred)", "Medium (Some commercial tools OK)", "High (Enterprise solutions OK)"],
+                        help="Budget level for technology solutions"
+                    )
+                    
+                    jira_deployment_preference = st.selectbox(
+                        "Deployment Preference:",
+                        ["", "Cloud-only", "On-premises only", "Hybrid", "No preference"],
+                        help="Preferred deployment model"
+                    )
             
             # Form submission buttons
             col1, col2, col3 = st.columns([1, 1, 2])
@@ -3044,10 +3125,24 @@ verify_ssl = True
                         ticket_data = fetched_data["ticket_data"]
                         requirements = fetched_data["requirements"]
                         
+                        # Build constraints object from Jira form data
+                        jira_constraint_data = {
+                            "restricted_technologies": jira_restricted_technologies,
+                            "required_integrations": jira_required_integrations,
+                            "compliance_requirements": jira_compliance_requirements,
+                            "data_sensitivity": jira_data_sensitivity,
+                            "budget_constraints": jira_budget_constraints,
+                            "deployment_preference": jira_deployment_preference
+                        }
+                        constraints = self.build_constraints_object(jira_constraint_data)
+                        
                         # Create a simplified payload using the fetched data
                         payload = {
                             "ticket_key": ticket_data.get("key", jira_ticket_key),
                             "description": requirements.get("description", ""),
+                            "domain": jira_domain if jira_domain else None,
+                            "pattern_types": jira_pattern_types,
+                            "constraints": constraints,
                             "use_cached_data": True,  # Flag to indicate we're using cached data
                             "ticket_data": ticket_data,
                             "requirements": requirements
@@ -3092,14 +3187,19 @@ verify_ssl = True
                     st.session_state.requirements = {
                         "description": payload.get("content", ""),
                         "filename": payload.get("filename"),
+                        "domain": payload.get("domain"),
+                        "pattern_types": payload.get("pattern_types", []),
                         "constraints": payload.get("constraints", {})
                     }
-                elif source == "jira":
+                elif source == "jira" or source == "jira_cached":
                     # For Jira, the payload contains credentials and ticket_key
                     # The actual ticket data will be fetched by the backend
                     st.session_state.requirements = {
-                        "description": f"Jira ticket: {payload.get('ticket_key', 'Unknown')}",
+                        "description": payload.get("description", f"Jira ticket: {payload.get('ticket_key', 'Unknown')}"),
                         "jira_key": payload.get("ticket_key"),
+                        "domain": payload.get("domain"),
+                        "pattern_types": payload.get("pattern_types", []),
+                        "constraints": payload.get("constraints", {}),
                         "source": "jira"
                     }
                 
