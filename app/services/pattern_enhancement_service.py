@@ -98,19 +98,38 @@ class PatternEnhancementService:
         Description: {pattern.get('description', 'No description')}
         Current Tech Stack: {json.dumps(pattern.get('tech_stack', []), indent=2)}
         
-        Please provide:
-        1. Structured tech stack with categories (agentic_frameworks, core_technologies, data_processing, infrastructure, etc.)
-        2. Detailed implementation guidance including architecture decisions, technical challenges, deployment considerations
-        3. Comprehensive effort breakdown with phases, deliverables, and dependencies
-        4. Performance requirements and security considerations
-        5. Testing strategy and validation approaches
+        IMPORTANT: Respond with ONLY a valid JSON object. Do not include any explanatory text before or after the JSON.
         
-        Format the response as a JSON object with the enhanced fields. Focus on practical, implementable technical details.
+        Required JSON structure:
+        {{
+            "tech_stack": ["Technology1", "Technology2", "..."],
+            "implementation_guidance": {{
+                "overview": "Brief overview",
+                "prerequisites": ["Prerequisite1", "Prerequisite2"],
+                "steps": ["Step1", "Step2", "Step3"],
+                "best_practices": ["Practice1", "Practice2"]
+            }},
+            "effort_breakdown": {{
+                "total_effort": "X weeks",
+                "phases": {{
+                    "planning": "X weeks",
+                    "development": "X weeks",
+                    "testing": "X weeks"
+                }}
+            }}
+        }}
+        
+        Focus on practical, implementable technical details.
         """
         
         try:
-            response = await self.llm_provider.generate_response(prompt)
-            enhancement_data = json.loads(response)
+            response = await self.llm_provider.generate(prompt, purpose="pattern_enhancement")
+            
+            # Clean and extract JSON from response
+            enhancement_data = self._extract_json_from_response(response)
+            if not enhancement_data:
+                app_logger.warning(f"No valid JSON found in LLM response for technical enhancement")
+                return self._apply_basic_technical_enhancement(pattern)
             
             # Merge enhancement data with existing pattern
             enhanced_pattern.update(enhancement_data)
@@ -163,22 +182,31 @@ class PatternEnhancementService:
         Domain: {pattern.get('domain', 'Unknown')}
         Complexity: {pattern.get('complexity', 'Medium')}
         
-        Please provide:
-        1. Autonomy level (0.0-1.0) based on the pattern's automation potential
-        2. Reasoning types needed (logical, causal, temporal, spatial, analogical, case_based, probabilistic, strategic)
-        3. Decision boundaries: autonomous decisions, escalation triggers, decision authority level
-        4. Exception handling strategy: autonomous resolution approaches, reasoning fallbacks, escalation criteria
-        5. Learning mechanisms and self-monitoring capabilities
-        6. Agent architecture recommendation (single_agent, multi_agent_collaborative, hierarchical_agents, swarm_intelligence)
-        7. Coordination requirements if multi-agent
-        8. Workflow automation details
+        IMPORTANT: Respond with ONLY a valid JSON object. Do not include any explanatory text before or after the JSON.
         
-        Format the response as a JSON object with the agentic enhancement fields.
+        Required JSON structure:
+        {{
+            "autonomy_level": "medium",
+            "reasoning_types": ["logical_reasoning", "pattern_matching"],
+            "decision_boundaries": ["Boundary1", "Boundary2"],
+            "self_monitoring": ["Capability1", "Capability2"],
+            "learning_mechanisms": ["Mechanism1", "Mechanism2"],
+            "agent_architecture": "single_agent"
+        }}
+        
+        Choose autonomy_level from: low, medium, high, very_high
+        Choose reasoning_types from: logical_reasoning, causal_reasoning, temporal_reasoning, spatial_reasoning, analogical_reasoning, case_based_reasoning, probabilistic_reasoning, strategic_reasoning, pattern_matching
+        Choose agent_architecture from: single_agent, multi_agent_collaborative, hierarchical_agents, swarm_intelligence
         """
         
         try:
-            response = await self.llm_provider.generate_response(prompt)
-            enhancement_data = json.loads(response)
+            response = await self.llm_provider.generate(prompt, purpose="pattern_enhancement")
+            
+            # Clean and extract JSON from response
+            enhancement_data = self._extract_json_from_response(response)
+            if not enhancement_data:
+                app_logger.warning(f"No valid JSON found in LLM response for agentic enhancement")
+                return self._apply_basic_agentic_enhancement(pattern)
             
             # Merge agentic capabilities
             agentic_fields = [
@@ -389,4 +417,82 @@ class PatternEnhancementService:
         if not pattern.get("implementation_guidance"):
             score += 0.3
         
-        return min(score, 1.0)
+        return min(score, 1.0)    
+   
+ def _extract_json_from_response(self, response: str) -> Optional[Dict[str, Any]]:
+        """Extract JSON from LLM response, handling various formats."""
+        if not response or not response.strip():
+            return None
+        
+        import re
+        
+        try:
+            # First try to parse the entire response as JSON
+            return json.loads(response.strip())
+        except json.JSONDecodeError:
+            pass
+        
+        # Try to find JSON block in markdown code blocks
+        json_patterns = [
+            r'```json\s*(\{.*?\})\s*```',
+            r'```\s*(\{.*?\})\s*```',
+            r'(\{.*?\})',
+        ]
+        
+        for pattern in json_patterns:
+            matches = re.findall(pattern, response, re.DOTALL)
+            for match in matches:
+                try:
+                    return json.loads(match.strip())
+                except json.JSONDecodeError:
+                    continue
+        
+        app_logger.warning(f"Could not extract valid JSON from response: {response[:200]}...")
+        return None
+    
+    def _apply_basic_technical_enhancement(self, pattern: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply basic technical enhancements when LLM enhancement fails."""
+        enhanced_pattern = pattern.copy()
+        
+        # Add basic implementation guidance if missing
+        if not enhanced_pattern.get("implementation_guidance"):
+            enhanced_pattern["implementation_guidance"] = {
+                "overview": f"Implementation guidance for {pattern.get('name', 'this pattern')}",
+                "prerequisites": ["Review requirements", "Set up development environment"],
+                "steps": [
+                    "Plan the implementation approach",
+                    "Set up the technical infrastructure", 
+                    "Implement core functionality",
+                    "Test and validate the solution"
+                ],
+                "best_practices": ["Follow coding standards", "Implement proper error handling", "Add comprehensive logging"]
+            }
+        
+        # Add basic effort breakdown if missing
+        if not enhanced_pattern.get("effort_breakdown"):
+            enhanced_pattern["effort_breakdown"] = {
+                "total_effort": "4-6 weeks",
+                "phases": {
+                    "planning": "1 week",
+                    "development": "3-4 weeks", 
+                    "testing": "1 week"
+                }
+            }
+        
+        app_logger.info(f"Applied basic technical enhancement to pattern {pattern.get('pattern_id')}")
+        return enhanced_pattern
+    
+    def _apply_basic_agentic_enhancement(self, pattern: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply basic agentic enhancements when LLM enhancement fails."""
+        enhanced_pattern = pattern.copy()
+        
+        # Add basic agentic capabilities
+        enhanced_pattern["autonomy_level"] = "medium"
+        enhanced_pattern["reasoning_types"] = ["logical_reasoning", "pattern_matching"]
+        enhanced_pattern["decision_boundaries"] = ["Standard operational parameters", "Predefined business rules"]
+        enhanced_pattern["self_monitoring"] = ["Performance tracking", "Error detection"]
+        enhanced_pattern["learning_mechanisms"] = ["Pattern recognition", "Feedback incorporation"]
+        enhanced_pattern["agent_architecture"] = "single_agent"
+        
+        app_logger.info(f"Applied basic agentic enhancement to pattern {pattern.get('pattern_id')}")
+        return enhanced_pattern

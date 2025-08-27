@@ -53,7 +53,7 @@ Return only a JSON array of numbers, no other text.
 Text: {text}"""
         
         try:
-            response = await self.llm_provider.generate(prompt)
+            response = await self.llm_provider.generate(prompt, purpose="embedding_generation")
             
             # Parse the JSON response
             embedding = json.loads(response.strip())

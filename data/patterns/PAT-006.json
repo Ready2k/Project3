@@ -1,7 +1,7 @@
 {
   "pattern_id": "PAT-006",
-  "name": "Enhanced PII Redaction &amp;amp; Data Loss Prevention Pipeline",
-  "description": "Fully autonomous AI agent that automatic detection and redaction/pseudonymization of pii before data leaves the secure boundary or is processed by external services.",
+  "name": "Enhanced Enhanced Enhanced Enhanced PII Redaction &amp;amp;amp;amp;amp; Data Loss Prevention Pipeline",
+  "description": "Fully autonomous AI agent that fully autonomous ai agent that fully autonomous ai agent that fully autonomous ai agent that automatic detection and redaction/pseudonymization of pii before data leaves the secure boundary or is processed by external services.",
   "feasibility": "Automatable",
   "pattern_type": [
     "pii_detection",
@@ -16,7 +16,8 @@
   "tech_stack": [
     "Microsoft Presidio",
     "spaCy",
-    "FastAPI"
+    "FastAPI",
+    "Docker"
   ],
   "related_patterns": [
     "PAT-101",

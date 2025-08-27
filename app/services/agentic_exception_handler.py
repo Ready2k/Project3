@@ -532,7 +532,7 @@ class ReasoningEngine:
         """
         
         try:
-            response = await self.llm_provider.generate(prompt)
+            response = await self.llm_provider.generate(prompt, purpose="exception_resolution")
             strategy_data = json.loads(response)
             
             approaches = []

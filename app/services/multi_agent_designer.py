@@ -200,7 +200,7 @@ class MultiAgentSystemDesigner:
         """
         
         try:
-            response = await self.llm_provider.generate(prompt)
+            response = await self.llm_provider.generate(prompt, purpose="workflow_complexity")
             app_logger.debug(f"Workflow complexity response: {response[:200]}...")
             
             from app.utils.json_parser import parse_llm_json_response
@@ -299,7 +299,7 @@ class MultiAgentSystemDesigner:
         """
         
         try:
-            response = await self.llm_provider.generate(prompt)
+            response = await self.llm_provider.generate(prompt, purpose="agent_roles")
             app_logger.debug(f"Agent roles response: {response[:200]}...")
             
             from app.utils.json_parser import parse_llm_json_response
