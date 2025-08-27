@@ -1186,14 +1186,32 @@ Respond with ONLY the responsibility statement, no other text."""
                 }
             }
             
-            # Save to file
+            # Save to file with better error handling
             pattern_file_path = pattern_library_path / f"{enhanced_pattern['pattern_id']}.json"
             
-            with open(pattern_file_path, 'w', encoding='utf-8') as f:
-                json.dump(agentic_pattern, f, indent=2, ensure_ascii=False)
+            # First, validate that the pattern can be serialized to JSON
+            try:
+                json_str = json.dumps(agentic_pattern, indent=2, ensure_ascii=False)
+            except (TypeError, ValueError) as json_error:
+                app_logger.error(f"JSON serialization failed for pattern {enhanced_pattern['pattern_id']}: {json_error}")
+                return False
             
-            app_logger.info(f"Successfully saved APAT pattern {enhanced_pattern['pattern_id']} to {pattern_file_path}")
-            return True
+            # Write to file
+            with open(pattern_file_path, 'w', encoding='utf-8') as f:
+                f.write(json_str)
+            
+            # Validate the written file
+            try:
+                with open(pattern_file_path, 'r', encoding='utf-8') as f:
+                    json.load(f)  # Validate JSON is readable
+                app_logger.info(f"Successfully saved and validated APAT pattern {enhanced_pattern['pattern_id']} to {pattern_file_path}")
+                return True
+            except json.JSONDecodeError as validation_error:
+                app_logger.error(f"JSON validation failed for saved pattern {enhanced_pattern['pattern_id']}: {validation_error}")
+                # Clean up the invalid file
+                if pattern_file_path.exists():
+                    pattern_file_path.unlink()
+                return False
             
         except Exception as e:
             app_logger.error(f"Failed to save APAT pattern {enhanced_pattern.get('pattern_id', 'unknown')}: {e}")
@@ -1237,60 +1255,107 @@ Respond with ONLY the responsibility statement, no other text."""
                 "exception_handling": "Multi-agent collaborative resolution with system-level escalation",
                 "learning_mechanisms": ["inter_agent_learning", "system_optimization", "performance_adaptation"],
                 "tech_stack": multi_agent_pattern["tech_stack"],
-                "agent_architecture": {
-                    "type": design.architecture_type.value,
-                    "agent_count": len(design.agent_roles),
-                    "communication_protocols": design.communication_protocols,
-                    "coordination_mechanisms": design.coordination_mechanisms,
-                    "agent_roles": [
-                        {
-                            "name": role.name,
-                            "responsibility": role.responsibility,
-                            "capabilities": role.capabilities,
-                            "autonomy_level": role.autonomy_level,
-                            "decision_authority": role.decision_authority,
-                            "communication_requirements": role.communication_requirements,
-                            "interfaces": role.interfaces,
-                            "exception_handling": role.exception_handling,
-                            "learning_capabilities": role.learning_capabilities
-                        }
-                        for role in design.agent_roles
-                    ]
-                },
-                "deployment_strategy": design.deployment_strategy,
-                "scalability_considerations": design.scalability_considerations,
-                "monitoring_requirements": design.monitoring_requirements,
-                "related_patterns": [],  # Will be populated as more patterns are created
+                "agent_architecture": design.architecture_type.value,
+                "input_requirements": [
+                    "multi_agent_coordination",
+                    "distributed_processing",
+                    "system_monitoring",
+                    "error_handling"
+                ],
+                "related_patterns": ["APAT-001", "APAT-002"],
                 "confidence_score": design.autonomy_score,
                 "constraints": {
-                    "min_autonomy_level": 0.85,
-                    "requires_human_oversight": False,
-                    "compliance_requirements": requirements.get("compliance_requirements", []),
-                    "data_sensitivity": requirements.get("data_sensitivity", "Internal")
+                    "banned_tools": [],
+                    "required_integrations": multi_agent_pattern.get("tech_stack", [])[:3]  # First 3 as required
                 },
-                "enhanced_pattern": {
-                    "creation_session": session_id,
-                    "autonomy_score": autonomy_assessment.overall_score,
+                "domain": self._extract_domain_from_requirements(requirements),
+                "complexity": "High",
+                "estimated_effort": "8-12 weeks",
+                "reasoning_types": ["logical", "causal", "collaborative"],
+                "decision_boundaries": {
+                    "autonomous_decisions": ["agent_coordination", "task_distribution", "resource_allocation"],
+                    "escalation_triggers": ["system_failures", "conflicting_decisions", "resource_exhaustion"]
+                },
+                "autonomy_assessment": {
+                    "overall_score": autonomy_assessment.overall_score,
                     "reasoning_complexity": autonomy_assessment.reasoning_complexity.value,
-                    "decision_boundaries": autonomy_assessment.decision_boundaries,
                     "workflow_coverage": autonomy_assessment.workflow_coverage,
-                    "multi_agent_design": True,
-                    "created_timestamp": str(Path().cwd().stat().st_mtime)  # Simple timestamp
-                }
+                    "decision_independence": "high"
+                },
+                "self_monitoring_capabilities": [
+                    "performance_tracking",
+                    "error_detection",
+                    "system_health_monitoring"
+                ],
+                "integration_requirements": multi_agent_pattern.get("tech_stack", [])[-2:],  # Last 2 as integration
+                "created_from_session": session_id,
+                "auto_generated": True,
+                "llm_insights": [
+                    "Multi-agent coordination enables distributed processing",
+                    "Collaborative reasoning improves decision accuracy",
+                    "System-level monitoring ensures reliability"
+                ],
+                "llm_challenges": [
+                    "Coordinating multiple agents effectively",
+                    "Managing distributed decision making",
+                    "Ensuring system-wide consistency"
+                ],
+                "llm_recommended_approach": f"Implement {design.architecture_type.value} architecture with specialized agent roles, use robust communication protocols, maintain comprehensive monitoring and error handling.",
+                "enhanced_by_llm": True,
+                "enhanced_from_session": session_id,
+                "color": "🟢"
             }
             
-            # Save to file
+            # Save to file with better error handling
             pattern_file_path = pattern_library_path / f"{multi_agent_pattern['pattern_id']}.json"
             
-            with open(pattern_file_path, 'w', encoding='utf-8') as f:
-                json.dump(agentic_pattern, f, indent=2, ensure_ascii=False)
+            # First, validate that the pattern can be serialized to JSON
+            try:
+                json_str = json.dumps(agentic_pattern, indent=2, ensure_ascii=False)
+            except (TypeError, ValueError) as json_error:
+                app_logger.error(f"JSON serialization failed for pattern {multi_agent_pattern['pattern_id']}: {json_error}")
+                return False
             
-            app_logger.info(f"Successfully saved multi-agent APAT pattern {multi_agent_pattern['pattern_id']} to {pattern_file_path}")
-            return True
+            # Write to file
+            with open(pattern_file_path, 'w', encoding='utf-8') as f:
+                f.write(json_str)
+            
+            # Validate the written file
+            try:
+                with open(pattern_file_path, 'r', encoding='utf-8') as f:
+                    json.load(f)  # Validate JSON is readable
+                app_logger.info(f"Successfully saved and validated multi-agent APAT pattern {multi_agent_pattern['pattern_id']} to {pattern_file_path}")
+                return True
+            except json.JSONDecodeError as validation_error:
+                app_logger.error(f"JSON validation failed for saved pattern {multi_agent_pattern['pattern_id']}: {validation_error}")
+                # Clean up the invalid file
+                if pattern_file_path.exists():
+                    pattern_file_path.unlink()
+                return False
             
         except Exception as e:
             app_logger.error(f"Failed to save multi-agent APAT pattern {multi_agent_pattern.get('pattern_id', 'unknown')}: {e}")
             return False
+
+    def _extract_domain_from_requirements(self, requirements: Dict[str, Any]) -> str:
+        """Extract domain from requirements description."""
+        description = requirements.get('description', '').lower()
+        
+        # Domain mapping based on keywords
+        domain_keywords = {
+            'financial': ['payment', 'credit', 'financial', 'money', 'budget', 'invoice'],
+            'incident_management': ['incident', 'alert', 'monitoring', 'outage', 'failure'],
+            'user_management': ['user', 'account', 'authentication', 'profile'],
+            'data_processing': ['data', 'analytics', 'processing', 'analysis'],
+            'communication': ['email', 'notification', 'message', 'chat'],
+            'workflow_automation': ['workflow', 'process', 'automation', 'task']
+        }
+        
+        for domain, keywords in domain_keywords.items():
+            if any(keyword in description for keyword in keywords):
+                return domain
+        
+        return 'general_automation'
 
     async def _save_traditional_pattern(self, 
                                       requirements: Dict[str, Any],
