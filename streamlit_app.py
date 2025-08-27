@@ -6625,8 +6625,121 @@ verify_ssl = True
             if not pattern_stats or not pattern_stats.get('pattern_stats'):
                 if data_scope == "Current Session Only":
                     st.info("No pattern analytics available for current session yet. Complete an analysis to see pattern matching data.")
+                    
+                    # Provide helpful debugging information
+                    with st.expander("🔍 Troubleshooting Pattern Analytics"):
+                        st.write("**Why might this happen?**")
+                        st.write("• You haven't completed an analysis in this session yet")
+                        st.write("• The analysis failed before pattern matching occurred")
+                        st.write("• You're viewing a different session than the one you analyzed")
+                        
+                        st.write("**To see pattern analytics:**")
+                        st.write("1. Go to the **Analysis** tab")
+                        st.write("2. Complete a full analysis (requirements → Q&A → recommendations)")
+                        st.write("3. Return to this **Observability** tab")
+                        st.write("4. Select **Current Session Only** to see your session's pattern matches")
+                        
+                        # Show current session info and diagnostic button
+                        if current_session_id:
+                            st.write(f"**Current Session ID:** `{current_session_id[:8]}...`")
+                            
+                            if st.button("🔍 Check Current Session Data", key="check_session_data"):
+                                try:
+                                    from app.utils.audit import get_audit_logger
+                                    import sqlite3
+                                    audit_logger = get_audit_logger()
+                                    redacted_session = audit_logger._redact_session_id(current_session_id)
+                                    
+                                    with sqlite3.connect(audit_logger.db_path) as conn:
+                                        # Check for pattern matches
+                                        cursor = conn.execute("""
+                                            SELECT pattern_id, score, accepted, created_at 
+                                            FROM matches 
+                                            WHERE session_id = ? 
+                                            ORDER BY created_at DESC
+                                        """, [redacted_session])
+                                        matches = cursor.fetchall()
+                                        
+                                        # Check for LLM calls
+                                        cursor = conn.execute("""
+                                            SELECT provider, model, purpose, created_at 
+                                            FROM runs 
+                                            WHERE session_id = ? 
+                                            ORDER BY created_at DESC 
+                                            LIMIT 5
+                                        """, [redacted_session])
+                                        llm_calls = cursor.fetchall()
+                                        
+                                        if matches:
+                                            st.success(f"✅ Found {len(matches)} pattern matches for this session:")
+                                            for match in matches:
+                                                st.write(f"• **{match[0]}** (score: {match[1]:.3f}) at {match[3][:19]}")
+                                            
+                                            # Check if there's a discrepancy with what's shown on Analysis page
+                                            pattern_ids = [match[0] for match in matches]
+                                            if len(set(pattern_ids)) > 1:
+                                                st.info("ℹ️ **Multiple patterns matched**: This session has matches for different patterns, which may indicate multiple analyses or pattern updates.")
+                                            
+                                            # Show most recent pattern
+                                            most_recent_pattern = matches[0][0]
+                                            st.write(f"🎯 **Most recent pattern match**: {most_recent_pattern}")
+                                        else:
+                                            st.warning("❌ No pattern matches found for this session")
+                                            
+                                        if llm_calls:
+                                            st.info(f"📡 Found {len(llm_calls)} recent LLM calls for this session:")
+                                            for call in llm_calls[:3]:  # Show first 3
+                                                purpose = call[2] or "general"
+                                                st.write(f"• {call[0]} {call[1]} ({purpose}) at {call[3][:19]}")
+                                        else:
+                                            st.warning("❌ No LLM calls found for this session")
+                                            
+                                        if not matches and not llm_calls:
+                                            st.error("🚨 This session has no recorded activity. You may need to complete an analysis first.")
+                                            
+                                except Exception as e:
+                                    st.error(f"Error checking session data: {str(e)}")
+                        
+                        # Show if there are any recent sessions with data
+                        try:
+                            from app.utils.audit import get_audit_logger
+                            import sqlite3
+                            audit_logger = get_audit_logger()
+                            with sqlite3.connect(audit_logger.db_path) as conn:
+                                cursor = conn.execute("""
+                                    SELECT session_id, COUNT(*) as match_count, MAX(created_at) as last_match
+                                    FROM matches 
+                                    WHERE created_at >= datetime('now', '-24 hours')
+                                    GROUP BY session_id 
+                                    ORDER BY last_match DESC 
+                                    LIMIT 3
+                                """)
+                                recent_sessions = cursor.fetchall()
+                                
+                                if recent_sessions:
+                                    st.write("**Recent sessions with pattern matches (last 24 hours):**")
+                                    for session in recent_sessions:
+                                        session_display = session[0][:8] + "..." if len(session[0]) > 8 else session[0]
+                                        st.write(f"• Session `{session_display}`: {session[1]} matches (last: {session[2][:19]})")
+                                    st.write("💡 Try selecting **Last 24 Hours** to see data from recent sessions")
+                        except Exception as e:
+                            st.write(f"Could not check recent sessions: {str(e)}")
                 else:
                     st.info("No pattern analytics available yet. Run some analyses to see pattern matching data.")
+                    
+                    with st.expander("🔍 Getting Started with Pattern Analytics"):
+                        st.write("**Pattern Analytics shows:**")
+                        st.write("• How often each solution pattern is recommended")
+                        st.write("• Average matching confidence scores")
+                        st.write("• Pattern acceptance rates")
+                        st.write("• Usage trends over time")
+                        
+                        st.write("**To generate analytics data:**")
+                        st.write("1. Go to the **Analysis** tab")
+                        st.write("2. Submit requirements for analysis")
+                        st.write("3. Complete the Q&A process")
+                        st.write("4. Review the generated recommendations")
+                        st.write("5. Return here to see which patterns were matched")
                 return
             
             stats = pattern_stats['pattern_stats']
