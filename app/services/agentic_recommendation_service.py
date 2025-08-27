@@ -298,17 +298,30 @@ class AgenticRecommendationService:
                                          match: AgenticPatternMatch,
                                          requirements: Dict[str, Any],
                                          autonomy_assessment: AutonomyAssessment) -> List[str]:
-        """Generate technology stack focused on agentic frameworks."""
+        """Generate technology stack focused on agentic frameworks with constraint enforcement."""
+        
+        # Extract constraints from requirements
+        constraints = requirements.get('constraints', {})
+        banned_tools = set(constraints.get('banned_tools', []))
+        required_integrations = constraints.get('required_integrations', [])
+        compliance_requirements = constraints.get('compliance_requirements', [])
+        data_sensitivity = constraints.get('data_sensitivity', '')
+        budget_constraints = constraints.get('budget_constraints', '')
+        deployment_preference = constraints.get('deployment_preference', '')
+        
+        app_logger.info(f"Applying constraints to agentic tech stack: "
+                       f"banned={len(banned_tools)}, required_integrations={len(required_integrations)}, "
+                       f"compliance={compliance_requirements}, sensitivity={data_sensitivity}")
         
         tech_stack = []
         
-        # Add agentic frameworks from pattern
+        # Add agentic frameworks from pattern (filtered for constraints)
         agentic_frameworks = match.enhanced_pattern.get("agentic_frameworks", [])
-        tech_stack.extend(agentic_frameworks)
+        tech_stack.extend(self._filter_by_constraints(agentic_frameworks, banned_tools, compliance_requirements, data_sensitivity, deployment_preference))
         
-        # Add reasoning engines if needed
+        # Add reasoning engines if needed (filtered for constraints)
         reasoning_engines = match.enhanced_pattern.get("reasoning_engines", [])
-        tech_stack.extend(reasoning_engines)
+        tech_stack.extend(self._filter_by_constraints(reasoning_engines, banned_tools, compliance_requirements, data_sensitivity, deployment_preference))
         
         # Get recommendations from agentic catalog
         catalog_recommendations = self.agentic_catalog.recommend_technologies_for_requirements(
@@ -320,15 +333,23 @@ class AgenticRecommendationService:
             top_k=3
         )
         
-        # Add top catalog recommendations
+        # Add top catalog recommendations (filtered for constraints)
+        catalog_tech_names = []
         for tech, score in catalog_recommendations:
             if tech.name not in tech_stack and score > 0.6:
-                tech_stack.append(tech.name)
+                catalog_tech_names.append(tech.name)
+        tech_stack.extend(self._filter_by_constraints(catalog_tech_names, banned_tools, compliance_requirements, data_sensitivity, deployment_preference))
         
-        # Add base tech stack from pattern (filtered for agentic compatibility)
+        # Add base tech stack from pattern (filtered for agentic compatibility and constraints)
         base_tech = match.enhanced_pattern.get("tech_stack", [])
         agentic_compatible_tech = self._filter_agentic_compatible_tech(base_tech)
-        tech_stack.extend(agentic_compatible_tech)
+        tech_stack.extend(self._filter_by_constraints(agentic_compatible_tech, banned_tools, compliance_requirements, data_sensitivity, deployment_preference))
+        
+        # Add required integrations (these override bans if explicitly required)
+        for integration in required_integrations:
+            if integration not in tech_stack:
+                tech_stack.append(integration)
+                app_logger.info(f"Added required integration: {integration}")
         
         # Remove duplicates while preserving order
         seen = set()
@@ -338,8 +359,110 @@ class AgenticRecommendationService:
                 seen.add(tech)
                 unique_tech_stack.append(tech)
         
+        app_logger.info(f"Generated agentic tech stack with {len(unique_tech_stack)} technologies after constraint filtering")
         return unique_tech_stack[:10]  # Limit to top 10
     
+    def _filter_by_constraints(self, tech_list: List[str], banned_tools: set, 
+                              compliance_requirements: List[str], data_sensitivity: str, 
+                              deployment_preference: str) -> List[str]:
+        """Filter technology list based on constraints."""
+        filtered_tech = []
+        
+        for tech in tech_list:
+            # Check if technology is banned
+            tech_lower = tech.lower()
+            is_banned = False
+            
+            for banned in banned_tools:
+                banned_lower = banned.lower()
+                # Check for exact match or word boundary match
+                if tech_lower == banned_lower:
+                    is_banned = True
+                    break
+                # Check if banned tool is a complete word within the tech name
+                import re
+                if re.search(r'\b' + re.escape(banned_lower) + r'\b', tech_lower):
+                    is_banned = True
+                    break
+            
+            if is_banned:
+                app_logger.info(f"Filtered out banned technology: {tech}")
+                continue
+            
+            # Apply compliance filtering
+            if not self._meets_compliance_requirements(tech, compliance_requirements):
+                app_logger.info(f"Filtered out technology for compliance: {tech}")
+                continue
+            
+            # Apply data sensitivity filtering
+            if not self._meets_data_sensitivity_requirements(tech, data_sensitivity):
+                app_logger.info(f"Filtered out technology for data sensitivity: {tech}")
+                continue
+            
+            # Apply deployment preference filtering
+            if not self._meets_deployment_preference(tech, deployment_preference):
+                app_logger.info(f"Filtered out technology for deployment preference: {tech}")
+                continue
+            
+            filtered_tech.append(tech)
+        
+        return filtered_tech
+    
+    def _meets_compliance_requirements(self, tech: str, compliance_requirements: List[str]) -> bool:
+        """Check if technology meets compliance requirements."""
+        if not compliance_requirements:
+            return True
+        
+        tech_lower = tech.lower()
+        
+        # Define compliance-sensitive technologies that need special handling
+        high_security_required = any(req in ["HIPAA", "SOX", "PCI-DSS", "FedRAMP"] for req in compliance_requirements)
+        
+        if high_security_required:
+            # For high-security compliance, avoid certain technologies
+            risky_tech = ["sqlite", "local storage", "file system", "plain text"]
+            if any(risky in tech_lower for risky in risky_tech):
+                return False
+        
+        return True
+    
+    def _meets_data_sensitivity_requirements(self, tech: str, data_sensitivity: str) -> bool:
+        """Check if technology meets data sensitivity requirements."""
+        if not data_sensitivity or data_sensitivity in ["", "Public", "Internal"]:
+            return True
+        
+        tech_lower = tech.lower()
+        
+        # For confidential/restricted data, avoid certain technologies
+        if data_sensitivity in ["Confidential", "Restricted"]:
+            # Avoid cloud services that might not meet security requirements
+            risky_cloud_services = ["public cloud", "shared hosting", "free tier"]
+            if any(risky in tech_lower for risky in risky_cloud_services):
+                return False
+        
+        return True
+    
+    def _meets_deployment_preference(self, tech: str, deployment_preference: str) -> bool:
+        """Check if technology meets deployment preference."""
+        if not deployment_preference:
+            return True
+        
+        tech_lower = tech.lower()
+        
+        if deployment_preference == "On-premises only":
+            # Filter out cloud-only services
+            cloud_only_services = ["aws lambda", "azure functions", "google cloud functions", 
+                                 "firebase", "vercel", "netlify", "heroku"]
+            if any(cloud_service in tech_lower for cloud_service in cloud_only_services):
+                return False
+        elif deployment_preference == "Cloud-only":
+            # Filter out on-premises only technologies
+            on_prem_only = ["on-premises", "local server", "physical server"]
+            if any(on_prem in tech_lower for on_prem in on_prem_only):
+                return False
+        
+        return True
+
     def _filter_agentic_compatible_tech(self, tech_list: List[str]) -> List[str]:
         """Filter technology list for agentic compatibility."""
         
@@ -765,7 +888,19 @@ class AgenticRecommendationService:
         return [recommendation]
     
     async def _generate_traditional_tech_stack(self, requirements: Dict[str, Any]) -> List[str]:
-        """Generate appropriate tech stack for traditional automation."""
+        """Generate appropriate tech stack for traditional automation with constraint enforcement."""
+        
+        # Extract constraints from requirements
+        constraints = requirements.get('constraints', {})
+        banned_tools = set(constraints.get('banned_tools', []))
+        required_integrations = constraints.get('required_integrations', [])
+        compliance_requirements = constraints.get('compliance_requirements', [])
+        data_sensitivity = constraints.get('data_sensitivity', '')
+        deployment_preference = constraints.get('deployment_preference', '')
+        
+        app_logger.info(f"Applying constraints to traditional tech stack: "
+                       f"banned={len(banned_tools)}, required_integrations={len(required_integrations)}, "
+                       f"compliance={compliance_requirements}, sensitivity={data_sensitivity}")
         
         description = requirements.get("description", "").lower()
         
@@ -774,33 +909,55 @@ class AgenticRecommendationService:
         
         # Workflow engines
         if any(keyword in description for keyword in ["workflow", "process", "steps", "sequence"]):
-            tech_stack.extend(["Apache Airflow", "Zapier", "Microsoft Power Automate"])
+            candidates = ["Apache Airflow", "Zapier", "Microsoft Power Automate"]
+            tech_stack.extend(self._filter_by_constraints(candidates, banned_tools, compliance_requirements, data_sensitivity, deployment_preference))
         
         # Data processing
         if any(keyword in description for keyword in ["data", "file", "document", "record"]):
-            tech_stack.extend(["Apache Kafka", "ETL Tools", "Database Systems"])
+            candidates = ["Apache Kafka", "ETL Tools", "Database Systems"]
+            tech_stack.extend(self._filter_by_constraints(candidates, banned_tools, compliance_requirements, data_sensitivity, deployment_preference))
         
         # Web automation
         if any(keyword in description for keyword in ["web", "browser", "form", "website"]):
-            tech_stack.extend(["Selenium", "REST APIs", "Web Scraping Tools"])
+            candidates = ["Selenium", "REST APIs", "Web Scraping Tools"]
+            tech_stack.extend(self._filter_by_constraints(candidates, banned_tools, compliance_requirements, data_sensitivity, deployment_preference))
         
         # Integration platforms
         if any(keyword in description for keyword in ["integrate", "connect", "sync", "api"]):
-            tech_stack.extend(["MuleSoft", "Apache Camel", "API Gateway"])
+            candidates = ["MuleSoft", "Apache Camel", "API Gateway"]
+            tech_stack.extend(self._filter_by_constraints(candidates, banned_tools, compliance_requirements, data_sensitivity, deployment_preference))
         
         # Business process management
         if any(keyword in description for keyword in ["business process", "bpm", "workflow"]):
-            tech_stack.extend(["Camunda", "jBPM", "Business Process Management"])
+            candidates = ["Camunda", "jBPM", "Business Process Management"]
+            tech_stack.extend(self._filter_by_constraints(candidates, banned_tools, compliance_requirements, data_sensitivity, deployment_preference))
         
         # Restaurant/food service specific
         if any(keyword in description for keyword in ["order", "food", "restaurant", "kitchen"]):
-            tech_stack.extend(["POS Systems", "Kitchen Display Systems", "Order Management Software"])
+            candidates = ["POS Systems", "Kitchen Display Systems", "Order Management Software"]
+            tech_stack.extend(self._filter_by_constraints(candidates, banned_tools, compliance_requirements, data_sensitivity, deployment_preference))
         
         # Default technologies if none detected
         if not tech_stack:
-            tech_stack = ["Workflow Automation Platform", "Database System", "API Integration"]
+            candidates = ["Workflow Automation Platform", "Database System", "API Integration"]
+            tech_stack.extend(self._filter_by_constraints(candidates, banned_tools, compliance_requirements, data_sensitivity, deployment_preference))
         
-        return tech_stack[:8]  # Limit to reasonable number
+        # Add required integrations (these override bans if explicitly required)
+        for integration in required_integrations:
+            if integration not in tech_stack:
+                tech_stack.append(integration)
+                app_logger.info(f"Added required integration to traditional stack: {integration}")
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_tech_stack = []
+        for tech in tech_stack:
+            if tech not in seen:
+                seen.add(tech)
+                unique_tech_stack.append(tech)
+        
+        app_logger.info(f"Generated traditional tech stack with {len(unique_tech_stack)} technologies after constraint filtering")
+        return unique_tech_stack[:8]  # Limit to reasonable number
     
     def _generate_traditional_reasoning(self, necessity_assessment: AgenticNecessityAssessment, 
                                       requirements: Dict[str, Any]) -> str:
@@ -1314,7 +1471,16 @@ Respond with ONLY the JSON object, no other text."""
         }
     
     def _generate_comprehensive_tech_stack(self, enhanced_pattern: Dict[str, Any], requirements: Dict[str, Any]) -> List[str]:
-        """Generate comprehensive tech stack with specific technologies."""
+        """Generate comprehensive tech stack with specific technologies and constraint enforcement."""
+        
+        # Extract constraints from requirements
+        constraints = requirements.get('constraints', {})
+        banned_tools = set(constraints.get('banned_tools', []))
+        required_integrations = constraints.get('required_integrations', [])
+        compliance_requirements = constraints.get('compliance_requirements', [])
+        data_sensitivity = constraints.get('data_sensitivity', '')
+        deployment_preference = constraints.get('deployment_preference', '')
+        
         base_stack = [
             "LangChain for agent orchestration and reasoning chains",
             "CrewAI for multi-agent coordination and task delegation",
@@ -1338,10 +1504,18 @@ Respond with ONLY the JSON object, no other text."""
         if isinstance(existing_tech, list):
             base_stack.extend(existing_tech)
         
+        # Apply constraint filtering
+        filtered_stack = self._filter_by_constraints(base_stack, banned_tools, compliance_requirements, data_sensitivity, deployment_preference)
+        
+        # Add required integrations (these override bans if explicitly required)
+        for integration in required_integrations:
+            if integration not in filtered_stack:
+                filtered_stack.append(integration)
+        
         # Remove duplicates while preserving order
         seen = set()
         result = []
-        for tech in base_stack:
+        for tech in filtered_stack:
             if tech not in seen:
                 seen.add(tech)
                 result.append(tech)
