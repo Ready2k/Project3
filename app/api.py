@@ -554,14 +554,14 @@ def validate_output_security(data: Any) -> bool:
 
 
 class IngestRequest(BaseModel):
-    source: str  # "text", "file", "jira"
+    source: str  # "text", "file", "jira", "jira_cached"
     payload: Dict[str, Any]
     provider_config: Optional[ProviderConfig] = None
     
     @field_validator('source')
     @classmethod
     def validate_source(cls, v):
-        allowed_sources = ["text", "file", "jira"]
+        allowed_sources = ["text", "file", "jira", "jira_cached"]
         if v not in allowed_sources:
             raise ValueError(f'Invalid source. Must be one of: {allowed_sources}')
         return v
@@ -992,6 +992,22 @@ async def ingest_requirements(request: IngestRequest, http_request: Request, res
             except Exception as e:
                 app_logger.error(f"Unexpected error fetching Jira ticket {ticket_key}: {e}")
                 raise HTTPException(status_code=500, detail=f"Failed to fetch Jira ticket: {str(e)}")
+        
+        elif request.source == "jira_cached":
+            # For cached Jira source, use already fetched ticket data
+            ticket_key = request.payload.get("ticket_key")
+            ticket_data = request.payload.get("ticket_data", {})
+            cached_requirements = request.payload.get("requirements", {})
+            
+            if not ticket_key:
+                raise HTTPException(status_code=400, detail="ticket_key is required for jira_cached source")
+            
+            if not ticket_data:
+                raise HTTPException(status_code=400, detail="ticket_data is required for jira_cached source")
+            
+            # Use the cached requirements directly
+            requirements = cached_requirements
+            app_logger.info(f"Using cached Jira ticket data for {ticket_key} - no reconnection needed")
         
         # Create initial session state
         session_state = SessionState(
@@ -2207,6 +2223,7 @@ async def fetch_jira_ticket(request: JiraFetchRequest, response: Response):
             app_logger.info(f"Auto-detected deployment type: {auto_config.deployment_type}")
         except Exception as e:
             app_logger.warning(f"Auto-configuration failed, using provided config: {e}")
+            # Continue with the original config - this is expected for some Jira instances
         
         # Detect and set API version
         api_version = None
@@ -2216,6 +2233,7 @@ async def fetch_jira_ticket(request: JiraFetchRequest, response: Response):
         except Exception as e:
             app_logger.warning(f"API version detection failed, using default: {e}")
             api_version = "3"  # Default fallback
+            jira_service.api_version = api_version
         
         # Fetch ticket with API version support
         ticket = await jira_service.fetch_ticket(request.ticket_key)

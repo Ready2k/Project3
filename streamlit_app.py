@@ -2953,6 +2953,14 @@ verify_ssl = True
                             ticket_data = fetch_result.get("ticket_data", {})
                             requirements = fetch_result.get("requirements", {})
                             
+                            # Store fetched data in session state for later use
+                            st.session_state.jira_fetched_data = {
+                                "ticket_data": ticket_data,
+                                "requirements": requirements,
+                                "fetch_timestamp": time.time(),
+                                "ticket_key": ticket_data.get('key', jira_ticket_key)
+                            }
+                            
                             st.success(f"✅ Successfully fetched ticket: {ticket_data.get('key', 'Unknown')}")
                             
                             # Display ticket preview
@@ -2988,6 +2996,19 @@ verify_ssl = True
                     except Exception as e:
                         st.error(f"❌ Failed to fetch ticket: {str(e)}")
         
+        # Show cached data status if available
+        if hasattr(st.session_state, 'jira_fetched_data') and st.session_state.jira_fetched_data:
+            cached_data = st.session_state.jira_fetched_data
+            fetch_time = datetime.fromtimestamp(cached_data["fetch_timestamp"])
+            
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.info(f"✅ Cached ticket data available for **{cached_data['ticket_key']}** (fetched at {fetch_time.strftime('%H:%M:%S')})")
+            with col2:
+                if st.button("🗑️ Clear Cache", help="Clear cached ticket data to fetch fresh data"):
+                    del st.session_state.jira_fetched_data
+                    st.rerun()
+        
         # Handle submit analysis
         if submit_jira:
             # Validate required fields based on auth type
@@ -3015,43 +3036,27 @@ verify_ssl = True
             if validation_errors:
                 st.error("❌ Please fix the following issues:\n" + "\n".join(f"• {error}" for error in validation_errors))
             else:
-                with st.spinner("Starting Jira analysis..."):
-                    # Use the ingest endpoint with Jira source
-                    payload = {
-                        "ticket_key": jira_ticket_key,
-                        "base_url": jira_base_url,
-                        "auth_type": auth_type,
+                # Check if we have fetched data available
+                if hasattr(st.session_state, 'jira_fetched_data') and st.session_state.jira_fetched_data:
+                    with st.spinner("Starting analysis with fetched ticket data..."):
+                        # Use the already fetched ticket data
+                        fetched_data = st.session_state.jira_fetched_data
+                        ticket_data = fetched_data["ticket_data"]
+                        requirements = fetched_data["requirements"]
                         
-                        # Authentication fields
-                        "email": jira_email,
-                        "api_token": jira_api_token,
-                        "username": jira_username,
-                        "password": jira_password,
-                        "personal_access_token": jira_personal_access_token,
+                        # Create a simplified payload using the fetched data
+                        payload = {
+                            "ticket_key": ticket_data.get("key", jira_ticket_key),
+                            "description": requirements.get("description", ""),
+                            "use_cached_data": True,  # Flag to indicate we're using cached data
+                            "ticket_data": ticket_data,
+                            "requirements": requirements
+                        }
                         
-                        # Network configuration
-                        "verify_ssl": verify_ssl,
-                        "ca_cert_path": ca_cert_path if ca_cert_path else None,
-                        "proxy_url": proxy_url if proxy_url else None,
-                        "timeout": int(timeout),
-                        
-                        # SSO configuration
-                        "use_sso": auth_type == "sso",
-                        
-                        # Data Center configuration
-                        "context_path": context_path if context_path else None,
-                        "custom_port": int(custom_port) if custom_port else None
-                    }
-                    
-                    # Remove None values to avoid API issues
-                    payload = {k: v for k, v in payload.items() if v is not None}
-                    
-                    # Add provider config if set
-                    provider_config = None
-                    if hasattr(st.session_state, "provider_config") and st.session_state.provider_config:
-                        provider_config = st.session_state.provider_config
-                    
-                    self.submit_requirements("jira", payload)
+                        self.submit_requirements("jira_cached", payload)
+                else:
+                    st.error("❌ No ticket data available. Please fetch the ticket first using the 'Fetch Ticket' button above.")
+                    st.info("💡 Use the 'Fetch Ticket' button to retrieve ticket data, then click 'Start Analysis'.")
     
     def submit_requirements(self, source: str, payload: Dict):
         """Submit requirements to the API."""
