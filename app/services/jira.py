@@ -958,7 +958,25 @@ class JiraService:
         fields = data.get("fields", {})
         
         # Debug logging to see what fields we're receiving
-        app_logger.info(f"Parsing ticket data for {data.get('key', 'UNKNOWN')} - available fields: {list(fields.keys())}")
+        app_logger.info(f"Parsing ticket data for {data.get('key', 'UNKNOWN')} - available fields: {len(fields)} total")
+        
+        # Log custom fields specifically for acceptance criteria debugging
+        custom_fields = {k: v for k, v in fields.items() if k.startswith("customfield_")}
+        if custom_fields:
+            app_logger.info(f"Custom fields found: {list(custom_fields.keys())}")
+            # Log first few characters of each custom field to help identify acceptance criteria
+            for field_name, field_value in list(custom_fields.items())[:5]:  # Limit to first 5 for readability
+                if field_value:
+                    if isinstance(field_value, dict):
+                        preview = str(field_value)[:50]
+                    elif isinstance(field_value, str):
+                        preview = field_value[:50]
+                    else:
+                        preview = str(field_value)[:50]
+                    app_logger.debug(f"  {field_name}: {preview}{'...' if len(str(field_value)) > 50 else ''}")
+        else:
+            app_logger.info("No custom fields found in ticket")
+        
         if not fields:
             app_logger.warning(f"No fields found in response for ticket {data.get('key', 'UNKNOWN')}")
             app_logger.warning(f"Full response data: {json.dumps(data, indent=2)[:1000]}...")
@@ -1196,10 +1214,21 @@ class JiraService:
     
     def _extract_acceptance_criteria(self, fields: Dict[str, Any]) -> Optional[str]:
         """Extract acceptance criteria from various possible field locations."""
-        # Common field names for acceptance criteria
+        # Common field names for acceptance criteria (exact matches)
         ac_field_names = [
             "customfield_10015",  # Common Jira Cloud field
             "customfield_10019",  # Another common field
+            "customfield_10020",  # Additional common field
+            "customfield_10021",  # Additional common field
+            "customfield_10022",  # Additional common field
+            "customfield_10023",  # Additional common field
+            "customfield_10024",  # Additional common field
+            "customfield_10025",  # Additional common field
+            "customfield_10026",  # Additional common field
+            "customfield_10027",  # Additional common field
+            "customfield_10028",  # Additional common field
+            "customfield_10029",  # Additional common field
+            "customfield_10030",  # Additional common field
             "acceptance criteria",
             "acceptanceCriteria",
             "ac",
@@ -1208,13 +1237,54 @@ class JiraService:
             "dod"
         ]
         
+        # First, try exact field name matches
         for field_name in ac_field_names:
             field_value = fields.get(field_name)
             if field_value:
                 if isinstance(field_value, dict):
-                    return self._extract_text_from_adf(field_value)
-                elif isinstance(field_value, str):
+                    extracted_text = self._extract_text_from_adf(field_value)
+                    if extracted_text and extracted_text.strip():
+                        app_logger.info(f"Found acceptance criteria in field '{field_name}': {len(extracted_text)} characters")
+                        return extracted_text
+                elif isinstance(field_value, str) and field_value.strip():
+                    app_logger.info(f"Found acceptance criteria in field '{field_name}': {len(field_value)} characters")
                     return field_value
+        
+        # If no exact matches, search through all custom fields for acceptance criteria keywords
+        app_logger.debug("No exact field matches found, searching through all custom fields for acceptance criteria")
+        
+        acceptance_keywords = [
+            "acceptance", "criteria", "definition", "done", "requirements", 
+            "conditions", "specifications", "specs", "validation", "verify"
+        ]
+        
+        for field_name, field_value in fields.items():
+            # Only check custom fields and fields that might contain acceptance criteria
+            if (field_name.startswith("customfield_") or 
+                any(keyword in field_name.lower() for keyword in acceptance_keywords)):
+                
+                if field_value:
+                    extracted_text = None
+                    if isinstance(field_value, dict):
+                        extracted_text = self._extract_text_from_adf(field_value)
+                    elif isinstance(field_value, str):
+                        extracted_text = field_value
+                    
+                    # Check if the content looks like acceptance criteria
+                    if (extracted_text and extracted_text.strip() and 
+                        len(extracted_text) > 10 and  # Must have substantial content
+                        any(keyword in extracted_text.lower() for keyword in acceptance_keywords)):
+                        
+                        app_logger.info(f"Found potential acceptance criteria in field '{field_name}': {len(extracted_text)} characters")
+                        app_logger.debug(f"Content preview: {extracted_text[:100]}...")
+                        return extracted_text
+        
+        # Log available custom fields for debugging
+        custom_fields = [k for k in fields.keys() if k.startswith("customfield_")]
+        if custom_fields:
+            app_logger.debug(f"Available custom fields: {custom_fields[:10]}{'...' if len(custom_fields) > 10 else ''}")
+        else:
+            app_logger.debug("No custom fields found in ticket")
         
         return None
     
