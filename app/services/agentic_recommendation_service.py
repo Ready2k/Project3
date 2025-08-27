@@ -1802,11 +1802,11 @@ Respond with ONLY the JSON object, no other text."""
             
             # Log pattern match for analytics
             try:
-                log_pattern_match(
+                await log_pattern_match(
                     session_id=session_id,
                     pattern_id="TRAD-AUTO-001",
-                    match_score=necessity_assessment.traditional_suitability_score,
-                    match_type="traditional_automation"
+                    score=necessity_assessment.traditional_suitability_score,
+                    accepted=None
                 )
             except Exception as e:
                 app_logger.warning(f"Failed to log pattern match for TRAD-AUTO-001: {e}")
