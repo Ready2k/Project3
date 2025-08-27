@@ -22,7 +22,8 @@ from app.utils.error_boundaries import error_boundary
 
 
 class JiraTicket(BaseModel):
-    """Jira ticket data model."""
+    """Enhanced Jira ticket data model with comprehensive requirements fields."""
+    # Core fields
     key: str
     summary: str
     description: Optional[str] = None
@@ -35,6 +36,40 @@ class JiraTicket(BaseModel):
     components: list[str] = []
     created: Optional[str] = None
     updated: Optional[str] = None
+    
+    # Requirements-specific fields
+    acceptance_criteria: Optional[str] = None
+    comments: list[dict] = []  # List of comment objects with author, body, created
+    attachments: list[dict] = []  # List of attachment info
+    custom_fields: dict = {}  # All custom fields for flexibility
+    
+    # Additional context fields
+    project_key: Optional[str] = None
+    project_name: Optional[str] = None
+    epic_link: Optional[str] = None
+    epic_name: Optional[str] = None
+    story_points: Optional[float] = None
+    sprint: Optional[str] = None
+    fix_versions: list[str] = []
+    affects_versions: list[str] = []
+    
+    # Relationships
+    parent: Optional[str] = None  # Parent issue key
+    subtasks: list[str] = []  # List of subtask keys
+    linked_issues: list[dict] = []  # List of linked issues with relationship type
+    
+    # Workflow and resolution
+    resolution: Optional[str] = None
+    resolution_date: Optional[str] = None
+    due_date: Optional[str] = None
+    
+    # Environment and testing
+    environment: Optional[str] = None
+    test_cases: Optional[str] = None
+    
+    # Business context
+    business_value: Optional[str] = None
+    user_story: Optional[str] = None
 
 
 class JiraError(Exception):
@@ -191,7 +226,9 @@ class JiraService:
             
         except Exception as e:
             app_logger.error(f"Auto-configuration failed: {e}")
-            raise JiraConnectionError(f"Auto-configuration failed: {str(e)}")
+            app_logger.warning(f"Auto-configuration failed, using provided config: {str(e)}")
+            # Don't fail completely - use the provided configuration as fallback
+            return self.config
     
     def _validate_config(self) -> None:
         """Validate Jira configuration with enhanced validation."""
@@ -447,8 +484,16 @@ class JiraService:
                 response = await client.get(url, headers=headers)
                 
                 if response.status_code == 200:
-                    user_data = response.json()
-                    return True, user_data, None
+                    try:
+                        user_data = response.json()
+                        return True, user_data, None
+                    except (ValueError, json.JSONDecodeError) as e:
+                        app_logger.error(f"Failed to parse JSON response from connection test: {e}")
+                        app_logger.debug(f"Response content: {response.text[:200]}...")
+                        # Check if response looks like HTML (common when hitting wrong endpoint)
+                        if response.text.strip().startswith('<'):
+                            return False, {}, "Server returned HTML instead of JSON. Check base URL and endpoint configuration."
+                        return False, {}, f"Invalid JSON response from server: {e}"
                 elif response.status_code == 401:
                     return False, {}, "Authentication failed. Check credentials."
                 elif response.status_code == 403:
@@ -460,8 +505,12 @@ class JiraService:
                         response = await client.get(fallback_url, headers=headers)
                         if response.status_code == 200:
                             self.api_version = "2"  # Update to working version
-                            user_data = response.json()
-                            return True, user_data, None
+                            try:
+                                user_data = response.json()
+                                return True, user_data, None
+                            except (ValueError, json.JSONDecodeError) as e:
+                                app_logger.error(f"Failed to parse JSON response from fallback connection test: {e}")
+                                return False, {}, f"Invalid JSON response from fallback API: {e}"
                     return False, {}, f"API endpoint not found. Server may not support API version {api_version}."
                 elif response.status_code in [429, 502, 503, 504]:
                     # These status codes should trigger retry
@@ -750,17 +799,45 @@ class JiraService:
                     headers = {"Accept": "application/json"}
                     headers.update(auth_headers)
                     
-                    # Add fields parameter to get specific data
+                    # Try different field parameter strategies based on what works
+                    # Start with basic fields that should exist in all Jira instances
                     params = {
-                        "fields": "summary,description,priority,status,issuetype,assignee,reporter,labels,components,created,updated"
+                        "fields": "summary,description,priority,status,issuetype,assignee,reporter,created,updated",
+                        "expand": ""
                     }
                     
                     app_logger.info(f"Fetching Jira ticket: {ticket_key} using API v{self.api_version}")
+                    app_logger.debug(f"Request URL: {url}")
+                    app_logger.debug(f"Request params: {params}")
                     response = await client.get(url, headers=headers, params=params)
                     
                     if response.status_code == 200:
-                        data = response.json()
-                        return self._parse_ticket_data(data)
+                        try:
+                            data = response.json()
+                            app_logger.info(f"Received response for {ticket_key} with {len(data.get('fields', {}))} fields")
+                            
+                            # Check if we got meaningful data
+                            fields = data.get("fields", {})
+                            has_basic_data = any([
+                                fields.get("summary"),
+                                fields.get("description"),
+                                fields.get("status", {}).get("name") if isinstance(fields.get("status"), dict) else fields.get("status")
+                            ])
+                            
+                            if not has_basic_data:
+                                app_logger.warning(f"No meaningful field data returned for {ticket_key}, trying fallback request")
+                                # Try a simpler request without field restrictions
+                                fallback_response = await client.get(url, headers=headers)
+                                if fallback_response.status_code == 200:
+                                    fallback_data = fallback_response.json()
+                                    app_logger.info(f"Fallback response for {ticket_key} with {len(fallback_data.get('fields', {}))} fields")
+                                    return self._parse_ticket_data(fallback_data)
+                            
+                            return self._parse_ticket_data(data)
+                        except (ValueError, json.JSONDecodeError) as e:
+                            app_logger.error(f"Failed to parse JSON response for ticket {ticket_key}: {e}")
+                            app_logger.debug(f"Response content: {response.text[:200]}...")
+                            raise JiraConnectionError(f"Invalid JSON response from Jira API: {e}")
                     elif response.status_code == 401:
                         # Clear authentication and retry once
                         self.auth_manager.clear_auth()
@@ -769,8 +846,27 @@ class JiraService:
                             headers.update(await self.auth_manager.get_auth_headers())
                             response = await client.get(url, headers=headers, params=params)
                             if response.status_code == 200:
-                                data = response.json()
-                                return self._parse_ticket_data(data)
+                                try:
+                                    data = response.json()
+                                    # Apply same fallback logic for retry
+                                    fields = data.get("fields", {})
+                                    has_basic_data = any([
+                                        fields.get("summary"),
+                                        fields.get("description"),
+                                        fields.get("status", {}).get("name") if isinstance(fields.get("status"), dict) else fields.get("status")
+                                    ])
+                                    
+                                    if not has_basic_data:
+                                        app_logger.warning(f"Retry: No meaningful field data for {ticket_key}, trying fallback")
+                                        fallback_response = await client.get(url, headers=headers)
+                                        if fallback_response.status_code == 200:
+                                            fallback_data = fallback_response.json()
+                                            return self._parse_ticket_data(fallback_data)
+                                    
+                                    return self._parse_ticket_data(data)
+                                except (ValueError, json.JSONDecodeError) as e:
+                                    app_logger.error(f"Failed to parse JSON response for ticket {ticket_key} (retry): {e}")
+                                    raise JiraConnectionError(f"Invalid JSON response from Jira API: {e}")
                         raise JiraConnectionError("Authentication failed. Check credentials.")
                     elif response.status_code == 403:
                         raise JiraConnectionError("Access forbidden. Check permissions.")
@@ -784,8 +880,12 @@ class JiraService:
                             response = await client.get(fallback_url, headers=headers, params=params)
                             if response.status_code == 200:
                                 self.api_version = "2"  # Update to working version
-                                data = response.json()
-                                return self._parse_ticket_data(data)
+                                try:
+                                    data = response.json()
+                                    return self._parse_ticket_data(data)
+                                except (ValueError, json.JSONDecodeError) as e:
+                                    app_logger.error(f"Failed to parse JSON response for ticket {ticket_key} (fallback): {e}")
+                                    raise JiraConnectionError(f"Invalid JSON response from Jira API: {e}")
                             elif response.status_code == 404:
                                 raise JiraTicketNotFoundError(f"Ticket '{ticket_key}' not found")
                         else:
@@ -847,19 +947,34 @@ class JiraService:
             raise JiraError(f"Unexpected error: {str(e)}")
     
     def _parse_ticket_data(self, data: Dict[str, Any]) -> JiraTicket:
-        """Parse Jira API response data into JiraTicket object with Data Center compatibility.
+        """Parse Jira API response data into enhanced JiraTicket object with comprehensive requirements fields.
         
         Args:
             data: Raw Jira API response data
             
         Returns:
-            JiraTicket object
+            JiraTicket object with all relevant requirements fields
         """
         fields = data.get("fields", {})
         
-        # Extract basic fields
+        # Debug logging to see what fields we're receiving
+        app_logger.info(f"Parsing ticket data for {data.get('key', 'UNKNOWN')} - available fields: {list(fields.keys())}")
+        if not fields:
+            app_logger.warning(f"No fields found in response for ticket {data.get('key', 'UNKNOWN')}")
+            app_logger.warning(f"Full response data: {json.dumps(data, indent=2)[:1000]}...")
+        
+        # Log key field values for debugging
+        app_logger.info(f"Key field values - summary: '{fields.get('summary', 'MISSING')}', status: {fields.get('status', 'MISSING')}, priority: {fields.get('priority', 'MISSING')}")
+        
+        # Extract basic fields with enhanced error handling
         key = data.get("key", "")
         summary = fields.get("summary", "")
+        
+        # Handle missing summary gracefully
+        if not summary:
+            app_logger.warning(f"No summary found for ticket {key}")
+            summary = f"Ticket {key}"
+        
         description = fields.get("description", {})
         
         # Handle description (can be complex Atlassian Document Format or plain text)
@@ -878,7 +993,7 @@ class JiraService:
             if isinstance(priority_obj, dict):
                 priority = priority_obj.get("name")
             elif isinstance(priority_obj, str):
-                priority = priority_obj  # Some Data Center versions may return string directly
+                priority = priority_obj
         
         # Extract status with enhanced error handling
         status_obj = fields.get("status", {})
@@ -901,7 +1016,6 @@ class JiraService:
         assignee = None
         if assignee_obj:
             if isinstance(assignee_obj, dict):
-                # Try different field names for compatibility
                 assignee = (assignee_obj.get("displayName") or 
                           assignee_obj.get("name") or 
                           assignee_obj.get("key"))
@@ -912,7 +1026,6 @@ class JiraService:
         reporter = None
         if reporter_obj:
             if isinstance(reporter_obj, dict):
-                # Try different field names for compatibility
                 reporter = (reporter_obj.get("displayName") or 
                           reporter_obj.get("name") or 
                           reporter_obj.get("key"))
@@ -940,10 +1053,99 @@ class JiraService:
         created = fields.get("created")
         updated = fields.get("updated")
         
-        app_logger.debug(f"Parsed ticket {key}: status={status}, type={issue_type}, "
-                        f"assignee={assignee}, components={len(components)}")
+        # === NEW: Extract requirements-specific fields ===
+        
+        # Extract acceptance criteria (common custom field names)
+        acceptance_criteria = self._extract_acceptance_criteria(fields)
+        
+        # Extract comments (if available in the response)
+        comments = self._extract_comments(data.get("fields", {}).get("comment", {}))
+        
+        # Extract attachments
+        attachments = self._extract_attachments(fields.get("attachment", []))
+        
+        # Extract custom fields that might contain requirements
+        custom_fields = self._extract_custom_fields(fields)
+        
+        # Extract project information
+        project_obj = fields.get("project", {})
+        project_key = project_obj.get("key") if isinstance(project_obj, dict) else None
+        project_name = project_obj.get("name") if isinstance(project_obj, dict) else None
+        
+        # Extract epic information
+        epic_link = fields.get("customfield_10014") or fields.get("epic link") or fields.get("epicLink")
+        epic_name = fields.get("customfield_10011") or fields.get("epic name") or fields.get("epicName")
+        
+        # Extract story points (common field names)
+        story_points = (fields.get("customfield_10016") or 
+                       fields.get("story points") or 
+                       fields.get("storyPoints"))
+        if story_points and isinstance(story_points, (int, float)):
+            story_points = float(story_points)
+        else:
+            story_points = None
+        
+        # Extract sprint information
+        sprint = self._extract_sprint_info(fields)
+        
+        # Extract versions
+        fix_versions = self._extract_versions(fields.get("fixVersions", []))
+        affects_versions = self._extract_versions(fields.get("versions", []))
+        
+        # Extract relationships
+        parent = fields.get("parent", {}).get("key") if fields.get("parent") else None
+        subtasks = [st.get("key") for st in fields.get("subtasks", []) if st.get("key")]
+        linked_issues = self._extract_linked_issues(data.get("fields", {}).get("issuelinks", []))
+        
+        # Extract resolution information
+        resolution_obj = fields.get("resolution")
+        resolution = resolution_obj.get("name") if isinstance(resolution_obj, dict) else None
+        resolution_date = fields.get("resolutiondate")
+        due_date = fields.get("duedate")
+        
+        # Extract environment and testing fields
+        environment = fields.get("environment")
+        if isinstance(environment, dict):
+            environment = self._extract_text_from_adf(environment)
+        
+        # Look for test cases in common custom fields
+        test_cases = (fields.get("customfield_10020") or 
+                     fields.get("test cases") or 
+                     fields.get("testCases"))
+        if isinstance(test_cases, dict):
+            test_cases = self._extract_text_from_adf(test_cases)
+        
+        # Extract business context fields
+        business_value = (fields.get("customfield_10021") or 
+                         fields.get("business value") or 
+                         fields.get("businessValue"))
+        if isinstance(business_value, dict):
+            business_value = self._extract_text_from_adf(business_value)
+        
+        # Extract user story field
+        user_story = (fields.get("customfield_10022") or 
+                     fields.get("user story") or 
+                     fields.get("userStory"))
+        if isinstance(user_story, dict):
+            user_story = self._extract_text_from_adf(user_story)
+        
+        app_logger.info(f"Enhanced parsing for ticket {key}: status={status}, type={issue_type}, "
+                        f"assignee={assignee}, components={len(components)}, "
+                        f"acceptance_criteria={'Yes' if acceptance_criteria else 'No'}, "
+                        f"comments={len(comments)}, attachments={len(attachments)}")
+        
+        # Final validation - ensure we have at least basic data
+        if not key:
+            app_logger.error("No ticket key found in response data")
+        if not summary:
+            app_logger.warning(f"No summary found for ticket {key}")
+        if status == "Unknown":
+            app_logger.warning(f"Status not found for ticket {key}")
+        if issue_type == "Unknown":
+            app_logger.warning(f"Issue type not found for ticket {key}")
         
         return JiraTicket(
+            # Core fields
             key=key,
             summary=summary,
             description=description_text,
@@ -955,8 +1157,206 @@ class JiraService:
             labels=labels,
             components=components,
             created=created,
-            updated=updated
+            updated=updated,
+            
+            # Requirements-specific fields
+            acceptance_criteria=acceptance_criteria,
+            comments=comments,
+            attachments=attachments,
+            custom_fields=custom_fields,
+            
+            # Additional context fields
+            project_key=project_key,
+            project_name=project_name,
+            epic_link=epic_link,
+            epic_name=epic_name,
+            story_points=story_points,
+            sprint=sprint,
+            fix_versions=fix_versions,
+            affects_versions=affects_versions,
+            
+            # Relationships
+            parent=parent,
+            subtasks=subtasks,
+            linked_issues=linked_issues,
+            
+            # Workflow and resolution
+            resolution=resolution,
+            resolution_date=resolution_date,
+            due_date=due_date,
+            
+            # Environment and testing
+            environment=environment,
+            test_cases=test_cases,
+            
+            # Business context
+            business_value=business_value,
+            user_story=user_story
         )
+    
+    def _extract_acceptance_criteria(self, fields: Dict[str, Any]) -> Optional[str]:
+        """Extract acceptance criteria from various possible field locations."""
+        # Common field names for acceptance criteria
+        ac_field_names = [
+            "customfield_10015",  # Common Jira Cloud field
+            "customfield_10019",  # Another common field
+            "acceptance criteria",
+            "acceptanceCriteria",
+            "ac",
+            "definition of done",
+            "definitionOfDone",
+            "dod"
+        ]
+        
+        for field_name in ac_field_names:
+            field_value = fields.get(field_name)
+            if field_value:
+                if isinstance(field_value, dict):
+                    return self._extract_text_from_adf(field_value)
+                elif isinstance(field_value, str):
+                    return field_value
+        
+        return None
+    
+    def _extract_comments(self, comment_data: Dict[str, Any]) -> list[dict]:
+        """Extract comments with author and content information."""
+        comments = []
+        comment_list = comment_data.get("comments", [])
+        
+        for comment in comment_list:
+            if isinstance(comment, dict):
+                author_obj = comment.get("author", {})
+                author = (author_obj.get("displayName") or 
+                         author_obj.get("name") or 
+                         "Unknown") if isinstance(author_obj, dict) else str(author_obj)
+                
+                body = comment.get("body", "")
+                if isinstance(body, dict):
+                    body = self._extract_text_from_adf(body)
+                
+                created = comment.get("created", "")
+                
+                if body:  # Only include comments with content
+                    comments.append({
+                        "author": author,
+                        "body": body,
+                        "created": created
+                    })
+        
+        return comments
+    
+    def _extract_attachments(self, attachment_list: list) -> list[dict]:
+        """Extract attachment information."""
+        attachments = []
+        
+        for attachment in attachment_list:
+            if isinstance(attachment, dict):
+                attachments.append({
+                    "filename": attachment.get("filename", ""),
+                    "size": attachment.get("size", 0),
+                    "mimeType": attachment.get("mimeType", ""),
+                    "created": attachment.get("created", ""),
+                    "author": attachment.get("author", {}).get("displayName", "Unknown")
+                })
+        
+        return attachments
+    
+    def _extract_custom_fields(self, fields: Dict[str, Any]) -> dict:
+        """Extract all custom fields that might contain requirements information."""
+        custom_fields = {}
+        
+        for field_name, field_value in fields.items():
+            if field_name.startswith("customfield_"):
+                # Try to extract meaningful content
+                if isinstance(field_value, dict):
+                    # Check if it's ADF content
+                    if "content" in field_value or "type" in field_value:
+                        extracted_text = self._extract_text_from_adf(field_value)
+                        if extracted_text:
+                            custom_fields[field_name] = extracted_text
+                    else:
+                        # It might be an object with name/value
+                        if "name" in field_value:
+                            custom_fields[field_name] = field_value["name"]
+                        elif "value" in field_value:
+                            custom_fields[field_name] = field_value["value"]
+                elif isinstance(field_value, (str, int, float, bool)) and field_value:
+                    custom_fields[field_name] = field_value
+                elif isinstance(field_value, list) and field_value:
+                    # Handle arrays of values
+                    values = []
+                    for item in field_value:
+                        if isinstance(item, dict) and "name" in item:
+                            values.append(item["name"])
+                        elif isinstance(item, dict) and "value" in item:
+                            values.append(item["value"])
+                        elif isinstance(item, str):
+                            values.append(item)
+                    if values:
+                        custom_fields[field_name] = values
+        
+        return custom_fields
+    
+    def _extract_sprint_info(self, fields: Dict[str, Any]) -> Optional[str]:
+        """Extract sprint information from various possible locations."""
+        # Common sprint field names
+        sprint_fields = [
+            "customfield_10020",  # Common Jira Cloud sprint field
+            "customfield_10010",  # Another common field
+            "sprint",
+            "sprints"
+        ]
+        
+        for field_name in sprint_fields:
+            sprint_data = fields.get(field_name)
+            if sprint_data:
+                if isinstance(sprint_data, list) and sprint_data:
+                    # Take the latest sprint
+                    latest_sprint = sprint_data[-1]
+                    if isinstance(latest_sprint, dict):
+                        return latest_sprint.get("name", "")
+                    elif isinstance(latest_sprint, str):
+                        return latest_sprint
+                elif isinstance(sprint_data, dict):
+                    return sprint_data.get("name", "")
+                elif isinstance(sprint_data, str):
+                    return sprint_data
+        
+        return None
+    
+    def _extract_versions(self, version_list: list) -> list[str]:
+        """Extract version names from version objects."""
+        versions = []
+        for version in version_list:
+            if isinstance(version, dict):
+                name = version.get("name", "")
+                if name:
+                    versions.append(name)
+            elif isinstance(version, str):
+                versions.append(version)
+        return versions
+    
+    def _extract_linked_issues(self, issuelinks: list) -> list[dict]:
+        """Extract linked issues with relationship information."""
+        linked_issues = []
+        
+        for link in issuelinks:
+            if isinstance(link, dict):
+                link_type = link.get("type", {})
+                relationship = link_type.get("name", "Unknown") if isinstance(link_type, dict) else "Unknown"
+                
+                # Check both inward and outward links
+                for direction in ["inwardIssue", "outwardIssue"]:
+                    linked_issue = link.get(direction)
+                    if linked_issue and isinstance(linked_issue, dict):
+                        linked_issues.append({
+                            "key": linked_issue.get("key", ""),
+                            "summary": linked_issue.get("fields", {}).get("summary", ""),
+                            "relationship": relationship,
+                            "direction": direction
+                        })
+        
+        return linked_issues
     
     def _extract_text_from_adf(self, adf_content: Dict[str, Any]) -> str:
         """Extract plain text from Atlassian Document Format with enhanced Data Center support.
@@ -1079,24 +1479,87 @@ class JiraService:
             return str(adf_content)[:1000] + "..." if len(str(adf_content)) > 1000 else str(adf_content)
     
     def map_ticket_to_requirements(self, ticket: JiraTicket) -> Dict[str, Any]:
-        """Map Jira ticket data to requirements format.
+        """Map Jira ticket data to comprehensive requirements format with all relevant fields.
         
         Args:
             ticket: JiraTicket object
             
         Returns:
-            Requirements dictionary compatible with the system
+            Requirements dictionary with comprehensive requirements information
         """
-        # Combine summary and description for the main description
-        description_parts = [ticket.summary]
-        if ticket.description:
-            description_parts.append(ticket.description)
+        # Build comprehensive description from all relevant fields
+        description_parts = []
         
-        # Only include essential fields to avoid polluting agent generation
+        # Start with summary and description
+        if ticket.summary:
+            description_parts.append(f"**Summary:** {ticket.summary}")
+        
+        if ticket.description:
+            description_parts.append(f"**Description:** {ticket.description}")
+        
+        # Add acceptance criteria if available
+        if ticket.acceptance_criteria:
+            description_parts.append(f"**Acceptance Criteria:** {ticket.acceptance_criteria}")
+        
+        # Add user story if available
+        if ticket.user_story:
+            description_parts.append(f"**User Story:** {ticket.user_story}")
+        
+        # Add business value if available
+        if ticket.business_value:
+            description_parts.append(f"**Business Value:** {ticket.business_value}")
+        
+        # Add environment details if available
+        if ticket.environment:
+            description_parts.append(f"**Environment:** {ticket.environment}")
+        
+        # Add test cases if available
+        if ticket.test_cases:
+            description_parts.append(f"**Test Cases:** {ticket.test_cases}")
+        
+        # Add relevant comments (limit to most recent 3 to avoid overwhelming)
+        if ticket.comments:
+            recent_comments = ticket.comments[-3:]  # Get last 3 comments
+            comments_text = []
+            for comment in recent_comments:
+                comments_text.append(f"- {comment['author']}: {comment['body'][:200]}{'...' if len(comment['body']) > 200 else ''}")
+            if comments_text:
+                description_parts.append(f"**Recent Comments:**\n" + "\n".join(comments_text))
+        
+        # Add custom fields that might contain requirements
+        if ticket.custom_fields:
+            relevant_custom_fields = []
+            for field_name, field_value in ticket.custom_fields.items():
+                # Only include text-based custom fields that might contain requirements
+                if isinstance(field_value, str) and len(field_value) > 10:
+                    relevant_custom_fields.append(f"- {field_name}: {field_value[:150]}{'...' if len(field_value) > 150 else ''}")
+            if relevant_custom_fields:
+                description_parts.append(f"**Additional Requirements (Custom Fields):**\n" + "\n".join(relevant_custom_fields))
+        
+        # Create comprehensive requirements object
         requirements = {
-            "description": " - ".join(description_parts),
+            "description": "\n\n".join(description_parts),
             "source": "jira",
-            "jira_key": ticket.key
+            "jira_key": ticket.key,
+            
+            # Add metadata for context
+            "metadata": {
+                "issue_type": ticket.issue_type,
+                "priority": ticket.priority,
+                "status": ticket.status,
+                "assignee": ticket.assignee,
+                "reporter": ticket.reporter,
+                "project": f"{ticket.project_name} ({ticket.project_key})" if ticket.project_name and ticket.project_key else None,
+                "epic": ticket.epic_name if ticket.epic_name else ticket.epic_link,
+                "story_points": ticket.story_points,
+                "sprint": ticket.sprint,
+                "components": ticket.components,
+                "labels": ticket.labels,
+                "due_date": ticket.due_date,
+                "attachments_count": len(ticket.attachments) if ticket.attachments else 0,
+                "linked_issues_count": len(ticket.linked_issues) if ticket.linked_issues else 0,
+                "subtasks_count": len(ticket.subtasks) if ticket.subtasks else 0
+            }
         }
         
         # Try to infer domain from components or labels (for logging only)

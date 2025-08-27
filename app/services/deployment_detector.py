@@ -1,5 +1,6 @@
 """Jira deployment detection service for identifying deployment type and version."""
 
+import json
 import re
 from typing import Dict, Optional, Any, Union
 from urllib.parse import urlparse, urljoin
@@ -16,7 +17,7 @@ class DeploymentInfo(BaseModel):
     """Information about a Jira deployment."""
     deployment_type: JiraDeploymentType
     version: str
-    build_number: Optional[str] = None
+    build_number: Optional[Union[str, int]] = None
     base_url_normalized: str
     context_path: Optional[str] = None
     supports_sso: bool = False
@@ -28,7 +29,7 @@ class DeploymentInfo(BaseModel):
 class VersionInfo(BaseModel):
     """Jira version information."""
     version: str
-    build_number: Optional[str] = None
+    build_number: Optional[Union[str, int]] = None
     build_date: Optional[str] = None
     database_version: Optional[str] = None
     server_id: Optional[str] = None
@@ -301,8 +302,13 @@ class DeploymentDetector:
                 response = await client.get(url, headers=headers)
                 
                 if response.status_code == 200:
-                    data = response.json()
-                    return self._parse_server_info(data)
+                    try:
+                        data = response.json()
+                        return self._parse_server_info(data)
+                    except (ValueError, json.JSONDecodeError) as e:
+                        app_logger.error(f"Failed to parse JSON response from {url}: {e}")
+                        app_logger.debug(f"Response content: {response.text[:200]}...")
+                        raise DeploymentDetectionError(f"Invalid JSON response from server info endpoint: {e}")
                 
                 # If server info fails, try the myself endpoint (requires auth)
                 if auth_headers:
@@ -322,8 +328,13 @@ class DeploymentDetector:
                     response = await client.get(url, headers=headers)
                     
                     if response.status_code == 200:
-                        data = response.json()
-                        return self._parse_server_info(data)
+                        try:
+                            data = response.json()
+                            return self._parse_server_info(data)
+                        except (ValueError, json.JSONDecodeError) as e:
+                            app_logger.error(f"Failed to parse JSON response from {url}: {e}")
+                            app_logger.debug(f"Response content: {response.text[:200]}...")
+                            raise DeploymentDetectionError(f"Invalid JSON response from server info endpoint: {e}")
                 
                 raise DeploymentDetectionError(f"Could not retrieve version info: HTTP {response.status_code}")
                 
