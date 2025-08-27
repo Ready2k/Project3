@@ -1007,6 +1007,19 @@ async def ingest_requirements(request: IngestRequest, http_request: Request, res
             
             # Use the cached requirements directly
             requirements = cached_requirements
+            
+            # Extract constraints if provided in the payload
+            if "constraints" in request.payload and request.payload["constraints"]:
+                constraints = request.payload["constraints"]
+                requirements["constraints"] = {
+                    "banned_tools": [security_validator.sanitize_string(str(tool)) for tool in constraints.get("banned_tools", [])],
+                    "required_integrations": [security_validator.sanitize_string(str(integration)) for integration in constraints.get("required_integrations", [])],
+                    "compliance_requirements": [security_validator.sanitize_string(str(comp)) for comp in constraints.get("compliance_requirements", [])],
+                    "data_sensitivity": security_validator.sanitize_string(str(constraints.get("data_sensitivity", ""))) if constraints.get("data_sensitivity") else None,
+                    "budget_constraints": security_validator.sanitize_string(str(constraints.get("budget_constraints", ""))) if constraints.get("budget_constraints") else None,
+                    "deployment_preference": security_validator.sanitize_string(str(constraints.get("deployment_preference", ""))) if constraints.get("deployment_preference") else None
+                }
+            
             app_logger.info(f"Using cached Jira ticket data for {ticket_key} - no reconnection needed")
         
         # Create initial session state
