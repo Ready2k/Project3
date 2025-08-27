@@ -381,7 +381,7 @@ Respond with a single JSON object only (no code fences). JSON schema (keys only;
 """
 
         try:
-            response = await self.llm_provider.generate(prompt)
+            response = await self.llm_provider.generate(prompt, purpose="reasoning_analysis")
             app_logger.debug(f"Reasoning analysis response: {response[:200]}...")
 
             if not response or not response.strip():
@@ -466,7 +466,7 @@ Respond with a single JSON object only (no code fences). JSON schema (keys only;
 """
 
         try:
-            response = await self.llm_provider.generate(prompt)
+            response = await self.llm_provider.generate(prompt, purpose="decision_boundaries")
             app_logger.debug(f"Decision boundaries response: {response[:200]}...")
 
             if not response or not response.strip():
@@ -563,7 +563,7 @@ STRICT OUTPUT FORMAT:
         )
 
         try:
-            response = await self.llm_provider.generate(prompt)
+            response = await self.llm_provider.generate(prompt, purpose="workflow_automation")
             app_logger.debug(f"Workflow automation response: {response[:200]}...")
 
             if not response or not response.strip():

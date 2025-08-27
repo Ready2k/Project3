@@ -8246,6 +8246,7 @@ verify_ssl = True
             enhanced_loader = EnhancedPatternLoader("data/patterns")
             
             # Create LLM provider for enhancement service using user's configured provider
+            session_id = st.session_state.get('session_id', 'pattern-enhancement')
             try:
                 # Use the user's configured provider instead of hardcoded OpenAI
                 provider_config_dict = st.session_state.get('provider_config')
@@ -8253,14 +8254,16 @@ verify_ssl = True
                     # Convert dict to ProviderConfig model
                     from app.api import ProviderConfig
                     provider_config = ProviderConfig(**provider_config_dict)
-                    llm_provider = create_llm_provider(provider_config)
+                    llm_provider = create_llm_provider(provider_config, session_id)
                 else:
                     # Fallback to creating provider without config (uses settings defaults)
-                    llm_provider = create_llm_provider()
+                    llm_provider = create_llm_provider(session_id=session_id)
             except Exception as provider_error:
                 app_logger.warning(f"Failed to create LLM provider, using mock: {provider_error}")
                 from app.llm.fakes import FakeLLM
-                llm_provider = FakeLLM({})
+                from app.utils.audit_integration import create_audited_provider
+                base_provider = FakeLLM({})
+                llm_provider = create_audited_provider(base_provider, session_id)
             
             # Initialize enhancement service
             enhancement_service = PatternEnhancementService(enhanced_loader, llm_provider)

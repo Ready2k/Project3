@@ -133,7 +133,7 @@ class PatternAgenticEnhancer:
         }}
         """
         
-        response = await self.llm_provider.generate(prompt)
+        response = await self.llm_provider.generate(prompt, purpose="pattern_agentic_enhancement")
         
         try:
             enhancements = json.loads(response)

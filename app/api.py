@@ -343,7 +343,7 @@ async def get_pattern_matcher() -> PatternMatcher:
         # Create LLM provider for embedding if needed
         temp_llm_provider = None
         if settings.embedding.provider.value == "llm_based":
-            temp_llm_provider = create_llm_provider()
+            temp_llm_provider = create_llm_provider(session_id="embedding-system")
         
         # Initialize components
         pattern_loader = PatternLoader(str(settings.pattern_library_path))

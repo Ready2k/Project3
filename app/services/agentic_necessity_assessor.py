@@ -195,7 +195,7 @@ Focus on the actual capabilities needed rather than specific keywords. Consider:
 Be objective and consider both perspectives."""
 
         try:
-            response = await self.llm_provider.generate(prompt)
+            response = await self.llm_provider.generate(prompt, purpose="agentic_necessity_assessment")
             
             # Extract JSON from response
             json_start = response.find('{')
