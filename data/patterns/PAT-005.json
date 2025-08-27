@@ -1,7 +1,7 @@
 {
   "pattern_id": "PAT-005",
-  "name": "Email Order Extraction &amp; Fulfillment Orchestration",
-  "description": "Parse incoming order emails, normalize data, validate inventory/payment, and [REMOVED_SUSPICIOUS_CONTENT]orders in the fulfillment system with exception queues.",
+  "name": "Enhanced Email Order Extraction &amp;amp; Fulfillment Orchestration",
+  "description": "Fully autonomous AI agent that parse incoming order emails, normalize data, validate inventory/payment, and [removed_suspicious_content]orders in the fulfillment system with exception queues.",
   "feasibility": "Partially Automatable",
   "pattern_type": [
     "email_ingestion",
@@ -18,9 +18,7 @@
     "Microsoft Graph/IMAP",
     "spaCy + rule-based extractors",
     "jsonschema",
-    "FastAPI",
-    "Redis (queues)",
-    "PostgreSQL"
+    "FastAPI"
   ],
   "related_patterns": [],
   "confidence_score": 0.88,
@@ -72,5 +70,17 @@
   },
   "agent_architecture": "single_agent",
   "enhanced_from_pattern": "PAT-005",
-  "enhancement_type": "agentic"
+  "enhancement_type": "full",
+  "implementation_guidance": {
+    "architecture_decisions": [
+      "Use microservices architecture for scalability",
+      "Implement event-driven patterns for loose coupling",
+      "Apply cloud-native design principles"
+    ],
+    "technical_challenges": [
+      "Ensuring system scalability and performance",
+      "Managing data consistency across services",
+      "Implementing robust error handling and recovery"
+    ]
+  }
 }

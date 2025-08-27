@@ -1,7 +1,7 @@
 {
   "pattern_id": "PAT-003",
-  "name": "Multilingual Support Ticket Processing",
-  "description": "Translate incoming tickets, categorize by issue type, and auto-route to teams with SLAs, retaining human escalation for ambiguous cases.",
+  "name": "Enhanced Multilingual Support Ticket Processing",
+  "description": "Fully autonomous AI agent that translate incoming tickets, categorize by issue type, and auto-route to teams with slas, retaining human escalation for ambiguous cases.",
   "feasibility": "Partially Automatable",
   "pattern_type": [
     "translation",
@@ -18,9 +18,7 @@
   "tech_stack": [
     "AWS Translate or on-prem NMT",
     "scikit-learn or HuggingFace text-classification",
-    "FastAPI",
-    "PostgreSQL",
-    "Redis"
+    "FastAPI"
   ],
   "related_patterns": [],
   "confidence_score": 0.9,
@@ -72,7 +70,7 @@
   },
   "agent_architecture": "single_agent",
   "enhanced_from_pattern": "PAT-003",
-  "enhancement_type": "technical",
+  "enhancement_type": "full",
   "implementation_guidance": {
     "architecture_decisions": [
       "Use microservices architecture for scalability",

@@ -1,7 +1,7 @@
 {
   "pattern_id": "PAT-001",
-  "name": "Secure Legal Contract Summarization (On-Prem)",
-  "description": "Summarize sensitive legal contracts while preserving confidentiality by running on-prem or private VPC NLP. Includes automated PII redaction, clause extraction, and human-in-the-loop legal review.",
+  "name": "Enhanced Secure Legal Contract Summarization (On-Prem)",
+  "description": "Fully autonomous AI agent that summarize sensitive legal contracts while preserving confidentiality by running on-prem or private vpc nlp. includes automated pii redaction, clause extraction, and human-in-the-loop legal review.",
   "feasibility": "Partially Automatable",
   "pattern_type": [
     "summarization",
@@ -19,10 +19,8 @@
     "HuggingFace Transformers (local)",
     "spaCy",
     "Microsoft Presidio",
-    "sentence-transformers",
     "FAISS",
-    "FastAPI",
-    "PostgreSQL"
+    "FastAPI"
   ],
   "related_patterns": [],
   "confidence_score": 0.88,
@@ -76,5 +74,15 @@
   },
   "agent_architecture": "single_agent",
   "enhanced_from_pattern": "PAT-001",
-  "enhancement_type": "agentic"
+  "enhancement_type": "technical",
+  "implementation_guidance": {
+    "architecture_decisions": [
+      "Use microservices architecture for scalability",
+      "Implement event-driven patterns for loose coupling"
+    ],
+    "technical_challenges": [
+      "Ensuring system scalability and performance",
+      "Managing data consistency across services"
+    ]
+  }
 }
