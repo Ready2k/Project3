@@ -5,16 +5,22 @@ configuration parameters that are currently hardcoded throughout the system.
 """
 
 import streamlit as st
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from dataclasses import asdict
 import yaml
+import sqlite3
+import json
 from pathlib import Path
+from datetime import datetime, timedelta
+import pandas as pd
 
 from app.config import Settings, load_settings
 from app.config.system_config import (
     AutonomyConfig, PatternMatchingConfig, LLMGenerationConfig, RecommendationConfig,
     SystemConfiguration, SystemConfigurationManager
 )
+from app.utils.audit import get_audit_logger
+from app.security.security_event_logger import SecurityEventLogger
 
 
 def render_system_configuration():
@@ -57,12 +63,13 @@ def render_system_configuration():
             return
     
     # Configuration tabs
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "🤖 Autonomy Assessment", 
         "🔍 Pattern Matching", 
         "🧠 LLM Generation", 
         "💡 Recommendations",
         "🚦 Rate Limiting",
+        "🗄️ Database Management",
         "⚙️ Management"
     ])
     
@@ -87,6 +94,9 @@ def render_system_configuration():
         render_rate_limiting_config(config_manager.config.rate_limiting)
     
     with tab6:
+        render_database_management()
+    
+    with tab7:
         render_configuration_management(config_manager)
 
 
@@ -438,26 +448,27 @@ def render_configuration_management(config_manager: SystemConfigurationManager):
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("💾 Save Configuration", use_container_width=True):
+        if st.button("💾 Save Configuration", use_container_width=True, key="save_config_btn"):
             if config_manager.save_config():
                 st.success("✅ Configuration saved successfully!")
             else:
                 st.error("❌ Failed to save configuration")
     
     with col2:
-        if st.button("🔄 Reset to Defaults", use_container_width=True):
+        if st.button("🔄 Reset to Defaults", use_container_width=True, key="reset_config_btn"):
             config_manager.reset_to_defaults()
             st.success("✅ Configuration reset to defaults")
             st.rerun()
     
     with col3:
-        if st.button("📤 Export Configuration", use_container_width=True):
+        if st.button("📤 Export Configuration", use_container_width=True, key="export_config_btn"):
             config_dict = config_manager.export_config()
             st.download_button(
                 "Download Config",
                 data=yaml.dump(config_dict, default_flow_style=False, indent=2),
                 file_name="system_config.yaml",
-                mime="application/yaml"
+                mime="application/yaml",
+                key="download_config_btn"
             )
     
     st.write("---")
@@ -469,7 +480,7 @@ def render_configuration_management(config_manager: SystemConfigurationManager):
     if uploaded_file is not None:
         try:
             config_dict = yaml.safe_load(uploaded_file)
-            if st.button("Import Configuration"):
+            if st.button("Import Configuration", key="import_config_btn"):
                 if config_manager.import_config(config_dict):
                     st.success("✅ Configuration imported successfully!")
                     st.rerun()
@@ -481,3 +492,657 @@ def render_configuration_management(config_manager: SystemConfigurationManager):
     # Configuration preview
     with st.expander("📋 Current Configuration Preview"):
         st.code(yaml.dump(config_manager.export_config(), default_flow_style=False, indent=2), language='yaml')
+
+
+def render_database_management():
+    """Render database management interface for viewing and managing database content."""
+    st.subheader("🗄️ Database Management")
+    st.write("View, filter, and manage content in the system databases.")
+    
+    # Database selection
+    db_option = st.selectbox(
+        "Select Database",
+        ["Audit Database (audit.db)", "Security Database (security_audit.db)"],
+        help="Choose which database to manage"
+    )
+    
+    if db_option == "Audit Database (audit.db)":
+        render_audit_database_management()
+    else:
+        render_security_database_management()
+
+
+def render_audit_database_management():
+    """Render audit database management interface."""
+    st.write("### 📊 Audit Database Management")
+    
+    try:
+        audit_logger = get_audit_logger()
+        
+        # Database statistics
+        with sqlite3.connect(audit_logger.db_path) as conn:
+            cursor = conn.execute("SELECT COUNT(*) FROM runs")
+            total_runs = cursor.fetchone()[0]
+            
+            cursor = conn.execute("SELECT COUNT(*) FROM matches")
+            total_matches = cursor.fetchone()[0]
+            
+            cursor = conn.execute("SELECT MIN(created_at), MAX(created_at) FROM runs WHERE created_at IS NOT NULL")
+            date_range = cursor.fetchone()
+        
+        # Display statistics
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total LLM Calls", total_runs)
+        with col2:
+            st.metric("Total Pattern Matches", total_matches)
+        with col3:
+            if date_range[0] and date_range[1]:
+                st.metric("Date Range", f"{date_range[0][:10]} to {date_range[1][:10]}")
+            else:
+                st.metric("Date Range", "No data")
+        
+        # Management options
+        st.write("### Management Options")
+        
+        tab1, tab2, tab3 = st.tabs(["🔍 View Data", "📊 Analytics", "🗑️ Cleanup"])
+        
+        with tab1:
+            render_audit_data_viewer(audit_logger)
+        
+        with tab2:
+            render_audit_analytics(audit_logger)
+        
+        with tab3:
+            render_audit_cleanup(audit_logger)
+            
+    except Exception as e:
+        st.error(f"Error accessing audit database: {e}")
+        st.info("Make sure the audit database exists and is accessible.")
+
+
+def render_audit_data_viewer(audit_logger):
+    """Render audit data viewer."""
+    st.write("#### 📋 Data Viewer")
+    
+    # Table selection
+    table_option = st.selectbox("Select Table", ["LLM Calls (runs)", "Pattern Matches (matches)"])
+    
+    # Filters
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        limit = st.number_input("Limit Results", min_value=10, max_value=1000, value=100)
+    with col2:
+        if table_option == "LLM Calls (runs)":
+            provider_filter = st.text_input("Provider Filter (optional)")
+        else:
+            pattern_filter = st.text_input("Pattern ID Filter (optional)")
+    with col3:
+        session_filter = st.text_input("Session ID Filter (optional)")
+    
+    if st.button("🔍 Load Data", key="load_audit_data_btn"):
+        try:
+            if table_option == "LLM Calls (runs)":
+                # Load LLM calls
+                query = "SELECT * FROM runs WHERE 1=1"
+                params = []
+                
+                if provider_filter:
+                    query += " AND provider LIKE ?"
+                    params.append(f"%{provider_filter}%")
+                
+                if session_filter:
+                    query += " AND session_id LIKE ?"
+                    params.append(f"%{session_filter}%")
+                
+                query += " ORDER BY created_at DESC LIMIT ?"
+                params.append(limit)
+                
+                with sqlite3.connect(audit_logger.db_path) as conn:
+                    df = pd.read_sql_query(query, conn, params=params)
+                
+                if not df.empty:
+                    st.write(f"**Found {len(df)} LLM calls:**")
+                    
+                    # Display data with selection
+                    selected_rows = st.dataframe(
+                        df,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "prompt": st.column_config.TextColumn("Prompt", width="medium"),
+                            "response": st.column_config.TextColumn("Response", width="medium"),
+                            "created_at": st.column_config.DatetimeColumn("Created At")
+                        }
+                    )
+                    
+                    # Bulk delete option
+                    if st.checkbox("Enable bulk delete", key="enable_bulk_delete_runs"):
+                        selected_ids = st.multiselect(
+                            "Select records to delete",
+                            options=df['id'].tolist(),
+                            format_func=lambda x: f"ID {x} - {df[df['id']==x]['provider'].iloc[0]} - {df[df['id']==x]['created_at'].iloc[0]}",
+                            key="select_runs_to_delete"
+                        )
+                        
+                        if selected_ids and st.button("🗑️ Delete Selected Records", type="secondary", key="delete_selected_runs_btn"):
+                            if st.checkbox("I confirm I want to delete these records", key="confirm_delete_selected_runs"):
+                                with sqlite3.connect(audit_logger.db_path) as conn:
+                                    placeholders = ','.join(['?' for _ in selected_ids])
+                                    cursor = conn.execute(f"DELETE FROM runs WHERE id IN ({placeholders})", selected_ids)
+                                    deleted_count = cursor.rowcount
+                                    conn.commit()
+                                st.success(f"✅ Deleted {deleted_count} records")
+                                st.rerun()
+                else:
+                    st.info("No LLM calls found matching the criteria.")
+            
+            else:
+                # Load pattern matches
+                query = "SELECT * FROM matches WHERE 1=1"
+                params = []
+                
+                if pattern_filter:
+                    query += " AND pattern_id LIKE ?"
+                    params.append(f"%{pattern_filter}%")
+                
+                if session_filter:
+                    query += " AND session_id LIKE ?"
+                    params.append(f"%{session_filter}%")
+                
+                query += " ORDER BY created_at DESC LIMIT ?"
+                params.append(limit)
+                
+                with sqlite3.connect(audit_logger.db_path) as conn:
+                    df = pd.read_sql_query(query, conn, params=params)
+                
+                if not df.empty:
+                    st.write(f"**Found {len(df)} pattern matches:**")
+                    
+                    # Display data
+                    st.dataframe(
+                        df,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "created_at": st.column_config.DatetimeColumn("Created At"),
+                            "score": st.column_config.NumberColumn("Score", format="%.3f")
+                        }
+                    )
+                    
+                    # Bulk delete option
+                    if st.checkbox("Enable bulk delete", key="enable_bulk_delete_matches"):
+                        selected_ids = st.multiselect(
+                            "Select records to delete",
+                            options=df['id'].tolist(),
+                            format_func=lambda x: f"ID {x} - {df[df['id']==x]['pattern_id'].iloc[0]} - Score: {df[df['id']==x]['score'].iloc[0]:.3f}",
+                            key="select_matches_to_delete"
+                        )
+                        
+                        if selected_ids and st.button("🗑️ Delete Selected Records", type="secondary", key="delete_selected_matches_btn"):
+                            if st.checkbox("I confirm I want to delete these records", key="confirm_delete_selected_matches"):
+                                with sqlite3.connect(audit_logger.db_path) as conn:
+                                    placeholders = ','.join(['?' for _ in selected_ids])
+                                    cursor = conn.execute(f"DELETE FROM matches WHERE id IN ({placeholders})", selected_ids)
+                                    deleted_count = cursor.rowcount
+                                    conn.commit()
+                                st.success(f"✅ Deleted {deleted_count} records")
+                                st.rerun()
+                else:
+                    st.info("No pattern matches found matching the criteria.")
+                    
+        except Exception as e:
+            st.error(f"Error loading data: {e}")
+
+
+def render_audit_analytics(audit_logger):
+    """Render audit analytics."""
+    st.write("#### 📊 Analytics")
+    
+    try:
+        with sqlite3.connect(audit_logger.db_path) as conn:
+            # Provider statistics
+            st.write("**Provider Usage:**")
+            provider_df = pd.read_sql_query("""
+                SELECT provider, COUNT(*) as calls, AVG(latency_ms) as avg_latency,
+                       SUM(tokens) as total_tokens, MAX(created_at) as last_used
+                FROM runs 
+                GROUP BY provider 
+                ORDER BY calls DESC
+            """, conn)
+            
+            if not provider_df.empty:
+                st.dataframe(
+                    provider_df,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "avg_latency": st.column_config.NumberColumn("Avg Latency (ms)", format="%.1f"),
+                        "total_tokens": st.column_config.NumberColumn("Total Tokens"),
+                        "last_used": st.column_config.DatetimeColumn("Last Used")
+                    }
+                )
+            
+            # Pattern statistics
+            st.write("**Pattern Match Statistics:**")
+            pattern_df = pd.read_sql_query("""
+                SELECT pattern_id, COUNT(*) as matches, AVG(score) as avg_score,
+                       MAX(score) as max_score, MAX(created_at) as last_matched
+                FROM matches 
+                GROUP BY pattern_id 
+                ORDER BY matches DESC
+            """, conn)
+            
+            if not pattern_df.empty:
+                st.dataframe(
+                    pattern_df,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "avg_score": st.column_config.NumberColumn("Avg Score", format="%.3f"),
+                        "max_score": st.column_config.NumberColumn("Max Score", format="%.3f"),
+                        "last_matched": st.column_config.DatetimeColumn("Last Matched")
+                    }
+                )
+            
+            # Recent activity
+            st.write("**Recent Activity (Last 24 Hours):**")
+            recent_df = pd.read_sql_query("""
+                SELECT DATE(created_at) as date, COUNT(*) as calls
+                FROM runs 
+                WHERE created_at >= datetime('now', '-7 days')
+                GROUP BY DATE(created_at)
+                ORDER BY date DESC
+            """, conn)
+            
+            if not recent_df.empty:
+                st.bar_chart(recent_df.set_index('date'))
+            else:
+                st.info("No recent activity found.")
+                
+    except Exception as e:
+        st.error(f"Error generating analytics: {e}")
+
+
+def render_audit_cleanup(audit_logger):
+    """Render audit cleanup options."""
+    st.write("#### 🗑️ Cleanup Options")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Clean Old Records**")
+        days_to_keep = st.number_input("Keep records newer than (days)", min_value=1, max_value=365, value=30)
+        
+        if st.button("🗑️ Clean Old Records", type="secondary", key="clean_old_audit_records_btn"):
+            if st.checkbox("I confirm I want to delete old records", key="confirm_clean_old_audit_records"):
+                try:
+                    deleted_count = audit_logger.cleanup_old_records(days=days_to_keep)
+                    st.success(f"✅ Deleted {deleted_count} old records (older than {days_to_keep} days)")
+                except Exception as e:
+                    st.error(f"Error cleaning old records: {e}")
+    
+    with col2:
+        st.write("**Clean Test Data**")
+        st.info("Remove records from test providers and sessions")
+        
+        if st.button("🗑️ Clean Test Data", type="secondary", key="clean_test_audit_data_btn"):
+            if st.checkbox("I confirm I want to delete test data", key="confirm_clean_test_audit_data"):
+                try:
+                    with sqlite3.connect(audit_logger.db_path) as conn:
+                        # Delete test provider data
+                        cursor = conn.execute("""
+                            DELETE FROM runs 
+                            WHERE provider IN ('fake', 'MockLLM', 'error-provider', 'AuditedLLMProvider')
+                            OR session_id LIKE 'test-%'
+                            OR session_id LIKE '%test%'
+                        """)
+                        runs_deleted = cursor.rowcount
+                        
+                        cursor = conn.execute("""
+                            DELETE FROM matches 
+                            WHERE session_id LIKE 'test-%'
+                            OR session_id LIKE '%test%'
+                        """)
+                        matches_deleted = cursor.rowcount
+                        
+                        conn.commit()
+                    
+                    total_deleted = runs_deleted + matches_deleted
+                    st.success(f"✅ Deleted {total_deleted} test records (runs: {runs_deleted}, matches: {matches_deleted})")
+                except Exception as e:
+                    st.error(f"Error cleaning test data: {e}")
+    
+    # Dangerous operations
+    st.write("---")
+    st.write("**⚠️ Dangerous Operations**")
+    
+    with st.expander("🚨 Complete Database Reset"):
+        st.warning("This will delete ALL data in the audit database. This action cannot be undone!")
+        
+        if st.text_input("Type 'DELETE ALL DATA' to confirm", key="confirm_delete_all_audit_input") == "DELETE ALL DATA":
+            if st.button("🚨 DELETE ALL AUDIT DATA", type="secondary", key="delete_all_audit_data_btn"):
+                try:
+                    with sqlite3.connect(audit_logger.db_path) as conn:
+                        cursor = conn.execute("DELETE FROM runs")
+                        runs_deleted = cursor.rowcount
+                        
+                        cursor = conn.execute("DELETE FROM matches")
+                        matches_deleted = cursor.rowcount
+                        
+                        conn.commit()
+                    
+                    st.success(f"✅ Deleted ALL data: {runs_deleted} runs, {matches_deleted} matches")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error deleting all data: {e}")
+
+
+def render_security_database_management():
+    """Render security database management interface."""
+    st.write("### 🔒 Security Database Management")
+    
+    try:
+        security_logger = SecurityEventLogger()
+        
+        # Database statistics
+        with sqlite3.connect(security_logger.db_path) as conn:
+            cursor = conn.execute("SELECT COUNT(*) FROM security_events")
+            total_events = cursor.fetchone()[0]
+            
+            cursor = conn.execute("SELECT COUNT(*) FROM security_metrics")
+            total_metrics = cursor.fetchone()[0]
+            
+            cursor = conn.execute("SELECT MIN(timestamp), MAX(timestamp) FROM security_events WHERE timestamp IS NOT NULL")
+            date_range = cursor.fetchone()
+        
+        # Display statistics
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Security Events", total_events)
+        with col2:
+            st.metric("Metrics Records", total_metrics)
+        with col3:
+            if date_range[0] and date_range[1]:
+                st.metric("Date Range", f"{date_range[0][:10]} to {date_range[1][:10]}")
+            else:
+                st.metric("Date Range", "No data")
+        
+        # Management options
+        st.write("### Management Options")
+        
+        tab1, tab2, tab3 = st.tabs(["🔍 View Events", "📊 Security Analytics", "🗑️ Cleanup"])
+        
+        with tab1:
+            render_security_data_viewer(security_logger)
+        
+        with tab2:
+            render_security_analytics(security_logger)
+        
+        with tab3:
+            render_security_cleanup(security_logger)
+            
+    except Exception as e:
+        st.error(f"Error accessing security database: {e}")
+        st.info("Make sure the security database exists and is accessible.")
+
+
+def render_security_data_viewer(security_logger):
+    """Render security data viewer."""
+    st.write("#### 🔍 Security Events Viewer")
+    
+    # Filters
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        limit = st.number_input("Limit Results", min_value=10, max_value=500, value=50)
+    with col2:
+        action_filter = st.selectbox("Action Filter", ["All", "BLOCK", "FLAG", "PASS"])
+    with col3:
+        severity_filter = st.selectbox("Severity Filter", ["All", "low", "medium", "high", "critical"])
+    with col4:
+        session_filter = st.text_input("Session ID Filter (optional)")
+    
+    if st.button("🔍 Load Security Events", key="load_security_events_btn"):
+        try:
+            query = "SELECT * FROM security_events WHERE 1=1"
+            params = []
+            
+            if action_filter != "All":
+                query += " AND action = ?"
+                params.append(action_filter)
+            
+            if severity_filter != "All":
+                query += " AND alert_severity = ?"
+                params.append(severity_filter)
+            
+            if session_filter:
+                query += " AND session_id LIKE ?"
+                params.append(f"%{session_filter}%")
+            
+            query += " ORDER BY timestamp DESC LIMIT ?"
+            params.append(limit)
+            
+            with sqlite3.connect(security_logger.db_path) as conn:
+                df = pd.read_sql_query(query, conn, params=params)
+            
+            if not df.empty:
+                st.write(f"**Found {len(df)} security events:**")
+                
+                # Process JSON columns for display
+                display_df = df.copy()
+                if 'detected_attacks' in display_df.columns:
+                    display_df['attack_count'] = display_df['detected_attacks'].apply(
+                        lambda x: len(json.loads(x)) if x else 0
+                    )
+                
+                # Display data
+                st.dataframe(
+                    display_df[['event_id', 'timestamp', 'action', 'confidence', 'alert_severity', 
+                               'attack_count', 'input_length', 'processing_time_ms']],
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "timestamp": st.column_config.DatetimeColumn("Timestamp"),
+                        "confidence": st.column_config.NumberColumn("Confidence", format="%.3f"),
+                        "processing_time_ms": st.column_config.NumberColumn("Processing Time (ms)", format="%.1f")
+                    }
+                )
+                
+                # Event details
+                if st.checkbox("Show detailed event information", key="show_security_event_details"):
+                    selected_event_id = st.selectbox(
+                        "Select event for details",
+                        options=df['event_id'].tolist(),
+                        key="select_security_event_details"
+                    )
+                    
+                    if selected_event_id:
+                        event_row = df[df['event_id'] == selected_event_id].iloc[0]
+                        
+                        st.write("**Event Details:**")
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.write(f"**Event ID:** {event_row['event_id']}")
+                            st.write(f"**Timestamp:** {event_row['timestamp']}")
+                            st.write(f"**Action:** {event_row['action']}")
+                            st.write(f"**Confidence:** {event_row['confidence']:.3f}")
+                            st.write(f"**Alert Severity:** {event_row['alert_severity']}")
+                            st.write(f"**Progressive Level:** {event_row['progressive_response_level']}")
+                        
+                        with col2:
+                            st.write(f"**Input Length:** {event_row['input_length']}")
+                            st.write(f"**Processing Time:** {event_row['processing_time_ms']:.1f}ms")
+                            
+                            if event_row['input_preview']:
+                                st.write("**Input Preview:**")
+                                st.text_area("", value=event_row['input_preview'], height=100, disabled=True, key="security_event_input_preview")
+                        
+                        # Show detected attacks
+                        if event_row['detected_attacks']:
+                            attacks = json.loads(event_row['detected_attacks'])
+                            if attacks:
+                                st.write("**Detected Attacks:**")
+                                for i, attack in enumerate(attacks):
+                                    st.write(f"{i+1}. **{attack.get('name', 'Unknown')}** ({attack.get('category', 'Unknown')})")
+                                    st.write(f"   - Severity: {attack.get('severity', 'Unknown')}")
+                                    st.write(f"   - Description: {attack.get('description', 'No description')}")
+                
+                # Bulk delete option
+                if st.checkbox("Enable bulk delete", key="enable_bulk_delete_security_events"):
+                    selected_ids = st.multiselect(
+                        "Select events to delete",
+                        options=df['id'].tolist(),
+                        format_func=lambda x: f"ID {x} - {df[df['id']==x]['event_id'].iloc[0]} - {df[df['id']==x]['action'].iloc[0]}",
+                        key="select_security_events_to_delete"
+                    )
+                    
+                    if selected_ids and st.button("🗑️ Delete Selected Events", type="secondary", key="delete_selected_security_events_btn"):
+                        if st.checkbox("I confirm I want to delete these security events", key="confirm_delete_selected_security_events"):
+                            with sqlite3.connect(security_logger.db_path) as conn:
+                                placeholders = ','.join(['?' for _ in selected_ids])
+                                cursor = conn.execute(f"DELETE FROM security_events WHERE id IN ({placeholders})", selected_ids)
+                                deleted_count = cursor.rowcount
+                                conn.commit()
+                            st.success(f"✅ Deleted {deleted_count} security events")
+                            st.rerun()
+            else:
+                st.info("No security events found matching the criteria.")
+                
+        except Exception as e:
+            st.error(f"Error loading security events: {e}")
+
+
+def render_security_analytics(security_logger):
+    """Render security analytics."""
+    st.write("#### 📊 Security Analytics")
+    
+    try:
+        with sqlite3.connect(security_logger.db_path) as conn:
+            # Action statistics
+            st.write("**Security Actions:**")
+            action_df = pd.read_sql_query("""
+                SELECT action, COUNT(*) as count, AVG(confidence) as avg_confidence,
+                       AVG(processing_time_ms) as avg_processing_time
+                FROM security_events 
+                GROUP BY action 
+                ORDER BY count DESC
+            """, conn)
+            
+            if not action_df.empty:
+                st.dataframe(
+                    action_df,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "avg_confidence": st.column_config.NumberColumn("Avg Confidence", format="%.3f"),
+                        "avg_processing_time": st.column_config.NumberColumn("Avg Processing Time (ms)", format="%.1f")
+                    }
+                )
+            
+            # Severity distribution
+            st.write("**Alert Severity Distribution:**")
+            severity_df = pd.read_sql_query("""
+                SELECT alert_severity, COUNT(*) as count
+                FROM security_events 
+                GROUP BY alert_severity 
+                ORDER BY 
+                    CASE alert_severity 
+                        WHEN 'critical' THEN 1 
+                        WHEN 'high' THEN 2 
+                        WHEN 'medium' THEN 3 
+                        WHEN 'low' THEN 4 
+                    END
+            """, conn)
+            
+            if not severity_df.empty:
+                st.bar_chart(severity_df.set_index('alert_severity'))
+            
+            # Recent activity
+            st.write("**Recent Security Activity (Last 7 Days):**")
+            recent_df = pd.read_sql_query("""
+                SELECT DATE(timestamp) as date, action, COUNT(*) as count
+                FROM security_events 
+                WHERE timestamp >= datetime('now', '-7 days')
+                GROUP BY DATE(timestamp), action
+                ORDER BY date DESC
+            """, conn)
+            
+            if not recent_df.empty:
+                # Pivot for better visualization
+                pivot_df = recent_df.pivot(index='date', columns='action', values='count').fillna(0)
+                st.bar_chart(pivot_df)
+            else:
+                st.info("No recent security activity found.")
+                
+    except Exception as e:
+        st.error(f"Error generating security analytics: {e}")
+
+
+def render_security_cleanup(security_logger):
+    """Render security cleanup options."""
+    st.write("#### 🗑️ Security Cleanup Options")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Clean Old Events**")
+        days_to_keep = st.number_input("Keep events newer than (days)", min_value=1, max_value=365, value=90)
+        
+        if st.button("🗑️ Clean Old Security Events", type="secondary", key="clean_old_security_events_btn"):
+            if st.checkbox("I confirm I want to delete old security events", key="confirm_clean_old_security_events"):
+                try:
+                    cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
+                    
+                    with sqlite3.connect(security_logger.db_path) as conn:
+                        cursor = conn.execute("DELETE FROM security_events WHERE timestamp < ?", (cutoff_date,))
+                        events_deleted = cursor.rowcount
+                        
+                        cursor = conn.execute("DELETE FROM security_metrics WHERE timestamp < ?", (cutoff_date,))
+                        metrics_deleted = cursor.rowcount
+                        
+                        conn.commit()
+                    
+                    st.success(f"✅ Deleted {events_deleted} old events and {metrics_deleted} old metrics (older than {days_to_keep} days)")
+                except Exception as e:
+                    st.error(f"Error cleaning old security data: {e}")
+    
+    with col2:
+        st.write("**Clean by Severity**")
+        severity_to_clean = st.selectbox("Clean events with severity", ["low", "medium", "high", "critical"])
+        
+        if st.button(f"🗑️ Clean {severity_to_clean.title()} Severity Events", type="secondary", key="clean_severity_events_btn"):
+            if st.checkbox(f"I confirm I want to delete all {severity_to_clean} severity events", key="confirm_clean_severity_events"):
+                try:
+                    with sqlite3.connect(security_logger.db_path) as conn:
+                        cursor = conn.execute("DELETE FROM security_events WHERE alert_severity = ?", (severity_to_clean,))
+                        deleted_count = cursor.rowcount
+                        conn.commit()
+                    
+                    st.success(f"✅ Deleted {deleted_count} {severity_to_clean} severity events")
+                except Exception as e:
+                    st.error(f"Error cleaning {severity_to_clean} severity events: {e}")
+    
+    # Dangerous operations
+    st.write("---")
+    st.write("**⚠️ Dangerous Operations**")
+    
+    with st.expander("🚨 Complete Security Database Reset"):
+        st.warning("This will delete ALL data in the security database. This action cannot be undone!")
+        
+        if st.text_input("Type 'DELETE ALL SECURITY DATA' to confirm", key="confirm_delete_all_security_input") == "DELETE ALL SECURITY DATA":
+            if st.button("🚨 DELETE ALL SECURITY DATA", type="secondary", key="delete_all_security_data_btn"):
+                try:
+                    with sqlite3.connect(security_logger.db_path) as conn:
+                        cursor = conn.execute("DELETE FROM security_events")
+                        events_deleted = cursor.rowcount
+                        
+                        cursor = conn.execute("DELETE FROM security_metrics")
+                        metrics_deleted = cursor.rowcount
+                        
+                        conn.commit()
+                    
+                    st.success(f"✅ Deleted ALL security data: {events_deleted} events, {metrics_deleted} metrics")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error deleting all security data: {e}")
