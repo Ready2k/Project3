@@ -417,9 +417,9 @@ class PatternEnhancementService:
         if not pattern.get("implementation_guidance"):
             score += 0.3
         
-        return min(score, 1.0)    
-   
- def _extract_json_from_response(self, response: str) -> Optional[Dict[str, Any]]:
+        return min(score, 1.0)
+    
+    def _extract_json_from_response(self, response: str) -> Optional[Dict[str, Any]]:
         """Extract JSON from LLM response, handling various formats."""
         if not response or not response.strip():
             return None
