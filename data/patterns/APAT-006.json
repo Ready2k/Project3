@@ -26,7 +26,26 @@
       "resource_exhaustion"
     ]
   },
-  "exception_handling": "Multi-agent collaborative resolution with system-level escalation",
+  "exception_handling_strategy": {
+    "autonomous_resolution_approaches": [
+      "multi_agent_collaborative_resolution",
+      "distributed_error_recovery",
+      "agent_failover_mechanisms",
+      "system_state_restoration"
+    ],
+    "reasoning_fallbacks": [
+      "coordinator_agent_intervention",
+      "simplified_decision_trees",
+      "rule_based_fallback_logic",
+      "human_escalation_preparation"
+    ],
+    "escalation_criteria": [
+      "system_wide_failures",
+      "conflicting_agent_decisions",
+      "resource_exhaustion",
+      "critical_compliance_violations"
+    ]
+  },
   "learning_mechanisms": [
     "inter_agent_learning",
     "system_optimization",
