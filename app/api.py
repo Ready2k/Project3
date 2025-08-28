@@ -1463,30 +1463,23 @@ async def get_qa_questions(session_id: str, response: Response):
 async def get_qa_questions_with_provider(session_id: str, request: dict, response: Response):
     """Get Q&A questions for a session with optional provider config override."""
     try:
-        # Get session
-        store = get_session_store()
-        session = await store.get_session(session_id)
-        
-        if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
-        
-        # Use provided provider config if available, otherwise use session's config
-        provider_config = None
+        # If provider config is provided, update the session first
         if request.get('provider_config'):
-            app_logger.info(f"Using provided provider config for Q&A questions: {request['provider_config'].get('provider')}")
-            provider_config = ProviderConfig(**request['provider_config'])
+            app_logger.info(f"Updating session provider config for Q&A questions: {request['provider_config'].get('provider')}")
             
-            # Update the session's provider config for future use
+            store = get_session_store()
+            session = await store.get_session(session_id)
+            
+            if not session:
+                raise HTTPException(status_code=404, detail="Session not found")
+            
+            # Update the session's provider config
             session.provider_config = request['provider_config']
             await store.update_session(session_id, session)
-        elif session.provider_config:
-            app_logger.info(f"Using session provider config for Q&A questions: {session.provider_config}")
-            provider_config = ProviderConfig(**session.provider_config)
-        else:
-            app_logger.warning("No provider config available for Q&A questions")
+            
+            app_logger.info(f"Successfully updated session {session_id} provider config")
         
-        # Call the original GET endpoint logic by delegating to it
-        # This avoids code duplication
+        # Now call the original GET endpoint which will use the updated provider config
         return await get_qa_questions(session_id, response)
         
     except Exception as e:
