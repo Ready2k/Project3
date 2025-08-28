@@ -17,6 +17,13 @@ class ArchitectureExplainer:
             llm_provider: LLM provider for generating explanations
         """
         self.llm_provider = llm_provider
+        
+        # Initialize tech stack generator for proper constraint handling
+        if llm_provider:
+            from app.services.tech_stack_generator import TechStackGenerator
+            self.tech_stack_generator = TechStackGenerator(llm_provider)
+        else:
+            self.tech_stack_generator = None
     
     async def explain_architecture(self, 
                                  tech_stack: List[str],
@@ -52,7 +59,7 @@ class ArchitectureExplainer:
     async def _generate_tech_stack_for_requirements(self,
                                                   requirements: Dict[str, Any],
                                                   session_id: str) -> List[str]:
-        """Generate appropriate tech stack based on specific requirements.
+        """Generate appropriate tech stack based on specific requirements using proper TechStackGenerator.
         
         Args:
             requirements: User requirements
@@ -61,66 +68,30 @@ class ArchitectureExplainer:
         Returns:
             List of recommended technologies
         """
-        # Create a focused prompt for tech stack generation
-        prompt = f"""You are a senior software architect focusing around AI and Agentic systems. Based on the specific requirements below, recommend a focused, practical technology stack.
-
-**Requirements:**
-- Description: {requirements.get('description', 'Not specified')}
-- Domain: {requirements.get('domain', 'Not specified')}
-- Volume/Scale: {requirements.get('volume', 'Not specified')}
-- Integrations needed: {requirements.get('integrations', [])}
-- Data sensitivity: {requirements.get('data_sensitivity', 'Not specified')}
-- Compliance requirements: {requirements.get('compliance', [])}
-
-**Instructions:**
-1. Analyze the specific requirements carefully
-2. Recommend upto 10 technologies that directly address these needs, you must include all technologies to make it work.
-3. Focus on practical, proven technologies BUT you can include new emerging technologies if they are a better fit
-4. Consider the domain, scale, performance and integration requirements
-5. Include: programming language, framework, database, key libraries/tools
-
-Respond with ONLY a valid JSON object (no markdown, no extra text):
-{{
-    "tech_stack": ["Technology1", "Technology2", "Technology3", ...],
-    "reasoning": "Brief explanation of why these technologies were chosen for these specific requirements"
-}}
-
-IMPORTANT: Return only the JSON object, no other text or formatting."""
-
+        if not self.tech_stack_generator:
+            app_logger.warning("No tech stack generator available, using fallback")
+            return self._get_domain_based_tech_stack(requirements)
+        
         try:
-            response = await self.llm_provider.generate(prompt, purpose="tech_stack_generation")
+            # Create empty matches list since we're generating from requirements
+            from app.pattern.matcher import MatchResult
+            matches = []
             
-            # Parse JSON response (handle markdown formatting)
-            import json
-            import re
+            # Extract constraints from requirements (this is the key fix!)
+            constraints = requirements.get('constraints', {})
             
-            try:
-                # Clean the response - remove markdown code blocks if present
-                cleaned_response = response.strip()
-                if cleaned_response.startswith('```json'):
-                    cleaned_response = cleaned_response.replace('```json', '').replace('```', '').strip()
-                elif cleaned_response.startswith('```'):
-                    cleaned_response = cleaned_response.replace('```', '').strip()
-                
-                # Try to extract JSON from the response
-                json_match = re.search(r'\{.*\}', cleaned_response, re.DOTALL)
-                if json_match:
-                    json_str = json_match.group(0)
-                    result = json.loads(json_str)
-                    tech_stack = result.get("tech_stack", [])
-                    app_logger.info(f"Generated tech stack ({len(tech_stack)} items): {tech_stack}")
-                    return tech_stack
-                else:
-                    raise json.JSONDecodeError("No JSON object found", cleaned_response, 0)
-                    
-            except json.JSONDecodeError as e:
-                app_logger.warning(f"Failed to parse tech stack JSON: {e}, extracting from text")
-                # Fallback: extract technologies from text
-                return self._extract_tech_from_text(response)
-                
+            app_logger.info(f"Generating tech stack with constraints: {constraints}")
+            
+            # Use the proper TechStackGenerator which handles constraints correctly
+            tech_stack = await self.tech_stack_generator.generate_tech_stack(
+                matches, requirements, constraints
+            )
+            
+            app_logger.info(f"Generated tech stack with {len(tech_stack)} technologies using TechStackGenerator")
+            return tech_stack
+            
         except Exception as e:
-            app_logger.error(f"Failed to generate tech stack: {e}")
-            # Return a basic tech stack based on domain
+            app_logger.error(f"Failed to generate tech stack using TechStackGenerator: {e}")
             return self._get_domain_based_tech_stack(requirements)
     
     def _extract_tech_from_text(self, text: str) -> List[str]:

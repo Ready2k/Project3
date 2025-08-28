@@ -1,0 +1,114 @@
+{
+  "pattern_id": "APAT-006",
+  "name": "Multi-Agent Coordinator_Based System",
+  "description": "Multi-agent system with 4 specialized agents for As a colleague\nI want the agent to detect vulnerability signals during conversations and guide me in real time\nSo that I treat customers fairly\nBusiness value: TCF/FCA compliance; risk reduction.\nAssumptions: Consent for conversation analysis; policy playbooks.\nAcceptance criteria:\nGiven an active call or chat\nWhen the agent detects vulnerability cues (e.g., bereavement, financial difficulty)\nThen it highlights the cue and surfaces the matching policy steps and wording\nGiven I follow guidance\nThen the agent captures evidence of reasonable adjustments and updates CRM\nNon-functional / Controls:\nOn-device or approved processing; opt-out respected; guidance text templated and localised.",
+  "feasibility": "Fully Automatable",
+  "pattern_type": [
+    "multi_agent_system",
+    "coordinator_based"
+  ],
+  "autonomy_level": 0.9,
+  "reasoning_capabilities": [
+    "collaborative_reasoning",
+    "distributed_decision_making",
+    "system_coordination"
+  ],
+  "decision_scope": {
+    "autonomous_decisions": [
+      "agent_coordination",
+      "task_distribution",
+      "resource_allocation",
+      "exception_handling"
+    ],
+    "escalation_triggers": [
+      "system_wide_failures",
+      "conflicting_agent_decisions",
+      "resource_exhaustion"
+    ]
+  },
+  "exception_handling": "Multi-agent collaborative resolution with system-level escalation",
+  "learning_mechanisms": [
+    "inter_agent_learning",
+    "system_optimization",
+    "performance_adaptation"
+  ],
+  "tech_stack": [
+    "LangChain",
+    "Haystack",
+    "Apache Kafka",
+    "Redis",
+    "Docker",
+    "Kubernetes"
+  ],
+  "agent_architecture": "coordinator_based",
+  "input_requirements": [
+    "multi_agent_coordination",
+    "distributed_processing",
+    "system_monitoring",
+    "error_handling"
+  ],
+  "related_patterns": [
+    "APAT-001",
+    "APAT-002"
+  ],
+  "confidence_score": 0.9,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": [
+      "LangChain",
+      "Haystack",
+      "Apache Kafka"
+    ]
+  },
+  "domain": "financial",
+  "complexity": "High",
+  "estimated_effort": "8-12 weeks",
+  "reasoning_types": [
+    "logical",
+    "causal",
+    "collaborative"
+  ],
+  "decision_boundaries": {
+    "autonomous_decisions": [
+      "agent_coordination",
+      "task_distribution",
+      "resource_allocation"
+    ],
+    "escalation_triggers": [
+      "system_failures",
+      "conflicting_decisions",
+      "resource_exhaustion"
+    ]
+  },
+  "autonomy_assessment": {
+    "overall_score": 0.8965000000000003,
+    "reasoning_complexity": "complex",
+    "workflow_coverage": 0.9,
+    "decision_independence": "high"
+  },
+  "self_monitoring_capabilities": [
+    "performance_tracking",
+    "error_detection",
+    "system_health_monitoring"
+  ],
+  "integration_requirements": [
+    "Docker",
+    "Kubernetes"
+  ],
+  "created_from_session": "01dd9377-0ac4-4bbb-9d95-aa1d811a7faa",
+  "auto_generated": true,
+  "llm_insights": [
+    "Multi-agent coordination enables distributed processing",
+    "Collaborative reasoning improves decision accuracy",
+    "System-level monitoring ensures reliability"
+  ],
+  "llm_challenges": [
+    "Coordinating multiple agents effectively",
+    "Managing distributed decision making",
+    "Ensuring system-wide consistency"
+  ],
+  "llm_recommended_approach": "Implement coordinator_based architecture with specialized agent roles, use robust communication protocols, maintain comprehensive monitoring and error handling.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "01dd9377-0ac4-4bbb-9d95-aa1d811a7faa",
+  "color": "🟢"
+}
