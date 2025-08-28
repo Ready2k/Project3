@@ -245,8 +245,7 @@ class TechStackGenerator:
         available_tech_summary = self._summarize_available_technologies()
         pattern_tech_summary = self._summarize_pattern_technologies(pattern_technologies)
         
-        prompt = {
-            "system": """You are a senior software architect specializing in automation and AI systems. 
+        prompt = f"""You are a senior software architect specializing in automation and AI systems. 
 Your task is to recommend the most appropriate technology stack for a given automation requirement.
 
 Consider:
@@ -258,9 +257,8 @@ Consider:
 6. Performance, scalability, and maintainability
 
 Provide a focused, practical tech stack - avoid generic or unnecessary technologies.
-Focus on technologies that directly address the requirements.""",
-            
-            "user": f"""
+Focus on technologies that directly address the requirements.
+
 **Requirements:**
 - Description: {requirements.get('description', 'Not specified')}
 - Domain: {requirements.get('domain', 'Not specified')}
@@ -324,15 +322,17 @@ Respond with a JSON object containing:
     "tech_stack": ["Technology1", "Technology2", ...],
     "reasoning": "Brief explanation of why these technologies were chosen",
     "alternatives": ["Alt1", "Alt2", ...] // Optional alternatives if primary choices aren't available
-}}
-"""
-        }
+}}"""
         
         try:
             # Log the LLM call for audit trail
             start_time = datetime.now()
             
-            # Note: We'll log after the call to get latency
+            # Ensure prompt is a string (defensive programming)
+            if not isinstance(prompt, str):
+                app_logger.error(f"ERROR: Prompt is not a string! Type: {type(prompt)}")
+                prompt = str(prompt)
+                app_logger.info("Converted prompt to string")
             
             response = await self.llm_provider.generate(prompt, purpose="tech_stack_generation")
             
@@ -369,7 +369,7 @@ Respond with a JSON object containing:
                 provider=self.llm_provider.__class__.__name__,
                 model=getattr(self.llm_provider, 'model', 'unknown'),
                 latency_ms=latency_ms,
-                prompt=str(prompt),
+                prompt=prompt,  # Now guaranteed to be a string
                 response=response_str
             )
             
@@ -385,6 +385,23 @@ Respond with a JSON object containing:
             
         except Exception as e:
             app_logger.error(f"Failed to parse LLM tech stack response: {e}")
+            
+            # Try to log the failed LLM call for debugging
+            try:
+                end_time = datetime.now()
+                latency_ms = int((end_time - start_time).total_seconds() * 1000)
+                await log_llm_call(
+                    session_id="tech_stack_generation",
+                    provider=self.llm_provider.__class__.__name__,
+                    model=getattr(self.llm_provider, 'model', 'unknown'),
+                    latency_ms=latency_ms,
+                    prompt=prompt,  # Now guaranteed to be a string
+                    response=f"ERROR: {str(e)}",
+                    purpose="tech_stack_generation_failed"
+                )
+            except Exception as log_error:
+                app_logger.warning(f"Failed to log failed LLM call: {log_error}")
+            
             return None
     
     def _summarize_available_technologies(self) -> str:

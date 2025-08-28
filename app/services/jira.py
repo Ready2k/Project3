@@ -1,6 +1,7 @@
 """Jira integration service for fetching tickets and mapping to requirements."""
 
 import base64
+import html
 import json
 from typing import Dict, Any, Optional, Tuple
 from urllib.parse import urljoin
@@ -1548,6 +1549,27 @@ class JiraService:
             # Fallback to simple string conversion
             return str(adf_content)[:1000] + "..." if len(str(adf_content)) > 1000 else str(adf_content)
     
+    def _decode_html_entities(self, text: Optional[str]) -> Optional[str]:
+        """Decode HTML entities in text content, handling double-encoding.
+        
+        Args:
+            text: Text that may contain HTML entities (possibly double-encoded)
+            
+        Returns:
+            Text with HTML entities decoded, or None if input was None
+        """
+        if text is None:
+            return None
+        
+        # Handle double-encoded entities by decoding twice if needed
+        decoded = html.unescape(text)
+        
+        # Check if there are still encoded entities (indicating double-encoding)
+        if '&amp;' in decoded or '&lt;' in decoded or '&gt;' in decoded or '&quot;' in decoded:
+            decoded = html.unescape(decoded)
+        
+        return decoded
+    
     def map_ticket_to_requirements(self, ticket: JiraTicket) -> Dict[str, Any]:
         """Map Jira ticket data to comprehensive requirements format with all relevant fields.
         
@@ -1560,39 +1582,40 @@ class JiraService:
         # Build comprehensive description from all relevant fields
         description_parts = []
         
-        # Start with summary and description
+        # Start with summary and description (decode HTML entities)
         if ticket.summary:
-            description_parts.append(f"**Summary:** {ticket.summary}")
+            description_parts.append(f"**Summary:** {self._decode_html_entities(ticket.summary)}")
         
         if ticket.description:
-            description_parts.append(f"**Description:** {ticket.description}")
+            description_parts.append(f"**Description:** {self._decode_html_entities(ticket.description)}")
         
         # Add acceptance criteria if available
         if ticket.acceptance_criteria:
-            description_parts.append(f"**Acceptance Criteria:** {ticket.acceptance_criteria}")
+            description_parts.append(f"**Acceptance Criteria:** {self._decode_html_entities(ticket.acceptance_criteria)}")
         
         # Add user story if available
         if ticket.user_story:
-            description_parts.append(f"**User Story:** {ticket.user_story}")
+            description_parts.append(f"**User Story:** {self._decode_html_entities(ticket.user_story)}")
         
         # Add business value if available
         if ticket.business_value:
-            description_parts.append(f"**Business Value:** {ticket.business_value}")
+            description_parts.append(f"**Business Value:** {self._decode_html_entities(ticket.business_value)}")
         
         # Add environment details if available
         if ticket.environment:
-            description_parts.append(f"**Environment:** {ticket.environment}")
+            description_parts.append(f"**Environment:** {self._decode_html_entities(ticket.environment)}")
         
         # Add test cases if available
         if ticket.test_cases:
-            description_parts.append(f"**Test Cases:** {ticket.test_cases}")
+            description_parts.append(f"**Test Cases:** {self._decode_html_entities(ticket.test_cases)}")
         
         # Add relevant comments (limit to most recent 3 to avoid overwhelming)
         if ticket.comments:
             recent_comments = ticket.comments[-3:]  # Get last 3 comments
             comments_text = []
             for comment in recent_comments:
-                comments_text.append(f"- {comment['author']}: {comment['body'][:200]}{'...' if len(comment['body']) > 200 else ''}")
+                decoded_body = self._decode_html_entities(comment['body'])
+                comments_text.append(f"- {comment['author']}: {decoded_body[:200]}{'...' if len(decoded_body) > 200 else ''}")
             if comments_text:
                 description_parts.append(f"**Recent Comments:**\n" + "\n".join(comments_text))
         
@@ -1602,7 +1625,8 @@ class JiraService:
             for field_name, field_value in ticket.custom_fields.items():
                 # Only include text-based custom fields that might contain requirements
                 if isinstance(field_value, str) and len(field_value) > 10:
-                    relevant_custom_fields.append(f"- {field_name}: {field_value[:150]}{'...' if len(field_value) > 150 else ''}")
+                    decoded_value = self._decode_html_entities(field_value)
+                    relevant_custom_fields.append(f"- {field_name}: {decoded_value[:150]}{'...' if len(decoded_value) > 150 else ''}")
             if relevant_custom_fields:
                 description_parts.append(f"**Additional Requirements (Custom Fields):**\n" + "\n".join(relevant_custom_fields))
         
