@@ -1,0 +1,114 @@
+{
+  "pattern_id": "APAT-007",
+  "name": "Multi-Agent Coordinator_Based System",
+  "description": "Multi-agent system with 4 specialized agents for As a support lead\nI want the agent to prioritise tickets using urgency, regulatory impact, and customer profile\nSo that critical issues are handled first\nBusiness value: SLA adherence; reduces regulatory exposure.\nAssumptions: Access to ticketing system; policy weights configured.\nAcceptance criteria:\nGiven an incoming ticket\nWhen the agent scores it\nThen it assigns a priority (P1–P4) with an explanation and the governing policy reference\nGiven a backlog\nWhen priorities change (e.g., vulnerable customer flag)\nThen the agent reorders the queue and notifies owners\nNon-functional / Controls:\nDeterministic tie-break rules; drift monitoring on scoring model; audit of re-prioritisations.",
+  "feasibility": "Fully Automatable",
+  "pattern_type": [
+    "multi_agent_system",
+    "coordinator_based"
+  ],
+  "autonomy_level": 0.975,
+  "reasoning_capabilities": [
+    "collaborative_reasoning",
+    "distributed_decision_making",
+    "system_coordination"
+  ],
+  "decision_scope": {
+    "autonomous_decisions": [
+      "agent_coordination",
+      "task_distribution",
+      "resource_allocation",
+      "exception_handling"
+    ],
+    "escalation_triggers": [
+      "system_wide_failures",
+      "conflicting_agent_decisions",
+      "resource_exhaustion"
+    ]
+  },
+  "exception_handling": "Multi-agent collaborative resolution with system-level escalation",
+  "learning_mechanisms": [
+    "inter_agent_learning",
+    "system_optimization",
+    "performance_adaptation"
+  ],
+  "tech_stack": [
+    "LangChain",
+    "Haystack",
+    "Apache Kafka",
+    "Redis",
+    "Docker",
+    "Kubernetes"
+  ],
+  "agent_architecture": "coordinator_based",
+  "input_requirements": [
+    "multi_agent_coordination",
+    "distributed_processing",
+    "system_monitoring",
+    "error_handling"
+  ],
+  "related_patterns": [
+    "APAT-001",
+    "APAT-002"
+  ],
+  "confidence_score": 0.975,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": [
+      "LangChain",
+      "Haystack",
+      "Apache Kafka"
+    ]
+  },
+  "domain": "incident_management",
+  "complexity": "High",
+  "estimated_effort": "8-12 weeks",
+  "reasoning_types": [
+    "logical",
+    "causal",
+    "collaborative"
+  ],
+  "decision_boundaries": {
+    "autonomous_decisions": [
+      "agent_coordination",
+      "task_distribution",
+      "resource_allocation"
+    ],
+    "escalation_triggers": [
+      "system_failures",
+      "conflicting_decisions",
+      "resource_exhaustion"
+    ]
+  },
+  "autonomy_assessment": {
+    "overall_score": 0.8965,
+    "reasoning_complexity": "complex",
+    "workflow_coverage": 0.9,
+    "decision_independence": "high"
+  },
+  "self_monitoring_capabilities": [
+    "performance_tracking",
+    "error_detection",
+    "system_health_monitoring"
+  ],
+  "integration_requirements": [
+    "Docker",
+    "Kubernetes"
+  ],
+  "created_from_session": "7e78f3c3-4103-43b4-8187-bba3713b7f81",
+  "auto_generated": true,
+  "llm_insights": [
+    "Multi-agent coordination enables distributed processing",
+    "Collaborative reasoning improves decision accuracy",
+    "System-level monitoring ensures reliability"
+  ],
+  "llm_challenges": [
+    "Coordinating multiple agents effectively",
+    "Managing distributed decision making",
+    "Ensuring system-wide consistency"
+  ],
+  "llm_recommended_approach": "Implement coordinator_based architecture with specialized agent roles, use robust communication protocols, maintain comprehensive monitoring and error handling.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "7e78f3c3-4103-43b4-8187-bba3713b7f81",
+  "color": "🟢"
+}

@@ -3882,8 +3882,8 @@ verify_ssl = True
             # Fallback to keyword-based detection if no necessity assessment
             if not necessity_assessment:
                 reasoning = rec.get("reasoning", "").lower()
-                agentic_keywords = ["agent", "autonomous", "agentic", "multi-agent", "reasoning", "decision-making"]
-                is_agentic = any(keyword in reasoning for keyword in agentic_keywords)
+                # Use context-aware agentic detection
+                is_agentic = self._is_agentic_by_context(reasoning)
             else:
                 is_agentic = solution_type in ["agentic_ai", "hybrid"]
             
@@ -3909,8 +3909,10 @@ verify_ssl = True
                             # Log duplicate agent detection for debugging
                             if st.session_state.get('debug_mode', False):
                                 st.warning(f"🔍 Debug: Duplicate agent detected and filtered: {agent_name}")
-                    
-                    is_agentic = True
+            
+            # Only set is_agentic = True if we actually found agents (not just empty agent_roles)
+            if agent_roles_found:
+                is_agentic = True
             
             # Validate agent data completeness
             if agent_roles_found:
@@ -4292,8 +4294,7 @@ verify_ssl = True
         if rec.get('tech_stack'):
             # Check again for agentic solution to show appropriate tech stack
             reasoning = rec.get("reasoning", "").lower()
-            agentic_keywords = ["agent", "autonomous", "agentic", "multi-agent", "reasoning", "decision-making"]
-            is_agentic = any(keyword in reasoning for keyword in agentic_keywords)
+            is_agentic = self._is_agentic_by_context(reasoning)
             
             if is_agentic:
                 st.subheader("🤖 Agentic AI Tech Stack")
@@ -4954,6 +4955,80 @@ verify_ssl = True
         
         st.markdown("</div>", unsafe_allow_html=True)
     
+    def _is_agentic_by_context(self, reasoning_text: str) -> bool:
+        """Context-aware detection of agentic solutions.
+        
+        This method looks for agentic keywords but considers the context to avoid
+        false positives when keywords are used to describe traditional automation.
+        
+        Args:
+            reasoning_text: The reasoning text to analyze (should be lowercase)
+            
+        Returns:
+            True if the text indicates an agentic solution, False otherwise
+        """
+        # Traditional automation indicators (these override agentic keywords)
+        traditional_indicators = [
+            "traditional automation",
+            "conventional workflow",
+            "predefined rules",
+            "without requiring complex reasoning",
+            "rule-based decisions",
+            "predictable steps",
+            "matrix-led decisions",
+            "structured logic",
+            "threshold trigger",
+            "simple automation"
+        ]
+        
+        # Strong agentic indicators
+        agentic_indicators = [
+            "autonomous agent",
+            "multi-agent",
+            "agentic ai",
+            "agent coordination",
+            "agent collaboration",
+            "intelligent reasoning",
+            "adaptive decision",
+            "learning agent",
+            "agent-based"
+        ]
+        
+        # Check for strong traditional indicators first
+        for indicator in traditional_indicators:
+            if indicator in reasoning_text:
+                return False
+        
+        # Check for strong agentic indicators
+        for indicator in agentic_indicators:
+            if indicator in reasoning_text:
+                return True
+        
+        # Fallback to basic keyword detection with context
+        basic_keywords = ["agent", "autonomous", "agentic", "reasoning", "decision-making"]
+        
+        # Only consider it agentic if keywords appear in positive context
+        for keyword in basic_keywords:
+            if keyword in reasoning_text:
+                # Check if it's in a negative context (indicating traditional automation)
+                keyword_pos = reasoning_text.find(keyword)
+                context_before = reasoning_text[max(0, keyword_pos-50):keyword_pos]
+                context_after = reasoning_text[keyword_pos:keyword_pos+50]
+                
+                negative_context = [
+                    "without", "not", "no", "avoid", "instead of", "rather than",
+                    "doesn't require", "don't need", "not requiring", "without requiring",
+                    "but not requiring", "mentioned but not", "but not"
+                ]
+                
+                # If keyword is in negative context, it's traditional automation
+                if any(neg in context_before or neg in context_after for neg in negative_context):
+                    continue
+                else:
+                    return True
+        
+        return False
+    
     def _create_agent_architecture_mermaid(self, agent_roles_found) -> str:
         """Create a Mermaid diagram showing agent architecture and interactions."""
         agents = []
@@ -5353,8 +5428,7 @@ verify_ssl = True
         # Check if this is an agentic solution to show appropriate diagram options
         rec = st.session_state.recommendations
         reasoning = rec.get("reasoning", "").lower() if rec else ""
-        agentic_keywords = ["agent", "autonomous", "agentic", "multi-agent", "reasoning", "decision-making"]
-        is_agentic = any(keyword in reasoning for keyword in agentic_keywords)
+        is_agentic = self._is_agentic_by_context(reasoning)
         
         # Check if Graphviz is available for infrastructure diagrams
         def check_graphviz_available():

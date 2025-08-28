@@ -1,7 +1,7 @@
 {
   "pattern_id": "APAT-006",
-  "name": "Multi-Agent Coordinator_Based System",
-  "description": "Multi-agent system with 4 specialized agents for As a colleague\nI want the agent to detect vulnerability signals during conversations and guide me in real time\nSo that I treat customers fairly\nBusiness value: TCF/FCA compliance; risk reduction.\nAssumptions: Consent for conversation analysis; policy playbooks.\nAcceptance criteria:\nGiven an active call or chat\nWhen the agent detects vulnerability cues (e.g., bereavement, financial difficulty)\nThen it highlights the cue and surfaces the matching policy steps and wording\nGiven I follow guidance\nThen the agent captures evidence of reasonable adjustments and updates CRM\nNon-functional / Controls:\nOn-device or approved processing; opt-out respected; guidance text templated and localised.",
+  "name": "Customer Care Compliance Multi-Agent System",
+  "description": "Multi-agent system with 4 specialized agents for customer care compliance. As a colleague, I want the agent to detect customer distress signals during conversations and guide me in real time so that I treat customers fairly. Business value: TCF/FCA compliance; risk reduction. Assumptions: Consent for conversation analysis; policy playbooks. Acceptance criteria: Given an active call or chat, when the agent detects customer distress indicators (e.g., bereavement, financial difficulty), then it highlights the indicator and surfaces the matching policy steps and wording. Given I follow guidance, then the agent captures evidence of reasonable adjustments and updates CRM. Non-functional / Controls: On-device or approved processing; opt-out respected; guidance text templated and localised.",
   "feasibility": "Fully Automatable",
   "pattern_type": [
     "multi_agent_system",
@@ -47,9 +47,9 @@
     ]
   },
   "learning_mechanisms": [
-    "inter_agent_learning",
-    "system_optimization",
-    "performance_adaptation"
+    "reinforcement_learning",
+    "performance_optimization",
+    "strategy_adaptation"
   ],
   "tech_stack": [
     "LangChain",
@@ -59,7 +59,7 @@
     "Docker",
     "Kubernetes"
   ],
-  "agent_architecture": "coordinator_based",
+  "agent_architecture": "hierarchical_agents",
   "input_requirements": [
     "multi_agent_coordination",
     "distributed_processing",
@@ -108,7 +108,7 @@
   "self_monitoring_capabilities": [
     "performance_tracking",
     "error_detection",
-    "system_health_monitoring"
+    "resource_monitoring"
   ],
   "integration_requirements": [
     "Docker",

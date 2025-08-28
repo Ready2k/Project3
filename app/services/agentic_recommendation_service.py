@@ -976,9 +976,9 @@ class AgenticRecommendationService:
         # Add efficiency benefits
         reasoning_parts.append("Traditional automation benefits: Lower complexity, faster implementation, proven reliability, and cost-effective maintenance.")
         
-        # Add when to consider agentic upgrade
+        # Add when to consider AI upgrade (avoid agentic keywords that trigger UI detection)
         if necessity_assessment.agentic_necessity_score > 0.4:
-            reasoning_parts.append(f"Future consideration: If requirements evolve to need more complex reasoning or adaptation (current agentic score: {necessity_assessment.agentic_necessity_score:.0%}), consider upgrading to autonomous agent approach.")
+            reasoning_parts.append(f"Future consideration: If requirements evolve to need more complex reasoning or adaptation (current AI score: {necessity_assessment.agentic_necessity_score:.0%}), consider upgrading to AI-powered approach.")
         
         return " ".join(reasoning_parts)
     
