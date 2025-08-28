@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -193,10 +194,138 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 # Health check endpoints (no authentication required)
 @app.get("/health")
 async def health_check(response: Response):
-    """Basic health check endpoint for monitoring."""
+    """Enhanced health check endpoint with key system metrics."""
+    from app.health.health_checker import get_health_checker
+    import psutil
+    import os
+    from pathlib import Path
+    
     # Add security headers
     SecurityHeaders.add_security_headers(response)
-    return {"status": "healthy", "version": f"AAA-{__version__}", "release_name": RELEASE_NAME}
+    
+    try:
+        # Basic system info
+        health_data = {
+            "status": "healthy",
+            "version": f"AAA-{__version__}",
+            "release_name": RELEASE_NAME,
+            "timestamp": datetime.utcnow().isoformat(),
+            "uptime_seconds": time.time() - psutil.boot_time() if hasattr(psutil, 'boot_time') else None
+        }
+        
+        # Quick system metrics (lightweight)
+        try:
+            memory = psutil.virtual_memory()
+            disk = psutil.disk_usage('/')
+            
+            health_data["system"] = {
+                "cpu_percent": psutil.cpu_percent(interval=0.1),
+                "memory_percent": memory.percent,
+                "memory_available_gb": round(memory.available / (1024**3), 2),
+                "disk_percent": round((disk.used / disk.total) * 100, 1),
+                "disk_free_gb": round(disk.free / (1024**3), 2)
+            }
+        except Exception as e:
+            health_data["system"] = {"error": f"Failed to get system metrics: {str(e)}"}
+        
+        # Component status (quick checks)
+        components = {}
+        
+        # Check pattern library
+        try:
+            pattern_dir = Path("data/patterns")
+            pattern_count = len(list(pattern_dir.glob("*.json"))) if pattern_dir.exists() else 0
+            components["pattern_library"] = {
+                "status": "healthy" if pattern_count > 0 else "degraded",
+                "pattern_count": pattern_count
+            }
+        except Exception:
+            components["pattern_library"] = {"status": "error"}
+        
+        # Check technology catalog
+        try:
+            tech_catalog = Path("data/technologies.json")
+            components["technology_catalog"] = {
+                "status": "healthy" if tech_catalog.exists() else "degraded",
+                "exists": tech_catalog.exists()
+            }
+        except Exception:
+            components["technology_catalog"] = {"status": "error"}
+        
+        # Check cache directory
+        try:
+            cache_dir = Path("cache")
+            cache_size = sum(f.stat().st_size for f in cache_dir.rglob("*") if f.is_file()) if cache_dir.exists() else 0
+            components["disk_cache"] = {
+                "status": "healthy" if cache_dir.exists() else "degraded",
+                "size_mb": round(cache_size / (1024**2), 2)
+            }
+        except Exception:
+            components["disk_cache"] = {"status": "error"}
+        
+        # Check export directory
+        try:
+            export_dir = Path("exports")
+            export_count = len(list(export_dir.glob("*"))) if export_dir.exists() else 0
+            components["export_directory"] = {
+                "status": "healthy" if export_dir.exists() else "degraded",
+                "file_count": export_count
+            }
+        except Exception:
+            components["export_directory"] = {"status": "error"}
+        
+        # Check LLM provider configuration (without testing connections)
+        llm_providers = {}
+        if os.getenv("OPENAI_API_KEY"):
+            llm_providers["openai"] = "configured"
+        if os.getenv("ANTHROPIC_API_KEY"):
+            llm_providers["claude"] = "configured"
+        if os.getenv("AWS_ACCESS_KEY_ID") or os.getenv("BEDROCK_API_KEY"):
+            llm_providers["bedrock"] = "configured"
+        if os.getenv("INTERNAL_ENDPOINT_URL"):
+            llm_providers["internal"] = "configured"
+        
+        components["llm_providers"] = {
+            "status": "healthy" if llm_providers else "degraded",
+            "configured": list(llm_providers.keys()),
+            "count": len(llm_providers)
+        }
+        
+        # Check security system
+        try:
+            from app.security.advanced_prompt_defender import AdvancedPromptDefender
+            components["security_system"] = {"status": "healthy", "enabled": True}
+        except Exception:
+            components["security_system"] = {"status": "error", "enabled": False}
+        
+        health_data["components"] = components
+        
+        # Overall status determination
+        component_statuses = [comp.get("status", "error") for comp in components.values()]
+        if "error" in component_statuses:
+            health_data["status"] = "degraded"
+        elif "degraded" in component_statuses:
+            health_data["status"] = "degraded"
+        
+        # Add quick stats
+        health_data["summary"] = {
+            "total_components": len(components),
+            "healthy_components": sum(1 for comp in components.values() if comp.get("status") == "healthy"),
+            "degraded_components": sum(1 for comp in components.values() if comp.get("status") == "degraded"),
+            "error_components": sum(1 for comp in components.values() if comp.get("status") == "error")
+        }
+        
+        return health_data
+        
+    except Exception as e:
+        app_logger.error(f"Health check failed: {e}")
+        return {
+            "status": "error",
+            "version": f"AAA-{__version__}",
+            "release_name": RELEASE_NAME,
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": f"Health check failed: {str(e)}"
+        }
 
 @app.get("/health/detailed")
 async def detailed_health_check(response: Response):

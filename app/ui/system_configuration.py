@@ -63,13 +63,14 @@ def render_system_configuration():
             return
     
     # Configuration tabs
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "🤖 Autonomy Assessment", 
         "🔍 Pattern Matching", 
         "🧠 LLM Generation", 
         "💡 Recommendations",
         "🚦 Rate Limiting",
         "🗄️ Database Management",
+        "🔗 API Endpoints",
         "⚙️ Management"
     ])
     
@@ -97,6 +98,9 @@ def render_system_configuration():
         render_database_management()
     
     with tab7:
+        render_api_endpoints()
+    
+    with tab8:
         render_configuration_management(config_manager)
 
 
@@ -492,6 +496,333 @@ def render_configuration_management(config_manager: SystemConfigurationManager):
     # Configuration preview
     with st.expander("📋 Current Configuration Preview"):
         st.code(yaml.dump(config_manager.export_config(), default_flow_style=False, indent=2), language='yaml')
+
+
+def render_api_endpoints():
+    """Render API endpoints information and testing interface."""
+    st.subheader("🔗 API Endpoints")
+    st.write("Explore and test the AAA system API endpoints directly from your browser.")
+    
+    # Try to determine the API base URL
+    api_base_url = "http://localhost:8000"
+    
+    # API endpoint categories
+    st.write("### 🏥 Health & Monitoring")
+    
+    health_endpoints = [
+        {
+            "method": "GET",
+            "path": "/health",
+            "description": "Enhanced basic health check with system metrics and component status",
+            "color": "🟢"
+        },
+        {
+            "method": "GET", 
+            "path": "/health/detailed",
+            "description": "Comprehensive health diagnostics with all system components",
+            "color": "🟡"
+        },
+        {
+            "method": "GET",
+            "path": "/health/readiness", 
+            "description": "Kubernetes readiness probe (critical components only)",
+            "color": "🔵"
+        },
+        {
+            "method": "GET",
+            "path": "/health/liveness",
+            "description": "Kubernetes liveness probe (basic system resources)",
+            "color": "🔵"
+        }
+    ]
+    
+    for endpoint in health_endpoints:
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col1:
+            st.write(f"{endpoint['color']} **{endpoint['method']}**")
+        with col2:
+            st.write(f"`{endpoint['path']}`")
+            st.caption(endpoint['description'])
+        with col3:
+            full_url = f"{api_base_url}{endpoint['path']}"
+            st.link_button("🔗 Open", full_url, use_container_width=True)
+    
+    st.write("### 🔒 Security")
+    
+    security_endpoints = [
+        {
+            "method": "GET",
+            "path": "/security/scan",
+            "description": "Run security scans (full, code, dependencies, configuration)",
+            "color": "🔴"
+        },
+        {
+            "method": "GET",
+            "path": "/security/history",
+            "description": "Get security scan history with configurable limit",
+            "color": "🟡"
+        }
+    ]
+    
+    for endpoint in security_endpoints:
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col1:
+            st.write(f"{endpoint['color']} **{endpoint['method']}**")
+        with col2:
+            st.write(f"`{endpoint['path']}`")
+            st.caption(endpoint['description'])
+        with col3:
+            full_url = f"{api_base_url}{endpoint['path']}"
+            st.link_button("🔗 Open", full_url, use_container_width=True)
+    
+    st.write("### 📋 Core Analysis Workflow")
+    
+    workflow_endpoints = [
+        {
+            "method": "POST",
+            "path": "/ingest",
+            "description": "Start new session - Ingest requirements from text, file, or Jira",
+            "color": "🟢",
+            "requires_data": True
+        },
+        {
+            "method": "GET",
+            "path": "/status/{session_id}",
+            "description": "Get session status, progress, and current phase",
+            "color": "🟢",
+            "note": "Replace {session_id} with actual session ID"
+        },
+        {
+            "method": "GET",
+            "path": "/qa/{session_id}/questions",
+            "description": "Get AI-generated clarifying questions",
+            "color": "🟡",
+            "note": "Replace {session_id} with actual session ID"
+        },
+        {
+            "method": "POST",
+            "path": "/qa/{session_id}",
+            "description": "Submit Q&A answers to refine requirements",
+            "color": "🟡",
+            "requires_data": True,
+            "note": "Replace {session_id} with actual session ID"
+        },
+        {
+            "method": "POST",
+            "path": "/match",
+            "description": "Match requirements against pattern library",
+            "color": "🔵",
+            "requires_data": True
+        },
+        {
+            "method": "POST",
+            "path": "/recommend",
+            "description": "Generate AI-powered feasibility assessment and recommendations",
+            "color": "🟢",
+            "requires_data": True
+        },
+        {
+            "method": "POST",
+            "path": "/export",
+            "description": "Export results in JSON, Markdown, or HTML formats",
+            "color": "🟢",
+            "requires_data": True
+        }
+    ]
+    
+    for endpoint in workflow_endpoints:
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col1:
+            st.write(f"{endpoint['color']} **{endpoint['method']}**")
+        with col2:
+            st.write(f"`{endpoint['path']}`")
+            st.caption(endpoint['description'])
+            if endpoint.get('note'):
+                st.caption(f"ℹ️ {endpoint['note']}")
+            if endpoint.get('requires_data'):
+                st.caption("📝 Requires request body")
+        with col3:
+            if endpoint.get('requires_data'):
+                st.caption("POST endpoint")
+            else:
+                full_url = f"{api_base_url}{endpoint['path']}"
+                st.link_button("🔗 Open", full_url, use_container_width=True)
+    
+    st.write("### 🤖 LLM Provider Management")
+    
+    provider_endpoints = [
+        {
+            "method": "POST",
+            "path": "/providers/test",
+            "description": "Test LLM provider connection and authentication",
+            "color": "🟡",
+            "requires_data": True
+        },
+        {
+            "method": "POST",
+            "path": "/providers/models",
+            "description": "Discover available models for a provider",
+            "color": "🟡",
+            "requires_data": True
+        },
+        {
+            "method": "POST",
+            "path": "/providers/bedrock/generate-credentials",
+            "description": "Generate short-term AWS credentials for Bedrock",
+            "color": "🔴",
+            "requires_data": True
+        }
+    ]
+    
+    for endpoint in provider_endpoints:
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col1:
+            st.write(f"{endpoint['color']} **{endpoint['method']}**")
+        with col2:
+            st.write(f"`{endpoint['path']}`")
+            st.caption(endpoint['description'])
+            if endpoint.get('requires_data'):
+                st.caption("📝 Requires request body")
+        with col3:
+            st.caption("POST endpoint")
+    
+    st.write("### 🎫 Jira Integration")
+    
+    jira_endpoints = [
+        {
+            "method": "POST",
+            "path": "/jira/test",
+            "description": "Test Jira connection with Data Center support",
+            "color": "🟡",
+            "requires_data": True
+        },
+        {
+            "method": "POST",
+            "path": "/jira/fetch",
+            "description": "Fetch Jira ticket data for analysis",
+            "color": "🟡",
+            "requires_data": True
+        }
+    ]
+    
+    for endpoint in jira_endpoints:
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col1:
+            st.write(f"{endpoint['color']} **{endpoint['method']}**")
+        with col2:
+            st.write(f"`{endpoint['path']}`")
+            st.caption(endpoint['description'])
+            if endpoint.get('requires_data'):
+                st.caption("📝 Requires request body")
+        with col3:
+            st.caption("POST endpoint")
+    
+    st.write("### 📚 Documentation & API Info")
+    
+    doc_endpoints = [
+        {
+            "method": "GET",
+            "path": "/docs",
+            "description": "Interactive API documentation (Swagger UI)",
+            "color": "🟢"
+        },
+        {
+            "method": "GET",
+            "path": "/redoc",
+            "description": "Alternative API documentation (ReDoc)",
+            "color": "🟢"
+        },
+        {
+            "method": "GET",
+            "path": "/openapi.json",
+            "description": "OpenAPI specification in JSON format",
+            "color": "🔵"
+        }
+    ]
+    
+    for endpoint in doc_endpoints:
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col1:
+            st.write(f"{endpoint['color']} **{endpoint['method']}**")
+        with col2:
+            st.write(f"`{endpoint['path']}`")
+            st.caption(endpoint['description'])
+        with col3:
+            full_url = f"{api_base_url}{endpoint['path']}"
+            st.link_button("🔗 Open", full_url, use_container_width=True)
+    
+    # Quick API testing section
+    st.write("---")
+    st.write("### 🧪 Quick API Testing")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Health Check Test**")
+        if st.button("🏥 Test Basic Health", use_container_width=True):
+            try:
+                import requests
+                response = requests.get(f"{api_base_url}/health", timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    st.success(f"✅ API is healthy! Status: {data.get('status', 'unknown')}")
+                    st.json(data)
+                else:
+                    st.error(f"❌ API returned status {response.status_code}")
+            except Exception as e:
+                st.error(f"❌ Failed to connect to API: {e}")
+                st.info("Make sure the API server is running on localhost:8000")
+    
+    with col2:
+        st.write("**Documentation Access**")
+        st.link_button("📖 Open Swagger UI", f"{api_base_url}/docs", use_container_width=True)
+        st.link_button("📋 Open ReDoc", f"{api_base_url}/redoc", use_container_width=True)
+    
+    # Usage tips
+    st.write("---")
+    st.write("### 💡 Usage Tips")
+    
+    with st.expander("🔍 How to use these endpoints"):
+        st.write("""
+        **GET Endpoints (Green/Blue):**
+        - Click the "🔗 Open" button to test directly in your browser
+        - No additional data required
+        
+        **POST Endpoints (Yellow/Red):**
+        - Require request body data (JSON)
+        - Use tools like curl, Postman, or the Swagger UI at `/docs`
+        - Examples available in the API documentation
+        
+        **Color Coding:**
+        - 🟢 Green: Safe to test, read-only operations
+        - 🟡 Yellow: Requires data, moderate complexity
+        - 🔵 Blue: System information, safe to access
+        - 🔴 Red: Advanced operations, use with caution
+        
+        **Session IDs:**
+        - Replace `{session_id}` with actual session ID from `/ingest` response
+        - Session IDs are UUIDs (e.g., `123e4567-e89b-12d3-a456-426614174000`)
+        """)
+    
+    with st.expander("🚀 Common Workflows"):
+        st.write("""
+        **1. Basic Analysis Workflow:**
+        1. POST `/ingest` - Start new session
+        2. GET `/status/{session_id}` - Check progress
+        3. GET `/qa/{session_id}/questions` - Get questions (if needed)
+        4. POST `/qa/{session_id}` - Submit answers (if needed)
+        5. POST `/recommend` - Generate recommendations
+        6. POST `/export` - Export results
+        
+        **2. Health Monitoring:**
+        1. GET `/health` - Quick system status
+        2. GET `/health/detailed` - Comprehensive diagnostics
+        3. GET `/security/scan` - Security assessment
+        
+        **3. Provider Testing:**
+        1. POST `/providers/test` - Test LLM connection
+        2. POST `/providers/models` - Discover available models
+        """)
 
 
 def render_database_management():
