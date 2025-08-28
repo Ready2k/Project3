@@ -3325,6 +3325,13 @@ verify_ssl = True
                         st.success(f"✅ Successfully resumed session {session_id_input[:8]}...")
                         st.info(f"📊 Session Status: {response.get('phase', 'Unknown')} ({response.get('progress', 0)}%)")
                         
+                        # Show helpful message about provider configuration
+                        current_provider_config = st.session_state.get('provider_config', {})
+                        if current_provider_config and current_provider_config.get('provider'):
+                            st.info(f"💡 **Note:** This session will use your current provider configuration ({current_provider_config.get('provider')} - {current_provider_config.get('model', 'default model')}) for any new operations like Q&A questions or regeneration.")
+                        else:
+                            st.warning("⚠️ **Important:** Please configure an LLM provider in the sidebar to enable Q&A questions and other AI features for this resumed session.")
+                        
                         # Rerun to show the progress tracking
                         st.rerun()
                     else:
@@ -3571,9 +3578,16 @@ verify_ssl = True
                 if st.session_state.get('show_qa_debug', False):
                     st.write(f"**Debug:** Generating questions for session {st.session_state.session_id}")
                 with st.spinner("🤖 AI is analyzing your requirement for automation suitability..."):
+                    # Include current provider config to ensure we use the latest API keys
+                    current_provider_config = st.session_state.get('provider_config', {})
+                    request_data = {}
+                    if current_provider_config and current_provider_config.get('provider'):
+                        request_data['provider_config'] = current_provider_config
+                    
                     response = asyncio.run(self.make_api_request(
-                        "GET",
-                        f"/qa/{st.session_state.session_id}/questions"
+                        "POST",
+                        f"/qa/{st.session_state.session_id}/questions",
+                        request_data
                     ))
                     
                     questions = response.get('questions', [])
@@ -3701,88 +3715,56 @@ verify_ssl = True
     
     def render_regenerate_section(self):
         """Render the regenerate analysis section."""
-        with st.expander("🔄 Regenerate Analysis", expanded=False):
-            st.markdown("""
-            **Try different LLM models** to compare analysis results using the same requirements and Q&A answers.
-            This is useful for:
-            - Testing different AI models' reasoning capabilities
-            - Comparing recommendation quality across providers
-            - Getting alternative perspectives on the same requirement
-            """)
+        # Simple regenerate button that uses current provider configuration
+        col1, col2, col3 = st.columns([1, 1, 2])
+        
+        # Check if we have a valid provider configuration
+        provider_config = st.session_state.get('provider_config', {})
+        has_valid_provider = provider_config and provider_config.get('provider') and provider_config.get('model')
+        
+        with col1:
+            button_disabled = not has_valid_provider
+            button_help = "Re-run analysis with current LLM provider settings" if has_valid_provider else "Configure an LLM provider in the sidebar first"
             
-            # Show current model info if available
-            current_provider = st.session_state.get('current_provider', 'Unknown')
-            current_model = st.session_state.get('current_model', 'Unknown')
-            st.info(f"**Current Analysis:** {current_provider} - {current_model}")
-            
-            # Show session ID for reference
-            if st.session_state.get('session_id'):
-                st.caption(f"**Current Session ID:** `{st.session_state.session_id}`")
-            
-            # Model selection for regeneration
-            col1, col2 = st.columns([2, 1])
-            
-            with col1:
-                # Get available providers from config
-                try:
-                    config_response = asyncio.run(self.make_api_request("GET", "/config"))
-                    providers = config_response.get('providers', {})
-                    
-                    provider_options = []
-                    current_option = f"{current_provider} - {current_model}"
-                    
-                    for provider_name, provider_config in providers.items():
-                        if provider_config.get('enabled', False):
-                            models = provider_config.get('models', [])
-                            for model in models:
-                                option = f"{provider_name} - {model}"
-                                provider_options.append(option)
-                    
-                    if provider_options:
-                        # Set default to current if available, otherwise first option
-                        default_index = 0
-                        if current_option in provider_options:
-                            default_index = provider_options.index(current_option)
-                        
-                        selected_provider_model = st.selectbox(
-                            "Select LLM Provider & Model:",
-                            provider_options,
-                            index=default_index,
-                            help="Choose a different model to regenerate the analysis"
-                        )
-                        
-                        # Show warning if same model selected
-                        if selected_provider_model == current_option:
-                            st.warning("⚠️ You've selected the same model. The analysis may produce similar results.")
-                    else:
-                        st.warning("No LLM providers available")
-                        return
-                        
-                except Exception as e:
-                    st.error(f"Error loading provider options: {str(e)}")
-                    return
-            
-            with col2:
-                regenerate_disabled = selected_provider_model == current_option
-                if st.button(
-                    "🚀 Regenerate", 
-                    type="primary", 
-                    help="Regenerate analysis with selected model",
-                    disabled=regenerate_disabled
-                ):
-                    self.regenerate_analysis(selected_provider_model)
+            if st.button(
+                "🔄 Regenerate Analysis", 
+                type="primary", 
+                help=button_help,
+                disabled=button_disabled
+            ):
+                self.regenerate_analysis()
+        
+        with col3:
+            # Show current provider info
+            if has_valid_provider:
+                current_provider = provider_config.get('provider', 'Unknown')
+                current_model = provider_config.get('model', 'Unknown')
+                st.caption(f"Using: {current_provider} - {current_model}")
+            else:
+                st.caption("⚠️ No LLM provider configured")
+        
+        if has_valid_provider:
+            st.caption("💡 Change the LLM provider in the sidebar to test different models, then regenerate to compare results.")
+        else:
+            st.caption("💡 Configure an LLM provider in the sidebar to enable regeneration.")
     
-    def regenerate_analysis(self, selected_provider_model):
-        """Regenerate analysis with a different LLM model."""
+    def regenerate_analysis(self):
+        """Regenerate analysis using current provider configuration."""
         try:
-            # Parse provider and model
-            provider_name, model_name = selected_provider_model.split(" - ", 1)
-            
             # Validate we have the necessary data
             requirements = st.session_state.get('requirements', {})
             if not requirements:
                 st.error("❌ No requirements found. Please start a new analysis first.")
                 return
+            
+            # Get current provider configuration
+            provider_config = st.session_state.get('provider_config', {})
+            if not provider_config:
+                st.error("❌ No provider configuration found. Please configure an LLM provider in the sidebar.")
+                return
+            
+            provider_name = provider_config.get('provider', 'Unknown')
+            model_name = provider_config.get('model', 'Unknown')
             
             # Get Q&A answers from session state (may be empty for new sessions)
             qa_answers = {}
@@ -3797,75 +3779,132 @@ verify_ssl = True
                     if req.get(key):
                         qa_answers[key] = req[key]
             
-            # Show progress
-            with st.spinner(f"🔄 Regenerating analysis with {provider_name} - {model_name}..."):
-                # Create a new session with the same requirements and Q&A answers
-                regenerate_request = {
-                    "requirements": requirements,
-                    "qa_answers": qa_answers,
-                    "provider_override": {
-                        "provider": provider_name,
-                        "model": model_name
-                    },
-                    "regenerate": True
-                }
+            # Debug: Show what we're working with
+            st.write("**Debug - Starting regeneration:**")
+            st.write(f"- Provider config: {provider_config}")
+            st.write(f"- Requirements: {len(requirements)} fields")
+            st.write(f"- Q&A answers: {len(qa_answers)} answers")
+            
+            # Show progress with more detailed feedback
+            progress_placeholder = st.empty()
+            with progress_placeholder.container():
+                st.info(f"🔄 **Regenerating analysis with {provider_name} - {model_name}...**")
+                st.caption("This creates a new session with the same requirements but fresh analysis")
+                progress_bar = st.progress(0)
+                status_text = st.empty()
                 
-                # Call the regenerate endpoint
-                response = asyncio.run(self.make_api_request(
-                    "POST",
-                    "/regenerate",
-                    regenerate_request,
-                    timeout=120.0
-                ))
+                try:
+                    # Create a new session with the same requirements and Q&A answers
+                    regenerate_request = {
+                        "requirements": requirements,
+                        "qa_answers": qa_answers,
+                        "provider_override": {
+                            "provider": provider_name,
+                            "model": model_name
+                        },
+                        "regenerate": True
+                    }
+                    
+                    status_text.text("Creating new session...")
+                    progress_bar.progress(20)
+                    
+                    # Debug: Show what we're sending
+                    if st.session_state.get('show_debug', False):
+                        st.write(f"Debug: Calling /regenerate with provider {provider_name}")
+                    
+                    # Use the existing ingest endpoint instead of regenerate for better reliability
+                    ingest_request = {
+                        "source": "text",
+                        "payload": {
+                            "text": requirements.get("description", ""),
+                            "domain": requirements.get("domain", ""),
+                            "pattern_types": requirements.get("pattern_types", []),
+                            "constraints": requirements.get("constraints", {})
+                        },
+                        "provider_config": {
+                            "provider": provider_name,
+                            "model": model_name
+                        }
+                    }
+                    
+                    # Call the ingest endpoint which we know works reliably
+                    response = asyncio.run(self.make_api_request_with_timeout(
+                        "POST",
+                        "/ingest",
+                        ingest_request,
+                        timeout=30.0
+                    ))
+                    
+                    status_text.text("Session created successfully!")
+                    progress_bar.progress(100)
+                    
+                except Exception as e:
+                    status_text.text("Error occurred during regeneration")
+                    progress_bar.progress(100)
+                    # Add more specific error info
+                    if st.session_state.get('show_debug', False):
+                        st.write(f"Debug: Error type: {type(e).__name__}")
+                        st.write(f"Debug: Error message: {str(e)}")
+                    raise e
+            
+            # Clear progress indicator
+            progress_placeholder.empty()
+            
+            # Update session with new results (ingest response format)
+            new_session_id = response.get('session_id')
+            message = f"Analysis regenerated with {provider_name} - {model_name}"
+            
+            if new_session_id:
+                # Store old session ID for reference
+                old_session_id = st.session_state.get('session_id')
                 
-                # Update session with new results
-                new_session_id = response.get('session_id')
-                message = response.get('message', 'Analysis regenerated')
+                # Update session state
+                st.session_state.session_id = new_session_id
+                st.session_state.recommendations = None  # Clear to force reload
+                st.session_state.current_provider = provider_name
+                st.session_state.current_model = model_name
                 
-                if new_session_id:
-                    # Store old session ID for reference
-                    old_session_id = st.session_state.get('session_id')
+                st.success(f"✅ Analysis regenerated with {provider_name} - {model_name}")
+                
+                # Show comparison info
+                if old_session_id:
+                    st.info(f"""
+                    📊 **New Session Created:** `{new_session_id}`
                     
-                    # Update session state
-                    st.session_state.session_id = new_session_id
-                    st.session_state.recommendations = None  # Clear to force reload
-                    st.session_state.current_provider = provider_name
-                    st.session_state.current_model = model_name
-                    
-                    st.success(f"✅ {message}")
-                    
-                    # Show comparison info
-                    if old_session_id:
-                        st.info(f"""
-                        📊 **Analysis Regenerated Successfully!**
-                        
-                        **Previous Session:** `{old_session_id}`  
-                        **New Session:** `{new_session_id}`
-                        
-                        New results will load below. You can compare results by opening the previous session in a new tab using the "Resume Previous Session" feature.
-                        """)
-                    else:
-                        st.info("📊 New results will load below.")
-                    
-                    # Force reload of recommendations
-                    st.rerun()
-                else:
-                    st.error("❌ Failed to regenerate analysis - no session ID returned")
-                    
-        except ValueError as e:
-            if "split" in str(e):
-                st.error("❌ Invalid provider/model format selected")
+                    Previous session `{old_session_id}` is still available via "Resume Previous Session".
+                    """)
+                
+                # Force reload of recommendations
+                st.rerun()
             else:
-                st.error(f"❌ Validation error: {str(e)}")
+                st.error("❌ Failed to regenerate analysis - no session ID returned")
+                    
         except Exception as e:
             error_msg = str(e)
-            if "timeout" in error_msg.lower():
-                st.error("❌ Regeneration timed out. Please try again.")
+            
+            # Show detailed error information for debugging
+            st.error(f"❌ **Error regenerating analysis**")
+            st.code(f"Error type: {type(e).__name__}")
+            st.code(f"Error message: {error_msg}")
+            
+            # Show the actual error details instead of assuming it's a timeout
+            if "timeout" in error_msg.lower() or "ReadTimeout" in error_msg:
+                st.info("This appears to be a timeout issue.")
             elif "404" in error_msg:
-                st.error("❌ Regeneration service not available. Please try again later.")
+                st.info("The API endpoint was not found.")
+            elif "provider" in error_msg.lower() and "config" in error_msg.lower():
+                st.info("There's an issue with the provider configuration.")
+            elif "API error" in error_msg:
+                st.info("The API returned an error response.")
             else:
-                st.error(f"❌ Error regenerating analysis: {error_msg}")
-                st.info("💡 Try refreshing the page or starting a new analysis if the problem persists.")
+                st.info("An unexpected error occurred.")
+            
+            # Show debugging info
+            st.write("**Debug Info:**")
+            st.write(f"- Provider: {provider_name}")
+            st.write(f"- Model: {model_name}")
+            st.write(f"- Requirements keys: {list(requirements.keys()) if requirements else 'None'}")
+            st.write(f"- Q&A answers keys: {list(qa_answers.keys()) if qa_answers else 'None'}")
     
     def load_recommendations(self):
         """Load and display final recommendations."""
