@@ -1459,6 +1459,41 @@ async def get_qa_questions(session_id: str, response: Response):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/qa/{session_id}/questions")
+async def get_qa_questions_with_provider(session_id: str, request: dict, response: Response):
+    """Get Q&A questions for a session with optional provider config override."""
+    try:
+        # Get session
+        store = get_session_store()
+        session = await store.get_session(session_id)
+        
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        # Use provided provider config if available, otherwise use session's config
+        provider_config = None
+        if request.get('provider_config'):
+            app_logger.info(f"Using provided provider config for Q&A questions: {request['provider_config'].get('provider')}")
+            provider_config = ProviderConfig(**request['provider_config'])
+            
+            # Update the session's provider config for future use
+            session.provider_config = request['provider_config']
+            await store.update_session(session_id, session)
+        elif session.provider_config:
+            app_logger.info(f"Using session provider config for Q&A questions: {session.provider_config}")
+            provider_config = ProviderConfig(**session.provider_config)
+        else:
+            app_logger.warning("No provider config available for Q&A questions")
+        
+        # Call the original GET endpoint logic by delegating to it
+        # This avoids code duplication
+        return await get_qa_questions(session_id, response)
+        
+    except Exception as e:
+        app_logger.error(f"Error getting Q&A questions with provider for {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/sessions/{session_id}/force_advance")
 async def force_advance_session(session_id: str, request: dict, response: Response):
     """Force advance a session to a specific phase (user override)."""
@@ -1795,33 +1830,38 @@ async def regenerate_analysis(request: dict, http_request: Request, response: Re
                 # Get settings to build provider config
                 settings = get_settings()
                 
-                # Build provider config based on the selected provider
+                # Build provider config based on the selected provider using environment variables
                 if provider_name.lower() == 'openai':
                     provider_config = ProviderConfig(
                         provider="openai",
                         model=model_name,
-                        api_key=settings.openai_api_key
+                        api_key=os.getenv('OPENAI_API_KEY')
                     )
                 elif provider_name.lower() == 'claude':
                     provider_config = ProviderConfig(
                         provider="claude",
                         model=model_name,
-                        api_key=settings.claude_api_key
+                        api_key=os.getenv('CLAUDE_API_KEY')
                     )
                 elif provider_name.lower() == 'bedrock':
                     provider_config = ProviderConfig(
                         provider="bedrock",
                         model=model_name,
-                        aws_access_key_id=settings.aws_access_key_id,
-                        aws_secret_access_key=settings.aws_secret_access_key,
-                        aws_region=settings.aws_region
+                        aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID') or settings.bedrock.aws_access_key_id,
+                        aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY') or settings.bedrock.aws_secret_access_key,
+                        aws_region=os.getenv('AWS_REGION') or settings.bedrock.region
                     )
                 elif provider_name.lower() == 'internal':
                     provider_config = ProviderConfig(
                         provider="internal",
                         model=model_name,
-                        base_url=settings.internal_llm_base_url,
-                        api_key=settings.internal_llm_api_key
+                        base_url=os.getenv('INTERNAL_LLM_BASE_URL'),
+                        api_key=os.getenv('INTERNAL_LLM_API_KEY')
+                    )
+                elif provider_name.lower() == 'fake':
+                    provider_config = ProviderConfig(
+                        provider="fake",
+                        model=model_name
                     )
         
         # Create QA history from answers if provided
@@ -1853,12 +1893,13 @@ async def regenerate_analysis(request: dict, http_request: Request, response: Re
         store = get_session_store()
         await store.update_session(session_id, session)
         
-        # If we have Q&A answers, advance directly to matching phase
+        # If we have Q&A answers, merge them into requirements and advance to matching phase
         if qa_answers:
             # Update requirements with Q&A insights
             session.requirements.update(qa_answers)
             session.phase = Phase.MATCHING
             session.progress = 50
+            session.updated_at = datetime.now()
             await store.update_session(session_id, session)
         
         app_logger.info(f"Regenerated analysis session {session_id} with provider {provider_name if provider_override else 'default'}")
@@ -1879,62 +1920,6 @@ async def regenerate_analysis(request: dict, http_request: Request, response: Re
         app_logger.error(f"Error regenerating analysis: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@app.get("/config")
-async def get_config(response: Response):
-    """Get system configuration including available providers."""
-    try:
-        settings = get_settings()
-        
-        # Build provider configuration by checking environment variables
-        providers = {}
-        
-        # OpenAI
-        if os.getenv('OPENAI_API_KEY'):
-            providers['openai'] = {
-                'enabled': True,
-                'models': ['gpt-4o', 'gpt-4', 'gpt-3.5-turbo']
-            }
-        
-        # Claude
-        if os.getenv('CLAUDE_API_KEY'):
-            providers['claude'] = {
-                'enabled': True,
-                'models': ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229']
-            }
-        
-        # Bedrock
-        if (os.getenv('AWS_ACCESS_KEY_ID') and os.getenv('AWS_SECRET_ACCESS_KEY')) or settings.bedrock.aws_access_key_id:
-            providers['bedrock'] = {
-                'enabled': True,
-                'models': ['anthropic.claude-3-5-sonnet-20241022-v2:0', 'anthropic.claude-3-opus-20240229:0', 'anthropic.claude-3-sonnet-20240229:0']
-            }
-        
-        # Internal
-        if os.getenv('INTERNAL_LLM_BASE_URL'):
-            providers['internal'] = {
-                'enabled': True,
-                'models': ['custom-model']  # This would need to be discovered dynamically
-            }
-        
-        # Fake provider (always available for testing)
-        providers['fake'] = {
-            'enabled': True,
-            'models': ['fake-model']
-        }
-        
-        # Add security headers
-        SecurityHeaders.add_security_headers(response)
-        
-        return {
-            'providers': providers,
-            'version': __version__,
-            'release_name': RELEASE_NAME
-        }
-        
-    except Exception as e:
-        app_logger.error(f"Error getting config: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/export", response_model=ExportResponse)

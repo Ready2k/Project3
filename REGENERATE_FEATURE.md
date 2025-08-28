@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **Regenerate Analysis** feature allows users to re-run their analysis using different LLM models while preserving the same requirements and Q&A answers. This is particularly useful for:
+The **Regenerate Analysis** feature allows users to re-run their analysis using the current LLM provider configuration while preserving the same requirements and Q&A answers. This is particularly useful for:
 
 - **Model Comparison**: Test how different AI models (GPT-4, Claude, etc.) analyze the same requirement
 - **Quality Assessment**: Compare recommendation quality across different providers
@@ -16,19 +16,16 @@ The **Regenerate Analysis** feature allows users to re-run their analysis using 
 - Answer any Q&A questions that appear
 - Wait for the analysis to complete and show results
 
-### 2. Access Regenerate Option
-- In the **Results & Recommendations** section, look for the "🔄 Regenerate Analysis" expandable section
-- This appears only after you have completed results
+### 2. Change LLM Provider (Optional)
+- Use the **Provider Configuration** section in the sidebar
+- Select a different LLM provider (OpenAI, Claude, Bedrock, etc.)
+- Choose a different model if desired
+- This will be used for the regenerated analysis
 
-### 3. Select Different Model
-- Choose from available LLM providers and models
-- The system shows your current model and warns if you select the same one
-- Available options depend on your configured API keys
-
-### 4. Regenerate
-- Click "🚀 Regenerate" to start the process
+### 3. Regenerate Analysis
+- In the **Results & Recommendations** section, click the "🔄 Regenerate Analysis" button
 - The system creates a new session with the same requirements and Q&A answers
-- Analysis runs with the selected model
+- Analysis runs with the currently configured LLM provider
 - New results appear with a new session ID
 
 ## Technical Details
@@ -79,14 +76,14 @@ Ambiguous Requirement: "Improve our data processing pipeline"
 
 ### 1. Model Selection Strategy
 - Start with your most reliable model for initial analysis
-- Use regeneration to test alternative approaches
+- Change provider in sidebar, then regenerate to test alternative approaches
 - Consider model strengths (GPT-4 for reasoning, Claude for analysis, etc.)
 
 ### 2. Comparison Workflow
-- Keep original session ID for reference
-- Open regenerated results in new browser tab
+- Keep original session ID for reference (shown in regeneration success message)
+- Use "Resume Previous Session" to access original results
+- Open both sessions in different browser tabs for side-by-side comparison
 - Document differences in recommendations
-- Choose best approach or combine insights
 
 ### 3. Performance Considerations
 - Regeneration takes similar time to original analysis (30-120 seconds)
