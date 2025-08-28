@@ -32,7 +32,7 @@ from app.pattern.matcher import PatternMatcher
 from app.qa.question_loop import QuestionLoop, TemplateLoader
 from app.services.agentic_recommendation_service import AgenticRecommendationService
 from app.services.jira import JiraService, JiraError, JiraConnectionError, JiraTicketNotFoundError
-from app.state.store import SessionState, Phase, DiskCacheStore
+from app.state.store import SessionState, Phase, DiskCacheStore, QAExchange
 from app.utils.logger import app_logger
 from app.utils.audit import log_pattern_match
 from app.version import __version__, RELEASE_NAME
@@ -1767,6 +1767,173 @@ async def generate_recommendations(request: RecommendRequest, response: Response
         
     except Exception as e:
         app_logger.error(f"Error generating recommendations: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/regenerate", response_model=IngestResponse)
+async def regenerate_analysis(request: dict, http_request: Request, response: Response):
+    """Regenerate analysis with different LLM model using existing requirements and Q&A answers."""
+    try:
+        # Extract data from request
+        requirements = request.get('requirements', {})
+        qa_answers = request.get('qa_answers', {})
+        provider_override = request.get('provider_override', {})
+        
+        if not requirements:
+            raise HTTPException(status_code=400, detail="Requirements are required for regeneration")
+        
+        # Create new session ID for the regenerated analysis
+        session_id = str(uuid.uuid4())
+        
+        # Create provider config with override
+        provider_config = None
+        if provider_override:
+            provider_name = provider_override.get('provider')
+            model_name = provider_override.get('model')
+            
+            if provider_name and model_name:
+                # Get settings to build provider config
+                settings = get_settings()
+                
+                # Build provider config based on the selected provider
+                if provider_name.lower() == 'openai':
+                    provider_config = ProviderConfig(
+                        provider="openai",
+                        model=model_name,
+                        api_key=settings.openai_api_key
+                    )
+                elif provider_name.lower() == 'claude':
+                    provider_config = ProviderConfig(
+                        provider="claude",
+                        model=model_name,
+                        api_key=settings.claude_api_key
+                    )
+                elif provider_name.lower() == 'bedrock':
+                    provider_config = ProviderConfig(
+                        provider="bedrock",
+                        model=model_name,
+                        aws_access_key_id=settings.aws_access_key_id,
+                        aws_secret_access_key=settings.aws_secret_access_key,
+                        aws_region=settings.aws_region
+                    )
+                elif provider_name.lower() == 'internal':
+                    provider_config = ProviderConfig(
+                        provider="internal",
+                        model=model_name,
+                        base_url=settings.internal_llm_base_url,
+                        api_key=settings.internal_llm_api_key
+                    )
+        
+        # Create QA history from answers if provided
+        qa_history = []
+        if qa_answers:
+            qa_exchange = QAExchange(
+                questions=list(qa_answers.keys()),
+                answers=qa_answers,
+                timestamp=datetime.now()
+            )
+            qa_history.append(qa_exchange)
+        
+        # Create session state
+        session = SessionState(
+            session_id=session_id,
+            requirements=requirements,
+            phase=Phase.QNA,  # Start at Q&A phase since we have answers
+            progress=30,
+            missing_fields=[],
+            qa_history=qa_history,
+            matches=[],
+            recommendations=[],
+            provider_config=provider_config.model_dump() if provider_config else None,
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+        
+        # Store session
+        store = get_session_store()
+        await store.update_session(session_id, session)
+        
+        # If we have Q&A answers, advance directly to matching phase
+        if qa_answers:
+            # Update requirements with Q&A insights
+            session.requirements.update(qa_answers)
+            session.phase = Phase.MATCHING
+            session.progress = 50
+            await store.update_session(session_id, session)
+        
+        app_logger.info(f"Regenerated analysis session {session_id} with provider {provider_name if provider_override else 'default'}")
+        
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        
+        message = f"Analysis regenerated with {provider_name} - {model_name}" if provider_override else "Analysis regenerated"
+        
+        return IngestResponse(
+            session_id=session_id,
+            message=message,
+            phase=session.phase.value,
+            progress=session.progress
+        )
+        
+    except Exception as e:
+        app_logger.error(f"Error regenerating analysis: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/config")
+async def get_config(response: Response):
+    """Get system configuration including available providers."""
+    try:
+        settings = get_settings()
+        
+        # Build provider configuration by checking environment variables
+        providers = {}
+        
+        # OpenAI
+        if os.getenv('OPENAI_API_KEY'):
+            providers['openai'] = {
+                'enabled': True,
+                'models': ['gpt-4o', 'gpt-4', 'gpt-3.5-turbo']
+            }
+        
+        # Claude
+        if os.getenv('CLAUDE_API_KEY'):
+            providers['claude'] = {
+                'enabled': True,
+                'models': ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229']
+            }
+        
+        # Bedrock
+        if (os.getenv('AWS_ACCESS_KEY_ID') and os.getenv('AWS_SECRET_ACCESS_KEY')) or settings.bedrock.aws_access_key_id:
+            providers['bedrock'] = {
+                'enabled': True,
+                'models': ['anthropic.claude-3-5-sonnet-20241022-v2:0', 'anthropic.claude-3-opus-20240229:0', 'anthropic.claude-3-sonnet-20240229:0']
+            }
+        
+        # Internal
+        if os.getenv('INTERNAL_LLM_BASE_URL'):
+            providers['internal'] = {
+                'enabled': True,
+                'models': ['custom-model']  # This would need to be discovered dynamically
+            }
+        
+        # Fake provider (always available for testing)
+        providers['fake'] = {
+            'enabled': True,
+            'models': ['fake-model']
+        }
+        
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        
+        return {
+            'providers': providers,
+            'version': __version__,
+            'release_name': RELEASE_NAME
+        }
+        
+    except Exception as e:
+        app_logger.error(f"Error getting config: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
