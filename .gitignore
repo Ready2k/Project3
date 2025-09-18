@@ -123,6 +123,9 @@ cache/
 *.faiss
 *.mapping.pkl
 .streamlit/
+exports/
+audit.db
+*.backup
 
 # IDE
 .vscode/
