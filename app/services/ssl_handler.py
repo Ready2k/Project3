@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 import httpx
 from pydantic import BaseModel
 
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class SSLCertificateInfo(BaseModel):
@@ -46,6 +46,8 @@ class SSLHandler:
         
         Args:
             verify_ssl: Whether to verify SSL certificates
+        # Get logger from service registry
+        self.logger = require_service('logger', context='SSLCertificateInfo')
             ca_cert_path: Path to custom CA certificate bundle
         """
         self.verify_ssl = verify_ssl
@@ -53,15 +55,15 @@ class SSLHandler:
         
         # Log SSL configuration and security warnings
         if not verify_ssl:
-            app_logger.warning("⚠️  SSL certificate verification is DISABLED")
-            app_logger.warning("🔒 This connection is vulnerable to man-in-the-middle attacks")
-            app_logger.warning("📋 Only use this setting for testing with self-signed certificates")
-            app_logger.warning("🏭 NEVER disable SSL verification in production environments")
+            self.logger.warning("⚠️  SSL certificate verification is DISABLED")
+            self.logger.warning("🔒 This connection is vulnerable to man-in-the-middle attacks")
+            self.logger.warning("📋 Only use this setting for testing with self-signed certificates")
+            self.logger.warning("🏭 NEVER disable SSL verification in production environments")
         else:
             if ca_cert_path:
-                app_logger.info(f"🔐 SSL verification enabled with custom CA certificate: {ca_cert_path}")
+                self.logger.info(f"🔐 SSL verification enabled with custom CA certificate: {ca_cert_path}")
             else:
-                app_logger.info("🔐 SSL verification enabled with system CA certificates")
+                self.logger.info("🔐 SSL verification enabled with system CA certificates")
         
     def get_ssl_context(self) -> Optional[ssl.SSLContext]:
         """Get SSL context for HTTP requests.
@@ -81,9 +83,9 @@ class SSLHandler:
             if ca_path.exists():
                 try:
                     context.load_verify_locations(str(ca_path))
-                    app_logger.info(f"Loaded custom CA certificate from: {ca_path}")
+                    self.logger.info(f"Loaded custom CA certificate from: {ca_path}")
                 except Exception as e:
-                    app_logger.error(f"Failed to load custom CA certificate: {e}")
+                    self.logger.error(f"Failed to load custom CA certificate: {e}")
                     raise ValueError(f"Invalid CA certificate file: {e}")
             else:
                 raise FileNotFoundError(f"CA certificate file not found: {ca_path}")
@@ -97,19 +99,19 @@ class SSLHandler:
             Verification configuration for httpx (bool or path to CA bundle)
         """
         if not self.verify_ssl:
-            app_logger.warning("🚨 SSL verification DISABLED - returning False for httpx verify config")
+            self.logger.warning("🚨 SSL verification DISABLED - returning False for httpx verify config")
             return False
         
         if self.ca_cert_path:
             ca_path = Path(self.ca_cert_path)
             if ca_path.exists():
-                app_logger.info(f"🔐 Using custom CA certificate: {ca_path}")
+                self.logger.info(f"🔐 Using custom CA certificate: {ca_path}")
                 return str(ca_path)
             else:
-                app_logger.error(f"❌ CA certificate file not found: {ca_path}")
+                self.logger.error(f"❌ CA certificate file not found: {ca_path}")
                 raise FileNotFoundError(f"CA certificate file not found: {ca_path}")
         
-        app_logger.info("🔐 Using system default CA bundle for SSL verification")
+        self.logger.info("🔐 Using system default CA bundle for SSL verification")
         return True  # Use default CA bundle
     
     async def validate_ssl_certificate(self, base_url: str) -> SSLValidationResult:
@@ -174,7 +176,7 @@ class SSLHandler:
             )
             
         except Exception as e:
-            app_logger.error(f"SSL validation failed for {base_url}: {e}")
+            self.logger.error(f"SSL validation failed for {base_url}: {e}")
             return SSLValidationResult(
                 is_valid=False,
                 error_message=f"SSL validation error: {str(e)}",
@@ -239,7 +241,7 @@ class SSLHandler:
                     )
                     
         except Exception as e:
-            app_logger.error(f"Failed to get certificate info for {hostname}:{port}: {e}")
+            self.logger.error(f"Failed to get certificate info for {hostname}:{port}: {e}")
             return None
     
     async def _validate_certificate_with_config(self, base_url: str) -> Optional[Dict[str, Any]]:

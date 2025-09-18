@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 import httpx
 from pydantic import BaseModel
 
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class APIVersionInfo(BaseModel):
@@ -31,6 +31,8 @@ class APIVersionManager:
         
         Args:
             preferred_version: Preferred API version to use (default: "3")
+        # Get logger from service registry
+        self.logger = require_service('logger', context='APIVersionInfo')
             timeout: HTTP request timeout in seconds
             verify_ssl: Whether to verify SSL certificates
             ca_cert_path: Path to custom CA certificate bundle
@@ -107,7 +109,7 @@ class APIVersionManager:
         
         # Ensure version is supported
         if version not in self.version_endpoints:
-            app_logger.warning(f"Unknown API version {version}, falling back to {self.fallback_version}")
+            self.logger.warning(f"Unknown API version {version}, falling back to {self.fallback_version}")
             version = self.fallback_version
         
         # Build the endpoint URL
@@ -120,7 +122,7 @@ class APIVersionManager:
         
         endpoint = urljoin(base_url, api_path)
         
-        app_logger.debug(f"Built endpoint: {endpoint} (version: {version})")
+        self.logger.debug(f"Built endpoint: {endpoint} (version: {version})")
         return endpoint
     
     async def test_api_version(self, base_url: str, auth_headers: Dict[str, str], version: str) -> bool:
@@ -155,7 +157,7 @@ class APIVersionManager:
                 headers = {"Accept": "application/json"}
                 headers.update(auth_headers)
                 
-                app_logger.debug(f"Testing API version {version} at: {endpoint}")
+                self.logger.debug(f"Testing API version {version} at: {endpoint}")
                 response = await client.get(endpoint, headers=headers)
                 
                 # Consider it working if we get a successful response or auth error
@@ -163,20 +165,20 @@ class APIVersionManager:
                 is_working = response.status_code in [200, 401, 403]
                 
                 if is_working:
-                    app_logger.info(f"API version {version} is available")
+                    self.logger.info(f"API version {version} is available")
                 else:
-                    app_logger.warning(f"API version {version} test failed: HTTP {response.status_code}")
+                    self.logger.warning(f"API version {version} test failed: HTTP {response.status_code}")
                 
                 return is_working
                 
         except httpx.TimeoutException:
-            app_logger.warning(f"Timeout testing API version {version}")
+            self.logger.warning(f"Timeout testing API version {version}")
             return False
         except httpx.ConnectError:
-            app_logger.warning(f"Connection error testing API version {version}")
+            self.logger.warning(f"Connection error testing API version {version}")
             return False
         except Exception as e:
-            app_logger.warning(f"Error testing API version {version}: {e}")
+            self.logger.warning(f"Error testing API version {version}: {e}")
             return False
     
     async def get_working_api_version(self, base_url: str, auth_headers: Dict[str, str]) -> str:
@@ -194,19 +196,19 @@ class APIVersionManager:
         """
         # Test preferred version first
         if await self.test_api_version(base_url, auth_headers, self.preferred_version):
-            app_logger.info(f"Using preferred API version: {self.preferred_version}")
+            self.logger.info(f"Using preferred API version: {self.preferred_version}")
             return self.preferred_version
         
         # Test fallback version
         if await self.test_api_version(base_url, auth_headers, self.fallback_version):
-            app_logger.info(f"Using fallback API version: {self.fallback_version}")
+            self.logger.info(f"Using fallback API version: {self.fallback_version}")
             return self.fallback_version
         
         # Test all known versions as last resort
         for version in self.known_versions:
             if version not in [self.preferred_version, self.fallback_version]:
                 if await self.test_api_version(base_url, auth_headers, version):
-                    app_logger.info(f"Using discovered API version: {version}")
+                    self.logger.info(f"Using discovered API version: {version}")
                     return version
         
         # If nothing works, raise an error
@@ -260,7 +262,7 @@ class APIVersionManager:
             return "2"
             
         except Exception as e:
-            app_logger.warning(f"Failed to parse Jira version {jira_version}: {e}")
+            self.logger.warning(f"Failed to parse Jira version {jira_version}: {e}")
             return self.preferred_version
     
     async def get_api_version_info(self, base_url: str, auth_headers: Dict[str, str]) -> APIVersionInfo:

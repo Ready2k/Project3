@@ -37,5 +37,39 @@
   "maintenance_effort": "Low",
   "domain": "Inventory Management",
   "estimated_effort": "2-4 weeks",
-  "related_patterns": []
+  "related_patterns": [],
+  "reasoning_types": [
+    "logical",
+    "causal"
+  ],
+  "decision_boundaries": {
+    "autonomous_decisions": [
+      "Execute predefined workflow steps",
+      "Apply business rules validation",
+      "Process standard data formats"
+    ],
+    "escalation_triggers": [
+      "Rule validation failures",
+      "API integration errors",
+      "Data format exceptions"
+    ],
+    "decision_authority_level": "low"
+  },
+  "exception_handling_strategy": {
+    "autonomous_resolution_approaches": [
+      "Retry failed API calls",
+      "Apply default values for missing data",
+      "Route to alternative workflow paths"
+    ],
+    "reasoning_fallbacks": [
+      "Manual intervention queue",
+      "Administrator notification",
+      "Fallback to manual process"
+    ],
+    "escalation_criteria": [
+      "Multiple retry failures",
+      "Critical data validation errors",
+      "System integration failures"
+    ]
+  }
 }

@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Any
 import streamlit as st
 from streamlit.components.v1 import html
 
-from app.utils.logger import app_logger
+from app.utils.imports import require_service, optional_service
 from app.utils.error_boundaries import error_boundary
 
 
@@ -21,12 +21,9 @@ class MermaidDiagramGenerator:
     async def make_llm_request(self, prompt: str, provider_config: Dict, purpose: str = "diagram_generation") -> str:
         """Make a request to the LLM for diagram generation using audited provider."""
         try:
-            # Import here to avoid circular imports
-            from app.api import create_llm_provider, ProviderConfig
-            
-            # Import configuration service for dynamic parameters
-            from app.services.configuration_service import get_config
-            config_service = get_config()
+            # Get services from registry
+            api_service = require_service('api_service', context="mermaid_llm_request")
+            config_service = require_service('config_service', context="mermaid_llm_request")
             llm_params = config_service.get_llm_params()
             
             # Create provider config object with dynamic parameters
@@ -47,8 +44,8 @@ class MermaidDiagramGenerator:
             # Get session ID for audit logging
             session_id = st.session_state.get('session_id', 'mermaid-generation')
             
-            # Create audited LLM provider
-            llm_provider = create_llm_provider(config, session_id)
+            # Create audited LLM provider through API service
+            llm_provider = api_service.create_llm_provider(config, session_id)
             
             # Make the request through the audited provider
             response = await llm_provider.generate(prompt, purpose=purpose)
@@ -96,6 +93,8 @@ class MermaidDiagramGenerator:
         
         # Check for problematic Unicode characters that can cause Mermaid v10.2.4 issues
         if re.search(r'[^\x00-\x7F]', mermaid_code):
+            # Get logger service for warning
+            app_logger = require_service('logger', context="validate_mermaid_syntax")
             app_logger.warning("Mermaid code contains non-ASCII characters that may cause rendering issues")
         
         lines = [line.strip() for line in mermaid_code.split('\n') if line.strip()]
@@ -218,6 +217,8 @@ class MermaidDiagramGenerator:
         # Validate the final result
         is_valid, error_msg = self.validate_mermaid_syntax(code)
         if not is_valid:
+            # Get logger service for error logging
+            app_logger = require_service('logger', context="clean_mermaid_code")
             app_logger.error(f"Mermaid validation failed: {error_msg}")
             return f"""flowchart TB
     error[Diagram Syntax Error]
@@ -232,8 +233,10 @@ class MermaidDiagramGenerator:
     
     def render_mermaid_diagram(self, mermaid_code: str, height: int = 400) -> None:
         """Render Mermaid diagram in Streamlit with enhanced viewing options."""
+        # Get logger service
+        app_logger = require_service('logger', context="render_mermaid_diagram")
+        
         try:
-            # Import streamlit-mermaid
             from streamlit_mermaid import st_mermaid
             
             # Clean the code

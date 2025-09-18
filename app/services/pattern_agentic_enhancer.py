@@ -6,7 +6,7 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from app.llm.base import LLMProvider
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class PatternAgenticEnhancer:
@@ -28,7 +28,7 @@ class PatternAgenticEnhancer:
                                  requirements: Dict[str, Any]) -> Dict[str, Any]:
         """Enhance a pattern to maximize autonomous capabilities."""
         
-        app_logger.info(f"Enhancing pattern {pattern.get('pattern_id')} for autonomy")
+        self.logger.info(f"Enhancing pattern {pattern.get('pattern_id')} for autonomy")
         
         # Analyze current autonomy level
         current_autonomy = self._assess_current_autonomy(pattern)
@@ -42,7 +42,7 @@ class PatternAgenticEnhancer:
         # Validate enhanced pattern meets autonomy standards
         enhanced_pattern = self._ensure_autonomy_standards(enhanced_pattern)
         
-        app_logger.info(f"Enhanced pattern autonomy from {current_autonomy:.2f} to {enhanced_pattern.get('autonomy_level', 0):.2f}")
+        self.logger.info(f"Enhanced pattern autonomy from {current_autonomy:.2f} to {enhanced_pattern.get('autonomy_level', 0):.2f}")
         
         return enhanced_pattern
     
@@ -139,7 +139,7 @@ class PatternAgenticEnhancer:
             enhancements = json.loads(response)
             return enhancements
         except json.JSONDecodeError as e:
-            app_logger.error(f"Failed to parse LLM enhancement response: {e}")
+            self.logger.error(f"Failed to parse LLM enhancement response: {e}")
             return self._generate_default_enhancements(pattern)
     
     def _apply_enhancements(self, 
@@ -290,7 +290,7 @@ class PatternAgenticEnhancer:
     async def convert_pattern_library_to_agentic(self) -> Dict[str, Any]:
         """Convert entire pattern library to agentic versions."""
         
-        app_logger.info("Converting pattern library to agentic versions")
+        self.logger.info("Converting pattern library to agentic versions")
         
         pattern_files = list(self.pattern_library_path.glob("PAT-*.json"))
         conversion_results = {
@@ -325,15 +325,15 @@ class PatternAgenticEnhancer:
                     "autonomy_improvement": agentic_pattern["autonomy_level"] - self._assess_current_autonomy(original_pattern)
                 })
                 
-                app_logger.info(f"Converted {original_pattern['pattern_id']} to {agentic_id}")
+                self.logger.info(f"Converted {original_pattern['pattern_id']} to {agentic_id}")
                 
             except Exception as e:
-                app_logger.error(f"Failed to convert {pattern_file}: {e}")
+                self.logger.error(f"Failed to convert {pattern_file}: {e}")
                 conversion_results["failed_conversions"].append({
                     "file": str(pattern_file),
                     "error": str(e)
                 })
         
-        app_logger.info(f"Pattern library conversion complete: {len(conversion_results['converted_patterns'])} converted, {len(conversion_results['failed_conversions'])} failed")
+        self.logger.info(f"Pattern library conversion complete: {len(conversion_results['converted_patterns'])} converted, {len(conversion_results['failed_conversions'])} failed")
         
         return conversion_results

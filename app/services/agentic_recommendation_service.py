@@ -13,7 +13,7 @@ from app.services.pattern_agentic_enhancer import PatternAgenticEnhancer
 from app.services.agentic_necessity_assessor import AgenticNecessityAssessor, AgenticNecessityAssessment, SolutionType
 from app.state.store import Recommendation
 from app.llm.base import LLMProvider
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 from app.utils.audit import log_pattern_match
 
 
@@ -30,6 +30,10 @@ class AgenticRecommendationService:
             pattern_library_path: Path to pattern library
         """
         self.llm_provider = llm_provider
+        
+        # Get logger from service registry
+        self.logger = require_service('logger', context='AgenticRecommendationService')
+        
         self.autonomy_assessor = AutonomyAssessor(llm_provider)
         self.multi_agent_designer = MultiAgentSystemDesigner(llm_provider)
         self.agentic_catalog = AgenticTechnologyCatalog()
@@ -53,12 +57,12 @@ class AgenticRecommendationService:
                                              session_id: str = "unknown") -> List[Recommendation]:
         """Generate recommendations prioritizing autonomous agent solutions."""
         
-        app_logger.info("Generating agentic recommendations with autonomy prioritization")
+        self.logger.info("Generating agentic recommendations with autonomy prioritization")
         
         # Step 0: Assess agentic necessity first
         necessity_assessment = await self.necessity_assessor.assess_agentic_necessity(requirements)
         
-        app_logger.info(f"Agentic necessity assessment: {necessity_assessment.recommended_solution_type.value} "
+        self.logger.info(f"Agentic necessity assessment: {necessity_assessment.recommended_solution_type.value} "
                        f"(agentic: {necessity_assessment.agentic_necessity_score:.2f}, "
                        f"traditional: {necessity_assessment.traditional_suitability_score:.2f})")
         
@@ -69,7 +73,7 @@ class AgenticRecommendationService:
         # Step 1: Assess autonomy potential (be optimistic)
         autonomy_assessment = await self.autonomy_assessor.assess_autonomy_potential(requirements)
         
-        app_logger.info(f"Autonomy assessment: score={autonomy_assessment.overall_score:.2f}, "
+        self.logger.info(f"Autonomy assessment: score={autonomy_assessment.overall_score:.2f}, "
                        f"architecture={autonomy_assessment.recommended_architecture.value}")
         
         # Step 2: Apply agentic scope filtering (less restrictive than traditional)
@@ -140,7 +144,7 @@ class AgenticRecommendationService:
         # Step 7: Sort by autonomy-weighted confidence
         recommendations.sort(key=lambda r: self._calculate_agentic_score(r), reverse=True)
         
-        app_logger.info(f"Generated {len(recommendations)} agentic recommendations")
+        self.logger.info(f"Generated {len(recommendations)} agentic recommendations")
         
         return recommendations[:5]  # Return top 5
     
@@ -160,7 +164,7 @@ class AgenticRecommendationService:
         # Check for impossible physical tasks
         for indicator in impossible_physical_indicators:
             if indicator in description:
-                app_logger.info(f"Filtered out impossible physical task: {indicator}")
+                self.logger.info(f"Filtered out impossible physical task: {indicator}")
                 return False
         
         # Be optimistic - if autonomy assessment is reasonable, allow it
@@ -200,7 +204,7 @@ class AgenticRecommendationService:
                 accepted=None
             )
         except Exception as e:
-            app_logger.error(f"Failed to log agentic pattern match: {e}")
+            self.logger.error(f"Failed to log agentic pattern match: {e}")
         
         # Extract agent roles from multi-agent design if available
         agent_roles = None
@@ -240,13 +244,13 @@ class AgenticRecommendationService:
         # The LLM analysis is more contextual and considers user-specific constraints
         llm_feasibility = requirements.get("llm_analysis_automation_feasibility")
         if llm_feasibility:
-            app_logger.info(f"Using LLM feasibility assessment from Q&A: {llm_feasibility}")
+            self.logger.info(f"Using LLM feasibility assessment from Q&A: {llm_feasibility}")
             # Map to our standard format if needed
             if llm_feasibility in ["Automatable", "Fully Automatable", "Partially Automatable", "Not Automatable"]:
                 return llm_feasibility
         
         # Fallback to autonomy score-based assessment
-        app_logger.info(f"No LLM feasibility found, using autonomy score-based assessment")
+        self.logger.info(f"No LLM feasibility found, using autonomy score-based assessment")
         
         # Start with pattern's enhanced feasibility
         base_feasibility = match.enhanced_pattern.get("feasibility", "Partially Automatable")
@@ -309,7 +313,7 @@ class AgenticRecommendationService:
         budget_constraints = constraints.get('budget_constraints', '')
         deployment_preference = constraints.get('deployment_preference', '')
         
-        app_logger.info(f"Applying constraints to agentic tech stack: "
+        self.logger.info(f"Applying constraints to agentic tech stack: "
                        f"banned={len(banned_tools)}, required_integrations={len(required_integrations)}, "
                        f"compliance={compliance_requirements}, sensitivity={data_sensitivity}")
         
@@ -349,7 +353,7 @@ class AgenticRecommendationService:
         for integration in required_integrations:
             if integration not in tech_stack:
                 tech_stack.append(integration)
-                app_logger.info(f"Added required integration: {integration}")
+                self.logger.info(f"Added required integration: {integration}")
         
         # Remove duplicates while preserving order
         seen = set()
@@ -359,7 +363,7 @@ class AgenticRecommendationService:
                 seen.add(tech)
                 unique_tech_stack.append(tech)
         
-        app_logger.info(f"Generated agentic tech stack with {len(unique_tech_stack)} technologies after constraint filtering")
+        self.logger.info(f"Generated agentic tech stack with {len(unique_tech_stack)} technologies after constraint filtering")
         return unique_tech_stack[:10]  # Limit to top 10
     
     def _filter_by_constraints(self, tech_list: List[str], banned_tools: set, 
@@ -386,22 +390,22 @@ class AgenticRecommendationService:
                     break
             
             if is_banned:
-                app_logger.info(f"Filtered out banned technology: {tech}")
+                self.logger.info(f"Filtered out banned technology: {tech}")
                 continue
             
             # Apply compliance filtering
             if not self._meets_compliance_requirements(tech, compliance_requirements):
-                app_logger.info(f"Filtered out technology for compliance: {tech}")
+                self.logger.info(f"Filtered out technology for compliance: {tech}")
                 continue
             
             # Apply data sensitivity filtering
             if not self._meets_data_sensitivity_requirements(tech, data_sensitivity):
-                app_logger.info(f"Filtered out technology for data sensitivity: {tech}")
+                self.logger.info(f"Filtered out technology for data sensitivity: {tech}")
                 continue
             
             # Apply deployment preference filtering
             if not self._meets_deployment_preference(tech, deployment_preference):
-                app_logger.info(f"Filtered out technology for deployment preference: {tech}")
+                self.logger.info(f"Filtered out technology for deployment preference: {tech}")
                 continue
             
             filtered_tech.append(tech)
@@ -577,10 +581,10 @@ class AgenticRecommendationService:
         llm_feasibility = requirements.get("llm_analysis_automation_feasibility")
         if llm_feasibility and llm_feasibility in ["Automatable", "Fully Automatable", "Partially Automatable", "Not Automatable"]:
             feasibility = llm_feasibility
-            app_logger.info(f"Using LLM feasibility assessment for multi-agent recommendation: {llm_feasibility}")
+            self.logger.info(f"Using LLM feasibility assessment for multi-agent recommendation: {llm_feasibility}")
         else:
             feasibility = "Fully Automatable"  # Default for multi-agent systems
-            app_logger.info("No LLM feasibility found, using default 'Fully Automatable' for multi-agent recommendation")
+            self.logger.info("No LLM feasibility found, using default 'Fully Automatable' for multi-agent recommendation")
         
         # Create and save the multi-agent pattern
         multi_agent_pattern = {
@@ -596,7 +600,7 @@ class AgenticRecommendationService:
         # Save the multi-agent pattern (fire and forget - don't block on save)
         asyncio.create_task(self._save_multi_agent_pattern(multi_agent_pattern, design, requirements, autonomy_assessment, session_id))
         
-        app_logger.info(f"Created multi-agent APAT pattern {pattern_id} for session {session_id}")
+        self.logger.info(f"Created multi-agent APAT pattern {pattern_id} for session {session_id}")
         
         return Recommendation(
             pattern_id=pattern_id,
@@ -677,12 +681,12 @@ class AgenticRecommendationService:
             llm_feasibility = requirements.get("llm_analysis_automation_feasibility")
             if llm_feasibility and llm_feasibility in ["Automatable", "Fully Automatable", "Partially Automatable", "Not Automatable"]:
                 feasibility = llm_feasibility
-                app_logger.info(f"Using LLM feasibility assessment for new agentic pattern: {llm_feasibility}")
+                self.logger.info(f"Using LLM feasibility assessment for new agentic pattern: {llm_feasibility}")
             else:
                 feasibility = enhanced_pattern.get("feasibility", "Fully Automatable")
-                app_logger.info(f"No LLM feasibility found, using enhanced pattern feasibility: {feasibility}")
+                self.logger.info(f"No LLM feasibility found, using enhanced pattern feasibility: {feasibility}")
             
-            app_logger.info(f"Created new APAT pattern {pattern_id} for session {session_id}")
+            self.logger.info(f"Created new APAT pattern {pattern_id} for session {session_id}")
             
             return Recommendation(
                 pattern_id=pattern_id,
@@ -695,7 +699,7 @@ class AgenticRecommendationService:
             )
             
         except Exception as e:
-            app_logger.error(f"Failed to create new agentic pattern: {e}")
+            self.logger.error(f"Failed to create new agentic pattern: {e}")
             return None
     
     async def _create_scope_limited_recommendation(self, 
@@ -745,10 +749,10 @@ class AgenticRecommendationService:
         llm_feasibility = requirements.get("llm_analysis_automation_feasibility")
         if llm_feasibility and llm_feasibility in ["Automatable", "Fully Automatable", "Partially Automatable", "Not Automatable"]:
             feasibility = llm_feasibility
-            app_logger.info(f"Using LLM feasibility assessment for scope-limited recommendation: {llm_feasibility}")
+            self.logger.info(f"Using LLM feasibility assessment for scope-limited recommendation: {llm_feasibility}")
         else:
             feasibility = "Partially Automatable"  # Default for scope-limited scenarios
-            app_logger.info("No LLM feasibility found, using default 'Partially Automatable' for scope-limited recommendation")
+            self.logger.info("No LLM feasibility found, using default 'Partially Automatable' for scope-limited recommendation")
         
         limited_recommendation = Recommendation(
             pattern_id="AGENTIC_DIGITAL_ASSISTANT",
@@ -852,7 +856,7 @@ class AgenticRecommendationService:
                                                           session_id: str) -> List[Recommendation]:
         """Create recommendation for traditional automation approach."""
         
-        app_logger.info("Creating traditional automation recommendation")
+        self.logger.info("Creating traditional automation recommendation")
         
         # Generate traditional tech stack
         tech_stack = await self._generate_traditional_tech_stack(requirements)
@@ -864,10 +868,10 @@ class AgenticRecommendationService:
         llm_feasibility = requirements.get("llm_analysis_automation_feasibility")
         if llm_feasibility and llm_feasibility in ["Automatable", "Fully Automatable", "Partially Automatable", "Not Automatable"]:
             feasibility = llm_feasibility
-            app_logger.info(f"Using LLM feasibility assessment for traditional automation: {llm_feasibility}")
+            self.logger.info(f"Using LLM feasibility assessment for traditional automation: {llm_feasibility}")
         else:
             feasibility = "Fully Automatable"  # Default for traditional automation
-            app_logger.info("No LLM feasibility found, using default 'Fully Automatable' for traditional automation")
+            self.logger.info("No LLM feasibility found, using default 'Fully Automatable' for traditional automation")
         
         # Create traditional automation recommendation
         recommendation = Recommendation(
@@ -883,7 +887,7 @@ class AgenticRecommendationService:
         # Save the traditional pattern (fire and forget - don't block on save)
         asyncio.create_task(self._save_traditional_pattern(requirements, necessity_assessment, tech_stack, reasoning, session_id))
         
-        app_logger.info(f"Created traditional automation recommendation with confidence {necessity_assessment.confidence_level:.2f}")
+        self.logger.info(f"Created traditional automation recommendation with confidence {necessity_assessment.confidence_level:.2f}")
         
         return [recommendation]
     
@@ -898,7 +902,7 @@ class AgenticRecommendationService:
         data_sensitivity = constraints.get('data_sensitivity', '')
         deployment_preference = constraints.get('deployment_preference', '')
         
-        app_logger.info(f"Applying constraints to traditional tech stack: "
+        self.logger.info(f"Applying constraints to traditional tech stack: "
                        f"banned={len(banned_tools)}, required_integrations={len(required_integrations)}, "
                        f"compliance={compliance_requirements}, sensitivity={data_sensitivity}")
         
@@ -946,7 +950,7 @@ class AgenticRecommendationService:
         for integration in required_integrations:
             if integration not in tech_stack:
                 tech_stack.append(integration)
-                app_logger.info(f"Added required integration to traditional stack: {integration}")
+                self.logger.info(f"Added required integration to traditional stack: {integration}")
         
         # Remove duplicates while preserving order
         seen = set()
@@ -956,7 +960,7 @@ class AgenticRecommendationService:
                 seen.add(tech)
                 unique_tech_stack.append(tech)
         
-        app_logger.info(f"Generated traditional tech stack with {len(unique_tech_stack)} technologies after constraint filtering")
+        self.logger.info(f"Generated traditional tech stack with {len(unique_tech_stack)} technologies after constraint filtering")
         return unique_tech_stack[:8]  # Limit to reasonable number
     
     def _generate_traditional_reasoning(self, necessity_assessment: AgenticNecessityAssessment, 
@@ -1124,7 +1128,7 @@ Respond with ONLY the responsibility statement, no other text."""
             return responsibility
             
         except Exception as e:
-            app_logger.error(f"Error generating agent responsibility: {e}")
+            self.logger.error(f"Error generating agent responsibility: {e}")
             # Fallback to a generic but better description
             return f"Autonomous agent responsible for automating and optimizing the workflow described in the requirements"
 
@@ -1264,7 +1268,7 @@ Respond with ONLY the responsibility statement, no other text."""
                     num = int(num_str)
                     max_num = max(max_num, num)
                 except (IndexError, ValueError) as e:
-                    app_logger.warning(f"Could not parse APAT pattern ID from file {pattern_file}: {e}")
+                    self.logger.warning(f"Could not parse APAT pattern ID from file {pattern_file}: {e}")
                     continue
             
             # Generate new ID and validate uniqueness
@@ -1273,20 +1277,20 @@ Respond with ONLY the responsibility statement, no other text."""
                 new_id = f"APAT-{max_num + 1 + attempt:03d}"
                 
                 if new_id not in existing_ids:
-                    app_logger.info(f"Generated unique APAT pattern ID: {new_id}")
+                    self.logger.info(f"Generated unique APAT pattern ID: {new_id}")
                     return new_id
                     
-                app_logger.warning(f"APAT pattern ID {new_id} already exists, trying next number")
+                self.logger.warning(f"APAT pattern ID {new_id} already exists, trying next number")
             
             # If we get here, we couldn't generate a unique ID
             raise ValueError(f"Unable to generate unique APAT pattern ID after {max_attempts} attempts")
             
         except Exception as e:
-            app_logger.error(f"Error generating APAT pattern ID: {e}")
+            self.logger.error(f"Error generating APAT pattern ID: {e}")
             # Fallback to UUID-based ID to ensure uniqueness
             import uuid
             fallback_id = f"APAT-{str(uuid.uuid4())[:8].upper()}"
-            app_logger.warning(f"Using fallback UUID-based APAT pattern ID: {fallback_id}")
+            self.logger.warning(f"Using fallback UUID-based APAT pattern ID: {fallback_id}")
             return fallback_id
     
     async def _save_agentic_pattern(self, 
@@ -1355,7 +1359,7 @@ Respond with ONLY the responsibility statement, no other text."""
             try:
                 json_str = json.dumps(agentic_pattern, indent=2, ensure_ascii=False)
             except (TypeError, ValueError) as json_error:
-                app_logger.error(f"JSON serialization failed for pattern {enhanced_pattern['pattern_id']}: {json_error}")
+                self.logger.error(f"JSON serialization failed for pattern {enhanced_pattern['pattern_id']}: {json_error}")
                 return False
             
             # Write to file
@@ -1366,17 +1370,17 @@ Respond with ONLY the responsibility statement, no other text."""
             try:
                 with open(pattern_file_path, 'r', encoding='utf-8') as f:
                     json.load(f)  # Validate JSON is readable
-                app_logger.info(f"Successfully saved and validated APAT pattern {enhanced_pattern['pattern_id']} to {pattern_file_path}")
+                self.logger.info(f"Successfully saved and validated APAT pattern {enhanced_pattern['pattern_id']} to {pattern_file_path}")
                 return True
             except json.JSONDecodeError as validation_error:
-                app_logger.error(f"JSON validation failed for saved pattern {enhanced_pattern['pattern_id']}: {validation_error}")
+                self.logger.error(f"JSON validation failed for saved pattern {enhanced_pattern['pattern_id']}: {validation_error}")
                 # Clean up the invalid file
                 if pattern_file_path.exists():
                     pattern_file_path.unlink()
                 return False
             
         except Exception as e:
-            app_logger.error(f"Failed to save APAT pattern {enhanced_pattern.get('pattern_id', 'unknown')}: {e}")
+            self.logger.error(f"Failed to save APAT pattern {enhanced_pattern.get('pattern_id', 'unknown')}: {e}")
             return False
     
     async def _generate_rich_pattern_content(self, enhanced_pattern: Dict[str, Any], requirements: Dict[str, Any], autonomy_assessment: AutonomyAssessment) -> Dict[str, Any]:
@@ -1423,7 +1427,7 @@ Respond with ONLY the JSON object, no other text."""
             response = await self.llm_provider.generate(prompt, purpose="rich_pattern_generation")
             return json.loads(response)
         except Exception as e:
-            app_logger.error(f"Error generating rich pattern content: {e}")
+            self.logger.error(f"Error generating rich pattern content: {e}")
             return {}
     
     def _sanitize_description(self, description: str) -> str:
@@ -1787,17 +1791,33 @@ Respond with ONLY the JSON object, no other text."""
                 "name": multi_agent_pattern["name"],
                 "description": f"{multi_agent_pattern['description']} for {requirements.get('description', 'complex automation task')}",
                 "feasibility": "Fully Automatable",
-                "pattern_type": ["multi_agent_system", design.architecture_type.value],
+                "pattern_type": ["multi_agent_system", self._map_architecture_type(design.architecture_type.value)],
                 "autonomy_level": design.autonomy_score,
                 "reasoning_capabilities": ["collaborative_reasoning", "distributed_decision_making", "system_coordination"],
                 "decision_scope": {
                     "autonomous_decisions": ["agent_coordination", "task_distribution", "resource_allocation", "exception_handling"],
                     "escalation_triggers": ["system_wide_failures", "conflicting_agent_decisions", "resource_exhaustion"]
                 },
-                "exception_handling": "Multi-agent collaborative resolution with system-level escalation",
-                "learning_mechanisms": ["inter_agent_learning", "system_optimization", "performance_adaptation"],
+                "exception_handling_strategy": {
+                    "autonomous_resolution_approaches": [
+                        "Multi-agent collaborative resolution",
+                        "Distributed error recovery",
+                        "Agent failover mechanisms"
+                    ],
+                    "reasoning_fallbacks": [
+                        "Coordinator-based decision making",
+                        "Consensus-based resolution",
+                        "Fallback to single-agent mode"
+                    ],
+                    "escalation_criteria": [
+                        "System-wide failures",
+                        "Conflicting agent decisions",
+                        "Resource exhaustion"
+                    ]
+                },
+                "learning_mechanisms": ["reinforcement_learning", "performance_optimization", "continuous_improvement"],
                 "tech_stack": multi_agent_pattern["tech_stack"],
-                "agent_architecture": design.architecture_type.value,
+                "agent_architecture": self._map_architecture_type(design.architecture_type.value),
                 "input_requirements": [
                     "multi_agent_coordination",
                     "distributed_processing",
@@ -1827,7 +1847,7 @@ Respond with ONLY the JSON object, no other text."""
                 "self_monitoring_capabilities": [
                     "performance_tracking",
                     "error_detection",
-                    "system_health_monitoring"
+                    "resource_monitoring"
                 ],
                 "integration_requirements": multi_agent_pattern.get("tech_stack", [])[-2:],  # Last 2 as integration
                 "created_from_session": session_id,
@@ -1855,7 +1875,7 @@ Respond with ONLY the JSON object, no other text."""
             try:
                 json_str = json.dumps(agentic_pattern, indent=2, ensure_ascii=False)
             except (TypeError, ValueError) as json_error:
-                app_logger.error(f"JSON serialization failed for pattern {multi_agent_pattern['pattern_id']}: {json_error}")
+                self.logger.error(f"JSON serialization failed for pattern {multi_agent_pattern['pattern_id']}: {json_error}")
                 return False
             
             # Write to file
@@ -1866,18 +1886,31 @@ Respond with ONLY the JSON object, no other text."""
             try:
                 with open(pattern_file_path, 'r', encoding='utf-8') as f:
                     json.load(f)  # Validate JSON is readable
-                app_logger.info(f"Successfully saved and validated multi-agent APAT pattern {multi_agent_pattern['pattern_id']} to {pattern_file_path}")
+                self.logger.info(f"Successfully saved and validated multi-agent APAT pattern {multi_agent_pattern['pattern_id']} to {pattern_file_path}")
                 return True
             except json.JSONDecodeError as validation_error:
-                app_logger.error(f"JSON validation failed for saved pattern {multi_agent_pattern['pattern_id']}: {validation_error}")
+                self.logger.error(f"JSON validation failed for saved pattern {multi_agent_pattern['pattern_id']}: {validation_error}")
                 # Clean up the invalid file
                 if pattern_file_path.exists():
                     pattern_file_path.unlink()
                 return False
             
         except Exception as e:
-            app_logger.error(f"Failed to save multi-agent APAT pattern {multi_agent_pattern.get('pattern_id', 'unknown')}: {e}")
+            self.logger.error(f"Failed to save multi-agent APAT pattern {multi_agent_pattern.get('pattern_id', 'unknown')}: {e}")
             return False
+
+    def _map_architecture_type(self, architecture_type: str) -> str:
+        """Map architecture type values to valid schema values."""
+        architecture_mapping = {
+            "coordinator_based": "hierarchical_agents",
+            "multi_agent": "multi_agent_collaborative",
+            "single_agent": "single_agent",
+            "swarm": "swarm_intelligence",
+            "federated": "federated_agents",
+            "pipeline": "pipeline_agents",
+            "reactive": "reactive_agents"
+        }
+        return architecture_mapping.get(architecture_type, "hierarchical_agents")
 
     def _extract_domain_from_requirements(self, requirements: Dict[str, Any]) -> str:
         """Extract domain from requirements description."""
@@ -1913,7 +1946,7 @@ Respond with ONLY the JSON object, no other text."""
             # Check if TRAD-AUTO-001 already exists
             pattern_file_path = pattern_library_path / "TRAD-AUTO-001.json"
             if pattern_file_path.exists():
-                app_logger.info("TRAD-AUTO-001 pattern already exists, skipping save")
+                self.logger.info("TRAD-AUTO-001 pattern already exists, skipping save")
                 return True
             
             # Create traditional automation pattern
@@ -1972,7 +2005,7 @@ Respond with ONLY the JSON object, no other text."""
             with open(pattern_file_path, 'w', encoding='utf-8') as f:
                 json.dump(traditional_pattern, f, indent=2, ensure_ascii=False)
             
-            app_logger.info(f"Successfully saved traditional automation pattern TRAD-AUTO-001 to {pattern_file_path}")
+            self.logger.info(f"Successfully saved traditional automation pattern TRAD-AUTO-001 to {pattern_file_path}")
             
             # Log pattern match for analytics
             try:
@@ -1983,10 +2016,10 @@ Respond with ONLY the JSON object, no other text."""
                     accepted=None
                 )
             except Exception as e:
-                app_logger.warning(f"Failed to log pattern match for TRAD-AUTO-001: {e}")
+                self.logger.warning(f"Failed to log pattern match for TRAD-AUTO-001: {e}")
             
             return True
             
         except Exception as e:
-            app_logger.error(f"Failed to save traditional automation pattern TRAD-AUTO-001: {e}")
+            self.logger.error(f"Failed to save traditional automation pattern TRAD-AUTO-001: {e}")
             return False

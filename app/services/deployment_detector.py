@@ -10,7 +10,7 @@ import httpx
 from pydantic import BaseModel
 
 from app.config import JiraDeploymentType
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class DeploymentInfo(BaseModel):
@@ -49,6 +49,8 @@ class DeploymentDetector:
         
         Args:
             timeout: HTTP request timeout in seconds
+        # Get logger from service registry
+        self.logger = require_service('logger', context='DeploymentInfo')
             verify_ssl: Whether to verify SSL certificates
             ca_cert_path: Path to custom CA certificate bundle
             proxy_url: Proxy URL for HTTP requests
@@ -132,7 +134,7 @@ class DeploymentDetector:
             supports_sso = self._supports_sso(deployment_type, version_info.version)
             supports_pat = self._supports_pat(deployment_type, version_info.version)
             
-            app_logger.info(f"Detected Jira deployment: {deployment_type.value} version {version_info.version}")
+            self.logger.info(f"Detected Jira deployment: {deployment_type.value} version {version_info.version}")
             
             return DeploymentInfo(
                 deployment_type=deployment_type,
@@ -147,7 +149,7 @@ class DeploymentDetector:
             )
             
         except Exception as e:
-            app_logger.error(f"Failed to detect Jira deployment for {base_url}: {e}")
+            self.logger.error(f"Failed to detect Jira deployment for {base_url}: {e}")
             raise DeploymentDetectionError(f"Deployment detection failed: {str(e)}")
     
     async def get_version_info(self, base_url: str, auth_headers: Optional[Dict[str, str]] = None) -> VersionInfo:
@@ -190,7 +192,7 @@ class DeploymentDetector:
             return len(version_parts) >= len(min_version_parts)
             
         except Exception as e:
-            app_logger.warning(f"Failed to parse version {version}: {e}")
+            self.logger.warning(f"Failed to parse version {version}: {e}")
             return False
     
     def _normalize_base_url(self, base_url: str) -> str:
@@ -298,7 +300,7 @@ class DeploymentDetector:
                 if auth_headers:
                     headers.update(auth_headers)
                 
-                app_logger.debug(f"Fetching server info from: {url}")
+                self.logger.debug(f"Fetching server info from: {url}")
                 response = await client.get(url, headers=headers)
                 
                 if response.status_code == 200:
@@ -306,8 +308,8 @@ class DeploymentDetector:
                         data = response.json()
                         return self._parse_server_info(data)
                     except (ValueError, json.JSONDecodeError) as e:
-                        app_logger.error(f"Failed to parse JSON response from {url}: {e}")
-                        app_logger.debug(f"Response content: {response.text[:200]}...")
+                        self.logger.error(f"Failed to parse JSON response from {url}: {e}")
+                        self.logger.debug(f"Response content: {response.text[:200]}...")
                         raise DeploymentDetectionError(f"Invalid JSON response from server info endpoint: {e}")
                 
                 # If server info fails, try the myself endpoint (requires auth)
@@ -318,7 +320,7 @@ class DeploymentDetector:
                     if response.status_code == 200:
                         # The myself endpoint doesn't have version info, 
                         # but we can infer it's a working Jira instance
-                        app_logger.warning("Could not get version info, using default")
+                        self.logger.warning("Could not get version info, using default")
                         return VersionInfo(version="unknown")
                 
                 # Try without authentication for public server info
@@ -332,8 +334,8 @@ class DeploymentDetector:
                             data = response.json()
                             return self._parse_server_info(data)
                         except (ValueError, json.JSONDecodeError) as e:
-                            app_logger.error(f"Failed to parse JSON response from {url}: {e}")
-                            app_logger.debug(f"Response content: {response.text[:200]}...")
+                            self.logger.error(f"Failed to parse JSON response from {url}: {e}")
+                            self.logger.debug(f"Response content: {response.text[:200]}...")
                             raise DeploymentDetectionError(f"Invalid JSON response from server info endpoint: {e}")
                 
                 raise DeploymentDetectionError(f"Could not retrieve version info: HTTP {response.status_code}")

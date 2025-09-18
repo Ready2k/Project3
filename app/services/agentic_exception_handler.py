@@ -8,7 +8,7 @@ from enum import Enum
 from datetime import datetime
 
 from app.llm.base import LLMProvider
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class ExceptionType(Enum):
@@ -102,7 +102,7 @@ class AgenticExceptionHandler:
         """Handle exceptions through agent reasoning rather than escalation."""
         
         start_time = datetime.now()
-        app_logger.info(f"Handling {exception_context.exception_type.value} exception for agent {agent_state.agent_id}")
+        self.logger.info(f"Handling {exception_context.exception_type.value} exception for agent {agent_state.agent_id}")
         
         # Analyze exception using reasoning
         resolution_strategy = await self.reasoning_engine.analyze_exception(
@@ -115,7 +115,7 @@ class AgenticExceptionHandler:
         
         for approach in resolution_strategy.approaches:
             try:
-                app_logger.debug(f"Attempting resolution approach: {approach.approach_name}")
+                self.logger.debug(f"Attempting resolution approach: {approach.approach_name}")
                 
                 result = await self._execute_resolution_approach(
                     approach, exception_context, agent_state
@@ -145,7 +145,7 @@ class AgenticExceptionHandler:
                     )
                     
             except Exception as e:
-                app_logger.warning(f"Resolution approach {approach.approach_name} failed: {e}")
+                self.logger.warning(f"Resolution approach {approach.approach_name} failed: {e}")
                 continue
         
         # If all autonomous approaches fail, prepare escalation context
@@ -555,7 +555,9 @@ class ReasoningEngine:
             return ResolutionStrategy(approaches)
             
         except Exception as e:
-            app_logger.error(f"Failed to analyze exception: {e}")
+            self.logger.error(f"Failed to analyze exception: {e}")
+        # Get logger from service registry
+        self.logger = require_service('logger', context='from')
             return self._default_resolution_strategy(context)
     
     def _default_resolution_strategy(self, context: ExceptionContext) -> Any:

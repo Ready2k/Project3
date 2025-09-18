@@ -4,7 +4,7 @@ import re
 from typing import Dict, Any, Optional
 import streamlit as st
 
-from app.utils.logger import app_logger
+from app.utils.imports import require_service, optional_service
 
 
 class SessionManagementComponent:
@@ -120,6 +120,8 @@ class SessionManagementComponent:
                     
         except Exception as e:
             st.error(f"❌ Error resuming session: {str(e)}")
+            # Get logger service for error logging
+            app_logger = require_service('logger', context="resume_session")
             app_logger.error(f"Session resume error: {e}")
             return False
     
@@ -170,6 +172,8 @@ class SessionManagementComponent:
             if key in st.session_state:
                 del st.session_state[key]
         
+        # Get logger service for info logging
+        app_logger = require_service('logger', context="clear_session_state")
         app_logger.info("Session state cleared")
     
     def render_session_actions(self):
@@ -208,6 +212,8 @@ class SessionManagementComponent:
         """Update session progress."""
         st.session_state.phase = phase
         st.session_state.progress = progress
+        # Get logger service for info logging
+        app_logger = require_service('logger', context="update_session_progress")
         app_logger.info(f"Session progress updated: {phase} ({progress}%)")
     
     def is_session_active(self) -> bool:

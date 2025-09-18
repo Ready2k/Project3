@@ -4,7 +4,7 @@ import json
 from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 from app.pattern.enhanced_loader import EnhancedPatternLoader
 from app.llm.base import LLMProvider
 
@@ -15,6 +15,10 @@ class PatternEnhancementService:
     def __init__(self, pattern_loader: EnhancedPatternLoader, llm_provider: LLMProvider):
         self.pattern_loader = pattern_loader
         self.llm_provider = llm_provider
+        
+        # Get logger from service registry
+        self.logger = require_service('logger', context='PatternEnhancementService')
+        
         self.enhancement_template = self._load_enhancement_template()
     
     def _load_enhancement_template(self) -> Dict[str, Any]:
@@ -24,7 +28,7 @@ class PatternEnhancementService:
             with open(template_path, 'r') as f:
                 return json.load(f)
         except Exception as e:
-            app_logger.error(f"Failed to load enhancement template: {e}")
+            self.logger.error(f"Failed to load enhancement template: {e}")
             return {}
     
     async def enhance_pattern(self, pattern_id: str, enhancement_type: str = "full") -> Tuple[bool, str, Optional[Dict[str, Any]]]:
@@ -44,7 +48,7 @@ class PatternEnhancementService:
             if not existing_pattern:
                 return False, f"Pattern {pattern_id} not found", None
             
-            app_logger.info(f"Enhancing pattern {pattern_id} with {enhancement_type} enhancement")
+            self.logger.info(f"Enhancing pattern {pattern_id} with {enhancement_type} enhancement")
             
             # Determine enhancement strategy
             if enhancement_type == "technical":
@@ -71,7 +75,7 @@ class PatternEnhancementService:
                 return False, f"Failed to save enhanced pattern: {message}", None
                 
         except Exception as e:
-            app_logger.error(f"Error enhancing pattern {pattern_id}: {e}")
+            self.logger.error(f"Error enhancing pattern {pattern_id}: {e}")
             return False, f"Enhancement failed: {e}", None
     
     def _generate_enhanced_pattern_id(self, original_id: str) -> str:
@@ -128,7 +132,7 @@ class PatternEnhancementService:
             # Clean and extract JSON from response
             enhancement_data = self._extract_json_from_response(response)
             if not enhancement_data:
-                app_logger.warning(f"No valid JSON found in LLM response for technical enhancement")
+                self.logger.warning(f"No valid JSON found in LLM response for technical enhancement")
                 return self._apply_basic_technical_enhancement(pattern)
             
             # Merge enhancement data with existing pattern
@@ -161,11 +165,11 @@ class PatternEnhancementService:
             if "effort_breakdown" in enhancement_data:
                 enhanced_pattern["effort_breakdown"] = enhancement_data["effort_breakdown"]
             
-            app_logger.info(f"Technical enhancement completed for pattern {pattern.get('pattern_id')}")
+            self.logger.info(f"Technical enhancement completed for pattern {pattern.get('pattern_id')}")
             return enhanced_pattern
             
         except Exception as e:
-            app_logger.error(f"Failed to enhance technical details: {e}")
+            self.logger.error(f"Failed to enhance technical details: {e}")
             # Return original pattern with basic enhancements
             return self._apply_basic_technical_enhancement(pattern)
     
@@ -205,7 +209,7 @@ class PatternEnhancementService:
             # Clean and extract JSON from response
             enhancement_data = self._extract_json_from_response(response)
             if not enhancement_data:
-                app_logger.warning(f"No valid JSON found in LLM response for agentic enhancement")
+                self.logger.warning(f"No valid JSON found in LLM response for agentic enhancement")
                 return self._apply_basic_agentic_enhancement(pattern)
             
             # Merge agentic capabilities
@@ -226,11 +230,11 @@ class PatternEnhancementService:
             elif enhanced_pattern.get("autonomy_level", 0) >= 0.7:
                 enhanced_pattern["feasibility"] = "Partially Automatable"
             
-            app_logger.info(f"Agentic enhancement completed for pattern {pattern.get('pattern_id')}")
+            self.logger.info(f"Agentic enhancement completed for pattern {pattern.get('pattern_id')}")
             return enhanced_pattern
             
         except Exception as e:
-            app_logger.error(f"Failed to enhance agentic capabilities: {e}")
+            self.logger.error(f"Failed to enhance agentic capabilities: {e}")
             # Return original pattern with basic agentic enhancements
             return self._apply_basic_agentic_enhancement(pattern)
     
@@ -362,7 +366,7 @@ class PatternEnhancementService:
                     "error": message
                 })
         
-        app_logger.info(f"Batch enhancement completed: {len(results['successful'])} successful, {len(results['failed'])} failed")
+        self.logger.info(f"Batch enhancement completed: {len(results['successful'])} successful, {len(results['failed'])} failed")
         return results
     
     def get_enhancement_candidates(self) -> List[Dict[str, Any]]:
@@ -447,7 +451,7 @@ class PatternEnhancementService:
                 except json.JSONDecodeError:
                     continue
         
-        app_logger.warning(f"Could not extract valid JSON from response: {response[:200]}...")
+        self.logger.warning(f"Could not extract valid JSON from response: {response[:200]}...")
         return None
     
     def _apply_basic_technical_enhancement(self, pattern: Dict[str, Any]) -> Dict[str, Any]:
@@ -479,7 +483,7 @@ class PatternEnhancementService:
                 }
             }
         
-        app_logger.info(f"Applied basic technical enhancement to pattern {pattern.get('pattern_id')}")
+        self.logger.info(f"Applied basic technical enhancement to pattern {pattern.get('pattern_id')}")
         return enhanced_pattern
     
     def _apply_basic_agentic_enhancement(self, pattern: Dict[str, Any]) -> Dict[str, Any]:
@@ -494,5 +498,5 @@ class PatternEnhancementService:
         enhanced_pattern["learning_mechanisms"] = ["Pattern recognition", "Feedback incorporation"]
         enhanced_pattern["agent_architecture"] = "single_agent"
         
-        app_logger.info(f"Applied basic agentic enhancement to pattern {pattern.get('pattern_id')}")
+        self.logger.info(f"Applied basic agentic enhancement to pattern {pattern.get('pattern_id')}")
         return enhanced_pattern

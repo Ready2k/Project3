@@ -112,19 +112,48 @@ class SecurityFeedbackGenerator:
     def _generate_out_of_scope_feedback(self, detected_terms: List[str]) -> str:
         """Generate feedback for out-of-scope requests."""
         
-        return """🔒 **Out of Scope**: This system is designed for business process automation, not security testing.
-
-**To get help with your request:**
-• Rephrase your requirement to focus on business automation needs
-• Describe operational processes you want to streamline
-• Emphasize monitoring, alerting, or workflow automation
-• Avoid security testing terminology
-
-**Examples of valid requests:**
-✅ 'Automate user onboarding workflow'
-✅ 'Monitor system performance and create alerts'
-✅ 'Streamline approval processes'
-✅ 'Generate automated reports'"""
+        feedback_parts = [
+            "🔒 **Out of Scope**: This system is designed for business process automation, not code generation or security testing.",
+            ""
+        ]
+        
+        # Show the specific problematic text
+        if detected_terms:
+            feedback_parts.extend([
+                "**Problematic text detected:**"
+            ])
+            
+            for term in detected_terms[:5]:  # Limit to first 5 matches
+                # Clean up the term for display
+                clean_term = term.strip()
+                if clean_term:
+                    feedback_parts.append(f"• \"{clean_term}\"")
+            
+            if len(detected_terms) > 5:
+                feedback_parts.append(f"• ... and {len(detected_terms) - 5} more")
+            
+            feedback_parts.append("")
+        
+        feedback_parts.extend([
+            "**To get help with your request:**",
+            "• Rephrase your requirement to focus on business automation needs",
+            "• Describe operational processes you want to streamline", 
+            "• Emphasize monitoring, alerting, or workflow automation",
+            "• Avoid requesting executable code or security testing",
+            "",
+            "**Examples of valid requests:**",
+            "✅ 'Automate user onboarding workflow'",
+            "✅ 'Monitor system performance and create alerts'",
+            "✅ 'Streamline approval processes'",
+            "✅ 'Generate automated reports'",
+            "",
+            "**Examples of invalid requests:**",
+            "❌ 'Write Python code for me'",
+            "❌ 'Generate a script I can run'",
+            "❌ 'Test security vulnerabilities'"
+        ])
+        
+        return "\n".join(feedback_parts)
     
     def _generate_ssrf_feedback(self) -> str:
         """Generate feedback for SSRF attempts."""

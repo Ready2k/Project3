@@ -82,6 +82,13 @@ class SecurityValidator:
             re.compile(r'\b(bypass|circumvent|disable)\s+(security|authentication|authorization)\b', re.IGNORECASE),
             re.compile(r'\b(enumerate|discover|map)\s+(services?|ports?|endpoints?)\b', re.IGNORECASE),
             re.compile(r'\b(extract|dump|steal|harvest)\s+(data|information|files?|credentials?)\b', re.IGNORECASE),
+            # Code generation requests (CRITICAL - this system is for pattern analysis, not code generation)
+            re.compile(r'\b(write|generate|create|provide|give\s+me)\s+(code|script|program|function|class|module)\b', re.IGNORECASE),
+            re.compile(r'\b(create|write|build)\s+(a\s+)?(python|javascript|java|c\+\+|golang|php|ruby)\s+(function|class|script|program|module)\b', re.IGNORECASE),
+            re.compile(r'\b(python|javascript|java|c\+\+|golang|php|ruby)\s+(code|script|program|implementation)\b', re.IGNORECASE),
+            re.compile(r'\bcode\s+(that\s+)?(i\s+can\s+)?(run|execute|use)\b', re.IGNORECASE),
+            re.compile(r'\b(sample|example|working)\s+(code|script|program|implementation)\b', re.IGNORECASE),
+            re.compile(r'\bwith\s+(some\s+)?(python|javascript|java|golang|php|ruby|c\+\+)\s+code\b', re.IGNORECASE),
         ]
     
     def sanitize_string(self, text: str, max_length: int = 10000) -> str:
@@ -199,6 +206,10 @@ class SecurityValidator:
         """Comprehensive validation for legitimate business automation requirements."""
         violations = {}
         
+        # Pre-validation: Check text length and basic structure
+        if len(text) > 50000:  # Reasonable limit for requirements
+            violations['input_size'] = ['Input exceeds maximum allowed length']
+        
         # Check for formula injection attempts (CRITICAL - check first)
         has_formula_injection, formula_patterns = self.detect_formula_injection(text)
         if has_formula_injection:
@@ -214,7 +225,7 @@ class SecurityValidator:
         if has_malicious:
             violations['malicious_intent'] = malicious_patterns
         
-        # Check for out-of-scope requests
+        # Check for out-of-scope requests (including code generation)
         has_out_of_scope, out_of_scope_patterns = self.detect_out_of_scope(text)
         if has_out_of_scope:
             violations['out_of_scope'] = out_of_scope_patterns

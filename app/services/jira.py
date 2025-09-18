@@ -18,7 +18,7 @@ from app.services.ssl_handler import SSLHandler, SSLValidationResult
 from app.services.proxy_handler import ProxyHandler, ProxyValidationResult
 from app.services.retry_handler import RetryHandler, RetryConfig, RetryStrategy
 from app.services.jira_error_handler import JiraErrorHandler, JiraErrorDetail, create_jira_error_handler
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 from app.utils.error_boundaries import error_boundary
 
 
@@ -115,6 +115,9 @@ class JiraService:
         self.base_url = config.base_url
         self.timeout = config.timeout
         
+        # Get logger from service registry
+        self.logger = require_service('logger', context='JiraService')
+        
         # Initialize SSL handler
         self.ssl_handler = SSLHandler(
             verify_ssl=config.verify_ssl,
@@ -123,12 +126,12 @@ class JiraService:
         
         # Log SSL configuration for debugging and security awareness
         ssl_config_info = self.ssl_handler.get_ssl_configuration_info()
-        app_logger.info(f"SSL Configuration - Security Level: {ssl_config_info['security_level']}")
+        self.logger.info(f"SSL Configuration - Security Level: {ssl_config_info['security_level']}")
         
         # Log any SSL warnings
         ssl_warnings = ssl_config_info.get('warnings', [])
         for warning in ssl_warnings:
-            app_logger.warning(warning)
+            self.logger.warning(warning)
         
         # Initialize proxy handler
         self.proxy_handler = ProxyHandler(proxy_url=config.proxy_url)
@@ -199,7 +202,7 @@ class JiraService:
             if not self.config.base_url:
                 raise JiraConnectionError("Base URL is required for auto-configuration")
             
-            app_logger.info(f"Auto-configuring Jira integration for: {self.config.base_url}")
+            self.logger.info(f"Auto-configuring Jira integration for: {self.config.base_url}")
             
             # Detect deployment type and version
             self.deployment_info = await self.deployment_detector.detect_deployment(
@@ -220,14 +223,14 @@ class JiraService:
                 else:
                     self.config.auth_type = JiraAuthType.BASIC
             
-            app_logger.info(f"Auto-configured for {self.deployment_info.deployment_type.value} "
+            self.logger.info(f"Auto-configured for {self.deployment_info.deployment_type.value} "
                           f"deployment with {self.config.auth_type.value} authentication")
             
             return self.config
             
         except Exception as e:
-            app_logger.error(f"Auto-configuration failed: {e}")
-            app_logger.warning(f"Auto-configuration failed, using provided config: {str(e)}")
+            self.logger.error(f"Auto-configuration failed: {e}")
+            self.logger.warning(f"Auto-configuration failed, using provided config: {str(e)}")
             # Don't fail completely - use the provided configuration as fallback
             return self.config
     
@@ -253,7 +256,7 @@ class JiraService:
             result = await self.test_connection_with_fallback()
             return result.success, result.error_details.get('message') if result.error_details else None
         except Exception as e:
-            app_logger.error(f"Connection test failed: {e}")
+            self.logger.error(f"Connection test failed: {e}")
             return False, str(e)
     
     async def test_connection_with_fallback(self) -> ConnectionResult:
@@ -261,7 +264,7 @@ class JiraService:
         try:
             return await self._test_connection_internal()
         except Exception as e:
-            app_logger.error(f"Jira connection test failed: {type(e).__name__}: {str(e)}")
+            self.logger.error(f"Jira connection test failed: {type(e).__name__}: {str(e)}")
             return ConnectionResult(
                 success=False,
                 error_details={"message": f"Connection test failed: {str(e)}"},
@@ -286,11 +289,11 @@ class JiraService:
             
             # Validate proxy configuration first
             if self.config.proxy_url:
-                app_logger.info("Validating proxy configuration")
+                self.logger.info("Validating proxy configuration")
                 proxy_validation_result = self.proxy_handler.validate_proxy_config()
                 
                 if not proxy_validation_result.is_valid:
-                    app_logger.warning(f"Proxy validation failed: {proxy_validation_result.error_message}")
+                    self.logger.warning(f"Proxy validation failed: {proxy_validation_result.error_message}")
                     error_detail = self.error_handler.create_error_detail(
                         error_message=proxy_validation_result.error_message,
                         technical_details=f"Proxy error type: {proxy_validation_result.error_type}"
@@ -307,11 +310,11 @@ class JiraService:
             
             # Validate SSL certificate if using HTTPS
             if self.base_url and self.base_url.startswith('https://'):
-                app_logger.info("Validating SSL certificate configuration")
+                self.logger.info("Validating SSL certificate configuration")
                 ssl_validation_result = await self.ssl_handler.validate_ssl_certificate(self.base_url)
                 
                 if not ssl_validation_result.is_valid:
-                    app_logger.warning(f"SSL validation failed: {ssl_validation_result.error_message}")
+                    self.logger.warning(f"SSL validation failed: {ssl_validation_result.error_message}")
                     # Continue with connection attempt - SSL issues might be handled by configuration
             
             # Auto-configure if deployment info is not available
@@ -319,7 +322,7 @@ class JiraService:
                 try:
                     await self.auto_configure()
                 except Exception as e:
-                    app_logger.warning(f"Auto-configuration failed, continuing with manual config: {e}")
+                    self.logger.warning(f"Auto-configuration failed, continuing with manual config: {e}")
             
             # Attempt authentication with fallback chain
             auth_result = await self.auth_manager.authenticate()
@@ -352,14 +355,14 @@ class JiraService:
                     self.base_url, auth_headers
                 )
             except Exception as e:
-                app_logger.warning(f"API version detection failed, using default: {e}")
+                self.logger.warning(f"API version detection failed, using default: {e}")
                 self.api_version = "3"  # Default to v3
             
             # Test the connection
             success, user_info, error_message = await self._test_authenticated_connection(auth_headers)
             
             if success:
-                app_logger.info(f"Jira connection successful for user: {user_info.get('displayName', 'Unknown')} "
+                self.logger.info(f"Jira connection successful for user: {user_info.get('displayName', 'Unknown')} "
                               f"using {auth_result.auth_type.value} authentication")
                 
                 return ConnectionResult(
@@ -414,7 +417,7 @@ class JiraService:
                 ssl_configuration=self.ssl_handler.get_ssl_configuration_info()
             )
         except Exception as e:
-            app_logger.error(f"Unexpected error in connection test: {e}")
+            self.logger.error(f"Unexpected error in connection test: {e}")
             error_detail = self.error_handler.create_error_detail(
                 error_message=f"Unexpected error: {str(e)}",
                 exception=e,
@@ -448,12 +451,12 @@ class JiraService:
             
             # Log SSL configuration for this connection attempt with security context
             if verify_config is False:
-                app_logger.warning("🔓 Connection attempt with SSL verification DISABLED - Security risk!")
-                app_logger.warning("🔒 This bypasses ALL SSL certificate validation")
+                self.logger.warning("🔓 Connection attempt with SSL verification DISABLED - Security risk!")
+                self.logger.warning("🔒 This bypasses ALL SSL certificate validation")
             elif isinstance(verify_config, str):
-                app_logger.info(f"🔐 Connection attempt with custom CA certificate: {verify_config}")
+                self.logger.info(f"🔐 Connection attempt with custom CA certificate: {verify_config}")
             else:
-                app_logger.info("🔐 Connection attempt with SSL verification enabled (system CA)")
+                self.logger.info("🔐 Connection attempt with SSL verification enabled (system CA)")
             
             # Create client with retry-friendly configuration - FORCE SSL settings
             client_config = {
@@ -470,7 +473,7 @@ class JiraService:
                 ssl_context.check_hostname = False
                 ssl_context.verify_mode = ssl.CERT_NONE
                 client_config["verify"] = False
-                app_logger.warning("🚨 SSL verification COMPLETELY DISABLED - bypassing all certificate checks")
+                self.logger.warning("🚨 SSL verification COMPLETELY DISABLED - bypassing all certificate checks")
             
             client = self.retry_handler.create_http_client_with_retry(client_config)
             
@@ -489,8 +492,8 @@ class JiraService:
                         user_data = response.json()
                         return True, user_data, None
                     except (ValueError, json.JSONDecodeError) as e:
-                        app_logger.error(f"Failed to parse JSON response from connection test: {e}")
-                        app_logger.debug(f"Response content: {response.text[:200]}...")
+                        self.logger.error(f"Failed to parse JSON response from connection test: {e}")
+                        self.logger.debug(f"Response content: {response.text[:200]}...")
                         # Check if response looks like HTML (common when hitting wrong endpoint)
                         if response.text.strip().startswith('<'):
                             return False, {}, "Server returned HTML instead of JSON. Check base URL and endpoint configuration."
@@ -510,7 +513,7 @@ class JiraService:
                                 user_data = response.json()
                                 return True, user_data, None
                             except (ValueError, json.JSONDecodeError) as e:
-                                app_logger.error(f"Failed to parse JSON response from fallback connection test: {e}")
+                                self.logger.error(f"Failed to parse JSON response from fallback connection test: {e}")
                                 return False, {}, f"Invalid JSON response from fallback API: {e}"
                     return False, {}, f"API endpoint not found. Server may not support API version {api_version}."
                 elif response.status_code in [429, 502, 503, 504]:
@@ -665,8 +668,8 @@ class JiraService:
         """
         # In a real implementation, this would prompt the user through the UI
         # For now, we'll log the need for credentials and return None
-        app_logger.info("Basic authentication fallback required - user prompt needed")
-        app_logger.info("Implementation note: This should prompt user for username/password in the UI")
+        self.logger.info("Basic authentication fallback required - user prompt needed")
+        self.logger.info("Implementation note: This should prompt user for username/password in the UI")
         
         # This would be implemented in the UI layer to actually prompt the user
         # The UI would call this method and handle the user interaction
@@ -692,11 +695,11 @@ class JiraService:
             
             if self.config.verify_ssl and not self.config.ca_cert_path:
                 if "localhost" not in self.config.base_url and "127.0.0.1" not in self.config.base_url:
-                    app_logger.warning("Data Center deployment without custom CA certificate - SSL verification may fail")
+                    self.logger.warning("Data Center deployment without custom CA certificate - SSL verification may fail")
             
             # Check for common Data Center ports
             if self.config.custom_port and self.config.custom_port not in [8080, 8443, 443, 80]:
-                app_logger.warning(f"Unusual port {self.config.custom_port} for Data Center deployment")
+                self.logger.warning(f"Unusual port {self.config.custom_port} for Data Center deployment")
         
         elif deployment_type == JiraDeploymentType.CLOUD:
             # Cloud specific validations
@@ -704,7 +707,7 @@ class JiraService:
                 errors.append("Basic authentication is not recommended for Jira Cloud. Use API tokens.")
             
             if not self.config.base_url.endswith('.atlassian.net'):
-                app_logger.warning("Cloud deployment with non-standard URL pattern")
+                self.logger.warning("Cloud deployment with non-standard URL pattern")
         
         return errors
     
@@ -774,7 +777,7 @@ class JiraService:
                         self.base_url, auth_headers
                     )
                 except Exception as e:
-                    app_logger.warning(f"API version detection failed, using v3: {e}")
+                    self.logger.warning(f"API version detection failed, using v3: {e}")
                     self.api_version = "3"
             
             # Define the ticket fetching operation with retry logic
@@ -807,15 +810,15 @@ class JiraService:
                         "expand": ""
                     }
                     
-                    app_logger.info(f"Fetching Jira ticket: {ticket_key} using API v{self.api_version}")
-                    app_logger.debug(f"Request URL: {url}")
-                    app_logger.debug(f"Request params: {params}")
+                    self.logger.info(f"Fetching Jira ticket: {ticket_key} using API v{self.api_version}")
+                    self.logger.debug(f"Request URL: {url}")
+                    self.logger.debug(f"Request params: {params}")
                     response = await client.get(url, headers=headers, params=params)
                     
                     if response.status_code == 200:
                         try:
                             data = response.json()
-                            app_logger.info(f"Received response for {ticket_key} with {len(data.get('fields', {}))} fields")
+                            self.logger.info(f"Received response for {ticket_key} with {len(data.get('fields', {}))} fields")
                             
                             # Check if we got meaningful data
                             fields = data.get("fields", {})
@@ -826,18 +829,18 @@ class JiraService:
                             ])
                             
                             if not has_basic_data:
-                                app_logger.warning(f"No meaningful field data returned for {ticket_key}, trying fallback request")
+                                self.logger.warning(f"No meaningful field data returned for {ticket_key}, trying fallback request")
                                 # Try a simpler request without field restrictions
                                 fallback_response = await client.get(url, headers=headers)
                                 if fallback_response.status_code == 200:
                                     fallback_data = fallback_response.json()
-                                    app_logger.info(f"Fallback response for {ticket_key} with {len(fallback_data.get('fields', {}))} fields")
+                                    self.logger.info(f"Fallback response for {ticket_key} with {len(fallback_data.get('fields', {}))} fields")
                                     return self._parse_ticket_data(fallback_data)
                             
                             return self._parse_ticket_data(data)
                         except (ValueError, json.JSONDecodeError) as e:
-                            app_logger.error(f"Failed to parse JSON response for ticket {ticket_key}: {e}")
-                            app_logger.debug(f"Response content: {response.text[:200]}...")
+                            self.logger.error(f"Failed to parse JSON response for ticket {ticket_key}: {e}")
+                            self.logger.debug(f"Response content: {response.text[:200]}...")
                             raise JiraConnectionError(f"Invalid JSON response from Jira API: {e}")
                     elif response.status_code == 401:
                         # Clear authentication and retry once
@@ -858,7 +861,7 @@ class JiraService:
                                     ])
                                     
                                     if not has_basic_data:
-                                        app_logger.warning(f"Retry: No meaningful field data for {ticket_key}, trying fallback")
+                                        self.logger.warning(f"Retry: No meaningful field data for {ticket_key}, trying fallback")
                                         fallback_response = await client.get(url, headers=headers)
                                         if fallback_response.status_code == 200:
                                             fallback_data = fallback_response.json()
@@ -866,7 +869,7 @@ class JiraService:
                                     
                                     return self._parse_ticket_data(data)
                                 except (ValueError, json.JSONDecodeError) as e:
-                                    app_logger.error(f"Failed to parse JSON response for ticket {ticket_key} (retry): {e}")
+                                    self.logger.error(f"Failed to parse JSON response for ticket {ticket_key} (retry): {e}")
                                     raise JiraConnectionError(f"Invalid JSON response from Jira API: {e}")
                         raise JiraConnectionError("Authentication failed. Check credentials.")
                     elif response.status_code == 403:
@@ -874,7 +877,7 @@ class JiraService:
                     elif response.status_code == 404:
                         # Try fallback API version if we're using v3
                         if self.api_version == "3":
-                            app_logger.info(f"Ticket not found with API v3, trying v2 fallback")
+                            self.logger.info(f"Ticket not found with API v3, trying v2 fallback")
                             fallback_url = self.api_version_manager.build_endpoint(
                                 self.base_url, f"issue/{ticket_key}", "2"
                             )
@@ -885,7 +888,7 @@ class JiraService:
                                     data = response.json()
                                     return self._parse_ticket_data(data)
                                 except (ValueError, json.JSONDecodeError) as e:
-                                    app_logger.error(f"Failed to parse JSON response for ticket {ticket_key} (fallback): {e}")
+                                    self.logger.error(f"Failed to parse JSON response for ticket {ticket_key} (fallback): {e}")
                                     raise JiraConnectionError(f"Invalid JSON response from Jira API: {e}")
                             elif response.status_code == 404:
                                 raise JiraTicketNotFoundError(f"Ticket '{ticket_key}' not found")
@@ -925,7 +928,7 @@ class JiraService:
                 exception=e,
                 technical_details=f"Timeout while fetching ticket {ticket_key}"
             )
-            app_logger.error(f"Timeout fetching ticket {ticket_key}: {error_detail.troubleshooting_steps}")
+            self.logger.error(f"Timeout fetching ticket {ticket_key}: {error_detail.troubleshooting_steps}")
             raise JiraConnectionError(f"Connection timeout after {self.timeout} seconds")
         except httpx.ConnectError as e:
             error_detail = self.error_handler.create_error_detail(
@@ -933,7 +936,7 @@ class JiraService:
                 exception=e,
                 technical_details=f"Connection error while fetching ticket {ticket_key}"
             )
-            app_logger.error(f"Connection error fetching ticket {ticket_key}: {error_detail.troubleshooting_steps}")
+            self.logger.error(f"Connection error fetching ticket {ticket_key}: {error_detail.troubleshooting_steps}")
             raise JiraConnectionError("Failed to connect to Jira. Check base URL.")
         except (JiraConnectionError, JiraTicketNotFoundError, JiraError):
             raise
@@ -943,8 +946,8 @@ class JiraService:
                 exception=e,
                 technical_details=f"Unexpected error while fetching ticket {ticket_key}, Exception type: {type(e).__name__}"
             )
-            app_logger.error(f"Unexpected error fetching Jira ticket {ticket_key}: {e}")
-            app_logger.error(f"Troubleshooting steps: {error_detail.troubleshooting_steps}")
+            self.logger.error(f"Unexpected error fetching Jira ticket {ticket_key}: {e}")
+            self.logger.error(f"Troubleshooting steps: {error_detail.troubleshooting_steps}")
             raise JiraError(f"Unexpected error: {str(e)}")
     
     def _parse_ticket_data(self, data: Dict[str, Any]) -> JiraTicket:
@@ -959,12 +962,12 @@ class JiraService:
         fields = data.get("fields", {})
         
         # Debug logging to see what fields we're receiving
-        app_logger.info(f"Parsing ticket data for {data.get('key', 'UNKNOWN')} - available fields: {len(fields)} total")
+        self.logger.info(f"Parsing ticket data for {data.get('key', 'UNKNOWN')} - available fields: {len(fields)} total")
         
         # Log custom fields specifically for acceptance criteria debugging
         custom_fields = {k: v for k, v in fields.items() if k.startswith("customfield_")}
         if custom_fields:
-            app_logger.info(f"Custom fields found: {list(custom_fields.keys())}")
+            self.logger.info(f"Custom fields found: {list(custom_fields.keys())}")
             # Log first few characters of each custom field to help identify acceptance criteria
             for field_name, field_value in list(custom_fields.items())[:5]:  # Limit to first 5 for readability
                 if field_value:
@@ -974,16 +977,16 @@ class JiraService:
                         preview = field_value[:50]
                     else:
                         preview = str(field_value)[:50]
-                    app_logger.debug(f"  {field_name}: {preview}{'...' if len(str(field_value)) > 50 else ''}")
+                    self.logger.debug(f"  {field_name}: {preview}{'...' if len(str(field_value)) > 50 else ''}")
         else:
-            app_logger.info("No custom fields found in ticket")
+            self.logger.info("No custom fields found in ticket")
         
         if not fields:
-            app_logger.warning(f"No fields found in response for ticket {data.get('key', 'UNKNOWN')}")
-            app_logger.warning(f"Full response data: {json.dumps(data, indent=2)[:1000]}...")
+            self.logger.warning(f"No fields found in response for ticket {data.get('key', 'UNKNOWN')}")
+            self.logger.warning(f"Full response data: {json.dumps(data, indent=2)[:1000]}...")
         
         # Log key field values for debugging
-        app_logger.info(f"Key field values - summary: '{fields.get('summary', 'MISSING')}', status: {fields.get('status', 'MISSING')}, priority: {fields.get('priority', 'MISSING')}")
+        self.logger.info(f"Key field values - summary: '{fields.get('summary', 'MISSING')}', status: {fields.get('status', 'MISSING')}, priority: {fields.get('priority', 'MISSING')}")
         
         # Extract basic fields with enhanced error handling
         key = data.get("key", "")
@@ -991,7 +994,7 @@ class JiraService:
         
         # Handle missing summary gracefully
         if not summary:
-            app_logger.warning(f"No summary found for ticket {key}")
+            self.logger.warning(f"No summary found for ticket {key}")
             summary = f"Ticket {key}"
         
         description = fields.get("description", {})
@@ -1148,20 +1151,20 @@ class JiraService:
         if isinstance(user_story, dict):
             user_story = self._extract_text_from_adf(user_story)
         
-        app_logger.info(f"Enhanced parsing for ticket {key}: status={status}, type={issue_type}, "
+        self.logger.info(f"Enhanced parsing for ticket {key}: status={status}, type={issue_type}, "
                         f"assignee={assignee}, components={len(components)}, "
                         f"acceptance_criteria={'Yes' if acceptance_criteria else 'No'}, "
                         f"comments={len(comments)}, attachments={len(attachments)}")
         
         # Final validation - ensure we have at least basic data
         if not key:
-            app_logger.error("No ticket key found in response data")
+            self.logger.error("No ticket key found in response data")
         if not summary:
-            app_logger.warning(f"No summary found for ticket {key}")
+            self.logger.warning(f"No summary found for ticket {key}")
         if status == "Unknown":
-            app_logger.warning(f"Status not found for ticket {key}")
+            self.logger.warning(f"Status not found for ticket {key}")
         if issue_type == "Unknown":
-            app_logger.warning(f"Issue type not found for ticket {key}")
+            self.logger.warning(f"Issue type not found for ticket {key}")
         
         return JiraTicket(
             # Core fields
@@ -1245,14 +1248,14 @@ class JiraService:
                 if isinstance(field_value, dict):
                     extracted_text = self._extract_text_from_adf(field_value)
                     if extracted_text and extracted_text.strip():
-                        app_logger.info(f"Found acceptance criteria in field '{field_name}': {len(extracted_text)} characters")
+                        self.logger.info(f"Found acceptance criteria in field '{field_name}': {len(extracted_text)} characters")
                         return extracted_text
                 elif isinstance(field_value, str) and field_value.strip():
-                    app_logger.info(f"Found acceptance criteria in field '{field_name}': {len(field_value)} characters")
+                    self.logger.info(f"Found acceptance criteria in field '{field_name}': {len(field_value)} characters")
                     return field_value
         
         # If no exact matches, search through all custom fields for acceptance criteria keywords
-        app_logger.debug("No exact field matches found, searching through all custom fields for acceptance criteria")
+        self.logger.debug("No exact field matches found, searching through all custom fields for acceptance criteria")
         
         acceptance_keywords = [
             "acceptance", "criteria", "definition", "done", "requirements", 
@@ -1276,16 +1279,16 @@ class JiraService:
                         len(extracted_text) > 10 and  # Must have substantial content
                         any(keyword in extracted_text.lower() for keyword in acceptance_keywords)):
                         
-                        app_logger.info(f"Found potential acceptance criteria in field '{field_name}': {len(extracted_text)} characters")
-                        app_logger.debug(f"Content preview: {extracted_text[:100]}...")
+                        self.logger.info(f"Found potential acceptance criteria in field '{field_name}': {len(extracted_text)} characters")
+                        self.logger.debug(f"Content preview: {extracted_text[:100]}...")
                         return extracted_text
         
         # Log available custom fields for debugging
         custom_fields = [k for k in fields.keys() if k.startswith("customfield_")]
         if custom_fields:
-            app_logger.debug(f"Available custom fields: {custom_fields[:10]}{'...' if len(custom_fields) > 10 else ''}")
+            self.logger.debug(f"Available custom fields: {custom_fields[:10]}{'...' if len(custom_fields) > 10 else ''}")
         else:
-            app_logger.debug("No custom fields found in ticket")
+            self.logger.debug("No custom fields found in ticket")
         
         return None
     
@@ -1545,7 +1548,7 @@ class JiraService:
             extracted_text = re.sub(r' +', ' ', extracted_text)  # Normalize spaces
             return extracted_text
         except Exception as e:
-            app_logger.warning(f"Failed to extract text from ADF: {e}")
+            self.logger.warning(f"Failed to extract text from ADF: {e}")
             # Fallback to simple string conversion
             return str(adf_content)[:1000] + "..." if len(str(adf_content)) > 1000 else str(adf_content)
     
@@ -1721,7 +1724,7 @@ class JiraService:
         if pattern_types:
             requirements["pattern_types"] = list(set(pattern_types))  # Remove duplicates
         
-        app_logger.info(f"Mapped Jira ticket {ticket.key} to requirements with domain: {requirements.get('domain')} and pattern_types: {requirements.get('pattern_types')}")
+        self.logger.info(f"Mapped Jira ticket {ticket.key} to requirements with domain: {requirements.get('domain')} and pattern_types: {requirements.get('pattern_types')}")
         
         return requirements
     
@@ -1831,7 +1834,7 @@ class JiraService:
                         # Simple custom field
                         custom_fields[field_key] = field_value
                 except Exception as e:
-                    app_logger.warning(f"Failed to parse custom field {field_key}: {e}")
+                    self.logger.warning(f"Failed to parse custom field {field_key}: {e}")
                     custom_fields[field_key] = str(field_value)
         
         return custom_fields
@@ -1885,7 +1888,7 @@ class JiraService:
                 headers = {"Accept": "application/json"}
                 headers.update(auth_headers)
                 
-                app_logger.info(f"Fetching transitions for ticket: {ticket_key}")
+                self.logger.info(f"Fetching transitions for ticket: {ticket_key}")
                 response = await client.get(url, headers=headers)
                 
                 if response.status_code == 200:
@@ -1915,7 +1918,7 @@ class JiraService:
         except (JiraConnectionError, JiraTicketNotFoundError, JiraError):
             raise
         except Exception as e:
-            app_logger.error(f"Unexpected error fetching transitions for {ticket_key}: {e}")
+            self.logger.error(f"Unexpected error fetching transitions for {ticket_key}: {e}")
             raise JiraError(f"Unexpected error: {str(e)}")
 
 

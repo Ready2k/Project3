@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from app.pattern.enhanced_loader import EnhancedPatternLoader
 from app.services.pattern_enhancement_service import PatternEnhancementService
-from app.utils.logger import app_logger
+from app.utils.imports import require_service, optional_service
 
 
 def run_async_in_thread(coro):
@@ -20,6 +20,8 @@ def run_async_in_thread(coro):
         try:
             return loop.run_until_complete(coro)
         except Exception as e:
+            # Get logger service for error logging
+            app_logger = require_service('logger', context="run_async_in_thread")
             app_logger.error(f"Error running async operation: {e}")
             raise
         finally:
@@ -30,6 +32,8 @@ def run_async_in_thread(coro):
             future = executor.submit(run_in_thread)
             return future.result(timeout=300)  # 5 minute timeout
     except Exception as e:
+        # Get logger service for error logging
+        app_logger = require_service('logger', context="run_async_in_thread")
         app_logger.error(f"Failed to run async operation in thread: {e}")
         raise
 
@@ -68,6 +72,8 @@ def render_enhanced_pattern_management(pattern_loader: EnhancedPatternLoader,
             
     except Exception as e:
         st.error(f"❌ Error in enhanced pattern management: {e}")
+        # Get logger service for error logging
+        app_logger = require_service('logger', context="render_enhanced_pattern_management")
         app_logger.error(f"Enhanced pattern management error: {e}")
         
         # Show a helpful message
@@ -90,6 +96,8 @@ def render_pattern_overview(pattern_loader: EnhancedPatternLoader):
         stats = pattern_loader.get_pattern_statistics()
     except Exception as e:
         st.error(f"❌ Failed to load pattern statistics: {e}")
+        # Get logger service for error logging
+        app_logger = require_service('logger', context="render_pattern_overview")
         app_logger.error(f"Pattern statistics error: {e}")
         return
     
@@ -150,6 +158,8 @@ def render_pattern_enhancement(pattern_loader: EnhancedPatternLoader,
         candidates = enhancement_service.get_enhancement_candidates()
     except Exception as e:
         st.error(f"❌ Failed to get enhancement candidates: {e}")
+        # Get logger service for error logging
+        app_logger = require_service('logger', context="render_pattern_enhancement")
         app_logger.error(f"Enhancement candidates error: {e}")
         return
     
@@ -271,6 +281,8 @@ def render_pattern_enhancement(pattern_loader: EnhancedPatternLoader,
                     
                 except Exception as e:
                     st.error(f"❌ Enhancement failed: {e}")
+                    # Get logger service for error logging
+                    app_logger = require_service('logger', context="render_pattern_enhancement")
                     app_logger.error(f"Pattern enhancement error: {e}")
                     
                     with st.expander("Error Details"):
@@ -547,6 +559,8 @@ def render_bulk_operations(pattern_loader: EnhancedPatternLoader,
                 
             except Exception as e:
                 st.error(f"❌ Bulk enhancement failed: {e}")
+                # Get logger service for error logging
+                app_logger = require_service('logger', context="render_bulk_operations")
                 app_logger.error(f"Bulk pattern enhancement error: {e}")
                 
                 with st.expander("Error Details"):

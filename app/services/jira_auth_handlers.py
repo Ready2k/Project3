@@ -5,7 +5,7 @@ from typing import Dict, Optional, Any
 
 from app.services.jira_auth import AuthenticationHandler, AuthResult
 from app.config import JiraAuthType, JiraConfig
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class APITokenHandler(AuthenticationHandler):
@@ -56,7 +56,7 @@ class APITokenHandler(AuthenticationHandler):
                 "Content-Type": "application/json"
             }
             
-            app_logger.info(f"API token authentication configured for email: {config.email}")
+            self.logger.info(f"API token authentication configured for email: {config.email}")
             
             return AuthResult(
                 success=True,
@@ -66,7 +66,7 @@ class APITokenHandler(AuthenticationHandler):
             )
             
         except Exception as e:
-            app_logger.error(f"API token authentication failed: {e}")
+            self.logger.error(f"API token authentication failed: {e}")
             return AuthResult(
                 success=False,
                 auth_type=self.get_auth_type(),
@@ -119,7 +119,7 @@ class PATHandler(AuthenticationHandler):
                 "Content-Type": "application/json"
             }
             
-            app_logger.info("Personal Access Token authentication configured")
+            self.logger.info("Personal Access Token authentication configured")
             
             return AuthResult(
                 success=True,
@@ -129,7 +129,7 @@ class PATHandler(AuthenticationHandler):
             )
             
         except Exception as e:
-            app_logger.error(f"PAT authentication failed: {e}")
+            self.logger.error(f"PAT authentication failed: {e}")
             return AuthResult(
                 success=False,
                 auth_type=self.get_auth_type(),
@@ -187,11 +187,11 @@ class SSOAuthHandler(AuthenticationHandler):
             if hasattr(config, 'sso_session_cookie') and config.sso_session_cookie:
                 headers["Cookie"] = config.sso_session_cookie
                 session_data["session_cookie"] = config.sso_session_cookie
-                app_logger.info("SSO authentication using existing session cookie")
+                self.logger.info("SSO authentication using existing session cookie")
             else:
                 # For now, we'll attempt to detect current session
                 # This would be enhanced in a real implementation to detect browser sessions
-                app_logger.info("SSO authentication configured - session detection not yet implemented")
+                self.logger.info("SSO authentication configured - session detection not yet implemented")
                 
                 # Return failure for now since we don't have session detection implemented
                 return AuthResult(
@@ -211,7 +211,7 @@ class SSOAuthHandler(AuthenticationHandler):
             )
             
         except Exception as e:
-            app_logger.error(f"SSO authentication failed: {e}")
+            self.logger.error(f"SSO authentication failed: {e}")
             return AuthResult(
                 success=False,
                 auth_type=self.get_auth_type(),
@@ -270,7 +270,7 @@ class BasicAuthHandler(AuthenticationHandler):
                 "Content-Type": "application/json"
             }
             
-            app_logger.info(f"Basic authentication configured for username: {config.username}")
+            self.logger.info(f"Basic authentication configured for username: {config.username}")
             
             return AuthResult(
                 success=True,
@@ -280,7 +280,7 @@ class BasicAuthHandler(AuthenticationHandler):
             )
             
         except Exception as e:
-            app_logger.error(f"Basic authentication failed: {e}")
+            self.logger.error(f"Basic authentication failed: {e}")
             return AuthResult(
                 success=False,
                 auth_type=self.get_auth_type(),

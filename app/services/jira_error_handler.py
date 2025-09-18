@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Any, Union
 from pydantic import BaseModel
 import re
 import httpx
-from loguru import logger as app_logger
+from app.utils.imports import require_service
 
 from app.config import JiraDeploymentType, JiraAuthType
 

@@ -19,6 +19,7 @@ from app.config.system_config import (
     AutonomyConfig, PatternMatchingConfig, LLMGenerationConfig, RecommendationConfig,
     SystemConfiguration, SystemConfigurationManager
 )
+from app.utils.imports import require_service, optional_service
 from app.utils.audit import get_audit_logger
 from app.security.security_event_logger import SecurityEventLogger
 

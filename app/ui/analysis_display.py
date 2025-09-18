@@ -5,7 +5,7 @@ from typing import Dict, Any, List, Optional
 import json
 
 from app.ui.agent_formatter import AgentSystemDisplay, AgentRoleDisplay, AgentCoordinationDisplay
-from app.utils.logger import app_logger
+from app.utils.imports import require_service, optional_service
 
 
 class AgentRolesUIComponent:
@@ -26,6 +26,8 @@ class AgentRolesUIComponent:
         if not agent_system.has_agents:
             return
         
+        # Get logger service
+        app_logger = require_service('logger', context="render_agent_system")
         app_logger.info("Rendering agent system UI")
         
         # Add accessibility landmark
@@ -371,6 +373,8 @@ class AgentRolesUIComponent:
                             )
         
         except Exception as e:
+            # Get logger service for error logging
+            app_logger = require_service('logger', context="render_architecture_diagram")
             app_logger.error(f"Error rendering architecture diagram: {e}")
             st.info("Architecture diagram temporarily unavailable")
     
@@ -1575,6 +1579,8 @@ class AgentDisplayErrorHandler:
     def handle_agent_formatting_error(error: Exception, agent_data: Dict[str, Any]) -> AgentSystemDisplay:
         """Handle errors in agent data formatting."""
         
+        # Get logger service for error logging
+        app_logger = require_service('logger', context="_handle_agent_formatting_error")
         app_logger.error(f"Agent formatting error: {error}")
         
         # Return safe fallback display
@@ -1598,6 +1604,8 @@ class AgentDisplayErrorHandler:
     def handle_tech_validation_error(error: Exception, tech_stack: List[str]) -> Dict[str, Any]:
         """Handle errors in tech stack validation."""
         
+        # Get logger service for error logging
+        app_logger = require_service('logger', context="_handle_tech_validation_error")
         app_logger.error(f"Tech validation error: {error}")
         
         return {
@@ -1614,6 +1622,8 @@ class AgentDisplayErrorHandler:
     def handle_ui_rendering_error(error: Exception, component_name: str):
         """Handle errors in UI component rendering."""
         
+        # Get logger service for error logging
+        app_logger = require_service('logger', context="_handle_ui_rendering_error")
         app_logger.error(f"UI rendering error in {component_name}: {error}")
         
         st.error(f"❌ Error displaying {component_name}")

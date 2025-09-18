@@ -9,7 +9,7 @@ from enum import Enum
 import httpx
 from pydantic import BaseModel
 
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 T = TypeVar('T')
 
@@ -78,6 +78,8 @@ class RetryHandler:
         
         Args:
             config: Retry configuration, uses defaults if None
+        # Get logger from service registry
+        self.logger = require_service('logger', context='from')
         """
         self.config = config or RetryConfig()
     
@@ -149,7 +151,7 @@ class RetryHandler:
             if self.config.total_timeout:
                 elapsed = time.time() - start_time
                 if elapsed >= self.config.total_timeout:
-                    app_logger.warning(f"{operation_name} total timeout exceeded after {elapsed:.2f}s")
+                    self.logger.warning(f"{operation_name} total timeout exceeded after {elapsed:.2f}s")
                     return RetryResult(
                         success=False,
                         total_attempts=attempt + 1,
@@ -165,7 +167,7 @@ class RetryHandler:
             
             # Wait before retry (except for first attempt)
             if delay > 0:
-                app_logger.info(f"{operation_name} attempt {attempt + 1}/{self.config.max_attempts} "
+                self.logger.info(f"{operation_name} attempt {attempt + 1}/{self.config.max_attempts} "
                               f"after {delay:.2f}s delay")
                 await asyncio.sleep(delay)
             
@@ -190,7 +192,7 @@ class RetryHandler:
                 attempts.append(retry_attempt)
                 
                 total_duration = attempt_end - start_time
-                app_logger.info(f"{operation_name} succeeded on attempt {attempt + 1} "
+                self.logger.info(f"{operation_name} succeeded on attempt {attempt + 1} "
                               f"after {total_duration:.2f}s")
                 
                 return RetryResult(
@@ -209,7 +211,7 @@ class RetryHandler:
                 attempts.append(retry_attempt)
                 
                 last_exception = httpx.TimeoutException(f"Request timeout after {self.config.timeout_per_attempt}s")
-                app_logger.warning(f"{operation_name} attempt {attempt + 1} timed out after {self.config.timeout_per_attempt}s")
+                self.logger.warning(f"{operation_name} attempt {attempt + 1} timed out after {self.config.timeout_per_attempt}s")
                 
             except httpx.HTTPStatusError as e:
                 # HTTP error with status code
@@ -221,7 +223,7 @@ class RetryHandler:
                 
                 last_exception = e
                 last_status_code = e.response.status_code
-                app_logger.warning(f"{operation_name} attempt {attempt + 1} failed with HTTP {e.response.status_code}")
+                self.logger.warning(f"{operation_name} attempt {attempt + 1} failed with HTTP {e.response.status_code}")
                 
             except Exception as e:
                 # Other exceptions
@@ -231,7 +233,7 @@ class RetryHandler:
                 attempts.append(retry_attempt)
                 
                 last_exception = e
-                app_logger.warning(f"{operation_name} attempt {attempt + 1} failed: {str(e)}")
+                self.logger.warning(f"{operation_name} attempt {attempt + 1} failed: {str(e)}")
             
             # Check if we should retry
             if not self.should_retry(attempt, last_exception, last_status_code):
@@ -241,7 +243,7 @@ class RetryHandler:
         total_duration = time.time() - start_time
         final_error = str(last_exception) if last_exception else "Unknown error"
         
-        app_logger.error(f"{operation_name} failed after {len(attempts)} attempts in {total_duration:.2f}s: {final_error}")
+        self.logger.error(f"{operation_name} failed after {len(attempts)} attempts in {total_duration:.2f}s: {final_error}")
         
         return RetryResult(
             success=False,

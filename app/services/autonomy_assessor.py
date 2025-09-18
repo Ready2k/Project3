@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from app.llm.base import LLMProvider
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 # ---------- Helpers ----------
@@ -103,6 +103,10 @@ class AutonomyAssessor:
 
     def __init__(self, llm_provider: LLMProvider):
         self.llm_provider = llm_provider
+        
+        # Get logger from service registry
+        self.logger = require_service('logger', context='AutonomyAssessor')
+        
         # Import configuration service for dynamic weights
         from app.services.configuration_service import get_config
         self.config_service = get_config()
@@ -113,13 +117,13 @@ class AutonomyAssessor:
     async def assess_autonomy_potential(self, requirements: Dict[str, Any]) -> AutonomyAssessment:
         """Assess how autonomous an AI agent can be for given requirements."""
 
-        app_logger.info("Assessing autonomy potential for requirements")
-        app_logger.debug(f"LLM provider type: {type(self.llm_provider)}")
-        app_logger.debug(f"Requirements: {requirements}")
+        self.logger.info("Assessing autonomy potential for requirements")
+        self.logger.debug(f"LLM provider type: {type(self.llm_provider)}")
+        self.logger.debug(f"Requirements: {requirements}")
 
         # Check if LLM provider is available
         if not self.llm_provider:
-            app_logger.warning("No LLM provider available, using default autonomy assessment")
+            self.logger.warning("No LLM provider available, using default autonomy assessment")
             return self._default_autonomy_assessment()
 
         # Analyze reasoning requirements
@@ -176,7 +180,7 @@ class AutonomyAssessor:
             ),
         )
 
-        app_logger.info(
+        self.logger.info(
             f"Autonomy assessment complete: score={autonomy_score:.2f}, architecture={recommended_architecture.value}"
         )
 
@@ -325,6 +329,8 @@ class ReasoningAnalyzer:
 
     def __init__(self, llm_provider: LLMProvider):
         self.llm_provider = llm_provider
+        # Get logger from service registry
+        self.logger = require_service('logger', context='ReasoningAnalyzer')
         self.reasoning_types = {
             "logical": "Step-by-step logical deduction and inference",
             "causal": "Understanding cause-and-effect relationships",
@@ -382,10 +388,10 @@ Respond with a single JSON object only (no code fences). JSON schema (keys only;
 
         try:
             response = await self.llm_provider.generate(prompt, purpose="reasoning_analysis")
-            app_logger.debug(f"Reasoning analysis response: {response[:200]}...")
+            self.logger.debug(f"Reasoning analysis response: {response[:200]}...")
 
             if not response or not response.strip():
-                app_logger.warning("Empty response from LLM for reasoning analysis")
+                self.logger.warning("Empty response from LLM for reasoning analysis")
                 return self._default_reasoning_analysis(description)
 
             json_text = _extract_json(response.strip())
@@ -414,8 +420,8 @@ Respond with a single JSON object only (no code fences). JSON schema (keys only;
             )
 
         except Exception as e:
-            app_logger.error(f"Failed to analyze reasoning complexity: {e}")
-            app_logger.debug(f"Raw response was: {response if 'response' in locals() else 'No response received'}")
+            self.logger.error(f"Failed to analyze reasoning complexity: {e}")
+            self.logger.debug(f"Raw response was: {response if 'response' in locals() else 'No response received'}")
             return self._default_reasoning_analysis(description)
 
     def _default_reasoning_analysis(self, description: str) -> ReasoningNeeds:
@@ -436,6 +442,8 @@ class DecisionEvaluator:
 
     def __init__(self, llm_provider: LLMProvider):
         self.llm_provider = llm_provider
+        # Get logger from service registry
+        self.logger = require_service('logger', context='DecisionEvaluator')
 
     async def map_decision_boundaries(self, requirements: Dict[str, Any]) -> DecisionScope:
         """Map what decisions an agent can make autonomously."""
@@ -467,10 +475,10 @@ Respond with a single JSON object only (no code fences). JSON schema (keys only;
 
         try:
             response = await self.llm_provider.generate(prompt, purpose="decision_boundaries")
-            app_logger.debug(f"Decision boundaries response: {response[:200]}...")
+            self.logger.debug(f"Decision boundaries response: {response[:200]}...")
 
             if not response or not response.strip():
-                app_logger.warning("Empty response from LLM for decision boundaries")
+                self.logger.warning("Empty response from LLM for decision boundaries")
                 return self._default_decision_scope()
 
             json_text = _extract_json(response.strip())
@@ -492,8 +500,8 @@ Respond with a single JSON object only (no code fences). JSON schema (keys only;
             )
 
         except Exception as e:
-            app_logger.error(f"Failed to evaluate decision boundaries: {e}")
-            app_logger.debug(f"Raw response was: {response if 'response' in locals() else 'No response received'}")
+            self.logger.error(f"Failed to evaluate decision boundaries: {e}")
+            self.logger.debug(f"Raw response was: {response if 'response' in locals() else 'No response received'}")
             return self._default_decision_scope()
 
     def _default_decision_scope(self) -> DecisionScope:
@@ -513,6 +521,8 @@ class WorkflowAnalyzer:
 
     def __init__(self, llm_provider: LLMProvider):
         self.llm_provider = llm_provider
+        # Get logger from service registry
+        self.logger = require_service('logger', context='WorkflowAnalyzer')
 
     async def evaluate_end_to_end_automation(
         self, workflow_steps: List[str], requirements: Dict[str, Any]
@@ -558,16 +568,16 @@ STRICT OUTPUT FORMAT:
 - The first character of the response must be "{" and the last must be "}".
 """
 
-        app_logger.info(
+        self.logger.info(
             f"Workflow steps: {workflow_steps if workflow_steps else 'Not specified - infer from description'}"
         )
 
         try:
             response = await self.llm_provider.generate(prompt, purpose="workflow_automation")
-            app_logger.debug(f"Workflow automation response: {response[:200]}...")
+            self.logger.debug(f"Workflow automation response: {response[:200]}...")
 
             if not response or not response.strip():
-                app_logger.warning("Empty response from LLM for workflow automation")
+                self.logger.warning("Empty response from LLM for workflow automation")
                 return self._default_workflow_analysis()
 
             json_text = _extract_json(response.strip())
@@ -588,8 +598,8 @@ STRICT OUTPUT FORMAT:
             )
 
         except Exception as e:
-            app_logger.error(f"Failed to evaluate workflow automation: {e}")
-            app_logger.debug(f"Raw response was: {response if 'response' in locals() else 'No response received'}")
+            self.logger.error(f"Failed to evaluate workflow automation: {e}")
+            self.logger.debug(f"Raw response was: {response if 'response' in locals() else 'No response received'}")
             return self._default_workflow_analysis()
 
     def _default_workflow_analysis(self) -> WorkflowAutonomy:

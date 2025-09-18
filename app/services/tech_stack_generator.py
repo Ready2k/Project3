@@ -6,7 +6,7 @@ from pathlib import Path
 
 from app.pattern.matcher import MatchResult
 from app.llm.base import LLMProvider
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 from app.utils.audit import log_llm_call
 from datetime import datetime
 import shutil
@@ -25,6 +25,9 @@ class TechStackGenerator:
         self.llm_provider = llm_provider
         self.auto_update_catalog = auto_update_catalog
         
+        # Get logger from service registry
+        self.logger = require_service('logger', context='TechStackGenerator')
+        
         # Load technology catalog
         self.technology_catalog = self._load_technology_catalog()
         self.available_technologies = self._build_category_index()
@@ -38,7 +41,7 @@ class TechStackGenerator:
         catalog_path = Path("data/technologies.json")
         
         if not catalog_path.exists():
-            app_logger.warning("Technology catalog not found, falling back to pattern extraction")
+            self.logger.warning("Technology catalog not found, falling back to pattern extraction")
             return self._fallback_to_pattern_extraction()
         
         try:
@@ -46,11 +49,11 @@ class TechStackGenerator:
                 catalog = json.load(f)
             
             tech_count = len(catalog.get("technologies", {}))
-            app_logger.info(f"Loaded {tech_count} available technologies from catalog")
+            self.logger.info(f"Loaded {tech_count} available technologies from catalog")
             return catalog
             
         except Exception as e:
-            app_logger.error(f"Failed to load technology catalog: {e}")
+            self.logger.error(f"Failed to load technology catalog: {e}")
             return self._fallback_to_pattern_extraction()
     
     def _build_category_index(self) -> Dict[str, Set[str]]:
@@ -96,9 +99,9 @@ class TechStackGenerator:
                         }
                         
                 except Exception as e:
-                    app_logger.warning(f"Failed to load pattern {pattern_file}: {e}")
+                    self.logger.warning(f"Failed to load pattern {pattern_file}: {e}")
         
-        app_logger.info(f"Extracted {len(technologies)} technologies from patterns")
+        self.logger.info(f"Extracted {len(technologies)} technologies from patterns")
         
         return {
             "metadata": {"version": "fallback", "total_technologies": len(technologies)},
@@ -159,7 +162,7 @@ class TechStackGenerator:
         Returns:
             List of recommended technologies
         """
-        app_logger.info("Generating intelligent tech stack")
+        self.logger.info("Generating intelligent tech stack")
         
         # Extract constraint information
         banned_tools = set()
@@ -184,13 +187,13 @@ class TechStackGenerator:
                     requirements, pattern_technologies, banned_tools, required_integrations, constraints
                 )
                 if llm_tech_stack:
-                    app_logger.info(f"Generated LLM-based tech stack with {len(llm_tech_stack)} technologies")
+                    self.logger.info(f"Generated LLM-based tech stack with {len(llm_tech_stack)} technologies")
                     return llm_tech_stack
             except Exception as e:
-                app_logger.error(f"LLM tech stack generation failed: {e}")
+                self.logger.error(f"LLM tech stack generation failed: {e}")
         
         # Fallback to rule-based generation
-        app_logger.info("Using rule-based tech stack generation")
+        self.logger.info("Using rule-based tech stack generation")
         return self._generate_rule_based_tech_stack(
             matches, requirements, pattern_technologies, banned_tools, required_integrations
         )
@@ -330,9 +333,9 @@ Respond with a JSON object containing:
             
             # Ensure prompt is a string (defensive programming)
             if not isinstance(prompt, str):
-                app_logger.error(f"ERROR: Prompt is not a string! Type: {type(prompt)}")
+                self.logger.error(f"ERROR: Prompt is not a string! Type: {type(prompt)}")
                 prompt = str(prompt)
-                app_logger.info("Converted prompt to string")
+                self.logger.info("Converted prompt to string")
             
             response = await self.llm_provider.generate(prompt, purpose="tech_stack_generation")
             
@@ -357,7 +360,7 @@ Respond with a JSON object containing:
                     response_str = response
             else:
                 # Fallback for unexpected response types
-                app_logger.warning(f"Unexpected response type: {type(response)}")
+                self.logger.warning(f"Unexpected response type: {type(response)}")
                 return None
             
             tech_stack = result.get("tech_stack", [])
@@ -380,11 +383,11 @@ Respond with a JSON object containing:
             # Validate and filter tech stack
             validated_tech_stack = self._validate_tech_stack(tech_stack, banned_tools)
             
-            app_logger.info(f"LLM tech stack reasoning: {reasoning}")
+            self.logger.info(f"LLM tech stack reasoning: {reasoning}")
             return validated_tech_stack
             
         except Exception as e:
-            app_logger.error(f"Failed to parse LLM tech stack response: {e}")
+            self.logger.error(f"Failed to parse LLM tech stack response: {e}")
             
             # Try to log the failed LLM call for debugging
             try:
@@ -400,7 +403,7 @@ Respond with a JSON object containing:
                     purpose="tech_stack_generation_failed"
                 )
             except Exception as log_error:
-                app_logger.warning(f"Failed to log failed LLM call: {log_error}")
+                self.logger.warning(f"Failed to log failed LLM call: {log_error}")
             
             return None
     
@@ -473,12 +476,12 @@ Respond with a JSON object containing:
             if isinstance(tech, dict):
                 # If it's a dict, try to extract the name
                 tech_name = tech.get('name') or tech.get('technology') or str(tech)
-                app_logger.warning(f"Tech stack item was dict, extracted name: {tech_name}")
+                self.logger.warning(f"Tech stack item was dict, extracted name: {tech_name}")
                 tech = tech_name
             elif not isinstance(tech, str):
                 # Convert to string if it's not already
                 tech = str(tech)
-                app_logger.warning(f"Tech stack item was {type(tech)}, converted to string: {tech}")
+                self.logger.warning(f"Tech stack item was {type(tech)}, converted to string: {tech}")
             
             # Check if technology is banned (exact match or word boundary match)
             tech_lower = tech.lower()
@@ -497,7 +500,7 @@ Respond with a JSON object containing:
                     break
             
             if is_banned:
-                app_logger.warning(f"Skipping banned technology: {tech}")
+                self.logger.warning(f"Skipping banned technology: {tech}")
                 continue
             
             validated.append(tech)
@@ -562,11 +565,11 @@ Respond with a JSON object containing:
             # Ensure tech is a string (handle cases where it might be a dict)
             if isinstance(tech, dict):
                 tech_name = tech.get('name') or tech.get('technology') or str(tech)
-                app_logger.warning(f"Tech stack item was dict, extracted name: {tech_name}")
+                self.logger.warning(f"Tech stack item was dict, extracted name: {tech_name}")
                 tech = tech_name
             elif not isinstance(tech, str):
                 tech = str(tech)
-                app_logger.warning(f"Tech stack item was {type(tech)}, converted to string: {tech}")
+                self.logger.warning(f"Tech stack item was {type(tech)}, converted to string: {tech}")
             
             # Check if technology is banned (exact match or word boundary match)
             tech_lower = tech.lower()
@@ -610,10 +613,10 @@ Respond with a JSON object containing:
             # Ensure tech_name is a string (handle cases where it might be a dict)
             if isinstance(tech_name, dict):
                 tech_name = tech_name.get('name') or tech_name.get('technology') or str(tech_name)
-                app_logger.warning(f"Tech stack item was dict in categorization, extracted name: {tech_name}")
+                self.logger.warning(f"Tech stack item was dict in categorization, extracted name: {tech_name}")
             elif not isinstance(tech_name, str):
                 tech_name = str(tech_name)
-                app_logger.warning(f"Tech stack item was {type(tech_name)} in categorization, converted to string: {tech_name}")
+                self.logger.warning(f"Tech stack item was {type(tech_name)} in categorization, converted to string: {tech_name}")
             
             # Find the technology in catalog
             tech_id = self.find_technology_by_name(tech_name)
@@ -720,7 +723,7 @@ Respond with a JSON object containing:
                 new_technologies.append(tech_name)
                 catalog_updated = True
                 
-                app_logger.info(f"Added new technology to catalog: {tech_name} -> {new_tech_id}")
+                self.logger.info(f"Added new technology to catalog: {tech_name} -> {new_tech_id}")
         
         # Save updated catalog to file if changes were made
         if catalog_updated:
@@ -734,7 +737,7 @@ Respond with a JSON object containing:
                 "last_auto_update": datetime.now().isoformat()
             })
             
-            app_logger.info(f"Catalog updated with {len(new_technologies)} new technologies: {', '.join(new_technologies)}")
+            self.logger.info(f"Catalog updated with {len(new_technologies)} new technologies: {', '.join(new_technologies)}")
     
     def _generate_tech_id(self, tech_name: str) -> str:
         """Generate a consistent technology ID from name.
@@ -844,19 +847,19 @@ Respond with a JSON object containing:
             with open(catalog_path, 'w') as f:
                 json.dump(self.technology_catalog, f, indent=2, sort_keys=True)
             
-            app_logger.info(f"Technology catalog saved to {catalog_path}")
+            self.logger.info(f"Technology catalog saved to {catalog_path}")
             
         except Exception as e:
-            app_logger.error(f"Failed to save technology catalog: {e}")
+            self.logger.error(f"Failed to save technology catalog: {e}")
             
             # Restore from backup if write failed
             if backup_path.exists():
                 try:
                     import shutil
                     shutil.copy2(backup_path, catalog_path)
-                    app_logger.info("Restored catalog from backup after write failure")
+                    self.logger.info("Restored catalog from backup after write failure")
                 except Exception as restore_error:
-                    app_logger.error(f"Failed to restore catalog from backup: {restore_error}")
+                    self.logger.error(f"Failed to restore catalog from backup: {restore_error}")
     
     async def add_technology_to_catalog(self, tech_name: str, tech_info: Optional[Dict[str, Any]] = None) -> str:
         """Manually add a technology to the catalog.
@@ -871,7 +874,7 @@ Respond with a JSON object containing:
         # Check if already exists
         existing_id = self.find_technology_by_name(tech_name)
         if existing_id:
-            app_logger.info(f"Technology {tech_name} already exists as {existing_id}")
+            self.logger.info(f"Technology {tech_name} already exists as {existing_id}")
             return existing_id
         
         # Generate new technology entry
@@ -906,5 +909,5 @@ Respond with a JSON object containing:
         # Save to file
         await self._save_catalog_to_file()
         
-        app_logger.info(f"Manually added technology: {tech_name} -> {tech_id}")
+        self.logger.info(f"Manually added technology: {tech_name} -> {tech_id}")
         return tech_id

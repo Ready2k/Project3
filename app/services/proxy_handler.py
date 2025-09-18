@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import httpx
 from pydantic import BaseModel
 
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 @dataclass
@@ -48,6 +48,8 @@ class ProxyHandler:
         
         Args:
             proxy_url: Proxy URL in format: http://[username:password@]host:port
+        # Get logger from service registry
+        self.logger = require_service('logger', context='import')
         """
         self.proxy_url = proxy_url
         self.proxy_config = self._parse_proxy_url(proxy_url) if proxy_url else None
@@ -65,11 +67,11 @@ class ProxyHandler:
             parsed = urlparse(proxy_url)
             
             if not parsed.hostname:
-                app_logger.error(f"Invalid proxy URL - no hostname: {proxy_url}")
+                self.logger.error(f"Invalid proxy URL - no hostname: {proxy_url}")
                 return None
             
             if not parsed.port:
-                app_logger.error(f"Invalid proxy URL - no port specified: {proxy_url}")
+                self.logger.error(f"Invalid proxy URL - no port specified: {proxy_url}")
                 return None
             
             # Extract authentication if present
@@ -93,7 +95,7 @@ class ProxyHandler:
             )
             
         except Exception as e:
-            app_logger.error(f"Failed to parse proxy URL {proxy_url}: {e}")
+            self.logger.error(f"Failed to parse proxy URL {proxy_url}: {e}")
             return None
     
     def get_httpx_proxy_config(self) -> Optional[Dict[str, str]]:
@@ -435,7 +437,7 @@ class ProxyHandler:
         for var in proxy_vars:
             proxy_url = os.environ.get(var)
             if proxy_url:
-                app_logger.info(f"Detected system proxy from {var}: {proxy_url}")
+                self.logger.info(f"Detected system proxy from {var}: {proxy_url}")
                 return proxy_url
         
         return None
@@ -489,7 +491,7 @@ class ProxyHandler:
             return False
             
         except Exception as e:
-            app_logger.error(f"Error checking no_proxy for {url}: {e}")
+            self.logger.error(f"Error checking no_proxy for {url}: {e}")
             return False
     
     def should_use_proxy_for_url(self, url: str) -> bool:
