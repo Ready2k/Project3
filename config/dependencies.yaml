@@ -1,0 +1,386 @@
+# Dependency Configuration
+# This file defines all system dependencies and their requirements
+
+dependencies:
+  # Core Required Dependencies
+  required:
+    - name: "streamlit"
+      version_constraint: ">=1.28.0"
+      import_name: "streamlit"
+      installation_name: "streamlit"
+      purpose: "Web UI framework for the application interface"
+      alternatives: ["dash", "gradio", "flask"]
+      category: "web_framework"
+      documentation_url: "https://docs.streamlit.io/"
+      
+    - name: "fastapi"
+      version_constraint: ">=0.104.0"
+      import_name: "fastapi"
+      installation_name: "fastapi"
+      purpose: "API framework for backend services"
+      alternatives: ["flask", "django", "tornado"]
+      category: "web_framework"
+      documentation_url: "https://fastapi.tiangolo.com/"
+      
+    - name: "pydantic"
+      version_constraint: ">=2.0.0"
+      import_name: "pydantic"
+      installation_name: "pydantic"
+      purpose: "Data validation and settings management"
+      alternatives: ["marshmallow", "cerberus", "voluptuous"]
+      category: "validation"
+      documentation_url: "https://docs.pydantic.dev/"
+      
+    - name: "pyyaml"
+      version_constraint: ">=6.0"
+      import_name: "yaml"
+      installation_name: "PyYAML"
+      purpose: "YAML configuration file parsing"
+      alternatives: ["ruamel.yaml", "oyaml"]
+      category: "serialization"
+      documentation_url: "https://pyyaml.org/"
+      
+    - name: "uvicorn"
+      version_constraint: ">=0.24.0"
+      import_name: "uvicorn"
+      installation_name: "uvicorn"
+      purpose: "ASGI server for FastAPI applications"
+      alternatives: ["gunicorn", "hypercorn", "daphne"]
+      category: "server"
+      documentation_url: "https://www.uvicorn.org/"
+      
+    - name: "python-multipart"
+      version_constraint: ">=0.0.6"
+      import_name: "multipart"
+      installation_name: "python-multipart"
+      purpose: "Form data parsing for FastAPI"
+      alternatives: []
+      category: "web_framework"
+      documentation_url: "https://github.com/andrew-d/python-multipart"
+
+  # Optional Dependencies for Enhanced Features
+  optional:
+    # LLM Providers
+    - name: "openai"
+      version_constraint: ">=1.3.0"
+      import_name: "openai"
+      installation_name: "openai"
+      purpose: "OpenAI API integration for LLM services"
+      alternatives: ["anthropic", "local_llm", "huggingface_hub"]
+      category: "llm_provider"
+      documentation_url: "https://platform.openai.com/docs"
+      features_enabled: ["gpt_models", "embeddings", "completions"]
+      
+    - name: "anthropic"
+      version_constraint: ">=0.7.0"
+      import_name: "anthropic"
+      installation_name: "anthropic"
+      purpose: "Anthropic Claude API integration"
+      alternatives: ["openai", "local_llm"]
+      category: "llm_provider"
+      documentation_url: "https://docs.anthropic.com/"
+      features_enabled: ["claude_models", "completions"]
+      
+    - name: "boto3"
+      version_constraint: ">=1.26.0"
+      import_name: "boto3"
+      installation_name: "boto3"
+      purpose: "AWS services integration including Bedrock"
+      alternatives: ["direct_api_calls"]
+      category: "cloud_provider"
+      documentation_url: "https://boto3.amazonaws.com/v1/documentation/api/latest/index.html"
+      features_enabled: ["bedrock_models", "s3_storage", "aws_auth"]
+      
+    # Diagram Generation
+    - name: "diagrams"
+      version_constraint: ">=0.23.0"
+      import_name: "diagrams"
+      installation_name: "diagrams"
+      purpose: "Infrastructure diagram generation"
+      alternatives: ["mermaid_only", "manual_diagrams"]
+      category: "visualization"
+      documentation_url: "https://diagrams.mingrammer.com/"
+      features_enabled: ["infrastructure_diagrams", "architecture_diagrams"]
+      system_requirements:
+        - "graphviz system package"
+      installation_notes: |
+        Requires Graphviz to be installed at system level:
+        - Ubuntu/Debian: sudo apt-get install graphviz
+        - macOS: brew install graphviz
+        - Windows: Download from https://graphviz.org/download/
+        
+    - name: "graphviz"
+      version_constraint: ">=0.20.0"
+      import_name: "graphviz"
+      installation_name: "graphviz"
+      purpose: "Graph visualization for diagrams"
+      alternatives: ["mermaid", "manual_graphs"]
+      category: "visualization"
+      documentation_url: "https://graphviz.readthedocs.io/"
+      features_enabled: ["graph_rendering", "dot_files"]
+      system_requirements:
+        - "graphviz system package"
+        
+    # Caching and Storage
+    - name: "redis"
+      version_constraint: ">=4.0.0"
+      import_name: "redis"
+      installation_name: "redis"
+      purpose: "Redis client for caching services"
+      alternatives: ["memory_cache", "file_cache"]
+      category: "caching"
+      documentation_url: "https://redis-py.readthedocs.io/"
+      features_enabled: ["distributed_cache", "session_storage", "rate_limiting"]
+      system_requirements:
+        - "Redis server"
+      installation_notes: |
+        Requires Redis server to be running:
+        - Local: Install Redis server for your OS
+        - Docker: docker run -d -p 6379:6379 redis:alpine
+        - Cloud: Use managed Redis service (AWS ElastiCache, etc.)
+        
+    # HTTP and Networking
+    - name: "requests"
+      version_constraint: ">=2.28.0"
+      import_name: "requests"
+      installation_name: "requests"
+      purpose: "HTTP client for external API calls"
+      alternatives: ["httpx", "urllib3", "aiohttp"]
+      category: "networking"
+      documentation_url: "https://requests.readthedocs.io/"
+      features_enabled: ["http_requests", "api_integration"]
+      
+    - name: "httpx"
+      version_constraint: ">=0.25.0"
+      import_name: "httpx"
+      installation_name: "httpx"
+      purpose: "Async HTTP client for external API calls"
+      alternatives: ["requests", "aiohttp"]
+      category: "networking"
+      documentation_url: "https://www.python-httpx.org/"
+      features_enabled: ["async_http", "http2_support"]
+      
+    # Machine Learning and Embeddings
+    - name: "sentence-transformers"
+      version_constraint: ">=2.2.0"
+      import_name: "sentence_transformers"
+      installation_name: "sentence-transformers"
+      purpose: "Sentence embeddings for semantic similarity"
+      alternatives: ["openai_embeddings", "huggingface_transformers"]
+      category: "ml"
+      documentation_url: "https://www.sbert.net/"
+      features_enabled: ["text_embeddings", "semantic_search"]
+      
+    - name: "numpy"
+      version_constraint: ">=1.24.0"
+      import_name: "numpy"
+      installation_name: "numpy"
+      purpose: "Numerical computing for embeddings and analysis"
+      alternatives: []
+      category: "ml"
+      documentation_url: "https://numpy.org/doc/"
+      features_enabled: ["vector_operations", "numerical_analysis"]
+      
+    - name: "scikit-learn"
+      version_constraint: ">=1.3.0"
+      import_name: "sklearn"
+      installation_name: "scikit-learn"
+      purpose: "Machine learning utilities and clustering"
+      alternatives: ["custom_ml", "tensorflow", "pytorch"]
+      category: "ml"
+      documentation_url: "https://scikit-learn.org/"
+      features_enabled: ["clustering", "similarity_metrics", "preprocessing"]
+
+  # Development Dependencies
+  development:
+    - name: "pytest"
+      version_constraint: ">=7.0.0"
+      import_name: "pytest"
+      installation_name: "pytest"
+      purpose: "Testing framework"
+      alternatives: ["unittest", "nose2"]
+      category: "testing"
+      documentation_url: "https://docs.pytest.org/"
+      
+    - name: "pytest-asyncio"
+      version_constraint: ">=0.21.0"
+      import_name: "pytest_asyncio"
+      installation_name: "pytest-asyncio"
+      purpose: "Async testing support for pytest"
+      alternatives: []
+      category: "testing"
+      documentation_url: "https://pytest-asyncio.readthedocs.io/"
+      
+    - name: "pytest-cov"
+      version_constraint: ">=4.0.0"
+      import_name: "pytest_cov"
+      installation_name: "pytest-cov"
+      purpose: "Code coverage reporting for tests"
+      alternatives: ["coverage"]
+      category: "testing"
+      documentation_url: "https://pytest-cov.readthedocs.io/"
+      
+    - name: "mypy"
+      version_constraint: ">=1.0.0"
+      import_name: "mypy"
+      installation_name: "mypy"
+      purpose: "Static type checking"
+      alternatives: ["pyright", "pyre"]
+      category: "type_checking"
+      documentation_url: "https://mypy.readthedocs.io/"
+      
+    - name: "black"
+      version_constraint: ">=23.0.0"
+      import_name: "black"
+      installation_name: "black"
+      purpose: "Code formatting"
+      alternatives: ["autopep8", "yapf"]
+      category: "formatting"
+      documentation_url: "https://black.readthedocs.io/"
+      
+    - name: "isort"
+      version_constraint: ">=5.12.0"
+      import_name: "isort"
+      installation_name: "isort"
+      purpose: "Import sorting and organization"
+      alternatives: []
+      category: "formatting"
+      documentation_url: "https://pycqa.github.io/isort/"
+      
+    - name: "flake8"
+      version_constraint: ">=6.0.0"
+      import_name: "flake8"
+      installation_name: "flake8"
+      purpose: "Code linting and style checking"
+      alternatives: ["pylint", "ruff"]
+      category: "linting"
+      documentation_url: "https://flake8.pycqa.org/"
+      
+    - name: "pre-commit"
+      version_constraint: ">=3.0.0"
+      import_name: "pre_commit"
+      installation_name: "pre-commit"
+      purpose: "Git pre-commit hooks for code quality"
+      alternatives: []
+      category: "development_tools"
+      documentation_url: "https://pre-commit.com/"
+
+# Feature Dependency Mapping
+# Maps application features to their required dependencies
+feature_dependencies:
+  web_ui:
+    required: ["streamlit", "fastapi", "uvicorn"]
+    optional: []
+    
+  api_backend:
+    required: ["fastapi", "pydantic", "uvicorn"]
+    optional: ["redis"]
+    
+  llm_integration:
+    required: []
+    optional: ["openai", "anthropic", "boto3"]
+    
+  diagram_generation:
+    required: []
+    optional: ["diagrams", "graphviz"]
+    
+  caching:
+    required: []
+    optional: ["redis"]
+    
+  embeddings:
+    required: []
+    optional: ["sentence-transformers", "numpy", "scikit-learn"]
+    
+  external_apis:
+    required: []
+    optional: ["requests", "httpx"]
+    
+  development:
+    required: []
+    optional: ["pytest", "pytest-asyncio", "pytest-cov", "mypy", "black", "isort", "flake8"]
+
+# Dependency Groups for Easy Installation
+dependency_groups:
+  minimal:
+    description: "Minimal dependencies for basic functionality"
+    dependencies: ["streamlit", "fastapi", "pydantic", "pyyaml", "uvicorn", "python-multipart"]
+    
+  standard:
+    description: "Standard installation with common optional features"
+    dependencies: ["streamlit", "fastapi", "pydantic", "pyyaml", "uvicorn", "python-multipart", 
+                  "requests", "numpy"]
+    
+  full:
+    description: "Full installation with all optional features"
+    dependencies: ["streamlit", "fastapi", "pydantic", "pyyaml", "uvicorn", "python-multipart",
+                  "openai", "anthropic", "boto3", "diagrams", "graphviz", "redis", 
+                  "requests", "httpx", "sentence-transformers", "numpy", "scikit-learn"]
+    
+  llm:
+    description: "LLM providers and related dependencies"
+    dependencies: ["openai", "anthropic", "boto3", "sentence-transformers", "numpy"]
+    
+  diagrams:
+    description: "Diagram generation dependencies"
+    dependencies: ["diagrams", "graphviz"]
+    
+  development:
+    description: "Development and testing dependencies"
+    dependencies: ["pytest", "pytest-asyncio", "pytest-cov", "mypy", "black", "isort", "flake8", "pre-commit"]
+
+# Environment-specific dependency requirements
+environments:
+  development:
+    required_groups: ["minimal", "development"]
+    optional_groups: ["standard"]
+    
+  testing:
+    required_groups: ["minimal", "development"]
+    optional_groups: []
+    
+  staging:
+    required_groups: ["standard"]
+    optional_groups: ["llm", "diagrams"]
+    
+  production:
+    required_groups: ["standard"]
+    optional_groups: ["full"]
+
+# Compatibility Matrix
+compatibility:
+  python_versions:
+    supported: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    recommended: "3.11"
+    
+  operating_systems:
+    supported: ["linux", "macos", "windows"]
+    notes:
+      windows: "Some diagram generation features may require additional setup"
+      macos: "Use Homebrew for system dependencies like Graphviz"
+      linux: "Use system package manager for system dependencies"
+
+# Validation Rules
+validation:
+  version_check_enabled: true
+  strict_version_checking: false  # Allow compatible versions even if not exact match
+  warn_on_missing_optional: true
+  fail_on_missing_required: true
+  check_system_dependencies: true
+  
+  # Custom validation rules
+  rules:
+    - name: "llm_provider_available"
+      description: "At least one LLM provider should be available"
+      condition: "any(['openai', 'anthropic', 'boto3'])"
+      severity: "warning"
+      
+    - name: "caching_backend_available"
+      description: "A caching backend should be available for production"
+      condition: "environment != 'production' or any(['redis'])"
+      severity: "warning"
+      
+    - name: "diagram_dependencies_complete"
+      description: "If diagrams is installed, graphviz should also be available"
+      condition: "not has('diagrams') or has('graphviz')"
+      severity: "error"
