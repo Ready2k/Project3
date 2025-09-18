@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from app.llm.base import LLMProvider
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class AutomationSuitability(Enum):
@@ -64,8 +64,8 @@ class AutomationSuitabilityAssessor:
         description = requirements.get('description', '')
         constraints = requirements.get('constraints', {})
         
-        app_logger.info(f"Assessing automation suitability for: {description[:100]}...")
-        app_logger.info(f"Agentic already rejected: {agentic_rejected}")
+        self.logger.info(f"Assessing automation suitability for: {description[:100]}...")
+        self.logger.info(f"Agentic already rejected: {agentic_rejected}")
         
         # Create assessment prompt
         prompt = self._create_assessment_prompt(description, constraints, agentic_rejected)
@@ -77,12 +77,12 @@ class AutomationSuitabilityAssessor:
             # Parse response
             assessment = self._parse_assessment_response(response)
             
-            app_logger.info(f"Automation suitability assessment: {assessment.suitability.value} (confidence: {assessment.confidence})")
+            self.logger.info(f"Automation suitability assessment: {assessment.suitability.value} (confidence: {assessment.confidence})")
             
             return assessment
             
         except Exception as e:
-            app_logger.error(f"Error in automation suitability assessment: {e}")
+            self.logger.error(f"Error in automation suitability assessment: {e}")
             # Return conservative fallback assessment
             return SuitabilityAssessment(
                 suitability=AutomationSuitability.NOT_SUITABLE,
@@ -199,8 +199,8 @@ IMPORTANT:
             )
             
         except Exception as e:
-            app_logger.error(f"Error parsing automation suitability response: {e}")
-            app_logger.error(f"Response was: {response}")
+            self.logger.error(f"Error parsing automation suitability response: {e}")
+            self.logger.error(f"Response was: {response}")
             
             # Return conservative fallback
             return SuitabilityAssessment(

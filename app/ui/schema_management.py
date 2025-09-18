@@ -10,7 +10,7 @@ from typing import Dict, Any, List
 import json
 
 from app.pattern.dynamic_schema_loader import dynamic_schema_loader
-from app.utils.logger import app_logger
+from app.utils.imports import require_service, optional_service
 
 
 def render_schema_management():

@@ -3,7 +3,7 @@
 from typing import Dict, Any, Optional
 import streamlit as st
 
-from app.utils.logger import app_logger
+from app.utils.imports import require_service, optional_service
 
 
 class ProviderConfigComponent:

@@ -14,20 +14,15 @@ import httpx
 import streamlit as st
 from streamlit.components.v1 import html
 
-# Import logger for error handling
-try:
-    from app.utils.logger import app_logger
-except ImportError:
-    # Fallback logger if app.utils.logger is not available
-    import logging
-    app_logger = logging.getLogger(__name__)
+# Import service utilities (but don't access services at module level)
+from app.utils.imports import require_service, optional_service
 
-# Optional import for OpenAI (for diagram generation)
-try:
-    import openai
-    OPENAI_AVAILABLE = True
-except ImportError:
-    OPENAI_AVAILABLE = False
+# Services will be initialized when the app starts
+app_logger = None
+llm_provider_service = None
+OPENAI_AVAILABLE = False
+
+
 
 # Custom exception for security feedback
 class SecurityFeedbackException(Exception):
@@ -1726,6 +1721,7 @@ class AutomatedAIAssessmentUI:
     
     def __init__(self):
         self.setup_page_config()
+        self.initialize_services()
         self.initialize_session_state()
     
     def setup_page_config(self):
@@ -1736,6 +1732,49 @@ class AutomatedAIAssessmentUI:
             layout="wide",
             initial_sidebar_state="expanded"
         )
+    
+    def initialize_services(self):
+        """Initialize services through the service registry."""
+        global app_logger, llm_provider_service, OPENAI_AVAILABLE
+        
+        # Always set up a fallback logger first
+        import logging
+        fallback_logger = logging.getLogger(__name__)
+        app_logger = fallback_logger
+        
+        try:
+            # Register core services if not already registered
+            from app.core.service_registration import register_core_services
+            from app.core.registry import get_registry
+            
+            registry = get_registry()
+            
+            # Check if services are already registered, if not register them
+            if not registry.has('logger'):
+                register_core_services()
+            
+            # Try to get the proper logger service
+            try:
+                service_logger = require_service('logger', context='streamlit_app initialization')
+                if service_logger:
+                    app_logger = service_logger
+            except Exception as logger_error:
+                fallback_logger.warning(f"Could not get logger service, using fallback: {logger_error}")
+            
+            # Get LLM provider service
+            llm_provider_service = optional_service('llm_provider_factory', context='streamlit_app initialization')
+            OPENAI_AVAILABLE = llm_provider_service is not None
+            
+            app_logger.info("🚀 Streamlit app services initialized successfully")
+            app_logger.info(f"📊 LLM provider service available: {OPENAI_AVAILABLE}")
+            
+        except Exception as e:
+            # Use fallback logger for error reporting
+            fallback_logger.error(f"Failed to initialize services: {e}")
+            
+            # Set fallback values
+            llm_provider_service = None
+            OPENAI_AVAILABLE = False
     
     def initialize_session_state(self):
         """Initialize Streamlit session state variables."""
@@ -4629,10 +4668,11 @@ verify_ssl = True
             return
         
         # Import tech stack generator for better categorization
-        try:
-            from app.services.tech_stack_generator import TechStackGenerator
-            generator = TechStackGenerator()
-            categorized_tech = generator.categorize_tech_stack_with_descriptions(tech_stack)
+        from app.utils.imports import optional_service
+        tech_stack_service = optional_service('tech_stack_generator', context='tech stack categorization')
+        
+        if tech_stack_service:
+            categorized_tech = tech_stack_service.categorize_tech_stack_with_descriptions(tech_stack)
             
             # Display categorized tech stack with descriptions
             for category_name, category_info in categorized_tech.items():
@@ -4655,12 +4695,12 @@ verify_ssl = True
                             else:
                                 # Fallback for string tech names
                                 tech_name = str(tech)
-                                tech_description = generator.get_technology_description(tech_name)
+                                tech_description = tech_stack_service.get_technology_description(tech_name) if tech_stack_service else f"Technology component: {tech_name}"
                             
                             st.info(f"**{tech_name}**\n\n{tech_description}")
             
-        except ImportError:
-            # Fallback to simple categorization if import fails
+        else:
+            # Fallback to simple categorization if service not available
             self._render_simple_tech_stack(tech_stack)
     
     def _render_simple_tech_stack(self, tech_stack: List[str]):
@@ -6176,21 +6216,103 @@ verify_ssl = True
             st.markdown(f"🔗 **[Open in Mermaid Live Editor]({mermaid_live_url})** - Test and modify your diagram online", unsafe_allow_html=True)
     
     def open_diagram_in_browser(self, mermaid_code: str, diagram_id: str):
-        """Create and save a standalone HTML file for the diagram."""
+        """Create and save a standalone HTML file for the diagram and open it in browser."""
         html_content = self.create_standalone_html(mermaid_code, diagram_id)
         
         # Save to exports directory
         import os
+        import base64
+        import webbrowser
+        from pathlib import Path
+        
         os.makedirs("exports", exist_ok=True)
         file_path = f"exports/diagram_{diagram_id}.html"
         
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
         
-        st.success(f"✅ Diagram saved to `{file_path}` - Open this file in your browser for full-size viewing!")
+        # Get absolute path for browser opening
+        abs_path = os.path.abspath(file_path)
+        file_url = f"file://{abs_path}"
         
-        # Show the file path as copyable text
-        st.code(f"open {file_path}", language="bash")
+        # Escape HTML content for JavaScript
+        escaped_html = html_content.replace('\\', '\\\\').replace('`', '\\`').replace('${', '\\${')
+        
+        # Create JavaScript that will actually work in Streamlit
+        open_js = f"""
+        <div id="diagram-opener-{diagram_id}">
+            <div style="padding: 15px; background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 4px; margin: 10px 0;">
+                <strong>🌐 Opening diagram in new tab...</strong><br>
+                <button onclick="openDiagramTab_{diagram_id}()" style="margin-top: 10px; padding: 8px 16px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    🚀 Click to Open Diagram
+                </button>
+                <br><small style="margin-top: 5px; display: block;">Auto-opening in 1 second... or click the button above</small>
+            </div>
+        </div>
+        
+        <script>
+        function openDiagramTab_{diagram_id}() {{
+            try {{
+                // Create a blob URL for the HTML content
+                const htmlContent = `{escaped_html}`;
+                const blob = new Blob([htmlContent], {{ type: 'text/html' }});
+                const url = URL.createObjectURL(blob);
+                
+                // Open in new tab
+                const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
+                
+                if (newWindow && !newWindow.closed) {{
+                    // Success message
+                    document.getElementById('diagram-opener-{diagram_id}').innerHTML = `
+                        <div style="padding: 15px; background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: 4px; margin: 10px 0;">
+                            <strong>✅ Diagram opened successfully!</strong><br>
+                            <small>Check your browser for the new tab with your diagram.</small>
+                        </div>
+                    `;
+                    
+                    // Clean up the blob URL after a delay
+                    setTimeout(() => URL.revokeObjectURL(url), 2000);
+                }} else {{
+                    throw new Error('Popup blocked or failed to open');
+                }}
+            }} catch (error) {{
+                // Popup blocked or error message
+                document.getElementById('diagram-opener-{diagram_id}').innerHTML = `
+                    <div style="padding: 15px; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; margin: 10px 0;">
+                        <strong>⚠️ Could not open new tab</strong><br>
+                        <small>Your browser may have blocked the popup. Please use the download button or manual options below.</small>
+                    </div>
+                `;
+                console.log('Failed to open diagram tab:', error);
+            }}
+        }}
+        
+        // Auto-trigger after a delay to allow page to load
+        setTimeout(function() {{
+            openDiagramTab_{diagram_id}();
+        }}, 1000);
+        </script>
+        """
+        
+        # Display the JavaScript
+        st.components.v1.html(open_js, height=120)
+        
+        # Also save file locally for backup
+        st.info(f"💾 Diagram also saved to `{file_path}` for local access")
+        
+        # Show the file path as copyable text for manual opening
+        with st.expander("🔧 Manual Options"):
+            st.code(f"open {file_path}", language="bash")
+            st.write("Or copy this path to open manually:", f"`{abs_path}`")
+            
+            # Add a download button as another option
+            st.download_button(
+                label="📥 Download HTML File",
+                data=html_content,
+                file_name=f"diagram_{diagram_id}.html",
+                mime="text/html",
+                key=f"download_html_{diagram_id}"
+            )
     
     def create_standalone_html(self, mermaid_code: str, diagram_id: str) -> str:
         """Create a standalone HTML file for viewing the diagram."""
@@ -6336,139 +6458,134 @@ verify_ssl = True
     
 
     def export_to_drawio(self, mermaid_code: str, diagram_title: str, diagram_id: str):
-        """Export Mermaid diagram to Draw.io format."""
+        """Export Mermaid diagram for Draw.io import."""
         try:
-            from app.exporters.drawio_exporter import DrawIOExporter
-            import tempfile
-            import os
+            # Provide Mermaid file for Draw.io import
+            st.success("✅ Export ready for Draw.io!")
             
-            # Create exporter
-            exporter = DrawIOExporter()
+            # Create download button for Mermaid file
+            st.download_button(
+                label="📝 Download Mermaid File (.mmd)",
+                data=mermaid_code,
+                file_name=f"{diagram_title.replace(' ', '_')}_{diagram_id}.mmd",
+                mime="text/plain",
+                key=f"download_mermaid_{diagram_id}"
+            )
             
-            # Create temporary file
-            with tempfile.NamedTemporaryFile(suffix='.drawio', delete=False) as tmp_file:
-                temp_path = tmp_file.name[:-7]  # Remove .drawio extension
+            # Create a simple Draw.io XML wrapper
+            drawio_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="{datetime.now().isoformat()}" agent="AAA-Streamlit" version="21.6.5" etag="generated">
+  <diagram name="{diagram_title}" id="diagram_{diagram_id}">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="mermaid-code" value="{mermaid_code.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')}" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Courier New;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="740" height="400" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>"""
             
-            try:
-                # Export to Draw.io format
-                drawio_file = exporter.export_mermaid_diagram(mermaid_code, diagram_title, temp_path)
-                
-                # Read the file content
-                with open(drawio_file, 'r', encoding='utf-8') as f:
-                    drawio_content = f.read()
-                
-                # Create download button
-                st.success("✅ Draw.io export ready!")
-                st.download_button(
-                    label="📐 Download Draw.io File",
-                    data=drawio_content,
-                    file_name=f"{diagram_title.replace(' ', '_')}_{diagram_id}.drawio",
-                    mime="application/xml",
-                    key=f"download_drawio_{diagram_id}"
-                )
-                
-                # Also create Mermaid file for direct import
-                st.download_button(
-                    label="📝 Download Mermaid File",
-                    data=mermaid_code,
-                    file_name=f"{diagram_title.replace(' ', '_')}_{diagram_id}.mmd",
-                    mime="text/plain",
-                    key=f"download_mermaid_{diagram_id}"
-                )
-                
-                st.info("""
-                **📐 How to use in Draw.io:**
-                1. Open [draw.io](https://app.diagrams.net/) or [diagrams.net](https://diagrams.net/)
-                2. Click "Open Existing Diagram"
-                3. Upload the downloaded .drawio file
-                4. Edit, customize, and enhance your diagram
-                
-                **Alternative:** Import the .mmd file directly using Draw.io's Mermaid import feature.
-                """)
-                
-            finally:
-                # Clean up temporary file
-                try:
-                    if os.path.exists(drawio_file):
-                        os.unlink(drawio_file)
-                except:
-                    pass
-                    
-        except ImportError:
-            st.error("❌ Draw.io export not available. Missing dependencies.")
+            st.download_button(
+                label="📐 Download Draw.io File (.drawio)",
+                data=drawio_xml,
+                file_name=f"{diagram_title.replace(' ', '_')}_{diagram_id}.drawio",
+                mime="application/xml",
+                key=f"download_drawio_{diagram_id}"
+            )
+            
+            st.info("""
+            **📐 How to use in Draw.io:**
+            
+            **Option 1 - Import Mermaid directly:**
+            1. Open [draw.io](https://app.diagrams.net/) or [diagrams.net](https://diagrams.net/)
+            2. Click "+" to create new diagram
+            3. Choose "Advanced" → "Mermaid"
+            4. Paste the Mermaid code from the .mmd file
+            5. Draw.io will convert it to an editable diagram
+            
+            **Option 2 - Open Draw.io file:**
+            1. Open [draw.io](https://app.diagrams.net/)
+            2. Click "Open Existing Diagram"
+            3. Upload the downloaded .drawio file
+            4. The Mermaid code will be displayed as text for reference
+            
+            **Tip:** Option 1 (Mermaid import) usually gives better results for editing.
+            """)
+            
         except Exception as e:
-            st.error(f"❌ Failed to export to Draw.io: {str(e)}")
-            app_logger.error(f"Draw.io export failed: {e}")
+            st.error(f"❌ Failed to prepare export: {str(e)}")
+            app_logger.error(f"Draw.io export preparation failed: {e}")
     
     def export_infrastructure_to_drawio(self, infrastructure_spec: Dict[str, Any], diagram_title: str, diagram_id: str):
-        """Export Infrastructure diagram to Draw.io format."""
+        """Export Infrastructure diagram for Draw.io import."""
         try:
-            from app.exporters.drawio_exporter import DrawIOExporter
-            import tempfile
-            import os
             import json
             
-            # Create exporter
-            exporter = DrawIOExporter()
+            st.success("✅ Export ready for Draw.io!")
             
-            # Create temporary file
-            with tempfile.NamedTemporaryFile(suffix='.drawio', delete=False) as tmp_file:
-                temp_path = tmp_file.name[:-7]  # Remove .drawio extension
+            # Create download buttons
+            col1, col2 = st.columns(2)
             
-            try:
-                # Export to Draw.io format
-                drawio_file = exporter.export_infrastructure_diagram(infrastructure_spec, diagram_title, temp_path)
+            with col1:
+                # Create a simple Draw.io XML with infrastructure spec as text
+                spec_json = json.dumps(infrastructure_spec, indent=2)
+                drawio_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="{datetime.now().isoformat()}" agent="AAA-Streamlit" version="21.6.5" etag="generated">
+  <diagram name="{diagram_title}" id="diagram_{diagram_id}">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="infrastructure-spec" value="{spec_json.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')}" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Courier New;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="740" height="600" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>"""
                 
-                # Read the file content
-                with open(drawio_file, 'r', encoding='utf-8') as f:
-                    drawio_content = f.read()
-                
-                # Create download buttons
-                st.success("✅ Draw.io export ready!")
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.download_button(
-                        label="📐 Download Draw.io File",
-                        data=drawio_content,
-                        file_name=f"{diagram_title.replace(' ', '_')}_{diagram_id}.drawio",
-                        mime="application/xml",
-                        key=f"download_infra_drawio_{diagram_id}"
-                    )
-                
-                with col2:
-                    st.download_button(
-                        label="📋 Download JSON Spec",
-                        data=json.dumps(infrastructure_spec, indent=2),
-                        file_name=f"{diagram_title.replace(' ', '_')}_{diagram_id}.json",
-                        mime="application/json",
-                        key=f"download_infra_json_{diagram_id}"
-                    )
-                
-                st.info("""
-                **📐 How to use in Draw.io:**
-                1. Open [draw.io](https://app.diagrams.net/) or [diagrams.net](https://diagrams.net/)
-                2. Click "Open Existing Diagram"
-                3. Upload the downloaded .drawio file
-                4. The diagram will open with cloud provider icons and proper layout
-                5. Customize colors, add annotations, or modify the architecture
-                
-                **💡 Tip:** The JSON specification can be used with other architecture tools or for documentation.
-                """)
-                
-            finally:
-                # Clean up temporary file
-                try:
-                    if os.path.exists(drawio_file):
-                        os.unlink(drawio_file)
-                except:
-                    pass
-                    
-        except ImportError:
-            st.error("❌ Draw.io export not available. Missing dependencies.")
+                st.download_button(
+                    label="📐 Download Draw.io File",
+                    data=drawio_xml,
+                    file_name=f"{diagram_title.replace(' ', '_')}_{diagram_id}.drawio",
+                    mime="application/xml",
+                    key=f"download_infra_drawio_{diagram_id}"
+                )
+            
+            with col2:
+                st.download_button(
+                    label="📋 Download JSON Spec",
+                    data=json.dumps(infrastructure_spec, indent=2),
+                    file_name=f"{diagram_title.replace(' ', '_')}_{diagram_id}.json",
+                    mime="application/json",
+                    key=f"download_infra_json_{diagram_id}"
+                )
+            
+            st.info("""
+            **📐 How to use with Draw.io:**
+            
+            **For Infrastructure Diagrams:**
+            1. Open [draw.io](https://app.diagrams.net/) or [diagrams.net](https://diagrams.net/)
+            2. Use the AWS, GCP, or Azure shape libraries for cloud components
+            3. Reference the JSON specification to recreate the architecture
+            4. The Draw.io file contains the specification as text for reference
+            
+            **💡 Tips:**
+            - Use Draw.io's cloud provider libraries (AWS, GCP, Azure) for proper icons
+            - The JSON specification shows all components and their relationships
+            - Consider using Draw.io's "Import from" feature with cloud architecture templates
+            
+            **Alternative Tools:**
+            - Use the JSON with Terraform or CloudFormation for infrastructure as code
+            - Import into other architecture tools like Lucidchart or Visio
+            """)
+            
         except Exception as e:
-            st.error(f"❌ Failed to export to Draw.io: {str(e)}")
-            app_logger.error(f"Infrastructure Draw.io export failed: {e}")
+            st.error(f"❌ Failed to prepare export: {str(e)}")
+            app_logger.error(f"Infrastructure Draw.io export preparation failed: {e}")
 
     def render_infrastructure_diagram(self, infrastructure_spec: Dict[str, Any], diagram_type: str):
         """Render an infrastructure diagram using mingrammer/diagrams."""
@@ -6511,10 +6628,10 @@ verify_ssl = True
         infra_redraw_count = st.session_state.get(f"infra_redraw_count_{diagram_id}", 0)
         
         # Try to generate and display the infrastructure diagram
-        try:
-            from app.diagrams.infrastructure import InfrastructureDiagramGenerator
-            
-            generator = InfrastructureDiagramGenerator()
+        from app.utils.imports import optional_service
+        infrastructure_diagram_service = optional_service('infrastructure_diagram_generator', context='infrastructure diagram generation')
+        
+        if infrastructure_diagram_service:
             
             # Create temporary file for the diagram with redraw counter to ensure uniqueness
             with tempfile.NamedTemporaryFile(suffix=f'_{infra_redraw_count}.png', delete=False) as tmp_file:
@@ -6522,7 +6639,7 @@ verify_ssl = True
             
             try:
                 # Generate the diagram
-                diagram_path, python_code = generator.generate_diagram(
+                diagram_path, python_code = infrastructure_diagram_service.generate_diagram(
                     infrastructure_spec, temp_path, format="png"
                 )
                 
@@ -6607,16 +6724,11 @@ verify_ssl = True
                         except:
                             pass
                             
-        except ImportError:
+        else:
             st.warning("""
             **Infrastructure Diagrams Not Available**
             
-            The `diagrams` library is not installed. To enable infrastructure diagrams:
-            
-            ```bash
-            pip install diagrams
-            # Also install Graphviz system dependency
-            ```
+            The infrastructure diagram service is not registered. This may be due to missing dependencies.
             
             **Showing specification instead:**
             """)
@@ -6654,84 +6766,87 @@ verify_ssl = True
     
     def download_infrastructure_diagram(self, infrastructure_spec: Dict[str, Any], diagram_id: str):
         """Generate and save infrastructure diagram for download."""
-        try:
-            from app.diagrams.infrastructure import InfrastructureDiagramGenerator
-            
-            generator = InfrastructureDiagramGenerator()
-            
-            # Create exports directory with absolute path
-            current_dir = os.getcwd()
-            exports_dir = os.path.join(current_dir, "exports")
-            os.makedirs(exports_dir, exist_ok=True)
-            st.info(f"📁 Created exports directory: {exports_dir}")
-            
-            output_path = os.path.join(exports_dir, f"infrastructure_diagram_{diagram_id}")
-            
-            # Generate PNG first
+        from app.utils.imports import optional_service
+        infrastructure_diagram_service = optional_service('infrastructure_diagram_generator', context='infrastructure diagram download')
+        
+        if infrastructure_diagram_service:
             try:
-                png_path, python_code = generator.generate_diagram(
-                    infrastructure_spec, output_path, format="png"
-                )
-                st.info(f"✅ PNG generated: {png_path}")
+                # Create exports directory with absolute path
+                current_dir = os.getcwd()
+                exports_dir = os.path.join(current_dir, "exports")
+                os.makedirs(exports_dir, exist_ok=True)
+                st.info(f"📁 Created exports directory: {exports_dir}")
                 
-                # Verify PNG file exists
-                if not os.path.exists(png_path):
-                    raise FileNotFoundError(f"PNG file not found after generation: {png_path}")
+                output_path = os.path.join(exports_dir, f"infrastructure_diagram_{diagram_id}")
                 
-            except Exception as png_error:
-                st.error(f"PNG generation failed: {str(png_error)}")
-                raise
-            
-            # Generate SVG
-            try:
-                svg_path, _ = generator.generate_diagram(
-                    infrastructure_spec, output_path, format="svg"
-                )
-                st.info(f"✅ SVG generated: {svg_path}")
+                # Generate PNG first
+                try:
+                    png_path, python_code = infrastructure_diagram_service.generate_diagram(
+                        infrastructure_spec, output_path, format="png"
+                    )
+                    st.info(f"✅ PNG generated: {png_path}")
+                    
+                    # Verify PNG file exists
+                    if not os.path.exists(png_path):
+                        raise FileNotFoundError(f"PNG file not found after generation: {png_path}")
+                    
+                except Exception as png_error:
+                    st.error(f"PNG generation failed: {str(png_error)}")
+                    raise
                 
-                # Verify SVG file exists
-                if not os.path.exists(svg_path):
-                    st.warning(f"SVG file not found after generation: {svg_path}")
+                # Generate SVG
+                try:
+                    svg_path, _ = infrastructure_diagram_service.generate_diagram(
+                        infrastructure_spec, output_path, format="svg"
+                    )
+                    st.info(f"✅ SVG generated: {svg_path}")
+                    
+                    # Verify SVG file exists
+                    if not os.path.exists(svg_path):
+                        st.warning(f"SVG file not found after generation: {svg_path}")
+                        svg_path = "SVG generation failed"
+                    
+                except Exception as svg_error:
+                    st.warning(f"SVG generation failed: {str(svg_error)}")
                     svg_path = "SVG generation failed"
                 
-            except Exception as svg_error:
-                st.warning(f"SVG generation failed: {str(svg_error)}")
-                svg_path = "SVG generation failed"
+                # Save the Python code
+                try:
+                    code_path = os.path.join(exports_dir, f"infrastructure_diagram_{diagram_id}.py")
+                    with open(code_path, 'w') as f:
+                        f.write(python_code)
+                    st.info(f"✅ Python code saved: {code_path}")
+                except Exception as code_error:
+                    st.warning(f"Python code save failed: {str(code_error)}")
+                    code_path = "Python code save failed"
             
-            # Save the Python code
-            try:
-                code_path = os.path.join(exports_dir, f"infrastructure_diagram_{diagram_id}.py")
-                with open(code_path, 'w') as f:
-                    f.write(python_code)
-                st.info(f"✅ Python code saved: {code_path}")
-            except Exception as code_error:
-                st.warning(f"Python code save failed: {str(code_error)}")
-                code_path = "Python code save failed"
-            
-            # Show success message
-            st.success(f"✅ Infrastructure diagram saved to exports/ directory!")
-            st.write(f"**Files created:**")
-            st.write(f"- `{png_path}` (PNG image)")
-            if svg_path != "SVG generation failed":
-                st.write(f"- `{svg_path}` (SVG vector)")
-            if code_path != "Python code save failed":
-                st.write(f"- `{code_path}` (Python source)")
-            
-        except Exception as e:
-            st.error(f"Failed to save infrastructure diagram: {str(e)}")
-            
-            # Show debugging information
-            with st.expander("🔍 Debug Information"):
-                st.write(f"**Error Type:** {type(e).__name__}")
-                st.write(f"**Error Message:** {str(e)}")
-                st.write(f"**Diagram ID:** {diagram_id}")
-                st.write(f"**Output Path:** exports/infrastructure_diagram_{diagram_id}")
-                st.write(f"**Current Directory:** {os.getcwd()}")
-                st.write(f"**Exports Directory Exists:** {os.path.exists('exports')}")
+                # Show success message
+                st.success(f"✅ Infrastructure diagram saved to exports/ directory!")
+                st.write(f"**Files created:**")
+                st.write(f"- `{png_path}` (PNG image)")
+                if svg_path != "SVG generation failed":
+                    st.write(f"- `{svg_path}` (SVG vector)")
+                if code_path != "Python code save failed":
+                    st.write(f"- `{code_path}` (Python source)")
                 
-                # Show infrastructure spec for debugging
-                st.write("**Infrastructure Specification:**")
-                st.json(infrastructure_spec)
+            except Exception as e:
+                st.error(f"Failed to save infrastructure diagram: {str(e)}")
+                
+                # Show debugging information
+                with st.expander("🔍 Debug Information"):
+                    st.write(f"**Error Type:** {type(e).__name__}")
+                    st.write(f"**Error Message:** {str(e)}")
+                    st.write(f"**Diagram ID:** {diagram_id}")
+                    st.write(f"**Output Path:** exports/infrastructure_diagram_{diagram_id}")
+                    st.write(f"**Current Directory:** {os.getcwd()}")
+                    st.write(f"**Exports Directory Exists:** {os.path.exists('exports')}")
+                    
+                    # Show infrastructure spec for debugging
+                    st.write("**Infrastructure Specification:**")
+                    st.json(infrastructure_spec)
+        else:
+            st.error("❌ Infrastructure diagram service not available. Cannot generate diagrams.")
+            st.info("💡 The infrastructure diagram generator service is not registered.")
     
     def render_observability_dashboard(self):
         """Render the observability dashboard with metrics and analytics."""
@@ -6934,86 +7049,90 @@ verify_ssl = True
                             st.write(f"**Current Session ID:** `{current_session_id[:8]}...`")
                             
                             if st.button("🔍 Check Current Session Data", key="check_session_data"):
-                                try:
-                                    from app.utils.audit import get_audit_logger
-                                    import sqlite3
-                                    audit_logger = get_audit_logger()
-                                    redacted_session = audit_logger._redact_session_id(current_session_id)
-                                    
-                                    with sqlite3.connect(audit_logger.db_path) as conn:
-                                        # Check for pattern matches
-                                        cursor = conn.execute("""
-                                            SELECT pattern_id, score, accepted, created_at 
-                                            FROM matches 
-                                            WHERE session_id = ? 
-                                            ORDER BY created_at DESC
-                                        """, [redacted_session])
-                                        matches = cursor.fetchall()
+                                from app.utils.imports import optional_service
+                                audit_logger = optional_service('audit_logger', context='session data check')
+                                
+                                if audit_logger:
+                                    try:
+                                        import sqlite3
+                                        redacted_session = audit_logger._redact_session_id(current_session_id)
                                         
-                                        # Check for LLM calls
-                                        cursor = conn.execute("""
-                                            SELECT provider, model, purpose, created_at 
-                                            FROM runs 
-                                            WHERE session_id = ? 
-                                            ORDER BY created_at DESC 
-                                            LIMIT 5
-                                        """, [redacted_session])
-                                        llm_calls = cursor.fetchall()
-                                        
-                                        if matches:
-                                            st.success(f"✅ Found {len(matches)} pattern matches for this session:")
-                                            for match in matches:
-                                                st.write(f"• **{match[0]}** (score: {match[1]:.3f}) at {match[3][:19]}")
+                                        with sqlite3.connect(audit_logger.db_path) as conn:
+                                            # Check for pattern matches
+                                            cursor = conn.execute("""
+                                                SELECT pattern_id, score, accepted, created_at 
+                                                FROM matches 
+                                                WHERE session_id = ? 
+                                                ORDER BY created_at DESC
+                                            """, [redacted_session])
+                                            matches = cursor.fetchall()
                                             
-                                            # Check if there's a discrepancy with what's shown on Analysis page
-                                            pattern_ids = [match[0] for match in matches]
-                                            if len(set(pattern_ids)) > 1:
-                                                st.info("ℹ️ **Multiple patterns matched**: This session has matches for different patterns, which may indicate multiple analyses or pattern updates.")
+                                            # Check for LLM calls
+                                            cursor = conn.execute("""
+                                                SELECT provider, model, purpose, created_at 
+                                                FROM runs 
+                                                WHERE session_id = ? 
+                                                ORDER BY created_at DESC 
+                                                LIMIT 5
+                                            """, [redacted_session])
+                                            llm_calls = cursor.fetchall()
                                             
-                                            # Show most recent pattern
-                                            most_recent_pattern = matches[0][0]
-                                            st.write(f"🎯 **Most recent pattern match**: {most_recent_pattern}")
-                                        else:
-                                            st.warning("❌ No pattern matches found for this session")
+                                            if matches:
+                                                st.success(f"✅ Found {len(matches)} pattern matches for this session:")
+                                                for match in matches:
+                                                    st.write(f"• **{match[0]}** (score: {match[1]:.3f}) at {match[3][:19]}")
+                                                
+                                                # Check if there's a discrepancy with what's shown on Analysis page
+                                                pattern_ids = [match[0] for match in matches]
+                                                if len(set(pattern_ids)) > 1:
+                                                    st.info("ℹ️ **Multiple patterns matched**: This session has matches for different patterns, which may indicate multiple analyses or pattern updates.")
+                                                
+                                                # Show most recent pattern
+                                                most_recent_pattern = matches[0][0]
+                                                st.write(f"🎯 **Most recent pattern match**: {most_recent_pattern}")
+                                            else:
+                                                st.warning("❌ No pattern matches found for this session")
+                                                
+                                            if llm_calls:
+                                                st.info(f"📡 Found {len(llm_calls)} recent LLM calls for this session:")
+                                                for call in llm_calls[:3]:  # Show first 3
+                                                    purpose = call[2] or "general"
+                                                    st.write(f"• {call[0]} {call[1]} ({purpose}) at {call[3][:19]}")
+                                            else:
+                                                st.warning("❌ No LLM calls found for this session")
+                                                
+                                            if not matches and not llm_calls:
+                                                st.error("🚨 This session has no recorded activity. You may need to complete an analysis first.")
                                             
-                                        if llm_calls:
-                                            st.info(f"📡 Found {len(llm_calls)} recent LLM calls for this session:")
-                                            for call in llm_calls[:3]:  # Show first 3
-                                                purpose = call[2] or "general"
-                                                st.write(f"• {call[0]} {call[1]} ({purpose}) at {call[3][:19]}")
-                                        else:
-                                            st.warning("❌ No LLM calls found for this session")
-                                            
-                                        if not matches and not llm_calls:
-                                            st.error("🚨 This session has no recorded activity. You may need to complete an analysis first.")
-                                            
-                                except Exception as e:
-                                    st.error(f"Error checking session data: {str(e)}")
+                                    except Exception as e:
+                                        st.error(f"Error checking session data: {str(e)}")
                         
                         # Show if there are any recent sessions with data
-                        try:
-                            from app.utils.audit import get_audit_logger
-                            import sqlite3
-                            audit_logger = get_audit_logger()
-                            with sqlite3.connect(audit_logger.db_path) as conn:
-                                cursor = conn.execute("""
-                                    SELECT session_id, COUNT(*) as match_count, MAX(created_at) as last_match
-                                    FROM matches 
-                                    WHERE created_at >= datetime('now', '-24 hours')
-                                    GROUP BY session_id 
-                                    ORDER BY last_match DESC 
-                                    LIMIT 3
-                                """)
-                                recent_sessions = cursor.fetchall()
-                                
-                                if recent_sessions:
-                                    st.write("**Recent sessions with pattern matches (last 24 hours):**")
-                                    for session in recent_sessions:
-                                        session_display = session[0][:8] + "..." if len(session[0]) > 8 else session[0]
-                                        st.write(f"• Session `{session_display}`: {session[1]} matches (last: {session[2][:19]})")
-                                    st.write("💡 Try selecting **Last 24 Hours** to see data from recent sessions")
-                        except Exception as e:
-                            st.write(f"Could not check recent sessions: {str(e)}")
+                        from app.utils.imports import optional_service
+                        audit_logger = optional_service('audit_logger', context='recent sessions check')
+                        
+                        if audit_logger:
+                            try:
+                                import sqlite3
+                                with sqlite3.connect(audit_logger.db_path) as conn:
+                                    cursor = conn.execute("""
+                                        SELECT session_id, COUNT(*) as match_count, MAX(created_at) as last_match
+                                        FROM matches 
+                                        WHERE created_at >= datetime('now', '-24 hours')
+                                        GROUP BY session_id 
+                                        ORDER BY last_match DESC 
+                                        LIMIT 3
+                                    """)
+                                    recent_sessions = cursor.fetchall()
+                                    
+                                    if recent_sessions:
+                                        st.write("**Recent sessions with pattern matches (last 24 hours):**")
+                                        for session in recent_sessions:
+                                            session_display = session[0][:8] + "..." if len(session[0]) > 8 else session[0]
+                                            st.write(f"• Session `{session_display}`: {session[1]} matches (last: {session[2][:19]})")
+                                        st.write("💡 Try selecting **Last 24 Hours** to see data from recent sessions")
+                            except Exception as e:
+                                st.write(f"Could not check recent sessions: {str(e)}")
                 else:
                     st.info("No pattern analytics available yet. Run some analyses to see pattern matching data.")
                     
@@ -7168,39 +7287,41 @@ verify_ssl = True
                 st.subheader("📈 Pattern Library Health")
                 
                 # Load all patterns to compare with usage
-                try:
-                    from app.pattern.loader import PatternLoader
-                    from pathlib import Path
-                    pattern_loader = PatternLoader(Path("data/patterns"))
-                    all_patterns = pattern_loader.load_patterns()
-                    
-                    total_patterns = len(all_patterns)
-                    used_patterns = len(stats)
-                    unused_patterns = total_patterns - used_patterns
-                    
-                    col1, col2, col3 = st.columns(3)
-                    
-                    with col1:
-                        st.metric("📚 Total Patterns", total_patterns)
-                    
-                    with col2:
-                        st.metric("✅ Used Patterns", used_patterns)
-                    
-                    with col3:
-                        usage_rate = (used_patterns / total_patterns * 100) if total_patterns > 0 else 0
-                        st.metric("📊 Usage Rate", f"{usage_rate:.1f}%")
-                    
-                    # Show unused patterns
-                    if unused_patterns > 0:
-                        used_pattern_ids = {stat['pattern_id'] for stat in stats}
-                        unused_pattern_ids = [p['pattern_id'] for p in all_patterns if p['pattern_id'] not in used_pattern_ids]
-                        
-                        st.info(f"**📋 Unused Patterns ({unused_patterns}):** {', '.join(unused_pattern_ids[:10])}")
-                        if len(unused_pattern_ids) > 10:
-                            st.caption(f"... and {len(unused_pattern_ids) - 10} more")
+                from app.utils.imports import optional_service
+                pattern_loader = optional_service('pattern_loader', context='pattern library health')
                 
-                except Exception as e:
-                    st.warning(f"Could not load pattern library for comparison: {e}")
+                if pattern_loader:
+                    try:
+                        from pathlib import Path
+                        all_patterns = pattern_loader.load_patterns()
+                        
+                        total_patterns = len(all_patterns)
+                        used_patterns = len(stats)
+                        unused_patterns = total_patterns - used_patterns
+                        
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            st.metric("📚 Total Patterns", total_patterns)
+                        
+                        with col2:
+                            st.metric("✅ Used Patterns", used_patterns)
+                        
+                        with col3:
+                            usage_rate = (used_patterns / total_patterns * 100) if total_patterns > 0 else 0
+                            st.metric("📊 Usage Rate", f"{usage_rate:.1f}%")
+                        
+                        # Show unused patterns
+                        if unused_patterns > 0:
+                            used_pattern_ids = {stat['pattern_id'] for stat in stats}
+                            unused_pattern_ids = [p['pattern_id'] for p in all_patterns if p['pattern_id'] not in used_pattern_ids]
+                            
+                            st.info(f"**📋 Unused Patterns ({unused_patterns}):** {', '.join(unused_pattern_ids[:10])}")
+                            if len(unused_pattern_ids) > 10:
+                                st.caption(f"... and {len(unused_pattern_ids) - 10} more")
+                
+                    except Exception as e:
+                        st.warning(f"Could not load pattern library for comparison: {e}")
             
             else:
                 st.info("No pattern matching data available yet. Complete some analyses to see insights.")
@@ -7499,17 +7620,19 @@ verify_ssl = True
     
     async def get_llm_messages(self) -> List[Dict[str, Any]]:
         """Fetch LLM messages from audit system."""
-        try:
-            from app.utils.audit import get_audit_logger
-            
-            audit_logger = get_audit_logger()
-            return audit_logger.get_llm_messages(
-                session_id=st.session_state.session_id if hasattr(st.session_state, 'session_id') else None,
-                limit=100
-            )
-            
-        except Exception as e:
-            st.error(f"Error fetching LLM messages: {str(e)}")
+        from app.utils.imports import optional_service
+        audit_logger = optional_service('audit_logger', context='LLM messages fetch')
+        
+        if audit_logger:
+            try:
+                return audit_logger.get_llm_messages(
+                    session_id=st.session_state.session_id if hasattr(st.session_state, 'session_id') else None,
+                    limit=100
+                )
+            except Exception as e:
+                st.error(f"Error fetching LLM messages: {str(e)}")
+                return []
+        else:
             return []
     
     async def get_provider_statistics(self, 
@@ -7517,23 +7640,23 @@ verify_ssl = True
                                     include_test_providers: bool = False,
                                     current_session_only: bool = False) -> Dict[str, Any]:
         """Fetch provider statistics from audit system with filtering options."""
-        try:
-            # Import audit system
-            from app.utils.audit import get_audit_logger
-            
-            audit_logger = get_audit_logger()
-            
-            # Get current session ID if filtering by current session
-            session_id = st.session_state.get('session_id') if current_session_only else None
-            
-            return audit_logger.get_provider_stats(
-                time_filter=time_filter,
-                include_test_providers=include_test_providers,
-                session_id=session_id
-            )
-            
-        except Exception as e:
-            st.error(f"Error fetching provider statistics: {str(e)}")
+        from app.utils.imports import optional_service
+        audit_logger = optional_service('audit_logger', context='provider metrics')
+        
+        if audit_logger:
+            try:
+                # Get current session ID if filtering by current session
+                session_id = st.session_state.get('session_id') if current_session_only else None
+                
+                return audit_logger.get_provider_stats(
+                    time_filter=time_filter,
+                    include_test_providers=include_test_providers,
+                    session_id=session_id
+                )
+            except Exception as e:
+                st.error(f"Error fetching provider statistics: {str(e)}")
+                return {}
+        else:
             return {}
     
     async def get_pattern_statistics(self, session_filter: str = None, time_filter: str = "All Time") -> Dict[str, Any]:
@@ -7546,73 +7669,75 @@ verify_ssl = True
         Returns:
             Pattern statistics dictionary
         """
-        try:
-            # Import audit system
-            from app.utils.audit import get_audit_logger
-            import sqlite3
-            from datetime import datetime, timedelta
-            
-            audit_logger = get_audit_logger()
-            
-            # Build custom query with filtering
-            base_query = """
-                SELECT 
-                    pattern_id,
-                    COUNT(*) as match_count,
-                    AVG(score) as avg_score,
-                    MIN(score) as min_score,
-                    MAX(score) as max_score,
-                    SUM(CASE WHEN accepted = 1 THEN 1 ELSE 0 END) as accepted_count
-                FROM matches 
-                WHERE 1=1
-            """
-            
-            params = []
-            
-            # Add session filter (use redacted session ID for database query)
-            if session_filter:
-                base_query += " AND session_id = ?"
-                # Redact the session ID to match what's stored in the database
-                redacted_session_id = audit_logger._redact_session_id(session_filter)
-                params.append(redacted_session_id)
-            
-            # Add time filter
-            if time_filter != "All Time":
-                if time_filter == "Last 24 Hours":
-                    cutoff = datetime.now() - timedelta(hours=24)
-                elif time_filter == "Last 7 Days":
-                    cutoff = datetime.now() - timedelta(days=7)
-                elif time_filter == "Last 30 Days":
-                    cutoff = datetime.now() - timedelta(days=30)
-                else:
-                    cutoff = None
+        from app.utils.imports import optional_service
+        audit_logger = optional_service('audit_logger', context='usage patterns')
+        
+        if audit_logger:
+            try:
+                import sqlite3
+                from datetime import datetime, timedelta
                 
-                if cutoff:
-                    base_query += " AND created_at >= ?"
-                    params.append(cutoff.isoformat())
-            
-            base_query += " GROUP BY pattern_id ORDER BY match_count DESC"
-            
-            # Execute custom query
-            with sqlite3.connect(audit_logger.db_path) as conn:
-                cursor = conn.execute(base_query, params)
+                # Build custom query with filtering
+                base_query = """
+                    SELECT 
+                        pattern_id,
+                        COUNT(*) as match_count,
+                        AVG(score) as avg_score,
+                        MIN(score) as min_score,
+                        MAX(score) as max_score,
+                        SUM(CASE WHEN accepted = 1 THEN 1 ELSE 0 END) as accepted_count
+                    FROM matches 
+                    WHERE 1=1
+                """
                 
-                stats = []
-                for row in cursor.fetchall():
-                    stats.append({
-                        'pattern_id': row[0],
-                        'match_count': row[1],
-                        'avg_score': round(row[2], 3) if row[2] else 0,
-                        'min_score': row[3],
-                        'max_score': row[4],
-                        'accepted_count': row[5],
-                        'acceptance_rate': round(row[5] / row[1], 3) if row[1] > 0 else 0
-                    })
+                params = []
                 
-                return {'pattern_stats': stats}
+                # Add session filter (use redacted session ID for database query)
+                if session_filter:
+                    base_query += " AND session_id = ?"
+                    # Redact the session ID to match what's stored in the database
+                    redacted_session_id = audit_logger._redact_session_id(session_filter)
+                    params.append(redacted_session_id)
+                
+                # Add time filter
+                if time_filter != "All Time":
+                    if time_filter == "Last 24 Hours":
+                        cutoff = datetime.now() - timedelta(hours=24)
+                    elif time_filter == "Last 7 Days":
+                        cutoff = datetime.now() - timedelta(days=7)
+                    elif time_filter == "Last 30 Days":
+                        cutoff = datetime.now() - timedelta(days=30)
+                    else:
+                        cutoff = None
+                    
+                    if cutoff:
+                        base_query += " AND created_at >= ?"
+                        params.append(cutoff.isoformat())
+                
+                base_query += " GROUP BY pattern_id ORDER BY match_count DESC"
+                
+                # Execute custom query
+                with sqlite3.connect(audit_logger.db_path) as conn:
+                    cursor = conn.execute(base_query, params)
+                    
+                    stats = []
+                    for row in cursor.fetchall():
+                        stats.append({
+                            'pattern_id': row[0],
+                            'match_count': row[1],
+                            'avg_score': round(row[2], 3) if row[2] else 0,
+                            'min_score': row[3],
+                            'max_score': row[4],
+                            'accepted_count': row[5],
+                            'acceptance_rate': round(row[5] / row[1], 3) if row[1] > 0 else 0
+                        })
+                    
+                    return {'pattern_stats': stats}
             
-        except Exception as e:
-            st.error(f"Error fetching pattern statistics: {str(e)}")
+            except Exception as e:
+                st.error(f"Error fetching pattern statistics: {str(e)}")
+                return {}
+        else:
             return {}
     
     def render_observability_admin(self):
@@ -7622,60 +7747,61 @@ verify_ssl = True
         st.write("**Database Management**")
         
         # Show database statistics
-        try:
-            from app.utils.audit import get_audit_logger
-            audit_logger = get_audit_logger()
-            
-            # Get total counts
-            with sqlite3.connect(audit_logger.db_path) as conn:
-                cursor = conn.execute("SELECT COUNT(*) FROM runs")
-                total_runs = cursor.fetchone()[0]
+        from app.utils.imports import optional_service
+        audit_logger = optional_service('audit_logger', context='database statistics')
+        
+        if audit_logger:
+            try:
+                # Get total counts
+                with sqlite3.connect(audit_logger.db_path) as conn:
+                    cursor = conn.execute("SELECT COUNT(*) FROM runs")
+                    total_runs = cursor.fetchone()[0]
+                    
+                    cursor = conn.execute("SELECT COUNT(*) FROM matches")
+                    total_matches = cursor.fetchone()[0]
+                    
+                    # Get test provider counts
+                    cursor = conn.execute("""
+                        SELECT COUNT(*) FROM runs 
+                        WHERE provider IN ('fake', 'MockLLM', 'error-provider', 'AuditedLLMProvider')
+                    """)
+                    test_runs = cursor.fetchone()[0]
                 
-                cursor = conn.execute("SELECT COUNT(*) FROM matches")
-                total_matches = cursor.fetchone()[0]
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Total LLM Calls", total_runs)
+                with col2:
+                    st.metric("Pattern Matches", total_matches)
+                with col3:
+                    st.metric("Test/Mock Calls", test_runs)
+            
+                # Cleanup options
+                st.write("**🧹 Cleanup Options**")
                 
-                # Get test provider counts
-                cursor = conn.execute("""
-                    SELECT COUNT(*) FROM runs 
-                    WHERE provider IN ('fake', 'MockLLM', 'error-provider', 'AuditedLLMProvider')
-                """)
-                test_runs = cursor.fetchone()[0]
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Total LLM Calls", total_runs)
-            with col2:
-                st.metric("Pattern Matches", total_matches)
-            with col3:
-                st.metric("Test/Mock Calls", test_runs)
-            
-            # Cleanup options
-            st.write("**🧹 Cleanup Options**")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.write("**Remove Test/Mock Provider Data**")
-                st.caption("Remove calls from fake, MockLLM, error-provider, and AuditedLLMProvider")
+                col1, col2 = st.columns(2)
                 
-                if st.button("🗑️ Clean Test Data", type="secondary"):
-                    try:
-                        with sqlite3.connect(audit_logger.db_path) as conn:
-                            cursor = conn.execute("""
-                                DELETE FROM runs 
-                                WHERE provider IN ('fake', 'MockLLM', 'error-provider', 'AuditedLLMProvider')
-                            """)
-                            deleted_count = cursor.rowcount
-                            conn.commit()
-                        
-                        st.success(f"✅ Removed {deleted_count} test/mock provider records")
-                        
-                    except Exception as e:
-                        st.error(f"❌ Error cleaning test data: {str(e)}")
-            
-            with col2:
-                st.write("**Remove Old Records**")
-                st.caption("Remove audit records older than specified days")
+                with col1:
+                    st.write("**Remove Test/Mock Provider Data**")
+                    st.caption("Remove calls from fake, MockLLM, error-provider, and AuditedLLMProvider")
+                
+                    if st.button("🗑️ Clean Test Data", type="secondary"):
+                        try:
+                            with sqlite3.connect(audit_logger.db_path) as conn:
+                                cursor = conn.execute("""
+                                    DELETE FROM runs 
+                                    WHERE provider IN ('fake', 'MockLLM', 'error-provider', 'AuditedLLMProvider')
+                                """)
+                                deleted_count = cursor.rowcount
+                                conn.commit()
+                            
+                            st.success(f"✅ Removed {deleted_count} test/mock provider records")
+                            
+                        except Exception as e:
+                            st.error(f"❌ Error cleaning test data: {str(e)}")
+                
+                with col2:
+                    st.write("**Remove Old Records**")
+                    st.caption("Remove audit records older than specified days")
                 
                 days_to_keep = st.number_input("Days to keep", min_value=1, max_value=365, value=30)
                 
@@ -7686,48 +7812,50 @@ verify_ssl = True
                         
                     except Exception as e:
                         st.error(f"❌ Error cleaning old records: {str(e)}")
+                
+                # Export options
+                st.write("**📤 Export Options**")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    if st.button("📊 Export Provider Stats", type="secondary"):
+                        try:
+                            import json
+                            stats = audit_logger.get_provider_stats(include_test_providers=True)
+                            stats_json = json.dumps(stats, indent=2, default=str)
+                            
+                            st.download_button(
+                                label="💾 Download Provider Stats JSON",
+                                data=stats_json,
+                                file_name=f"provider_stats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                                mime="application/json"
+                            )
+                            
+                        except Exception as e:
+                            st.error(f"❌ Error exporting stats: {str(e)}")
+                
+                with col2:
+                    if st.button("💬 Export LLM Messages", type="secondary"):
+                        try:
+                            messages = audit_logger.get_llm_messages(limit=1000)
+                            import json
+                            messages_json = json.dumps(messages, indent=2, default=str)
+                            
+                            st.download_button(
+                                label="💾 Download Messages JSON",
+                                data=messages_json,
+                                file_name=f"llm_messages_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                                mime="application/json"
+                            )
+                            
+                        except Exception as e:
+                            st.error(f"❌ Error exporting messages: {str(e)}")
             
-            # Export options
-            st.write("**📤 Export Options**")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                if st.button("📊 Export Provider Stats", type="secondary"):
-                    try:
-                        stats = audit_logger.get_provider_stats(include_test_providers=True)
-                        import json
-                        stats_json = json.dumps(stats, indent=2, default=str)
-                        
-                        st.download_button(
-                            label="💾 Download Provider Stats JSON",
-                            data=stats_json,
-                            file_name=f"provider_stats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                            mime="application/json"
-                        )
-                        
-                    except Exception as e:
-                        st.error(f"❌ Error exporting stats: {str(e)}")
-            
-            with col2:
-                if st.button("💬 Export LLM Messages", type="secondary"):
-                    try:
-                        messages = audit_logger.get_llm_messages(limit=1000)
-                        import json
-                        messages_json = json.dumps(messages, indent=2, default=str)
-                        
-                        st.download_button(
-                            label="💾 Download Messages JSON",
-                            data=messages_json,
-                            file_name=f"llm_messages_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                            mime="application/json"
-                        )
-                        
-                    except Exception as e:
-                        st.error(f"❌ Error exporting messages: {str(e)}")
-            
-        except Exception as e:
-            st.error(f"❌ Error loading admin data: {str(e)}")
+            except Exception as e:
+                st.error(f"❌ Error loading admin data: {str(e)}")
+        else:
+            st.error("❌ Audit logger service not available.")
     
     def render_unified_pattern_management(self):
         """Render the unified pattern management interface."""
@@ -7803,17 +7931,21 @@ verify_ssl = True
             """)
         
         # Load patterns using the pattern loader
-        try:
-            from app.pattern.loader import PatternLoader
-            pattern_loader = PatternLoader("data/patterns")
-            
-            # Auto-refresh cache when Pattern Library tab is opened to ensure we see current patterns
-            # This prevents showing deleted patterns that are cached
-            pattern_loader.refresh_cache()
-            patterns = pattern_loader.load_patterns()
-        except Exception as e:
-            st.error(f"❌ Error loading patterns: {str(e)}")
-            return
+        from app.utils.imports import optional_service
+        pattern_loader = optional_service('pattern_loader', context='pattern management')
+        patterns = []  # Initialize patterns as empty list
+        
+        if pattern_loader:
+            try:
+                # Auto-refresh cache when Pattern Library tab is opened to ensure we see current patterns
+                # This prevents showing deleted patterns that are cached
+                pattern_loader.refresh_cache()
+                patterns = pattern_loader.load_patterns()
+            except Exception as e:
+                st.error(f"❌ Error loading patterns: {str(e)}")
+                return
+        else:
+            st.warning("⚠️ Pattern loader service not available. Pattern management features will be limited.")
         
         # Unified management tabs - all pattern functionality in one place
         view_tab, edit_tab, create_tab, enhance_tab, analytics_tab = st.tabs([
@@ -8526,14 +8658,15 @@ verify_ssl = True
     
     def render_pattern_enhancement_tab(self):
         """Render the pattern enhancement functionality."""
-        try:
-            from app.pattern.enhanced_loader import EnhancedPatternLoader
-            from app.services.pattern_enhancement_service import PatternEnhancementService
+        from app.utils.imports import optional_service
+        enhanced_loader = optional_service('enhanced_pattern_loader', context='pattern enhancement')
+        enhancement_service = optional_service('pattern_enhancement_service', context='pattern enhancement')
+        
+        if enhanced_loader and enhancement_service:
             from app.ui.enhanced_pattern_management import render_pattern_enhancement
             from app.api import create_llm_provider, ProviderConfig
             
-            # Initialize enhanced pattern loader
-            enhanced_loader = EnhancedPatternLoader("data/patterns")
+            # Enhanced pattern loader is already available from service registry
             
             # Create LLM provider for enhancement service using user's configured provider
             session_id = st.session_state.get('session_id', 'pattern-enhancement')
@@ -8555,34 +8688,42 @@ verify_ssl = True
                 base_provider = FakeLLM({})
                 llm_provider = create_audited_provider(base_provider, session_id)
             
-            # Initialize enhancement service
-            enhancement_service = PatternEnhancementService(enhanced_loader, llm_provider)
+            # Enhancement service is already available from service registry
             
             # Render the pattern enhancement UI
             render_pattern_enhancement(enhanced_loader, enhancement_service)
             
-        except ImportError as e:
-            st.error(f"❌ Pattern enhancement not available: {e}")
-            st.info("💡 This feature requires the enhanced pattern system to be properly installed.")
+        else:
+            st.error("❌ Pattern enhancement not available: Required services not registered.")
+            st.info("💡 This feature requires the enhanced pattern system services to be registered.")
+        
+        # Handle any exceptions during enhancement
+        try:
+            pass  # Enhancement logic is now in the if block above
         except Exception as e:
             st.error(f"❌ Error loading pattern enhancement: {e}")
             app_logger.error(f"Pattern enhancement error: {e}")
     
     def render_pattern_analytics_tab(self):
         """Render the pattern analytics functionality."""
-        try:
-            from app.pattern.enhanced_loader import EnhancedPatternLoader
+        from app.utils.imports import optional_service
+        enhanced_loader = optional_service('enhanced_pattern_loader', context='pattern analytics')
+        
+        if enhanced_loader:
             from app.ui.enhanced_pattern_management import render_pattern_analytics
             
-            # Initialize enhanced pattern loader
-            enhanced_loader = EnhancedPatternLoader("data/patterns")
+            # Enhanced pattern loader is already available from service registry
             
             # Render the pattern analytics UI
             render_pattern_analytics(enhanced_loader)
             
-        except ImportError as e:
-            st.error(f"❌ Pattern analytics not available: {e}")
-            st.info("💡 This feature requires the enhanced pattern system to be properly installed.")
+        else:
+            st.error("❌ Pattern analytics not available: Enhanced pattern loader service not registered.")
+            st.info("💡 This feature requires the enhanced pattern system services to be registered.")
+        
+        # Handle any exceptions during analytics
+        try:
+            pass  # Analytics logic is now in the if block above
         except Exception as e:
             st.error(f"❌ Error loading pattern analytics: {e}")
             app_logger.error(f"Pattern analytics error: {e}")

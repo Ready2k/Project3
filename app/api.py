@@ -33,7 +33,20 @@ from app.qa.question_loop import QuestionLoop, TemplateLoader
 from app.services.agentic_recommendation_service import AgenticRecommendationService
 from app.services.jira import JiraService, JiraError, JiraConnectionError, JiraTicketNotFoundError
 from app.state.store import SessionState, Phase, DiskCacheStore, QAExchange
-from app.utils.logger import app_logger
+# Import logger utilities (will be replaced with service registry access)
+from app.utils.logger import app_logger as fallback_logger
+
+def get_api_logger():
+    """Get logger from service registry with fallback."""
+    try:
+        from app.utils.imports import optional_service
+        service_logger = optional_service('logger', context='FastAPI')
+        return service_logger if service_logger else fallback_logger
+    except Exception:
+        return fallback_logger
+
+# Use the helper function for logging
+app_logger = get_api_logger()
 from app.utils.audit import log_pattern_match
 from app.version import __version__, RELEASE_NAME
 from app.security import SecurityMiddleware, InputValidator, SecurityValidator, SecurityHeaders
@@ -96,6 +109,27 @@ app = FastAPI(
     redoc_url="/redoc",  # Explicitly set redoc URL
     openapi_url="/openapi.json"  # Explicitly set OpenAPI URL
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services when the FastAPI app starts."""
+    try:
+        # Register core services
+        from app.core.service_registration import register_core_services
+        register_core_services()
+        
+        # Get logger from service registry
+        from app.utils.imports import require_service
+        api_logger = require_service('logger', context='FastAPI startup')
+        api_logger.info("🚀 FastAPI app services initialized successfully")
+        
+    except Exception as e:
+        # Fallback to basic logging if service initialization fails
+        import logging
+        fallback_logger = logging.getLogger(__name__)
+        fallback_logger.error(f"Failed to initialize FastAPI services: {e}")
+        # Continue startup even if service initialization fails
 
 
 # Add security middleware (order matters!)

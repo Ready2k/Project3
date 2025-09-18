@@ -14,7 +14,7 @@ from typing import Dict, List, Optional, Any, Tuple
 from urllib.parse import urlparse
 from pydantic import BaseModel
 import httpx
-from loguru import logger as app_logger
+from app.utils.imports import require_service
 
 from app.config import JiraConfig, JiraDeploymentType, JiraAuthType
 from app.services.jira_error_handler import JiraErrorHandler, JiraErrorDetail, create_jira_error_handler
@@ -85,11 +85,14 @@ class JiraDiagnostics:
         self.error_handler = create_jira_error_handler(config.deployment_type)
         self.timeout = config.timeout
         
+        # Get logger from service registry
+        self.logger = require_service('logger', context='JiraDiagnostics')
+        
     async def run_full_diagnostics(self) -> List[DiagnosticResult]:
         """Run all diagnostic checks and return comprehensive results."""
         results = []
         
-        app_logger.info("Starting comprehensive Jira diagnostics")
+        self.logger.info("Starting comprehensive Jira diagnostics")
         
         # Configuration validation
         config_result = await self._run_diagnostic_check(
@@ -143,7 +146,7 @@ class JiraDiagnostics:
             )
             results.append(auth_result)
         
-        app_logger.info(f"Diagnostics completed: {len(results)} checks performed")
+        self.logger.info(f"Diagnostics completed: {len(results)} checks performed")
         return results
     
     async def _run_diagnostic_check(self, name: str, check_func) -> DiagnosticResult:
@@ -169,7 +172,7 @@ class JiraDiagnostics:
                 
         except Exception as e:
             duration_ms = (time.time() - start_time) * 1000
-            app_logger.error(f"Diagnostic check '{name}' failed: {e}")
+            self.logger.error(f"Diagnostic check '{name}' failed: {e}")
             
             error_detail = self.error_handler.create_error_detail(
                 error_message=str(e),

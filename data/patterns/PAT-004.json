@@ -70,6 +70,23 @@
     ],
     "decision_authority_level": "medium"
   },
+  "exception_handling_strategy": {
+    "autonomous_resolution_approaches": [
+      "Alternative content generation approaches",
+      "Fallback to template-based content",
+      "Style guide validation and correction"
+    ],
+    "reasoning_fallbacks": [
+      "Human editor review for complex content",
+      "Template-based generation when AI fails",
+      "Brand guideline enforcement"
+    ],
+    "escalation_criteria": [
+      "Brand tone mismatch detected",
+      "Content quality below threshold",
+      "Legal or compliance concerns"
+    ]
+  },
   "agent_architecture": "single_agent",
   "enhanced_from_pattern": "PAT-004",
   "enhancement_type": "full",

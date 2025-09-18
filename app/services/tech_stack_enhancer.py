@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from app.services.multi_agent_designer import MultiAgentSystemDesign, AgentArchitectureType
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class ComponentPriority(Enum):
@@ -123,7 +123,7 @@ class TechStackEnhancer:
                                     agent_design: MultiAgentSystemDesign) -> Dict[str, Any]:
         """Enhance tech stack to support agent deployment."""
         
-        app_logger.info(f"Enhancing tech stack for {agent_design.architecture_type.value} architecture")
+        self.logger.info(f"Enhancing tech stack for {agent_design.architecture_type.value} architecture")
         
         architecture = agent_design.architecture_type.value
         
@@ -178,7 +178,7 @@ class TechStackEnhancer:
         enhanced_stack["readiness_score"] = readiness_score
         enhanced_stack["deployment_ready"] = readiness_score >= 0.7
         
-        app_logger.info(f"Tech stack enhancement complete: readiness={readiness_score:.2f}")
+        self.logger.info(f"Tech stack enhancement complete: readiness={readiness_score:.2f}")
         
         return enhanced_stack
     
@@ -187,7 +187,7 @@ class TechStackEnhancer:
                                         agent_design: MultiAgentSystemDesign) -> TechStackValidationResult:
         """Perform comprehensive tech stack validation."""
         
-        app_logger.info("Performing comprehensive tech stack validation")
+        self.logger.info("Performing comprehensive tech stack validation")
         
         # Get enhanced stack analysis
         enhanced_analysis = self.enhance_tech_stack_for_agents(base_tech_stack, agent_design)

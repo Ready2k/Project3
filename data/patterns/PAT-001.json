@@ -73,6 +73,23 @@
     ],
     "decision_authority_level": "medium"
   },
+  "exception_handling_strategy": {
+    "autonomous_resolution_approaches": [
+      "Automated error recovery",
+      "Fallback to alternative processing methods",
+      "Data validation and correction"
+    ],
+    "reasoning_fallbacks": [
+      "Rule-based processing when ML fails",
+      "Human-in-the-loop for complex cases",
+      "Default safe processing mode"
+    ],
+    "escalation_criteria": [
+      "Confidentiality concerns",
+      "Legal review required",
+      "Processing accuracy below threshold"
+    ]
+  },
   "agent_architecture": "single_agent",
   "enhanced_from_pattern": "PAT-001",
   "enhancement_type": "full",

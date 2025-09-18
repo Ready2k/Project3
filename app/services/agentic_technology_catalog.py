@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class TechnologyCategory(Enum):
@@ -54,6 +54,10 @@ class AgenticTechnologyCatalog:
     def __init__(self, catalog_path: Optional[Path] = None):
         self.catalog_path = catalog_path or Path("data/agentic_technologies.json")
         self.technologies = {}
+        
+        # Get logger from service registry
+        self.logger = require_service('logger', context='AgenticTechnologyCatalog')
+        
         self._load_catalog()
     
     def _load_catalog(self):
@@ -64,12 +68,12 @@ class AgenticTechnologyCatalog:
                 with open(self.catalog_path, 'r') as f:
                     catalog_data = json.load(f)
                     self._parse_catalog_data(catalog_data)
-                app_logger.info(f"Loaded {len(self.technologies)} agentic technologies")
+                self.logger.info(f"Loaded {len(self.technologies)} agentic technologies")
             except Exception as e:
-                app_logger.error(f"Failed to load agentic catalog: {e}")
+                self.logger.error(f"Failed to load agentic catalog: {e}")
                 self._create_default_catalog()
         else:
-            app_logger.info("Creating default agentic technology catalog")
+            self.logger.info("Creating default agentic technology catalog")
             self._create_default_catalog()
     
     def _parse_catalog_data(self, catalog_data: Dict[str, Any]):
@@ -98,7 +102,7 @@ class AgenticTechnologyCatalog:
                 )
                 self.technologies[tech_name] = technology
             except Exception as e:
-                app_logger.error(f"Failed to parse technology {tech_name}: {e}")
+                self.logger.error(f"Failed to parse technology {tech_name}: {e}")
     
     def _create_default_catalog(self):
         """Create default agentic technology catalog."""
@@ -429,7 +433,7 @@ class AgenticTechnologyCatalog:
         
         self.technologies[technology.name] = technology
         self._save_catalog()
-        app_logger.info(f"Added technology: {technology.name}")
+        self.logger.info(f"Added technology: {technology.name}")
     
     def update_technology(self, tech_name: str, updates: Dict[str, Any]):
         """Update an existing technology in the catalog."""
@@ -443,9 +447,9 @@ class AgenticTechnologyCatalog:
                     setattr(tech, field, value)
             
             self._save_catalog()
-            app_logger.info(f"Updated technology: {tech_name}")
+            self.logger.info(f"Updated technology: {tech_name}")
         else:
-            app_logger.warning(f"Technology not found for update: {tech_name}")
+            self.logger.warning(f"Technology not found for update: {tech_name}")
     
     def remove_technology(self, tech_name: str):
         """Remove a technology from the catalog."""
@@ -453,9 +457,9 @@ class AgenticTechnologyCatalog:
         if tech_name in self.technologies:
             del self.technologies[tech_name]
             self._save_catalog()
-            app_logger.info(f"Removed technology: {tech_name}")
+            self.logger.info(f"Removed technology: {tech_name}")
         else:
-            app_logger.warning(f"Technology not found for removal: {tech_name}")
+            self.logger.warning(f"Technology not found for removal: {tech_name}")
     
     def _save_catalog(self):
         """Save the catalog to file."""
@@ -489,7 +493,7 @@ class AgenticTechnologyCatalog:
                 json.dump(catalog_data, f, indent=2)
                 
         except Exception as e:
-            app_logger.error(f"Failed to save agentic catalog: {e}")
+            self.logger.error(f"Failed to save agentic catalog: {e}")
     
     def get_catalog_statistics(self) -> Dict[str, Any]:
         """Get statistics about the technology catalog."""

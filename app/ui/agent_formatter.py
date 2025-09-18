@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 from enum import Enum
 
 from app.services.multi_agent_designer import MultiAgentSystemDesign, AgentRole
-from app.utils.logger import app_logger
+from app.utils.imports import require_service, optional_service
 
 
 class AutonomyLevel(Enum):
@@ -108,6 +108,8 @@ class AgentDataFormatter:
             app_logger.debug("Using cached agent system format")
             return self._format_cache[cache_key]
         
+        # Get logger service
+        app_logger = require_service('logger', context="format_agent_system")
         app_logger.info("Formatting agent system for UI display")
         
         if not agent_design:

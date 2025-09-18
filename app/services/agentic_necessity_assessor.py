@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from app.llm.base import LLMProvider
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class SolutionType(Enum):
@@ -70,6 +70,9 @@ class AgenticNecessityAssessor:
     def __init__(self, llm_provider: LLMProvider):
         self.llm_provider = llm_provider
         
+        # Get logger from service registry
+        self.logger = require_service('logger', context='AgenticNecessityAssessor')
+        
         # Import configuration service for dynamic thresholds
         from app.services.configuration_service import get_config
         self.config_service = get_config()
@@ -82,7 +85,7 @@ class AgenticNecessityAssessor:
     async def assess_agentic_necessity(self, requirements: Dict[str, Any]) -> AgenticNecessityAssessment:
         """Use LLM to assess whether the requirement needs agentic AI or traditional automation."""
         
-        app_logger.info("Assessing agentic necessity using LLM analysis")
+        self.logger.info("Assessing agentic necessity using LLM analysis")
         
         description = requirements.get("description", "")
         domain = requirements.get("domain", "")
@@ -116,7 +119,7 @@ class AgenticNecessityAssessor:
             traditional_threshold=self.traditional_suitability_threshold
         )
         
-        app_logger.info(f"LLM agentic necessity assessment: {solution_type.value} (confidence: {confidence:.2f})")
+        self.logger.info(f"LLM agentic necessity assessment: {solution_type.value} (confidence: {confidence:.2f})")
         
         return assessment
     
@@ -205,14 +208,14 @@ Be objective and consider both perspectives."""
                 json_str = response[json_start:json_end]
                 analysis = json.loads(json_str)
                 
-                app_logger.info(f"LLM analysis completed: agentic={analysis.get('agentic_necessity_score', 0):.2f}, traditional={analysis.get('traditional_suitability_score', 0):.2f}")
+                self.logger.info(f"LLM analysis completed: agentic={analysis.get('agentic_necessity_score', 0):.2f}, traditional={analysis.get('traditional_suitability_score', 0):.2f}")
                 return analysis
             else:
-                app_logger.warning("Could not extract JSON from LLM response, using fallback analysis")
+                self.logger.warning("Could not extract JSON from LLM response, using fallback analysis")
                 return self._fallback_analysis(description, domain)
                 
         except Exception as e:
-            app_logger.error(f"LLM analysis failed: {e}, using fallback analysis")
+            self.logger.error(f"LLM analysis failed: {e}, using fallback analysis")
             return self._fallback_analysis(description, domain)
     
     def _fallback_analysis(self, description: str, domain: str) -> Dict[str, Any]:

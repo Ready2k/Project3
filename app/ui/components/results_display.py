@@ -3,7 +3,7 @@
 from typing import Dict, Any, List, Optional
 import streamlit as st
 
-from app.utils.logger import app_logger
+from app.utils.imports import require_service, optional_service
 from app.ui.mermaid_diagrams import mermaid_generator
 
 
@@ -207,10 +207,14 @@ class ResultsDisplayComponent:
                         
                 except Exception as e:
                     st.error(f"Failed to generate diagram: {str(e)}")
+                    # Get logger service for error logging
+                    app_logger = require_service('logger', context="render_diagram_generation")
                     app_logger.error(f"Diagram generation error: {e}")
                     
         except Exception as e:
             st.error(f"Error generating {diagram_type}: {str(e)}")
+            # Get logger service for error logging
+            app_logger = require_service('logger', context="render_diagram_generation")
             app_logger.error(f"Diagram generation error: {e}")
     
     def _build_context_diagram_prompt(self, requirements: Dict[str, Any], recommendations: List[Dict[str, Any]], tech_stack: List[str]) -> str:

@@ -6,7 +6,7 @@ from enum import Enum
 import json
 import os
 
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class DisplayDensity(Enum):
@@ -81,6 +81,8 @@ class AgentDisplayConfigManager:
         """Load configuration from file or create default."""
         
         if os.path.exists(self.config_file):
+        # Get logger from service registry
+        self.logger = require_service('logger', context='DisplayDensity')
             try:
                 with open(self.config_file, 'r') as f:
                     config_data = json.load(f)
@@ -98,15 +100,15 @@ class AgentDisplayConfigManager:
                     custom_security_requirements=config_data.get("custom_security_requirements", [])
                 )
                 
-                app_logger.info("Agent display configuration loaded from file")
+                self.logger.info("Agent display configuration loaded from file")
                 return config
                 
             except Exception as e:
-                app_logger.error(f"Error loading agent display config: {e}")
+                self.logger.error(f"Error loading agent display config: {e}")
                 return AgentDisplayConfig()
         
         else:
-            app_logger.info("Creating default agent display configuration")
+            self.logger.info("Creating default agent display configuration")
             return AgentDisplayConfig()
     
     def save_config(self) -> bool:
@@ -146,11 +148,11 @@ class AgentDisplayConfigManager:
             with open(self.config_file, 'w') as f:
                 json.dump(config_data, f, indent=2)
             
-            app_logger.info("Agent display configuration saved")
+            self.logger.info("Agent display configuration saved")
             return True
             
         except Exception as e:
-            app_logger.error(f"Error saving agent display config: {e}")
+            self.logger.error(f"Error saving agent display config: {e}")
             return False
     
     def update_preferences(self, **kwargs) -> bool:
@@ -185,7 +187,7 @@ class AgentDisplayConfigManager:
             return self.save_config()
             
         except Exception as e:
-            app_logger.error(f"Error updating preferences: {e}")
+            self.logger.error(f"Error updating preferences: {e}")
             return False
     
     def update_validation_rules(self, **kwargs) -> bool:
@@ -199,7 +201,7 @@ class AgentDisplayConfigManager:
             return self.save_config()
             
         except Exception as e:
-            app_logger.error(f"Error updating validation rules: {e}")
+            self.logger.error(f"Error updating validation rules: {e}")
             return False
     
     def add_custom_metric(self, metric: str) -> bool:

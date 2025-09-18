@@ -13,7 +13,7 @@ from app.config.system_config import (
     SystemConfiguration, SystemConfigurationManager,
     AutonomyConfig, PatternMatchingConfig, LLMGenerationConfig, RecommendationConfig
 )
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class ConfigurationService:
@@ -32,7 +32,9 @@ class ConfigurationService:
         """Initialize configuration service."""
         if self._config_manager is None:
             self._config_manager = SystemConfigurationManager()
-            app_logger.info("Configuration service initialized")
+            # Get logger from service registry
+            self.logger = require_service('logger', context='ConfigurationService')
+            self.logger.info("Configuration service initialized")
     
     @property
     def autonomy(self) -> AutonomyConfig:
@@ -58,10 +60,10 @@ class ConfigurationService:
         """Reload configuration from file."""
         try:
             self._config_manager = SystemConfigurationManager()
-            app_logger.info("Configuration reloaded successfully")
+            self.logger.info("Configuration reloaded successfully")
             return True
         except Exception as e:
-            app_logger.error(f"Failed to reload configuration: {e}")
+            self.logger.error(f"Failed to reload configuration: {e}")
             return False
     
     def get_autonomy_weights(self) -> Dict[str, float]:

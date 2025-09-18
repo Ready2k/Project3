@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional, List
 import httpx
 import streamlit as st
 
-from app.utils.logger import app_logger
+from app.utils.imports import require_service, optional_service
 from app.utils.error_boundaries import error_boundary, AsyncOperationManager
 
 
@@ -43,15 +43,23 @@ class AAA_APIClient:
         except httpx.HTTPStatusError as e:
             try:
                 error_detail = e.response.json().get("detail", str(e))
+                # Get logger service for error logging
+                app_logger = require_service('logger', context="api_request")
                 app_logger.error(f"API HTTP Error {e.response.status_code}: {error_detail}")
                 return {"error": f"API Error: {error_detail}"}
             except:
+                # Get logger service for error logging
+                app_logger = require_service('logger', context="api_request")
                 app_logger.error(f"API HTTP Error {e.response.status_code}: {str(e)}")
                 return {"error": f"API Error: {str(e)}"}
         except httpx.RequestError as e:
+            # Get logger service for error logging
+            app_logger = require_service('logger', context="api_request")
             app_logger.error(f"API Connection Error: {e}")
             return {"error": f"Connection Error: {e}"}
         except Exception as e:
+            # Get logger service for error logging
+            app_logger = require_service('logger', context="api_request")
             app_logger.error(f"Unexpected API Error: {e}")
             return {"error": f"Unexpected Error: {e}"}
     
@@ -141,6 +149,8 @@ class StreamlitAPIIntegration:
                 # Run the coroutine
                 return loop.run_until_complete(coro)
         except Exception as e:
+            # Get logger service for error logging
+            app_logger = require_service('logger', context="run_async_operation")
             app_logger.error(f"Async operation '{operation_name}' failed: {e}")
             if fallback_value is not None:
                 return fallback_value

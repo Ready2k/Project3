@@ -7,7 +7,7 @@ from pathlib import Path
 
 from app.llm.base import LLMProvider
 from app.services.tech_stack_generator import TechStackGenerator
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class PatternCreator:
@@ -18,6 +18,8 @@ class PatternCreator:
         
         Args:
             pattern_library_path: Path to pattern library directory
+        # Get logger from service registry
+        self.logger = require_service('logger', context='PatternCreator')
             llm_provider: LLM provider for generating pattern details
         """
         self.pattern_library_path = pattern_library_path
@@ -41,7 +43,7 @@ class PatternCreator:
             RuntimeError: If critical pattern creation steps fail
         """
         try:
-            app_logger.info(f"Creating new pattern for session {session_id}")
+            self.logger.info(f"Creating new pattern for session {session_id}")
             
             # Validate input requirements
             if not requirements:
@@ -53,9 +55,9 @@ class PatternCreator:
             # Generate unique pattern ID with duplicate validation
             try:
                 pattern_id = self._generate_pattern_id()
-                app_logger.info(f"Generated pattern ID: {pattern_id}")
+                self.logger.info(f"Generated pattern ID: {pattern_id}")
             except Exception as e:
-                app_logger.error(f"Failed to generate unique pattern ID: {e}")
+                self.logger.error(f"Failed to generate unique pattern ID: {e}")
                 raise RuntimeError(f"Pattern ID generation failed: {e}")
             
             # Extract key information from requirements with error handling
@@ -64,11 +66,11 @@ class PatternCreator:
                 domain = requirements.get("domain", "general")
                 
                 if not description.strip():
-                    app_logger.warning("Empty description provided, using fallback")
+                    self.logger.warning("Empty description provided, using fallback")
                     description = "automated process"
                     
             except Exception as e:
-                app_logger.error(f"Error extracting basic requirements: {e}")
+                self.logger.error(f"Error extracting basic requirements: {e}")
                 raise ValueError(f"Invalid requirements format: {e}")
             
             # Enhanced physical task detection with digital alternative check
@@ -93,22 +95,22 @@ class PatternCreator:
                 
                 # If clearly physical with minimal digital indicators, create "Not Automatable" pattern
                 if physical_count >= 1 and digital_count == 0:
-                    app_logger.info(f"🚫 SCOPE GATE: Detected physical task - '{description[:100]}...' (physical:{physical_count}, digital:{digital_count})")
+                    self.logger.info(f"🚫 SCOPE GATE: Detected physical task - '{description[:100]}...' (physical:{physical_count}, digital:{digital_count})")
                     return await self._create_physical_task_pattern(pattern_id, requirements, session_id)
                     
             except Exception as e:
-                app_logger.warning(f"Error in physical task detection: {e}")
+                self.logger.warning(f"Error in physical task detection: {e}")
                 # Continue with normal pattern creation if detection fails
             
             # Analyze requirements to determine pattern characteristics using LLM
             try:
                 pattern_analysis = await self._analyze_requirements(requirements)
-                app_logger.info(f"Successfully analyzed requirements for pattern {pattern_id}")
+                self.logger.info(f"Successfully analyzed requirements for pattern {pattern_id}")
             except Exception as e:
-                app_logger.error(f"LLM analysis failed for pattern {pattern_id}: {e}")
+                self.logger.error(f"LLM analysis failed for pattern {pattern_id}: {e}")
                 # Use fallback analysis
                 pattern_analysis = self._create_fallback_analysis(requirements)
-                app_logger.info(f"Using fallback analysis for pattern {pattern_id}")
+                self.logger.info(f"Using fallback analysis for pattern {pattern_id}")
             
             # Extract values from LLM analysis or use fallbacks with error handling
             try:
@@ -125,7 +127,7 @@ class PatternCreator:
                     pattern_name = f"Automated Process {pattern_id}"
                     
                 if feasibility not in ["Automatable", "Partially Automatable", "Not Automatable"]:
-                    app_logger.warning(f"Invalid feasibility '{feasibility}', defaulting to 'Automatable'")
+                    self.logger.warning(f"Invalid feasibility '{feasibility}', defaulting to 'Automatable'")
                     feasibility = "Automatable"
                     
                 if not isinstance(pattern_types, list):
@@ -135,7 +137,7 @@ class PatternCreator:
                     confidence_score = 0.7
                     
             except Exception as e:
-                app_logger.error(f"Error extracting pattern values: {e}")
+                self.logger.error(f"Error extracting pattern values: {e}")
                 raise RuntimeError(f"Pattern value extraction failed: {e}")
             
             # Generate tech stack with error handling
@@ -143,9 +145,9 @@ class PatternCreator:
                 tech_stack = pattern_analysis.get("tech_stack") or await self._generate_intelligent_tech_stack(requirements, pattern_analysis)
                 if not isinstance(tech_stack, list):
                     tech_stack = []
-                    app_logger.warning(f"Invalid tech stack format, using empty list")
+                    self.logger.warning(f"Invalid tech stack format, using empty list")
             except Exception as e:
-                app_logger.error(f"Tech stack generation failed: {e}")
+                self.logger.error(f"Tech stack generation failed: {e}")
                 tech_stack = self._generate_fallback_tech_stack(requirements, pattern_analysis)
             
             # Extract domain from analysis, with fallback
@@ -154,7 +156,7 @@ class PatternCreator:
                 if analyzed_domain and analyzed_domain not in ["None", "none", "general", ""]:
                     domain = analyzed_domain
             except Exception as e:
-                app_logger.warning(f"Error extracting domain: {e}")
+                self.logger.warning(f"Error extracting domain: {e}")
                 # Keep original domain
             
             # Get pattern description from LLM analysis with fallback
@@ -163,7 +165,7 @@ class PatternCreator:
                 if not pattern_description or pattern_description.strip() == "":
                     pattern_description = f"Automated processing system for {description[:100]}..."
             except Exception as e:
-                app_logger.warning(f"Error generating pattern description: {e}")
+                self.logger.warning(f"Error generating pattern description: {e}")
                 pattern_description = f"Automated processing system for {description[:100]}..."
             
             # Extract enhanced constraint information from LLM analysis with error handling
@@ -181,7 +183,7 @@ class PatternCreator:
                     compliance_considerations = []
                     
             except Exception as e:
-                app_logger.warning(f"Error extracting constraint information: {e}")
+                self.logger.warning(f"Error extracting constraint information: {e}")
                 banned_tools_suggestions = []
                 required_integrations_suggestions = []
                 compliance_considerations = []
@@ -193,7 +195,7 @@ class PatternCreator:
                     required_integrations_suggestions
                 ))
             except Exception as e:
-                app_logger.warning(f"Error combining integrations: {e}")
+                self.logger.warning(f"Error combining integrations: {e}")
                 all_required_integrations = required_integrations_suggestions
             
             # Create pattern dictionary with comprehensive error handling
@@ -235,36 +237,36 @@ class PatternCreator:
                     }
                 }
                 
-                app_logger.info(f"Successfully created pattern dictionary for {pattern_id}")
+                self.logger.info(f"Successfully created pattern dictionary for {pattern_id}")
                 
             except Exception as e:
-                app_logger.error(f"Error creating pattern dictionary: {e}")
+                self.logger.error(f"Error creating pattern dictionary: {e}")
                 raise RuntimeError(f"Pattern dictionary creation failed: {e}")
             
             # Save pattern to library with security validation and comprehensive error handling
             try:
                 success, message = await self._save_pattern_securely(new_pattern)
                 if not success:
-                    app_logger.error(f"Failed to save pattern due to security validation: {message}")
+                    self.logger.error(f"Failed to save pattern due to security validation: {message}")
                     raise ValueError(f"Pattern creation blocked: {message}")
                     
-                app_logger.info(f"Successfully saved pattern {pattern_id}: {pattern_name}")
+                self.logger.info(f"Successfully saved pattern {pattern_id}: {pattern_name}")
                 
             except ValueError:
                 # Re-raise security validation errors
                 raise
             except Exception as e:
-                app_logger.error(f"Unexpected error saving pattern: {e}")
+                self.logger.error(f"Unexpected error saving pattern: {e}")
                 raise RuntimeError(f"Pattern save operation failed: {e}")
             
-            app_logger.info(f"Created new pattern {pattern_id}: {pattern_name}")
+            self.logger.info(f"Created new pattern {pattern_id}: {pattern_name}")
             return new_pattern
             
         except (ValueError, RuntimeError):
             # Re-raise expected exceptions
             raise
         except Exception as e:
-            app_logger.error(f"Unexpected error in pattern creation: {e}")
+            self.logger.error(f"Unexpected error in pattern creation: {e}")
             raise RuntimeError(f"Pattern creation failed with unexpected error: {e}")
     
     def _generate_pattern_id(self) -> str:
@@ -292,7 +294,7 @@ class PatternCreator:
                     num = int(num_str)
                     max_num = max(max_num, num)
                 except (IndexError, ValueError) as e:
-                    app_logger.warning(f"Could not parse pattern ID from file {pattern_file}: {e}")
+                    self.logger.warning(f"Could not parse pattern ID from file {pattern_file}: {e}")
                     continue
             
             # Also check loaded patterns to ensure no conflicts
@@ -313,7 +315,7 @@ class PatternCreator:
                             continue
                             
             except Exception as e:
-                app_logger.warning(f"Could not load existing patterns for ID validation: {e}")
+                self.logger.warning(f"Could not load existing patterns for ID validation: {e}")
             
             # Generate new ID and validate uniqueness
             max_attempts = 100  # Prevent infinite loop
@@ -321,20 +323,20 @@ class PatternCreator:
                 new_id = f"PAT-{max_num + 1 + attempt:03d}"
                 
                 if new_id not in existing_ids:
-                    app_logger.info(f"Generated unique pattern ID: {new_id}")
+                    self.logger.info(f"Generated unique pattern ID: {new_id}")
                     return new_id
                     
-                app_logger.warning(f"Pattern ID {new_id} already exists, trying next number")
+                self.logger.warning(f"Pattern ID {new_id} already exists, trying next number")
             
             # If we get here, we couldn't generate a unique ID
             raise ValueError(f"Unable to generate unique pattern ID after {max_attempts} attempts")
             
         except Exception as e:
-            app_logger.error(f"Error generating pattern ID: {e}")
+            self.logger.error(f"Error generating pattern ID: {e}")
             # Fallback to UUID-based ID to ensure uniqueness
             import uuid
             fallback_id = f"PAT-{str(uuid.uuid4())[:8].upper()}"
-            app_logger.warning(f"Using fallback UUID-based pattern ID: {fallback_id}")
+            self.logger.warning(f"Using fallback UUID-based pattern ID: {fallback_id}")
             return fallback_id
     
     async def _analyze_requirements(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
@@ -351,7 +353,7 @@ class PatternCreator:
             try:
                 return await self._llm_analyze_requirements(requirements)
             except Exception as e:
-                app_logger.warning(f"LLM analysis failed: {e}")
+                self.logger.warning(f"LLM analysis failed: {e}")
         
         # Fallback to rule-based analysis
         description = requirements.get("description", "")
@@ -573,11 +575,11 @@ class PatternCreator:
                 "compliance_considerations": security_requirements
             }
             
-            app_logger.info(f"Created fallback analysis: {pattern_name}")
+            self.logger.info(f"Created fallback analysis: {pattern_name}")
             return fallback_analysis
             
         except Exception as e:
-            app_logger.error(f"Error creating fallback analysis: {e}")
+            self.logger.error(f"Error creating fallback analysis: {e}")
             # Return minimal fallback
             return {
                 "pattern_name": "General Automation Pattern",
@@ -721,13 +723,13 @@ IMPORTANT:
             if json_match:
                 json_str = json_match.group(0)
                 analysis = json.loads(json_str)
-                app_logger.info(f"LLM generated comprehensive pattern analysis: {analysis.get('pattern_name', 'Unknown')}")
+                self.logger.info(f"LLM generated comprehensive pattern analysis: {analysis.get('pattern_name', 'Unknown')}")
                 return analysis
             else:
                 raise ValueError("No JSON object found in LLM response")
                 
         except Exception as e:
-            app_logger.error(f"LLM pattern analysis failed: {e}")
+            self.logger.error(f"LLM pattern analysis failed: {e}")
             raise e
     
     def _generate_pattern_name(self, requirements: Dict[str, Any], analysis: Dict[str, Any]) -> str:
@@ -852,11 +854,11 @@ IMPORTANT:
                 [mock_match], requirements, constraints
             )
             
-            app_logger.info(f"Generated intelligent tech stack for new pattern: {tech_stack}")
+            self.logger.info(f"Generated intelligent tech stack for new pattern: {tech_stack}")
             return tech_stack
             
         except Exception as e:
-            app_logger.error(f"Failed to generate intelligent tech stack for new pattern: {e}")
+            self.logger.error(f"Failed to generate intelligent tech stack for new pattern: {e}")
             
             # Fallback to basic tech stack
             return self._generate_fallback_tech_stack(requirements, analysis)
@@ -1094,7 +1096,7 @@ IMPORTANT:
         # Save the pattern
         await self._save_pattern(physical_pattern)
         
-        app_logger.info(f"Created physical task pattern {pattern_id} for non-automatable task")
+        self.logger.info(f"Created physical task pattern {pattern_id} for non-automatable task")
         return physical_pattern
     
     async def _save_pattern_securely(self, pattern: Dict[str, Any]) -> tuple[bool, str]:
@@ -1106,8 +1108,8 @@ IMPORTANT:
         success, message = pattern_loader.save_pattern(pattern)
         
         if success:
-            app_logger.info(f"Securely saved pattern: {pattern['pattern_id']}")
+            self.logger.info(f"Securely saved pattern: {pattern['pattern_id']}")
         else:
-            app_logger.error(f"Pattern save blocked by security validation: {message}")
+            self.logger.error(f"Pattern save blocked by security validation: {message}")
         
         return success, message

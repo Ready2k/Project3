@@ -6,7 +6,7 @@ from enum import Enum
 
 from app.services.multi_agent_designer import MultiAgentSystemDesign, AgentArchitectureType
 from app.services.tech_stack_enhancer import TechStackValidationResult
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class DeploymentComplexity(Enum):
@@ -90,7 +90,7 @@ class DeploymentGuideGenerator:
                                    requirements: Dict[str, Any]) -> DeploymentGuidance:
         """Generate comprehensive deployment guidance."""
         
-        app_logger.info("Generating deployment guidance for agent system")
+        self.logger.info("Generating deployment guidance for agent system")
         
         # Determine deployment complexity
         complexity = self._assess_deployment_complexity(agent_design, tech_validation)
@@ -131,7 +131,7 @@ class DeploymentGuideGenerator:
             troubleshooting_guide=troubleshooting_guide
         )
         
-        app_logger.info(f"Deployment guidance generated: {complexity.value} complexity, {setup_time} setup time")
+        self.logger.info(f"Deployment guidance generated: {complexity.value} complexity, {setup_time} setup time")
         
         return guidance
     

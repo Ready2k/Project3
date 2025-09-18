@@ -11,7 +11,7 @@ from app.state.store import Recommendation
 from app.services.pattern_creator import PatternCreator
 from app.services.tech_stack_generator import TechStackGenerator
 from app.llm.base import LLMProvider
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 from app.utils.audit import log_pattern_match
 
 
@@ -26,6 +26,8 @@ class RecommendationService:
         
         Args:
             confidence_threshold: Minimum confidence for positive recommendations
+        # Get logger from service registry
+        self.logger = require_service('logger', context='RecommendationService')
             pattern_library_path: Path to pattern library for creating new patterns
             llm_provider: LLM provider for pattern creation and tech stack generation
         """
@@ -50,7 +52,7 @@ class RecommendationService:
         Returns:
             List of recommendations sorted by confidence
         """
-        app_logger.info(f"Generating recommendations from {len(matches)} pattern matches")
+        self.logger.info(f"Generating recommendations from {len(matches)} pattern matches")
         
         # Pre-processing scope gate for physical tasks
         description = str(requirements.get('description', '')).lower()
@@ -75,7 +77,7 @@ class RecommendationService:
         # If clearly physical with minimal digital indicators, create "Not Automatable" recommendation
         # Note: "automate" is often used in physical task descriptions, so we allow for 1 digital indicator
         if physical_score >= 2 and digital_score <= 1:
-            app_logger.info(f"🚫 SCOPE GATE: Creating 'Not Automatable' recommendation for physical task - '{description[:100]}...'")
+            self.logger.info(f"🚫 SCOPE GATE: Creating 'Not Automatable' recommendation for physical task - '{description[:100]}...'")
             physical_recommendation = Recommendation(
                 pattern_id="PHYSICAL_TASK",
                 feasibility="Not Automatable",
@@ -89,7 +91,7 @@ class RecommendationService:
         should_create_pattern = await self._should_create_new_pattern(matches, requirements, session_id)
         
         if should_create_pattern and self.pattern_creator:
-            app_logger.info("No suitable existing patterns found, creating new pattern")
+            self.logger.info("No suitable existing patterns found, creating new pattern")
             try:
                 new_pattern = await self.pattern_creator.create_pattern_from_requirements(
                     requirements, session_id
@@ -110,10 +112,10 @@ class RecommendationService:
                 
                 # Add the new pattern match to the beginning of the list
                 matches = [new_match] + matches
-                app_logger.info(f"Created new pattern {new_pattern['pattern_id']}: {new_pattern['name']}")
+                self.logger.info(f"Created new pattern {new_pattern['pattern_id']}: {new_pattern['name']}")
                 
             except Exception as e:
-                app_logger.error(f"Failed to create new pattern: {e}")
+                self.logger.error(f"Failed to create new pattern: {e}")
                 # Continue with existing matches if pattern creation fails
         
         for match in matches:
@@ -149,16 +151,16 @@ class RecommendationService:
                     score=match.blended_score,
                     accepted=None  # Will be updated later if user accepts/rejects
                 )
-                app_logger.debug(f"Logged pattern match: {match.pattern_id} (score: {match.blended_score:.3f})")
+                self.logger.debug(f"Logged pattern match: {match.pattern_id} (score: {match.blended_score:.3f})")
             except Exception as e:
-                app_logger.error(f"Failed to log pattern match for {match.pattern_id}: {e}")
+                self.logger.error(f"Failed to log pattern match for {match.pattern_id}: {e}")
             
             recommendations.append(recommendation)
         
         # Sort by confidence (descending)
         recommendations.sort(key=lambda r: r.confidence, reverse=True)
         
-        app_logger.info(f"Generated {len(recommendations)} recommendations")
+        self.logger.info(f"Generated {len(recommendations)} recommendations")
         return recommendations
     
     def _determine_feasibility(self, match: MatchResult, requirements: Dict[str, Any]) -> str:
@@ -174,7 +176,7 @@ class RecommendationService:
         # Prioritize LLM analysis if available
         llm_feasibility = requirements.get("llm_analysis_automation_feasibility")
         if llm_feasibility:
-            app_logger.info(f"Using LLM feasibility assessment: {llm_feasibility}")
+            self.logger.info(f"Using LLM feasibility assessment: {llm_feasibility}")
             # Map LLM response to our format
             if llm_feasibility == "Automatable":
                 return "Automatable"
@@ -187,7 +189,7 @@ class RecommendationService:
                 return llm_feasibility
         
         # Fallback to pattern-based analysis
-        app_logger.info(f"No LLM feasibility found, using pattern-based analysis")
+        self.logger.info(f"No LLM feasibility found, using pattern-based analysis")
         base_feasibility = match.feasibility
         
         # Analyze complexity factors
@@ -201,7 +203,7 @@ class RecommendationService:
         # Consider pattern confidence and match quality
         match_quality = match.blended_score
         
-        app_logger.debug(f"Feasibility analysis for {match.pattern_id}: "
+        self.logger.debug(f"Feasibility analysis for {match.pattern_id}: "
                         f"base={base_feasibility}, complexity={complexity_score}, "
                         f"risk={risk_score}, match_quality={match_quality}")
         
@@ -389,11 +391,11 @@ class RecommendationService:
         llm_confidence = self._extract_llm_confidence(requirements)
         
         if llm_confidence is not None:
-            app_logger.info(f"Using LLM confidence: {llm_confidence:.3f} (source: LLM)")
+            self.logger.info(f"Using LLM confidence: {llm_confidence:.3f} (source: LLM)")
             return llm_confidence
         
         # Fallback to pattern-based confidence calculation
-        app_logger.info(f"Using pattern-based confidence calculation for {match.pattern_id}")
+        self.logger.info(f"Using pattern-based confidence calculation for {match.pattern_id}")
         base_confidence = match.blended_score
         
         # Adjust based on feasibility determination
@@ -421,7 +423,7 @@ class RecommendationService:
         # Ensure confidence is within bounds
         confidence = max(0.0, min(1.0, confidence))
         
-        app_logger.info(f"Pattern-based confidence calculation for {match.pattern_id}: "
+        self.logger.info(f"Pattern-based confidence calculation for {match.pattern_id}: "
                        f"base={base_confidence:.3f}*0.4={base_weighted:.3f}, "
                        f"pattern={pattern_confidence:.3f}*0.3={pattern_weighted:.3f}, "
                        f"completeness={completeness_score:.3f}*0.3={completeness_weighted:.3f}, "
@@ -451,7 +453,7 @@ class RecommendationService:
         for source_key in confidence_sources:
             raw_value = requirements.get(source_key)
             if raw_value is not None:
-                app_logger.debug(f"Found potential confidence value in '{source_key}': {raw_value} (type: {type(raw_value)})")
+                self.logger.debug(f"Found potential confidence value in '{source_key}': {raw_value} (type: {type(raw_value)})")
                 
                 # Try to extract confidence from this source
                 confidence = self._parse_confidence_value(raw_value, source_key)
@@ -461,12 +463,12 @@ class RecommendationService:
         # Try to extract from full LLM response if available
         llm_response = requirements.get("llm_analysis_raw_response")
         if llm_response:
-            app_logger.debug("Attempting to extract confidence from raw LLM response")
+            self.logger.debug("Attempting to extract confidence from raw LLM response")
             confidence = self._extract_confidence_from_response(llm_response)
             if confidence is not None:
                 return confidence
         
-        app_logger.debug("No valid LLM confidence found in any source")
+        self.logger.debug("No valid LLM confidence found in any source")
         return None
     
     def _parse_confidence_value(self, raw_value: Any, source_key: str) -> Optional[float]:
@@ -490,7 +492,7 @@ class RecommendationService:
             # Handle boolean values (reject them)
             if isinstance(raw_value, bool):
                 validation_errors.append(f"Boolean value ({raw_value}) is not a valid confidence")
-                app_logger.warning(f"Confidence from '{source_key}' is boolean ({raw_value}), rejecting")
+                self.logger.warning(f"Confidence from '{source_key}' is boolean ({raw_value}), rejecting")
                 return None
             
             # Handle numeric values (int/float, but not bool)
@@ -508,17 +510,17 @@ class RecommendationService:
             
             # Handle list values - look for confidence in first element
             if isinstance(raw_value, list) and len(raw_value) > 0:
-                app_logger.debug(f"Attempting to extract confidence from list: {raw_value}")
+                self.logger.debug(f"Attempting to extract confidence from list: {raw_value}")
                 return self._parse_confidence_value(raw_value[0], f"{source_key}[0]")
             
             # Unsupported type
             validation_errors.append(f"Unsupported type {type(raw_value)}")
-            app_logger.warning(f"Confidence from '{source_key}' has unsupported type {type(raw_value)}: {raw_value}")
+            self.logger.warning(f"Confidence from '{source_key}' has unsupported type {type(raw_value)}: {raw_value}")
             return None
             
         except Exception as e:
             validation_errors.append(f"Exception during parsing: {e}")
-            app_logger.error(f"Error parsing confidence from '{source_key}': {e}")
+            self.logger.error(f"Error parsing confidence from '{source_key}': {e}")
             return None
     
     def _parse_confidence_from_string(self, value: str, source_key: str) -> Optional[float]:
@@ -545,7 +547,7 @@ class RecommendationService:
                 percentage = float(percentage_match.group(1))
                 # Convert percentage to decimal if > 1
                 confidence = percentage / 100.0 if percentage > 1.0 else percentage
-                app_logger.debug(f"Extracted percentage {percentage}% as confidence {confidence}")
+                self.logger.debug(f"Extracted percentage {percentage}% as confidence {confidence}")
                 return self._validate_confidence_range(confidence, source_key, value)
             except (ValueError, TypeError):
                 pass
@@ -557,7 +559,7 @@ class RecommendationService:
                 number = float(decimal_match.group(1))
                 # If number is > 1, assume it's a percentage
                 confidence = number / 100.0 if number > 1.0 else number
-                app_logger.debug(f"Extracted number {number} as confidence {confidence}")
+                self.logger.debug(f"Extracted number {number} as confidence {confidence}")
                 return self._validate_confidence_range(confidence, source_key, value)
             except (ValueError, TypeError):
                 pass
@@ -569,7 +571,7 @@ class RecommendationService:
         except (json.JSONDecodeError, TypeError):
             pass
         
-        app_logger.warning(f"Could not parse confidence from string '{value}' in '{source_key}'")
+        self.logger.warning(f"Could not parse confidence from string '{value}' in '{source_key}'")
         return None
     
     def _extract_confidence_from_dict(self, data: dict, source_key: str) -> Optional[float]:
@@ -586,10 +588,10 @@ class RecommendationService:
         
         for key in confidence_keys:
             if key in data:
-                app_logger.debug(f"Found confidence key '{key}' in dict from '{source_key}'")
+                self.logger.debug(f"Found confidence key '{key}' in dict from '{source_key}'")
                 return self._parse_confidence_value(data[key], f"{source_key}.{key}")
         
-        app_logger.debug(f"No confidence keys found in dict from '{source_key}': {list(data.keys())}")
+        self.logger.debug(f"No confidence keys found in dict from '{source_key}': {list(data.keys())}")
         return None
     
     def _extract_confidence_from_response(self, response: str) -> Optional[float]:
@@ -632,12 +634,12 @@ class RecommendationService:
                         confidence = number / 100.0
                     else:
                         confidence = number / 100.0 if number > 1.0 else number
-                    app_logger.debug(f"Extracted confidence {confidence} from response using pattern '{pattern}' (matched: '{matched_text}')")
+                    self.logger.debug(f"Extracted confidence {confidence} from response using pattern '{pattern}' (matched: '{matched_text}')")
                     return self._validate_confidence_range(confidence, "llm_response_text", matched_text)
                 except (ValueError, TypeError):
                     continue
         
-        app_logger.debug("No confidence patterns found in LLM response")
+        self.logger.debug("No confidence patterns found in LLM response")
         return None
     
     def _validate_confidence_range(self, confidence: float, source: str, original_value: str) -> Optional[float]:
@@ -653,16 +655,16 @@ class RecommendationService:
         """
         # Check for invalid values
         if math.isnan(confidence) or math.isinf(confidence):
-            app_logger.warning(f"Confidence from '{source}' is NaN or infinite: {confidence} (original: '{original_value}')")
+            self.logger.warning(f"Confidence from '{source}' is NaN or infinite: {confidence} (original: '{original_value}')")
             return None
         
         # Clamp to valid range
         clamped_confidence = max(0.0, min(1.0, confidence))
         
         if confidence != clamped_confidence:
-            app_logger.warning(f"Confidence from '{source}' was out of range ({confidence}), clamped to {clamped_confidence} (original: '{original_value}')")
+            self.logger.warning(f"Confidence from '{source}' was out of range ({confidence}), clamped to {clamped_confidence} (original: '{original_value}')")
         else:
-            app_logger.info(f"Valid confidence extracted from '{source}': {clamped_confidence} (original: '{original_value}')")
+            self.logger.info(f"Valid confidence extracted from '{source}': {clamped_confidence} (original: '{original_value}')")
         
         return clamped_confidence
     
@@ -729,15 +731,15 @@ class RecommendationService:
                 matches, requirements, constraints
             )
             
-            app_logger.info(f"Generated intelligent tech stack for {current_match.pattern_id}: {tech_stack}")
+            self.logger.info(f"Generated intelligent tech stack for {current_match.pattern_id}: {tech_stack}")
             return tech_stack
             
         except Exception as e:
-            app_logger.error(f"Failed to generate intelligent tech stack: {e}")
+            self.logger.error(f"Failed to generate intelligent tech stack: {e}")
             
             # Fallback to pattern's base tech stack
             fallback_stack = current_match.tech_stack.copy() if current_match.tech_stack else []
-            app_logger.info(f"Using fallback tech stack: {fallback_stack}")
+            self.logger.info(f"Using fallback tech stack: {fallback_stack}")
             return fallback_stack
     
     def _generate_reasoning(self, 
@@ -763,7 +765,7 @@ class RecommendationService:
         
         if llm_reasoning and match.blended_score > 0.7:
             # For good pattern matches, blend LLM insights with pattern-specific reasoning
-            app_logger.info(f"Enhancing pattern reasoning for {match.pattern_name} with LLM insights")
+            self.logger.info(f"Enhancing pattern reasoning for {match.pattern_name} with LLM insights")
             
             pattern_specific = f"Based on the '{match.pattern_name}' pattern with {match.blended_score:.0%} match confidence"
             
@@ -780,11 +782,11 @@ class RecommendationService:
         
         elif llm_reasoning:
             # For poor pattern matches, use LLM reasoning but note the pattern mismatch
-            app_logger.info(f"Using LLM reasoning due to poor pattern match ({match.blended_score:.0%})")
+            self.logger.info(f"Using LLM reasoning due to poor pattern match ({match.blended_score:.0%})")
             return f"Pattern match with '{match.pattern_name}' is moderate ({match.blended_score:.0%}). {llm_reasoning}"
         
         # Fallback to pattern-based reasoning with unique insights per pattern
-        app_logger.info(f"Using pattern-based reasoning for {match.pattern_name}")
+        self.logger.info(f"Using pattern-based reasoning for {match.pattern_name}")
         reasoning_parts = []
         
         # Pattern match quality with pattern-specific context
@@ -917,10 +919,10 @@ class RecommendationService:
                 tech_difference_score = await self._calculate_technology_difference_score(best_match, requirements)
                 decision_factors["significant_tech_difference"] = tech_difference_score > 0.7
                 
-                app_logger.info(f"Pattern creation analysis for session {session_id}:")
-                app_logger.info(f"  Technology novelty: {technology_novelty_score:.3f}")
-                app_logger.info(f"  Conceptual similarity: {conceptual_similarity_score:.3f}")
-                app_logger.info(f"  Technology difference: {tech_difference_score:.3f}")
+                self.logger.info(f"Pattern creation analysis for session {session_id}:")
+                self.logger.info(f"  Technology novelty: {technology_novelty_score:.3f}")
+                self.logger.info(f"  Conceptual similarity: {conceptual_similarity_score:.3f}")
+                self.logger.info(f"  Technology difference: {tech_difference_score:.3f}")
                 
                 # Enhanced decision logic: Create new pattern if technology is significantly different
                 if technology_novelty_score > 0.6 or tech_difference_score > 0.7:
@@ -936,7 +938,7 @@ class RecommendationService:
                     return False
                     
             except Exception as e:
-                app_logger.error(f"Error in technology analysis for pattern creation decision: {e}")
+                self.logger.error(f"Error in technology analysis for pattern creation decision: {e}")
                 # On error, default to creating new pattern to be safe
                 self._log_pattern_decision(True, decision_factors, session_id, f"Technology analysis failed ({e}) - defaulting to new pattern creation")
                 return True
@@ -981,7 +983,7 @@ class RecommendationService:
             return False
             
         except Exception as e:
-            app_logger.error(f"Critical error in pattern creation decision logic: {e}")
+            self.logger.error(f"Critical error in pattern creation decision logic: {e}")
             # On critical error, default to not creating new pattern to avoid potential issues
             return False
     
@@ -996,19 +998,15 @@ class RecommendationService:
         """
         decision_type = "CREATE_NEW_PATTERN" if should_create else "USE_EXISTING_PATTERN"
         
-        app_logger.info(f"PATTERN_DECISION [{session_id}]: {decision_type}")
-        app_logger.info(f"  Rationale: {rationale}")
-        app_logger.info(f"  Decision Factors:")
+        self.logger.info(f"PATTERN_DECISION [{session_id}]: {decision_type}")
+        self.logger.info(f"  Rationale: {rationale}")
+        self.logger.info(f"  Decision Factors:")
         for factor, value in decision_factors.items():
-            app_logger.info(f"    - {factor}: {value}")
+            self.logger.info(f"    - {factor}: {value}")
         
         # Also log to audit system if available
-        try:
-            from app.utils.audit import log_pattern_decision
-            # Note: This would need to be implemented in the audit system
-            # For now, we'll just use the logger
-        except ImportError:
-            pass
+        # Note: This would need to be implemented in the audit system
+        # For now, we'll just use the logger
     
     async def _calculate_technology_novelty_score(self, matches: List[MatchResult], requirements: Dict[str, Any]) -> float:
         """Calculate technology novelty score to determine if requirements contain novel technologies.
@@ -1058,7 +1056,7 @@ class RecommendationService:
                     req_technologies.add(keyword)
             
             if not req_technologies:
-                app_logger.debug("No technologies found in requirements - novelty score: 0.0")
+                self.logger.debug("No technologies found in requirements - novelty score: 0.0")
                 return 0.0
             
             # Load existing pattern technologies
@@ -1075,13 +1073,13 @@ class RecommendationService:
                         existing_technologies.update(str(tech).lower() for tech in tech_stack)
                     
             except Exception as e:
-                app_logger.warning(f"Could not load existing patterns for novelty analysis: {e}")
+                self.logger.warning(f"Could not load existing patterns for novelty analysis: {e}")
                 # If we can't load patterns, assume high novelty
                 return 0.8
             
             # Calculate novelty based on technology overlap
             if not existing_technologies:
-                app_logger.debug("No existing technologies found - novelty score: 1.0")
+                self.logger.debug("No existing technologies found - novelty score: 1.0")
                 return 1.0
             
             # Calculate intersection and union
@@ -1101,17 +1099,17 @@ class RecommendationService:
             # Combine novelty ratio (70%) and diversity factor (30%)
             novelty_score = (novelty_ratio * 0.7) + (diversity_factor * 0.3)
             
-            app_logger.info(f"Technology novelty analysis:")
-            app_logger.info(f"  Required technologies: {sorted(req_technologies)}")
-            app_logger.info(f"  Novel technologies: {sorted(novel_technologies)}")
-            app_logger.info(f"  Novelty ratio: {novelty_ratio:.3f}")
-            app_logger.info(f"  Diversity factor: {diversity_factor:.3f}")
-            app_logger.info(f"  Final novelty score: {novelty_score:.3f}")
+            self.logger.info(f"Technology novelty analysis:")
+            self.logger.info(f"  Required technologies: {sorted(req_technologies)}")
+            self.logger.info(f"  Novel technologies: {sorted(novel_technologies)}")
+            self.logger.info(f"  Novelty ratio: {novelty_ratio:.3f}")
+            self.logger.info(f"  Diversity factor: {diversity_factor:.3f}")
+            self.logger.info(f"  Final novelty score: {novelty_score:.3f}")
             
             return min(1.0, max(0.0, novelty_score))
             
         except Exception as e:
-            app_logger.error(f"Error calculating technology novelty score: {e}")
+            self.logger.error(f"Error calculating technology novelty score: {e}")
             # Return moderate novelty on error to be safe
             return 0.5
     
@@ -1165,7 +1163,7 @@ class RecommendationService:
                     req_technologies.add(keyword)
             
             if not req_technologies:
-                app_logger.debug("No technologies found in requirements - difference score: 0.0")
+                self.logger.debug("No technologies found in requirements - difference score: 0.0")
                 return 0.0
             
             # Get pattern technologies
@@ -1188,10 +1186,10 @@ class RecommendationService:
                         break
                         
             except Exception as e:
-                app_logger.warning(f"Could not load full pattern data for difference analysis: {e}")
+                self.logger.warning(f"Could not load full pattern data for difference analysis: {e}")
             
             if not pattern_technologies:
-                app_logger.debug("No technologies found in pattern - difference score: 1.0")
+                self.logger.debug("No technologies found in pattern - difference score: 1.0")
                 return 1.0
             
             # Calculate technology difference using Jaccard distance
@@ -1214,19 +1212,19 @@ class RecommendationService:
             # Combine Jaccard distance (60%) with new technology ratio (40%)
             difference_score = (jaccard_distance * 0.6) + (new_tech_ratio * 0.4)
             
-            app_logger.info(f"Technology difference analysis for {match.pattern_id}:")
-            app_logger.info(f"  Required technologies: {sorted(req_technologies)}")
-            app_logger.info(f"  Pattern technologies: {sorted(pattern_technologies)}")
-            app_logger.info(f"  New technologies: {sorted(new_technologies)}")
-            app_logger.info(f"  Jaccard similarity: {jaccard_similarity:.3f}")
-            app_logger.info(f"  Jaccard distance: {jaccard_distance:.3f}")
-            app_logger.info(f"  New tech ratio: {new_tech_ratio:.3f}")
-            app_logger.info(f"  Final difference score: {difference_score:.3f}")
+            self.logger.info(f"Technology difference analysis for {match.pattern_id}:")
+            self.logger.info(f"  Required technologies: {sorted(req_technologies)}")
+            self.logger.info(f"  Pattern technologies: {sorted(pattern_technologies)}")
+            self.logger.info(f"  New technologies: {sorted(new_technologies)}")
+            self.logger.info(f"  Jaccard similarity: {jaccard_similarity:.3f}")
+            self.logger.info(f"  Jaccard distance: {jaccard_distance:.3f}")
+            self.logger.info(f"  New tech ratio: {new_tech_ratio:.3f}")
+            self.logger.info(f"  Final difference score: {difference_score:.3f}")
             
             return min(1.0, max(0.0, difference_score))
             
         except Exception as e:
-            app_logger.error(f"Error calculating technology difference score: {e}")
+            self.logger.error(f"Error calculating technology difference score: {e}")
             # Return moderate difference on error to be safe
             return 0.5
 
@@ -1257,7 +1255,7 @@ class RecommendationService:
                     break
             
             if not pattern_data:
-                app_logger.warning(f"Could not find pattern {match.pattern_id} for similarity analysis")
+                self.logger.warning(f"Could not find pattern {match.pattern_id} for similarity analysis")
                 return 0.0
             
             # Check for conceptual similarity indicators
@@ -1329,16 +1327,16 @@ class RecommendationService:
             else:
                 final_similarity = 0
             
-            app_logger.info(f"Conceptual similarity analysis for {match.pattern_id}:")
-            app_logger.info(f"  Business process similarity: {req_business_matches} vs {pattern_business_matches} matches")
-            app_logger.info(f"  Domain match: {req_domain} vs {pattern_domain}")
-            app_logger.info(f"  Pattern types: {req_pattern_types} vs {pattern_types}")
-            app_logger.info(f"  Final similarity score: {final_similarity:.3f}")
+            self.logger.info(f"Conceptual similarity analysis for {match.pattern_id}:")
+            self.logger.info(f"  Business process similarity: {req_business_matches} vs {pattern_business_matches} matches")
+            self.logger.info(f"  Domain match: {req_domain} vs {pattern_domain}")
+            self.logger.info(f"  Pattern types: {req_pattern_types} vs {pattern_types}")
+            self.logger.info(f"  Final similarity score: {final_similarity:.3f}")
             
             return final_similarity
             
         except Exception as e:
-            app_logger.error(f"Error calculating conceptual similarity: {e}")
+            self.logger.error(f"Error calculating conceptual similarity: {e}")
             return 0.0
 
     async def _is_conceptually_similar(self, match: MatchResult, requirements: Dict[str, Any]) -> bool:
@@ -1357,7 +1355,7 @@ class RecommendationService:
         similarity_score = await self._calculate_conceptual_similarity_score(match, requirements)
         is_similar = similarity_score > 0.7
         
-        app_logger.info(f"Conceptual similarity check for {match.pattern_id}: {similarity_score:.3f} ({'similar' if is_similar else 'different'})")
+        self.logger.info(f"Conceptual similarity check for {match.pattern_id}: {similarity_score:.3f} ({'similar' if is_similar else 'different'})")
         
         return is_similar
     
@@ -1386,10 +1384,10 @@ class RecommendationService:
                     break
             
             if not pattern_data:
-                app_logger.error(f"Could not find pattern {match.pattern_id} to enhance")
+                self.logger.error(f"Could not find pattern {match.pattern_id} to enhance")
                 return
             
-            app_logger.info(f"Enhancing pattern {match.pattern_id} with new requirements")
+            self.logger.info(f"Enhancing pattern {match.pattern_id} with new requirements")
             
             # Track enhancement
             if "enhanced_sessions" not in pattern_data:
@@ -1411,13 +1409,13 @@ class RecommendationService:
                     suggested_tech = await self._suggest_additional_tech(pattern_data, requirements)
                     new_tech.update(suggested_tech)
                 except Exception as e:
-                    app_logger.warning(f"Could not get LLM tech suggestions: {e}")
+                    self.logger.warning(f"Could not get LLM tech suggestions: {e}")
             
             # Merge tech stacks
             if new_tech:
                 merged_tech = list(existing_tech.union(new_tech))
                 pattern_data["tech_stack"] = merged_tech
-                app_logger.info(f"Enhanced tech stack: added {list(new_tech - existing_tech)}")
+                self.logger.info(f"Enhanced tech stack: added {list(new_tech - existing_tech)}")
             
             # Merge pattern types
             existing_types = set(pattern_data.get("pattern_type", []))
@@ -1426,7 +1424,7 @@ class RecommendationService:
                 merged_types = list(existing_types.union(new_types))
                 pattern_data["pattern_type"] = merged_types
                 if new_types - existing_types:
-                    app_logger.info(f"Enhanced pattern types: added {list(new_types - existing_types)}")
+                    self.logger.info(f"Enhanced pattern types: added {list(new_types - existing_types)}")
             
             # Merge integrations
             existing_integrations = set(pattern_data.get("constraints", {}).get("required_integrations", []))
@@ -1437,7 +1435,7 @@ class RecommendationService:
                 merged_integrations = list(existing_integrations.union(new_integrations))
                 pattern_data["constraints"]["required_integrations"] = merged_integrations
                 if new_integrations - existing_integrations:
-                    app_logger.info(f"Enhanced integrations: added {list(new_integrations - existing_integrations)}")
+                    self.logger.info(f"Enhanced integrations: added {list(new_integrations - existing_integrations)}")
             
             # Merge compliance requirements
             existing_compliance = set(pattern_data.get("constraints", {}).get("compliance_requirements", []))
@@ -1448,7 +1446,7 @@ class RecommendationService:
                 merged_compliance = list(existing_compliance.union(new_compliance))
                 pattern_data["constraints"]["compliance_requirements"] = merged_compliance
                 if new_compliance - existing_compliance:
-                    app_logger.info(f"Enhanced compliance: added {list(new_compliance - existing_compliance)}")
+                    self.logger.info(f"Enhanced compliance: added {list(new_compliance - existing_compliance)}")
             
             # Update automation metadata if more specific info is available
             if "automation_metadata" in requirements:
@@ -1468,10 +1466,10 @@ class RecommendationService:
             with open(pattern_file, 'w') as f:
                 json.dump(pattern_data, f, indent=2)
             
-            app_logger.info(f"Successfully enhanced pattern {match.pattern_id}")
+            self.logger.info(f"Successfully enhanced pattern {match.pattern_id}")
             
         except Exception as e:
-            app_logger.error(f"Failed to enhance pattern {match.pattern_id}: {e}")
+            self.logger.error(f"Failed to enhance pattern {match.pattern_id}: {e}")
     
     async def _suggest_additional_tech(self, pattern_data: Dict[str, Any], requirements: Dict[str, Any]) -> List[str]:
         """Use LLM to suggest additional technologies for pattern enhancement.
@@ -1527,7 +1525,7 @@ If no additional technologies are needed, return an empty array [].
             return []
             
         except Exception as e:
-            app_logger.warning(f"Failed to get LLM tech suggestions: {e}")
+            self.logger.warning(f"Failed to get LLM tech suggestions: {e}")
             return []
     
     async def _enhance_pattern_with_llm_insights(self, 
@@ -1549,7 +1547,7 @@ If no additional technologies are needed, return an empty array [].
             if not (llm_insights or llm_challenges or llm_approach):
                 return
             
-            app_logger.info(f"Enhancing pattern {match.pattern_id} with LLM insights")
+            self.logger.info(f"Enhancing pattern {match.pattern_id} with LLM insights")
             
             # Load the existing pattern
             if not self.pattern_creator:
@@ -1581,10 +1579,10 @@ If no additional technologies are needed, return an empty array [].
             with open(pattern_file, 'w') as f:
                 json.dump(pattern_data, f, indent=2)
             
-            app_logger.info(f"Enhanced pattern {match.pattern_id} with LLM insights")
+            self.logger.info(f"Enhanced pattern {match.pattern_id} with LLM insights")
             
         except Exception as e:
-            app_logger.error(f"Failed to enhance pattern {match.pattern_id}: {e}")
+            self.logger.error(f"Failed to enhance pattern {match.pattern_id}: {e}")
     
     def _get_pattern_specific_context(self, match: MatchResult, requirements: Dict[str, Any]) -> str:
         """Get pattern-specific context to make reasoning unique per pattern.

@@ -13,7 +13,7 @@ from diskcache import Cache
 from loguru import logger
 
 from app.config import Settings
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 T = TypeVar('T')
 
@@ -54,6 +54,9 @@ class CacheService:
         self.config = config or CacheConfig()
         self._stats = CacheStats()
         
+        # Get logger from service registry
+        self.logger = require_service('logger', context='CacheService')
+        
         # Initialize Redis cache (L1)
         self._redis_cache: Optional[redis.Redis] = None
         self._init_redis_cache()
@@ -65,7 +68,7 @@ class CacheService:
             eviction_policy=self.config.eviction_policy
         )
         
-        app_logger.info(f"Initialized cache service with Redis: {self._redis_cache is not None}")
+        self.logger.info(f"Initialized cache service with Redis: {self._redis_cache is not None}")
     
     def _init_redis_cache(self) -> None:
         """Initialize Redis cache if available."""
@@ -80,9 +83,9 @@ class CacheService:
             )
             # Test connection
             self._redis_cache.ping()
-            app_logger.info("Redis cache initialized successfully")
+            self.logger.info("Redis cache initialized successfully")
         except Exception as e:
-            app_logger.warning(f"Redis cache unavailable, using disk cache only: {e}")
+            self.logger.warning(f"Redis cache unavailable, using disk cache only: {e}")
             self._redis_cache = None
     
     def _make_cache_key(self, key: str, namespace: str = "default") -> str:
@@ -121,16 +124,16 @@ class CacheService:
                     value = self._redis_cache.get(cache_key)
                     if value is not None:
                         self._stats.hits += 1
-                        app_logger.debug(f"Cache hit (Redis): {cache_key}")
+                        self.logger.debug(f"Cache hit (Redis): {cache_key}")
                         return json.loads(value)
                 except Exception as e:
-                    app_logger.warning(f"Redis cache error: {e}")
+                    self.logger.warning(f"Redis cache error: {e}")
             
             # Try disk cache (L2)
             value = self._disk_cache.get(cache_key)
             if value is not None:
                 self._stats.hits += 1
-                app_logger.debug(f"Cache hit (Disk): {cache_key}")
+                self.logger.debug(f"Cache hit (Disk): {cache_key}")
                 
                 # Promote to Redis if available
                 if self._redis_cache:
@@ -147,11 +150,11 @@ class CacheService:
             
             # Cache miss
             self._stats.misses += 1
-            app_logger.debug(f"Cache miss: {cache_key}")
+            self.logger.debug(f"Cache miss: {cache_key}")
             return None
             
         except Exception as e:
-            app_logger.error(f"Cache get error for {cache_key}: {e}")
+            self.logger.error(f"Cache get error for {cache_key}: {e}")
             self._stats.misses += 1
             return None
     
@@ -178,18 +181,18 @@ class CacheService:
             if self._redis_cache:
                 try:
                     self._redis_cache.setex(cache_key, ttl, serialized_value)
-                    app_logger.debug(f"Cache set (Redis): {cache_key}")
+                    self.logger.debug(f"Cache set (Redis): {cache_key}")
                 except Exception as e:
-                    app_logger.warning(f"Redis cache set error: {e}")
+                    self.logger.warning(f"Redis cache set error: {e}")
             
             # Set in disk cache (L2)
             self._disk_cache.set(cache_key, value, expire=ttl)
-            app_logger.debug(f"Cache set (Disk): {cache_key}")
+            self.logger.debug(f"Cache set (Disk): {cache_key}")
             
             return True
             
         except Exception as e:
-            app_logger.error(f"Cache set error for {cache_key}: {e}")
+            self.logger.error(f"Cache set error for {cache_key}: {e}")
             return False
     
     async def delete(self, key: str, namespace: str = "default") -> bool:
@@ -210,16 +213,16 @@ class CacheService:
                 try:
                     self._redis_cache.delete(cache_key)
                 except Exception as e:
-                    app_logger.warning(f"Redis cache delete error: {e}")
+                    self.logger.warning(f"Redis cache delete error: {e}")
             
             # Delete from disk cache
             self._disk_cache.delete(cache_key)
-            app_logger.debug(f"Cache delete: {cache_key}")
+            self.logger.debug(f"Cache delete: {cache_key}")
             
             return True
             
         except Exception as e:
-            app_logger.error(f"Cache delete error for {cache_key}: {e}")
+            self.logger.error(f"Cache delete error for {cache_key}: {e}")
             return False
     
     async def clear_namespace(self, namespace: str) -> bool:
@@ -240,9 +243,9 @@ class CacheService:
                     keys = self._redis_cache.keys(pattern)
                     if keys:
                         self._redis_cache.delete(*keys)
-                        app_logger.info(f"Cleared {len(keys)} Redis keys for namespace {namespace}")
+                        self.logger.info(f"Cleared {len(keys)} Redis keys for namespace {namespace}")
                 except Exception as e:
-                    app_logger.warning(f"Redis namespace clear error: {e}")
+                    self.logger.warning(f"Redis namespace clear error: {e}")
             
             # Clear from disk cache (more complex due to DiskCache API)
             keys_to_delete = []
@@ -253,11 +256,11 @@ class CacheService:
             for key in keys_to_delete:
                 self._disk_cache.delete(key)
             
-            app_logger.info(f"Cleared {len(keys_to_delete)} disk cache keys for namespace {namespace}")
+            self.logger.info(f"Cleared {len(keys_to_delete)} disk cache keys for namespace {namespace}")
             return True
             
         except Exception as e:
-            app_logger.error(f"Cache namespace clear error for {namespace}: {e}")
+            self.logger.error(f"Cache namespace clear error for {namespace}: {e}")
             return False
     
     def get_stats(self) -> CacheStats:

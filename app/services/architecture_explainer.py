@@ -4,7 +4,7 @@ import json
 from typing import Dict, List, Any, Optional
 
 from app.llm.base import LLMProvider
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class ArchitectureExplainer:
@@ -17,6 +17,9 @@ class ArchitectureExplainer:
             llm_provider: LLM provider for generating explanations
         """
         self.llm_provider = llm_provider
+        
+        # Get logger from service registry
+        self.logger = require_service('logger', context='ArchitectureExplainer')
         
         # Initialize tech stack generator for proper constraint handling
         if llm_provider:
@@ -51,7 +54,7 @@ class ArchitectureExplainer:
             if explanation:
                 return enhanced_tech_stack, explanation
         except Exception as e:
-            app_logger.error(f"Failed to generate LLM architecture explanation: {e}")
+            self.logger.error(f"Failed to generate LLM architecture explanation: {e}")
         
         # Fallback to rule-based explanation
         return tech_stack, self._generate_fallback_explanation(tech_stack, requirements)
@@ -69,7 +72,7 @@ class ArchitectureExplainer:
             List of recommended technologies
         """
         if not self.tech_stack_generator:
-            app_logger.warning("No tech stack generator available, using fallback")
+            self.logger.warning("No tech stack generator available, using fallback")
             return self._get_domain_based_tech_stack(requirements)
         
         try:
@@ -80,18 +83,18 @@ class ArchitectureExplainer:
             # Extract constraints from requirements (this is the key fix!)
             constraints = requirements.get('constraints', {})
             
-            app_logger.info(f"Generating tech stack with constraints: {constraints}")
+            self.logger.info(f"Generating tech stack with constraints: {constraints}")
             
             # Use the proper TechStackGenerator which handles constraints correctly
             tech_stack = await self.tech_stack_generator.generate_tech_stack(
                 matches, requirements, constraints
             )
             
-            app_logger.info(f"Generated tech stack with {len(tech_stack)} technologies using TechStackGenerator")
+            self.logger.info(f"Generated tech stack with {len(tech_stack)} technologies using TechStackGenerator")
             return tech_stack
             
         except Exception as e:
-            app_logger.error(f"Failed to generate tech stack using TechStackGenerator: {e}")
+            self.logger.error(f"Failed to generate tech stack using TechStackGenerator: {e}")
             return self._get_domain_based_tech_stack(requirements)
     
     def _extract_tech_from_text(self, text: str) -> List[str]:
@@ -202,24 +205,24 @@ Focus on:
 Provide a clear, practical explanation in 2-3 paragraphs. Be specific to this use case and mention all technologies by name."""
         
         try:
-            app_logger.info(f"Generating explanation for tech stack ({len(tech_stack)} items): {tech_stack}")
+            self.logger.info(f"Generating explanation for tech stack ({len(tech_stack)} items): {tech_stack}")
             response = await self.llm_provider.generate(prompt, purpose="tech_stack_explanation")
             
             # Clean up the response
             if isinstance(response, str):
                 explanation = response.strip()
-                app_logger.info(f"Generated LLM architecture explanation ({len(explanation)} chars)")
+                self.logger.info(f"Generated LLM architecture explanation ({len(explanation)} chars)")
                 return explanation
             elif isinstance(response, dict):
                 # Handle structured response
                 explanation = response.get("explanation", str(response))
-                app_logger.info(f"Generated LLM architecture explanation from dict ({len(explanation)} chars)")
+                self.logger.info(f"Generated LLM architecture explanation from dict ({len(explanation)} chars)")
                 return explanation
             
             return None
             
         except Exception as e:
-            app_logger.error(f"Failed to generate LLM architecture explanation: {e}")
+            self.logger.error(f"Failed to generate LLM architecture explanation: {e}")
             return None
     
     def _generate_fallback_explanation(self, 
@@ -297,11 +300,11 @@ Provide a clear, practical explanation in 2-3 paragraphs. Be specific to this us
             # Ensure tech is a string (handle cases where it might be a dict)
             if isinstance(tech, dict):
                 tech_name = tech.get('name') or tech.get('technology') or str(tech)
-                app_logger.warning(f"Tech stack item was dict in architecture explainer, extracted name: {tech_name}")
+                self.logger.warning(f"Tech stack item was dict in architecture explainer, extracted name: {tech_name}")
                 tech = tech_name
             elif not isinstance(tech, str):
                 tech = str(tech)
-                app_logger.warning(f"Tech stack item was {type(tech)} in architecture explainer, converted to string: {tech}")
+                self.logger.warning(f"Tech stack item was {type(tech)} in architecture explainer, converted to string: {tech}")
             
             tech_lower = tech.lower()
             

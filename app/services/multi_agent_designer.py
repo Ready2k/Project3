@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from app.llm.base import LLMProvider
-from app.utils.logger import app_logger
+from app.utils.imports import require_service
 
 
 class AgentArchitectureType(Enum):
@@ -92,6 +92,9 @@ class MultiAgentSystemDesigner:
     
     def __init__(self, llm_provider: LLMProvider):
         self.llm_provider = llm_provider
+        # Get logger from service registry
+        from app.utils.imports import require_service
+        self.logger = require_service('logger', context='MultiAgentSystemDesigner')
         self.agent_roles = {
             "coordinator": "Orchestrates overall workflow and agent communication",
             "specialist": "Handles domain-specific tasks requiring expertise",
@@ -115,7 +118,7 @@ class MultiAgentSystemDesigner:
                           top_patterns: List[Any]) -> MultiAgentSystemDesign:
         """Design a multi-agent system for complex autonomous workflows."""
         
-        app_logger.info("Designing multi-agent system for complex workflow")
+        self.logger.info("Designing multi-agent system for complex workflow")
         
         # Analyze workflow complexity
         workflow_analysis = await self._analyze_workflow_complexity(requirements)
@@ -166,7 +169,7 @@ class MultiAgentSystemDesigner:
             monitoring_requirements=monitoring_requirements
         )
         
-        app_logger.info(f"Multi-agent system designed: {architecture.value} with {len(agent_roles)} agents, autonomy={system_autonomy:.2f}")
+        self.logger.info(f"Multi-agent system designed: {architecture.value} with {len(agent_roles)} agents, autonomy={system_autonomy:.2f}")
         
         return design
     
@@ -201,7 +204,7 @@ class MultiAgentSystemDesigner:
         
         try:
             response = await self.llm_provider.generate(prompt, purpose="workflow_complexity")
-            app_logger.debug(f"Workflow complexity response: {response[:200]}...")
+            self.logger.debug(f"Workflow complexity response: {response[:200]}...")
             
             from app.utils.json_parser import parse_llm_json_response
             analysis = parse_llm_json_response(response, default_value={}, service_name="multi_agent_designer_workflow")
@@ -218,8 +221,8 @@ class MultiAgentSystemDesigner:
             )
             
         except Exception as e:
-            app_logger.error(f"Failed to analyze workflow complexity: {e}")
-            app_logger.debug(f"Raw response was: {response if 'response' in locals() else 'No response received'}")
+            self.logger.error(f"Failed to analyze workflow complexity: {e}")
+            self.logger.debug(f"Raw response was: {response if 'response' in locals() else 'No response received'}")
             return self._default_workflow_analysis()
     
     def _determine_architecture(self, 
@@ -300,7 +303,7 @@ class MultiAgentSystemDesigner:
         
         try:
             response = await self.llm_provider.generate(prompt, purpose="agent_roles")
-            app_logger.debug(f"Agent roles response: {response[:200]}...")
+            self.logger.debug(f"Agent roles response: {response[:200]}...")
             
             from app.utils.json_parser import parse_llm_json_response
             agent_definitions = parse_llm_json_response(response, default_value={"agents": []}, service_name="multi_agent_designer_roles")
@@ -326,8 +329,8 @@ class MultiAgentSystemDesigner:
             return agent_roles
             
         except Exception as e:
-            app_logger.error(f"Failed to define agent roles: {e}")
-            app_logger.debug(f"Raw response was: {response if 'response' in locals() else 'No response received'}")
+            self.logger.error(f"Failed to define agent roles: {e}")
+            self.logger.debug(f"Raw response was: {response if 'response' in locals() else 'No response received'}")
             return self._default_agent_roles(architecture)
     
     async def _design_communication_protocols(self, 

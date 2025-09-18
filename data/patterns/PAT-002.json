@@ -69,6 +69,23 @@
     ],
     "decision_authority_level": "medium"
   },
+  "exception_handling_strategy": {
+    "autonomous_resolution_approaches": [
+      "OCR quality improvement",
+      "Alternative extraction methods",
+      "Data validation and correction"
+    ],
+    "reasoning_fallbacks": [
+      "Manual review queue for poor quality scans",
+      "Rule-based extraction when ML fails",
+      "Human verification for high-value invoices"
+    ],
+    "escalation_criteria": [
+      "OCR confidence below threshold",
+      "PO/budget validation failures",
+      "Vendor format not recognized"
+    ]
+  },
   "agent_architecture": "single_agent",
   "enhanced_from_pattern": "PAT-002",
   "enhancement_type": "full",
