@@ -2,7 +2,8 @@
 
 import asyncio
 import re
-from typing import Dict, List, Optional, Any
+import time
+from typing import Dict, List, Optional, Any, Tuple
 
 import streamlit as st
 from streamlit.components.v1 import html
@@ -10,12 +11,20 @@ from streamlit.components.v1 import html
 from app.utils.imports import require_service, optional_service
 from app.utils.error_boundaries import error_boundary
 
+# Import streamlit_mermaid directly
+try:
+    import streamlit_mermaid as stmd
+    MERMAID_AVAILABLE = True
+except ImportError:
+    MERMAID_AVAILABLE = False
+    stmd = None
+
 
 class MermaidDiagramGenerator:
     """Handles Mermaid diagram generation and rendering."""
     
-    def __init__(self):
-        self.diagram_cache = {}
+    def __init__(self) -> None:
+        self.diagram_cache: Dict[str, str] = {}
     
     @error_boundary("mermaid_llm_request", timeout_seconds=30.0, max_retries=2)
     async def make_llm_request(self, prompt: str, provider_config: Dict, purpose: str = "diagram_generation") -> str:
@@ -27,6 +36,7 @@ class MermaidDiagramGenerator:
             llm_params = config_service.get_llm_params()
             
             # Create provider config object with dynamic parameters
+            from app.llm.base import ProviderConfig
             config = ProviderConfig(
                 provider=provider_config.get('provider', 'openai'),
                 model=provider_config.get('model', 'gpt-4o'),
@@ -82,7 +92,7 @@ class MermaidDiagramGenerator:
         
         return sanitized or 'unknown'
     
-    def validate_mermaid_syntax(self, mermaid_code: str) -> tuple[bool, str]:
+    def validate_mermaid_syntax(self, mermaid_code: str) -> Tuple[bool, str]:
         """Validate basic Mermaid syntax and return (is_valid, error_message)."""
         if not mermaid_code.strip():
             return False, "Empty diagram code"
@@ -236,27 +246,25 @@ class MermaidDiagramGenerator:
         # Get logger service
         app_logger = require_service('logger', context="render_mermaid_diagram")
         
-        try:
-            from streamlit_mermaid import st_mermaid
-            
+        # Use streamlit_mermaid directly
+        if MERMAID_AVAILABLE and stmd:
             # Clean the code
             cleaned_code = self.clean_mermaid_code(mermaid_code)
             
-            # Render with streamlit-mermaid
+            # Render with streamlit_mermaid
             try:
-                st_mermaid(cleaned_code, height=height)
-            except TypeError:
-                # Fallback for different streamlit-mermaid versions
-                st_mermaid(cleaned_code, height=str(height))
+                stmd.st_mermaid(cleaned_code, height=height)
+            except Exception as e:
+                app_logger.error(f"Failed to render Mermaid diagram: {e}")
+                st.error(f"Failed to render diagram: {e}")
+                st.code(cleaned_code, language='mermaid')
             
             # Add enhanced viewing options
             self._add_diagram_controls(cleaned_code)
-            
-        except ImportError:
-            st.error("streamlit-mermaid package not available. Please install it to view diagrams.")
-        except Exception as e:
-            app_logger.error(f"Failed to render Mermaid diagram: {e}")
-            st.error(f"Failed to render diagram: {str(e)}")
+        else:
+            st.info("💡 Mermaid diagrams require the streamlit-mermaid package. Showing code instead:")
+            # Show code as fallback
+            st.code(mermaid_code, language='mermaid')
     
     def _add_diagram_controls(self, mermaid_code: str) -> None:
         """Add controls for diagram viewing and export."""
@@ -372,7 +380,7 @@ def _sanitize(label: str) -> str:
     return mermaid_generator.sanitize_label(label)
 
 
-def _validate_mermaid_syntax(mermaid_code: str) -> tuple[bool, str]:
+def _validate_mermaid_syntax(mermaid_code: str) -> Tuple[bool, str]:
     """Backward compatibility function."""
     return mermaid_generator.validate_mermaid_syntax(mermaid_code)
 

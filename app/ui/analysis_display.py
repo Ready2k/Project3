@@ -1,17 +1,27 @@
 """Analysis display components for showing agent roles and coordination in the UI."""
 
 import streamlit as st
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 import json
+import time
+import urllib.parse
 
 from app.ui.agent_formatter import AgentSystemDisplay, AgentRoleDisplay, AgentCoordinationDisplay
 from app.utils.imports import require_service, optional_service
+
+# Import streamlit_mermaid directly
+try:
+    import streamlit_mermaid as stmd
+    MERMAID_AVAILABLE = True
+except ImportError:
+    MERMAID_AVAILABLE = False
+    stmd = None
 
 
 class AgentRolesUIComponent:
     """UI component for displaying agent roles and coordination."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.autonomy_colors = {
             (0.9, 1.0): "#00ff00",  # Green - Fully Autonomous
             (0.7, 0.9): "#90ee90",  # Light Green - Highly Autonomous
@@ -20,7 +30,7 @@ class AgentRolesUIComponent:
             (0.0, 0.3): "#ff0000"   # Red - Manual
         }
     
-    def render_agent_system(self, agent_system: AgentSystemDisplay):
+    def render_agent_system(self, agent_system: AgentSystemDisplay) -> None:
         """Render complete agent system display with accessibility features."""
         
         if not agent_system.has_agents:
@@ -95,7 +105,7 @@ class AgentRolesUIComponent:
         # Add CSS for accessibility
         self._add_accessibility_css()
     
-    def _render_system_overview(self, agent_system: AgentSystemDisplay):
+    def _render_system_overview(self, agent_system: AgentSystemDisplay) -> None:
         """Render system-level overview."""
         
         st.subheader("System Overview")
@@ -130,7 +140,7 @@ class AgentRolesUIComponent:
         # System autonomy visualization
         self._render_autonomy_bar(agent_system.system_autonomy_score, "System Autonomy Level")
     
-    def _render_agent_roles(self, agent_roles: List[AgentRoleDisplay]):
+    def _render_agent_roles(self, agent_roles: List[AgentRoleDisplay]) -> None:
         """Render individual agent roles."""
         
         st.subheader("Agent Roles & Responsibilities")
@@ -151,7 +161,7 @@ class AgentRolesUIComponent:
         with tab3:
             self._render_agent_operations(agent_roles)
     
-    def _render_agent_overview(self, agent_roles: List[AgentRoleDisplay]):
+    def _render_agent_overview(self, agent_roles: List[AgentRoleDisplay]) -> None:
         """Render agent overview information."""
         
         for i, agent in enumerate(agent_roles):
@@ -190,7 +200,7 @@ class AgentRolesUIComponent:
                     if len(agent.capabilities) > 3:
                         st.write(f"*... and {len(agent.capabilities) - 3} more capabilities*")
     
-    def _render_agent_capabilities(self, agent_roles: List[AgentRoleDisplay]):
+    def _render_agent_capabilities(self, agent_roles: List[AgentRoleDisplay]) -> None:
         """Render agent capabilities and learning mechanisms."""
         
         for agent in agent_roles:
@@ -240,7 +250,7 @@ class AgentRolesUIComponent:
                     with st.expander("View Decision Authority Details"):
                         st.json(agent.decision_authority)
     
-    def _render_agent_operations(self, agent_roles: List[AgentRoleDisplay]):
+    def _render_agent_operations(self, agent_roles: List[AgentRoleDisplay]) -> None:
         """Render operational requirements and infrastructure."""
         
         for agent in agent_roles:
@@ -283,7 +293,7 @@ class AgentRolesUIComponent:
                 # Security and compliance details
                 self._render_agent_security_details(agent)
     
-    def _render_coordination(self, coordination: AgentCoordinationDisplay):
+    def _render_coordination(self, coordination: AgentCoordinationDisplay) -> None:
         """Render agent coordination and communication patterns."""
         
         st.subheader("🔄 Agent Coordination & Communication")
@@ -308,7 +318,7 @@ class AgentRolesUIComponent:
         with coord_tab3:
             self._render_interaction_patterns(coordination.interaction_patterns, coordination.workflow_distribution)
     
-    def _render_architecture_diagram(self, coordination: AgentCoordinationDisplay):
+    def _render_architecture_diagram(self, coordination: AgentCoordinationDisplay) -> None:
         """Render architecture diagram using Mermaid."""
         
         try:
@@ -378,7 +388,7 @@ class AgentRolesUIComponent:
             app_logger.error(f"Error rendering architecture diagram: {e}")
             st.info("Architecture diagram temporarily unavailable")
     
-    def _render_communication_protocols(self, protocols: List[Dict[str, str]]):
+    def _render_communication_protocols(self, protocols: List[Dict[str, str]]) -> None:
         """Render communication protocols section."""
         
         if not protocols:
@@ -404,7 +414,7 @@ class AgentRolesUIComponent:
                 # Protocol characteristics visualization
                 self._render_protocol_characteristics(protocol)
     
-    def _render_coordination_mechanisms(self, mechanisms: List[Dict[str, str]]):
+    def _render_coordination_mechanisms(self, mechanisms: List[Dict[str, str]]) -> None:
         """Render coordination mechanisms section."""
         
         if not mechanisms:
@@ -429,7 +439,7 @@ class AgentRolesUIComponent:
                 # Mechanism flow diagram
                 self._render_coordination_flow(mechanism)
     
-    def _render_interaction_patterns(self, patterns: List[Dict[str, Any]], workflow_distribution: Dict[str, Any]):
+    def _render_interaction_patterns(self, patterns: List[Dict[str, Any]], workflow_distribution: Dict[str, Any]) -> None:
         """Render interaction patterns and workflow distribution."""
         
         # Interaction patterns
@@ -543,7 +553,7 @@ graph LR
     style C fill:#ffcc99
 """
     
-    def _render_protocol_characteristics(self, protocol: Dict[str, str]):
+    def _render_protocol_characteristics(self, protocol: Dict[str, str]) -> None:
         """Render protocol characteristics as visual indicators."""
         
         st.write("**Protocol Characteristics:**")
@@ -566,7 +576,7 @@ graph LR
         else:
             st.info("🐌 Higher Latency Acceptable")
     
-    def _render_coordination_flow(self, mechanism: Dict[str, str]):
+    def _render_coordination_flow(self, mechanism: Dict[str, str]) -> None:
         """Render coordination mechanism flow."""
         
         mechanism_type = mechanism.get('type', '').lower()
@@ -605,19 +615,19 @@ graph LR
     C --> D[Action]
 """
         
-        try:
-            import streamlit_mermaid as stmd
-            # Try different height formats for compatibility
+        # Use streamlit_mermaid for flow diagram
+        if MERMAID_AVAILABLE and stmd:
             try:
                 stmd.st_mermaid(flow_diagram, height=200)
-            except TypeError:
-                # Fallback to string format if integer doesn't work
-                stmd.st_mermaid(flow_diagram, height="200px")
-        except ImportError:
+            except Exception as e:
+                app_logger.error(f"Error rendering coordination flow: {e}")
+                with st.expander("View Coordination Flow (Mermaid)"):
+                    st.code(flow_diagram, language="mermaid")
+        else:
             with st.expander("View Coordination Flow (Mermaid)"):
                 st.code(flow_diagram, language="mermaid")
     
-    def _render_workflow_distribution_chart(self, workflow_distribution: Dict[str, Any]):
+    def _render_workflow_distribution_chart(self, workflow_distribution: Dict[str, Any]) -> None:
         """Render workflow distribution as a visual chart."""
         
         # Create a simple text-based visualization
@@ -635,7 +645,7 @@ graph LR
         scaling_approach = workflow_distribution.get('scaling_approach', 'Unknown')
         st.info(f"📈 Scaling: {scaling_approach}")
     
-    def _render_tech_stack_validation(self, validation: Dict[str, Any]):
+    def _render_tech_stack_validation(self, validation: Dict[str, Any]) -> None:
         """Render tech stack validation for agent deployment."""
         
         st.subheader("🛠️ Tech Stack Validation for Agent Deployment")
@@ -664,7 +674,7 @@ graph LR
         with val_tab3:
             self._render_enhancement_suggestions(validation)
     
-    def _render_deployment_readiness_overview(self, validation: Dict[str, Any]):
+    def _render_deployment_readiness_overview(self, validation: Dict[str, Any]) -> None:
         """Render deployment readiness overview with visual indicators."""
         
         # Agent readiness status
@@ -696,7 +706,7 @@ graph LR
         if "estimated_setup_time" in validation:
             st.info(f"⏱️ Estimated Setup Time: {validation['estimated_setup_time']}")
     
-    def _render_available_components(self, validation: Dict[str, Any]):
+    def _render_available_components(self, validation: Dict[str, Any]) -> None:
         """Render available tech stack components."""
         
         has_components = False
@@ -741,7 +751,7 @@ graph LR
         if not has_components:
             st.info("No agent-specific components detected in current tech stack")
     
-    def _render_missing_components(self, validation: Dict[str, Any]):
+    def _render_missing_components(self, validation: Dict[str, Any]) -> None:
         """Render missing components and their impact."""
         
         missing_components = validation.get("missing_components", [])
@@ -772,7 +782,7 @@ graph LR
             for issue in compatibility_issues:
                 st.warning(f"⚠️ {issue}")
     
-    def _render_enhancement_suggestions(self, validation: Dict[str, Any]):
+    def _render_enhancement_suggestions(self, validation: Dict[str, Any]) -> None:
         """Render enhancement suggestions with detailed information."""
         
         # Agent enhancements
@@ -850,7 +860,7 @@ graph LR
                         if technologies:
                             st.write(f"**Recommended Technologies:** {', '.join(technologies)}")
     
-    def _render_framework_info(self, framework: str):
+    def _render_framework_info(self, framework: str) -> None:
         """Render additional information about agent frameworks."""
         
         framework_info = {
@@ -883,7 +893,7 @@ graph LR
                 st.write(f"**Key Strengths:** {', '.join(info['strengths'])}")
                 st.write(f"**Best Use Cases:** {', '.join(info['use_cases'])}")
     
-    def _render_component_impact(self, component: str):
+    def _render_component_impact(self, component: str) -> None:
         """Render the impact of missing components."""
         
         impact_descriptions = {
@@ -964,7 +974,7 @@ graph LR
                 with st.expander(f"{icon} {title}"):
                     st.write(content)
     
-    def _render_autonomy_bar(self, autonomy_level: float, label: str):
+    def _render_autonomy_bar(self, autonomy_level: float, label: str) -> None:
         """Render autonomy level as a colored progress bar."""
         
         color = self._get_autonomy_color(autonomy_level)
@@ -982,7 +992,7 @@ graph LR
         </div>
         """, unsafe_allow_html=True)
     
-    def _render_readiness_bar(self, readiness_score: float):
+    def _render_readiness_bar(self, readiness_score: float) -> None:
         """Render deployment readiness as a colored progress bar."""
         
         percentage = int(readiness_score * 100)
@@ -1203,7 +1213,7 @@ graph LR
         </div>
         """, unsafe_allow_html=True)
     
-    def _render_agent_performance_dashboard(self, agent: AgentRoleDisplay):
+    def _render_agent_performance_dashboard(self, agent: AgentRoleDisplay) -> None:
         """Render performance metrics dashboard for an agent."""
         
         with st.expander("📊 Performance Metrics Dashboard"):
@@ -1298,7 +1308,7 @@ graph LR
             "adaptation_speed": min(9.5, 6 + (agent.autonomy_level * 3))
         }
     
-    def _render_role_specific_metrics(self, agent: AgentRoleDisplay, performance_data: Dict[str, float]):
+    def _render_role_specific_metrics(self, agent: AgentRoleDisplay, performance_data: Dict[str, float]) -> None:
         """Render role-specific performance metrics."""
         
         if "coordinator" in agent.name.lower():
@@ -1372,7 +1382,7 @@ graph LR
         
         return recommendations
     
-    def _render_agent_security_details(self, agent: AgentRoleDisplay):
+    def _render_agent_security_details(self, agent: AgentRoleDisplay) -> None:
         """Render detailed security and compliance information for an agent."""
         
         with st.expander("🔒 Security & Compliance Details"):
@@ -1430,7 +1440,7 @@ graph LR
         
         return min(1.0, score)
     
-    def _render_security_score_bar(self, security_score: float):
+    def _render_security_score_bar(self, security_score: float) -> None:
         """Render security score as a colored progress bar."""
         
         percentage = int(security_score * 100)

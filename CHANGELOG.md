@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.2] - 2025-09-19 - Service Registry Fixes & Diagram Rendering
+
+### Fixed
+- **Mermaid Diagram Service Issues**: Resolved "Mermaid service not available" errors
+  - Fixed service registry pattern usage by replacing with direct `streamlit_mermaid` imports
+  - Updated all Mermaid rendering calls from service-based to direct library usage
+  - Enhanced error messages to be more informative about package requirements
+  - Fixed files: `streamlit_app.py`, `app/ui/analysis_display.py`, `app/ui/mermaid_diagrams.py`
+- **Infrastructure Diagram Service Issues**: Resolved "Infrastructure diagram service is not registered" errors
+  - Added missing `InfrastructureDiagramService` wrapper class for service registry compatibility
+  - Fixed service registration in core services to include `infrastructure_diagram_service`
+  - Corrected service lookup names from `infrastructure_diagram_generator` to `infrastructure_diagram_service`
+  - Fixed library availability checks to use direct `diagrams` library imports instead of service registry
+  - Added module-level service initialization for proper service availability
+  - Fixed files: `app/diagrams/infrastructure.py`, `app/core/service_registration.py`, `streamlit_app.py`
+
+### Changed
+- **Service Architecture**: Improved service registry integration and initialization
+  - External libraries (streamlit-mermaid, diagrams) now imported directly instead of through service registry
+  - Service registry reserved for internal application services only
+  - Enhanced module-level initialization for better service availability
+- **Error Handling**: Enhanced error messages for missing dependencies
+  - Mermaid errors now provide clear guidance about streamlit-mermaid package requirements
+  - Infrastructure diagram errors include Graphviz installation instructions when needed
+
+### Technical Details
+- **Mermaid Service Fix**:
+  - Replaced `optional_service('mermaid_service', ...)` with direct `import streamlit_mermaid as stmd`
+  - Updated all `mermaid_service.render()` calls to `stmd.st_mermaid()`
+  - Added availability checks with `MERMAID_AVAILABLE` flag and graceful fallbacks
+- **Infrastructure Diagram Service Fix**:
+  - Created `InfrastructureDiagramService` wrapper class around `InfrastructureDiagramGenerator`
+  - Added service registration in `register_core_services()` function
+  - Fixed import dependencies from service registry check to direct library imports
+  - Added proper health check method returning service status and availability
+- **Service Registry Improvements**:
+  - Added module-level service initialization in `streamlit_app.py`
+  - Enhanced core service registration to include infrastructure diagram service
+  - Updated service lists in initialization and health check functions
+
+### Verification
+- ✅ All Mermaid diagrams render correctly without service errors
+- ✅ Infrastructure diagrams generate successfully (tested with 37KB PNG output)
+- ✅ Service health checks pass for all diagram services
+- ✅ Streamlit integration works properly with both diagram types
+- ✅ Comprehensive test suite validates all fixes (`test_infrastructure_diagram_fix.py`)
+
+### Dependencies
+- ✅ `streamlit-mermaid>=0.3.0` - Direct import for Mermaid diagram rendering
+- ✅ `diagrams>=0.23.0` - Infrastructure diagram generation library
+- ✅ `graphviz` - Required by diagrams library for actual diagram generation
+
 ## [2.7.1] - 2025-08-26 - Pydantic v2 Compatibility Fix
 
 ### Fixed

@@ -17,9 +17,47 @@ from streamlit.components.v1 import html
 # Import service utilities (but don't access services at module level)
 from app.utils.imports import require_service, optional_service
 
-# Services will be initialized when the app starts
+# Import streamlit_mermaid directly
+try:
+    import streamlit_mermaid as stmd
+    MERMAID_AVAILABLE = True
+except ImportError:
+    MERMAID_AVAILABLE = False
+    stmd = None
+
+# Initialize services at module level
 app_logger = None
 llm_provider_service = None
+
+def initialize_module_services():
+    """Initialize services at module level when imported."""
+    global app_logger, llm_provider_service
+    
+    try:
+        from app.core.service_registration import register_core_services
+        from app.core.registry import get_registry
+        from app.utils.imports import require_service, optional_service
+        
+        registry = get_registry()
+        
+        # Check if services are already registered, if not register them
+        if not registry.has('logger'):
+            register_core_services(registry)
+        
+        # Get services
+        app_logger = require_service('logger', context='streamlit_module')
+        llm_provider_service = optional_service('llm_provider_factory', context='streamlit_module')
+        
+        return True
+    except Exception as e:
+        # Use fallback logger for error reporting
+        import logging
+        fallback_logger = logging.getLogger(__name__)
+        fallback_logger.error(f"Failed to initialize module services: {e}")
+        return False
+
+# Initialize services when module is imported
+_services_initialized = initialize_module_services()
 OPENAI_AVAILABLE = False
 
 
@@ -6141,39 +6179,27 @@ verify_ssl = True
         if show_large:
             st.write("**🔍 Large View Mode** - Click 'Large View' again to return to normal size")
             
-            # Use streamlit-mermaid for large view too
-            try:
-                import streamlit_mermaid as stmd
-                # Try different height formats for compatibility
+            # Use streamlit_mermaid for large view
+            if MERMAID_AVAILABLE and stmd:
                 try:
                     stmd.st_mermaid(mermaid_code, height=700, key=f"large_{diagram_id}_{redraw_count}")
-                except TypeError:
-                    # Fallback to string format if integer doesn't work
-                    stmd.st_mermaid(mermaid_code, height="700px", key=f"large_{diagram_id}_{redraw_count}")
-            except ImportError:
-                st.error("streamlit-mermaid not available. Please install it.")
-                st.code(mermaid_code, language="mermaid")
-            except Exception as e:
-                st.error(f"Error rendering large view: {e}")
-                st.info("💡 Try copying the code below to [mermaid.live](https://mermaid.live) to view the diagram")
+                except Exception as e:
+                    st.error(f"Error rendering large view: {e}")
+                    st.info("💡 Try copying the code below to [mermaid.live](https://mermaid.live) to view the diagram")
+                    st.code(mermaid_code, language="mermaid")
+            else:
+                st.info("💡 Mermaid diagrams require the streamlit-mermaid package. Showing code instead:")
                 st.code(mermaid_code, language="mermaid")
         else:
-            # Regular view - use streamlit-mermaid like the main Diagrams tab
-            try:
-                import streamlit_mermaid as stmd
-                # Try different height formats for compatibility
+            # Regular view - use streamlit_mermaid
+            if MERMAID_AVAILABLE and stmd:
                 try:
                     stmd.st_mermaid(mermaid_code, height=500, key=f"regular_{diagram_id}_{redraw_count}")
-                except TypeError:
-                    # Fallback to string format if integer doesn't work
-                    stmd.st_mermaid(mermaid_code, height="500px", key=f"regular_{diagram_id}_{redraw_count}")
-            except ImportError:
-                st.error("streamlit-mermaid not available. Please install it.")
-                # Show code as fallback
-                st.code(mermaid_code, language="mermaid")
-            except Exception as e:
-                st.error(f"Error rendering diagram: {e}")
-                st.info("💡 Try copying the code below to [mermaid.live](https://mermaid.live) to view the diagram")
+                except Exception as e:
+                    st.error(f"Error rendering diagram: {e}")
+                    st.code(mermaid_code, language="mermaid")
+            else:
+                st.info("💡 Mermaid diagrams require the streamlit-mermaid package. Showing code instead:")
                 # Show code as fallback
                 st.code(mermaid_code, language="mermaid")
         
@@ -6629,7 +6655,7 @@ verify_ssl = True
         
         # Try to generate and display the infrastructure diagram
         from app.utils.imports import optional_service
-        infrastructure_diagram_service = optional_service('infrastructure_diagram_generator', context='infrastructure diagram generation')
+        infrastructure_diagram_service = optional_service('infrastructure_diagram_service', context='infrastructure diagram generation')
         
         if infrastructure_diagram_service:
             
@@ -6767,7 +6793,7 @@ verify_ssl = True
     def download_infrastructure_diagram(self, infrastructure_spec: Dict[str, Any], diagram_id: str):
         """Generate and save infrastructure diagram for download."""
         from app.utils.imports import optional_service
-        infrastructure_diagram_service = optional_service('infrastructure_diagram_generator', context='infrastructure diagram download')
+        infrastructure_diagram_service = optional_service('infrastructure_diagram_service', context='infrastructure diagram download')
         
         if infrastructure_diagram_service:
             try:
