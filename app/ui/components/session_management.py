@@ -1,7 +1,7 @@
 """Session management UI component."""
 
 import re
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Pattern
 import streamlit as st
 
 from app.utils.imports import require_service, optional_service
@@ -10,10 +10,10 @@ from app.utils.imports import require_service, optional_service
 class SessionManagementComponent:
     """Handles session management UI and state."""
     
-    def __init__(self):
-        self.session_id_pattern = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+    def __init__(self) -> None:
+        self.session_id_pattern: Pattern[str] = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
     
-    def initialize_session_state(self):
+    def initialize_session_state(self) -> None:
         """Initialize Streamlit session state variables."""
         default_values = {
             'session_id': None,
@@ -38,7 +38,7 @@ class SessionManagementComponent:
             if key not in st.session_state:
                 st.session_state[key] = default_value
     
-    def render_session_info(self):
+    def render_session_info(self) -> None:
         """Render current session information."""
         if st.session_state.get('session_id'):
             with st.expander("📋 Session Information", expanded=False):
@@ -56,7 +56,7 @@ class SessionManagementComponent:
                         st.code(st.session_state.session_id)
                         st.success("Session ID copied to display!")
     
-    def render_resume_session(self, api_integration) -> bool:
+    def render_resume_session(self, api_integration: Any) -> bool:
         """Render resume session UI."""
         st.subheader("🔄 Resume Previous Session")
         
@@ -92,7 +92,7 @@ class SessionManagementComponent:
         # Check UUID format
         return bool(self.session_id_pattern.match(session_id))
     
-    def _attempt_resume_session(self, session_id: str, api_integration) -> bool:
+    def _attempt_resume_session(self, session_id: str, api_integration: Any) -> bool:
         """Attempt to resume a session."""
         try:
             with st.spinner("🔍 Loading session..."):
@@ -125,7 +125,7 @@ class SessionManagementComponent:
             app_logger.error(f"Session resume error: {e}")
             return False
     
-    def _show_session_id_help(self):
+    def _show_session_id_help(self) -> None:
         """Show help information for finding session IDs."""
         with st.expander("❓ Where do I find my Session ID?"):
             st.write("**Session IDs can be found in several places:**")
@@ -139,7 +139,7 @@ class SessionManagementComponent:
             st.code("12345678-1234-1234-1234-123456789abc")
             st.write("Session IDs are UUIDs with 8-4-4-4-12 character groups separated by hyphens.")
     
-    def render_session_progress(self):
+    def render_session_progress(self) -> None:
         """Render session progress indicator."""
         if st.session_state.get('session_id'):
             phase = st.session_state.get('phase', 'input')
@@ -160,7 +160,7 @@ class SessionManagementComponent:
                     else:
                         st.info(f"⏳ {phase_name.title()}")
     
-    def clear_session(self):
+    def clear_session(self) -> None:
         """Clear current session state."""
         keys_to_clear = [
             'session_id', 'phase', 'progress', 'requirements', 'missing_fields',
@@ -176,7 +176,7 @@ class SessionManagementComponent:
         app_logger = require_service('logger', context="clear_session_state")
         app_logger.info("Session state cleared")
     
-    def render_session_actions(self):
+    def render_session_actions(self) -> None:
         """Render session action buttons."""
         if st.session_state.get('session_id'):
             col1, col2, col3 = st.columns(3)
@@ -208,7 +208,7 @@ class SessionManagementComponent:
             "processing": st.session_state.get('processing', False)
         }
     
-    def update_session_progress(self, phase: str, progress: int):
+    def update_session_progress(self, phase: str, progress: int) -> None:
         """Update session progress."""
         st.session_state.phase = phase
         st.session_state.progress = progress

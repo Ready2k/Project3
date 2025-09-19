@@ -1,0 +1,59 @@
+{
+  "startup_time": {
+    "average_time": 1.1548148476666666,
+    "min_time": 0.056917333999999986,
+    "max_time": 3.275854834,
+    "times": [
+      3.275854834,
+      0.13167237499999995,
+      0.056917333999999986
+    ],
+    "iterations": 3
+  },
+  "memory_usage": {
+    "baseline_memory": 465.46875,
+    "registry_memory": 465.46875,
+    "startup_memory": 465.765625,
+    "registry_overhead": 0.0,
+    "total_overhead": 0.296875
+  },
+  "service_resolution": {
+    "error": "Can't instantiate abstract class MockService with abstract methods dependencies, initialize, name"
+  },
+  "concurrent_access": {
+    "error": "Can't instantiate abstract class MockService with abstract methods dependencies, initialize, name"
+  },
+  "dependency_scenarios": {
+    "normal_dependencies": {
+      "success": false,
+      "resolution_time": 0,
+      "error": "Can't instantiate abstract class MockService with abstract methods dependencies, initialize, name"
+    },
+    "missing_dependencies": {
+      "success": false,
+      "validation_errors": [],
+      "error": "Can't instantiate abstract class MockService with abstract methods dependencies, initialize, name"
+    },
+    "circular_dependencies": {
+      "success": true,
+      "validation_errors": [
+        "Circular dependency detected: service_a -> service_b -> service_a"
+      ],
+      "error": null
+    },
+    "initialization_failure": {
+      "success": true,
+      "resolution_time": 1.700000000015578e-05,
+      "error": "Failed to initialize service 'failing_service': Can't instantiate abstract class MockService with abstract methods dependencies, initialize, name"
+    },
+    "deep_dependency_chain": {
+      "success": false,
+      "resolution_time": 0,
+      "chain_length": 10,
+      "error": "Can't instantiate abstract class MockService with abstract methods dependencies, initialize, name"
+    }
+  },
+  "memory_leaks": {
+    "error": "Can't instantiate abstract class MockService with abstract methods dependencies, initialize, name"
+  }
+}

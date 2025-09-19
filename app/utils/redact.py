@@ -7,7 +7,7 @@ from typing import Dict, Pattern
 class PIIRedactor:
     """Redacts personally identifiable information from text."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.patterns: Dict[str, Pattern[str]] = {
             'email': re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'),
             'phone': re.compile(r'\b\d{3}-\d{3}-\d{4}\b'),

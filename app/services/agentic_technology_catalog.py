@@ -428,14 +428,14 @@ class AgenticTechnologyCatalog:
         
         return stack
     
-    def add_technology(self, technology: AgenticTechnology):
+    def add_technology(self, technology: AgenticTechnology) -> None:
         """Add a new technology to the catalog."""
         
         self.technologies[technology.name] = technology
         self._save_catalog()
         self.logger.info(f"Added technology: {technology.name}")
     
-    def update_technology(self, tech_name: str, updates: Dict[str, Any]):
+    def update_technology(self, tech_name: str, updates: Dict[str, Any]) -> None:
         """Update an existing technology in the catalog."""
         
         if tech_name in self.technologies:
@@ -451,7 +451,7 @@ class AgenticTechnologyCatalog:
         else:
             self.logger.warning(f"Technology not found for update: {tech_name}")
     
-    def remove_technology(self, tech_name: str):
+    def remove_technology(self, tech_name: str) -> None:
         """Remove a technology from the catalog."""
         
         if tech_name in self.technologies:

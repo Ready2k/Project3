@@ -1,0 +1,715 @@
+{
+  "generated_at": "2025-09-19T14:19:12.534501",
+  "summary": {
+    "total_services": 20,
+    "total_dependencies": 41,
+    "circular_dependencies": 0,
+    "orphaned_services": 0,
+    "root_services": 1,
+    "leaf_services": 16
+  },
+  "services": {
+    "logger": {
+      "name": "logger",
+      "service_type": "app.utils.logger.AppLogger",
+      "dependencies": [
+        "config"
+      ],
+      "dependents": [
+        "cache",
+        "security_validator",
+        "advanced_prompt_defender",
+        "llm_provider_factory",
+        "diagram_service_factory",
+        "openai_provider",
+        "anthropic_provider",
+        "bedrock_provider",
+        "pattern_matcher",
+        "agentic_matcher",
+        "embedding_engine",
+        "export_service",
+        "mermaid_service",
+        "infrastructure_diagram_service",
+        "performance_monitor",
+        "health_checker",
+        "jira_service"
+      ],
+      "class_path": "app.utils.logger.AppLogger",
+      "config": {
+        "level": "INFO",
+        "format": "structured",
+        "redact_pii": true,
+        "file_path": "logs/aaa.log",
+        "rotation": "1 day",
+        "retention": "30 days"
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "core"
+    },
+    "config": {
+      "name": "config",
+      "service_type": "app.config.ConfigService",
+      "dependencies": [],
+      "dependents": [
+        "logger",
+        "cache",
+        "security_validator",
+        "advanced_prompt_defender",
+        "llm_provider_factory",
+        "diagram_service_factory",
+        "pattern_loader",
+        "openai_provider",
+        "anthropic_provider",
+        "bedrock_provider",
+        "pattern_matcher",
+        "agentic_matcher",
+        "embedding_engine",
+        "export_service",
+        "mermaid_service",
+        "infrastructure_diagram_service",
+        "performance_monitor",
+        "health_checker",
+        "jira_service"
+      ],
+      "class_path": "app.config.ConfigService",
+      "config": {
+        "config_file": "config.yaml",
+        "environment_prefix": "AAA",
+        "auto_reload": false,
+        "validation_enabled": true
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "core"
+    },
+    "cache": {
+      "name": "cache",
+      "service_type": "app.services.cache_service.CacheService",
+      "dependencies": [
+        "config",
+        "logger"
+      ],
+      "dependents": [
+        "advanced_prompt_defender",
+        "pattern_matcher",
+        "agentic_matcher",
+        "embedding_engine"
+      ],
+      "class_path": "app.services.cache_service.CacheService",
+      "config": {
+        "backend": "memory",
+        "default_ttl_seconds": 3600,
+        "max_size_mb": 100,
+        "cleanup_interval_seconds": 300,
+        "redis_config": {
+          "host": "localhost",
+          "port": 6379,
+          "db": 0,
+          "password": null,
+          "ssl": false
+        }
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "core"
+    },
+    "security_validator": {
+      "name": "security_validator",
+      "service_type": "app.security.validation.SecurityValidator",
+      "dependencies": [
+        "config",
+        "logger"
+      ],
+      "dependents": [],
+      "class_path": "app.security.validation.SecurityValidator",
+      "config": {
+        "enable_input_validation": true,
+        "enable_output_sanitization": true,
+        "max_input_length": 10000,
+        "blocked_patterns": [],
+        "rate_limiting": {
+          "enabled": true,
+          "requests_per_minute": 60,
+          "requests_per_hour": 1000
+        }
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "security"
+    },
+    "advanced_prompt_defender": {
+      "name": "advanced_prompt_defender",
+      "service_type": "app.security.advanced_prompt_defender.AdvancedPromptDefender",
+      "dependencies": [
+        "config",
+        "logger",
+        "cache"
+      ],
+      "dependents": [],
+      "class_path": "app.security.advanced_prompt_defender.AdvancedPromptDefender",
+      "config": {
+        "enabled": true,
+        "detection_confidence_threshold": 0.7,
+        "flag_threshold": 0.5,
+        "block_threshold": 0.9,
+        "max_validation_time_ms": 100,
+        "enable_caching": true,
+        "cache_ttl_seconds": 300,
+        "parallel_detection": true,
+        "educational_messages": true
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "security"
+    },
+    "llm_provider_factory": {
+      "name": "llm_provider_factory",
+      "service_type": "app.llm.factory.LLMProviderFactory",
+      "dependencies": [
+        "config",
+        "logger"
+      ],
+      "dependents": [
+        "agentic_matcher"
+      ],
+      "class_path": "app.llm.factory.LLMProviderFactory",
+      "config": {
+        "default_provider": "openai",
+        "fallback_providers": [
+          "anthropic",
+          "bedrock"
+        ],
+        "timeout_seconds": 30,
+        "max_retries": 3,
+        "retry_delay_seconds": 1.0
+      },
+      "health_check_enabled": true,
+      "singleton": false,
+      "category": "llm"
+    },
+    "diagram_service_factory": {
+      "name": "diagram_service_factory",
+      "service_type": "app.diagrams.factory.DiagramServiceFactory",
+      "dependencies": [
+        "config",
+        "logger"
+      ],
+      "dependents": [],
+      "class_path": "app.diagrams.factory.DiagramServiceFactory",
+      "config": {
+        "mermaid_config": {
+          "default_height": 400,
+          "enable_enhanced_rendering": true,
+          "theme": "default",
+          "max_nodes": 100
+        },
+        "infrastructure_config": {
+          "default_format": "png",
+          "enable_dynamic_mapping": true,
+          "dpi": 300,
+          "font_size": 12,
+          "max_components": 50
+        },
+        "drawio_config": {
+          "enable_multiple_formats": true,
+          "include_metadata": true,
+          "export_path": "./exports"
+        }
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "diagram"
+    },
+    "pattern_loader": {
+      "name": "pattern_loader",
+      "service_type": "app.pattern.loader.PatternLoader",
+      "dependencies": [
+        "config"
+      ],
+      "dependents": [],
+      "class_path": "app.pattern.loader.PatternLoader",
+      "config": {
+        "pattern_library_path": "./data/patterns"
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "pattern"
+    },
+    "openai_provider": {
+      "name": "openai_provider",
+      "service_type": "app.llm.openai_provider.OpenAIProvider",
+      "dependencies": [
+        "config",
+        "logger"
+      ],
+      "dependents": [],
+      "class_path": "app.llm.openai_provider.OpenAIProvider",
+      "config": {
+        "model": "gpt-4o",
+        "temperature": 0.3,
+        "max_tokens": 1000,
+        "timeout_seconds": 30,
+        "api_key_env_var": "OPENAI_API_KEY"
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "llm"
+    },
+    "anthropic_provider": {
+      "name": "anthropic_provider",
+      "service_type": "app.llm.claude_provider.ClaudeProvider",
+      "dependencies": [
+        "config",
+        "logger"
+      ],
+      "dependents": [],
+      "class_path": "app.llm.claude_provider.ClaudeProvider",
+      "config": {
+        "model": "claude-3-sonnet-20240229",
+        "temperature": 0.3,
+        "max_tokens": 1000,
+        "timeout_seconds": 30,
+        "api_key_env_var": "ANTHROPIC_API_KEY"
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "llm"
+    },
+    "bedrock_provider": {
+      "name": "bedrock_provider",
+      "service_type": "app.llm.bedrock_provider.BedrockProvider",
+      "dependencies": [
+        "config",
+        "logger"
+      ],
+      "dependents": [],
+      "class_path": "app.llm.bedrock_provider.BedrockProvider",
+      "config": {
+        "region": "us-east-1",
+        "model": "anthropic.claude-3-sonnet-20240229-v1:0",
+        "temperature": 0.3,
+        "max_tokens": 1000,
+        "timeout_seconds": 30
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "llm"
+    },
+    "pattern_matcher": {
+      "name": "pattern_matcher",
+      "service_type": "app.pattern.matcher.PatternMatcher",
+      "dependencies": [
+        "config",
+        "logger",
+        "cache"
+      ],
+      "dependents": [],
+      "class_path": "app.pattern.matcher.PatternMatcher",
+      "config": {
+        "pattern_library_path": "./data/patterns",
+        "similarity_threshold": 0.7,
+        "cache_results": true,
+        "cache_ttl_seconds": 1800
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "analysis"
+    },
+    "agentic_matcher": {
+      "name": "agentic_matcher",
+      "service_type": "app.pattern.agentic_matcher.AgenticMatcher",
+      "dependencies": [
+        "config",
+        "logger",
+        "cache",
+        "llm_provider_factory"
+      ],
+      "dependents": [],
+      "class_path": "app.pattern.agentic_matcher.AgenticMatcher",
+      "config": {
+        "confidence_threshold": 0.6,
+        "enhancement_enabled": true,
+        "fallback_to_traditional": true
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "analysis"
+    },
+    "embedding_engine": {
+      "name": "embedding_engine",
+      "service_type": "app.embeddings.engine.EmbeddingEngine",
+      "dependencies": [
+        "config",
+        "logger",
+        "cache"
+      ],
+      "dependents": [],
+      "class_path": "app.embeddings.engine.EmbeddingEngine",
+      "config": {
+        "provider": "sentence_transformers",
+        "model_name": "all-MiniLM-L6-v2",
+        "dimension": 384,
+        "cache_embeddings": true,
+        "fallback_provider": "hash_based"
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "analysis"
+    },
+    "export_service": {
+      "name": "export_service",
+      "service_type": "app.exporters.service.ExportService",
+      "dependencies": [
+        "config",
+        "logger"
+      ],
+      "dependents": [],
+      "class_path": "app.exporters.service.ExportService",
+      "config": {
+        "export_path": "./exports",
+        "supported_formats": [
+          "json",
+          "markdown",
+          "drawio"
+        ],
+        "max_file_size_mb": 50,
+        "cleanup_old_exports": true,
+        "retention_days": 30
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "export"
+    },
+    "mermaid_service": {
+      "name": "mermaid_service",
+      "service_type": "app.ui.mermaid_diagrams.MermaidService",
+      "dependencies": [
+        "config",
+        "logger"
+      ],
+      "dependents": [],
+      "class_path": "app.ui.mermaid_diagrams.MermaidService",
+      "config": {
+        "theme": "default",
+        "max_nodes": 100,
+        "layout_algorithm": "dagre"
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "diagram"
+    },
+    "infrastructure_diagram_service": {
+      "name": "infrastructure_diagram_service",
+      "service_type": "app.diagrams.infrastructure.InfrastructureDiagramService",
+      "dependencies": [
+        "config",
+        "logger"
+      ],
+      "dependents": [],
+      "class_path": "app.diagrams.infrastructure.InfrastructureDiagramService",
+      "config": {
+        "output_format": "png",
+        "dpi": 300,
+        "font_size": 12,
+        "max_components": 50
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "diagram"
+    },
+    "performance_monitor": {
+      "name": "performance_monitor",
+      "service_type": "app.monitoring.performance_monitor.PerformanceMonitor",
+      "dependencies": [
+        "config",
+        "logger"
+      ],
+      "dependents": [],
+      "class_path": "app.monitoring.performance_monitor.PerformanceMonitor",
+      "config": {
+        "enabled": true,
+        "sample_rate": 0.1,
+        "metrics_retention_days": 7,
+        "alert_thresholds": {
+          "response_time_ms": 5000,
+          "error_rate_percent": 5.0,
+          "memory_usage_percent": 80.0
+        }
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "monitoring"
+    },
+    "health_checker": {
+      "name": "health_checker",
+      "service_type": "app.health.health_checker.HealthChecker",
+      "dependencies": [
+        "config",
+        "logger"
+      ],
+      "dependents": [],
+      "class_path": "app.health.health_checker.HealthChecker",
+      "config": {
+        "check_interval_seconds": 30,
+        "timeout_seconds": 10,
+        "alert_on_failure": true,
+        "max_consecutive_failures": 3
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "monitoring"
+    },
+    "jira_service": {
+      "name": "jira_service",
+      "service_type": "app.services.jira.JiraService",
+      "dependencies": [
+        "config",
+        "logger"
+      ],
+      "dependents": [],
+      "class_path": "app.services.jira.JiraService",
+      "config": {
+        "timeout_seconds": 30,
+        "max_retries": 3,
+        "retry_delay_seconds": 1.0,
+        "verify_ssl": true,
+        "connection_pool_size": 10
+      },
+      "health_check_enabled": true,
+      "singleton": true,
+      "category": "integration"
+    }
+  },
+  "dependencies": [
+    {
+      "from": "logger",
+      "to": "config"
+    },
+    {
+      "from": "cache",
+      "to": "config"
+    },
+    {
+      "from": "cache",
+      "to": "logger"
+    },
+    {
+      "from": "security_validator",
+      "to": "config"
+    },
+    {
+      "from": "security_validator",
+      "to": "logger"
+    },
+    {
+      "from": "advanced_prompt_defender",
+      "to": "config"
+    },
+    {
+      "from": "advanced_prompt_defender",
+      "to": "logger"
+    },
+    {
+      "from": "advanced_prompt_defender",
+      "to": "cache"
+    },
+    {
+      "from": "llm_provider_factory",
+      "to": "config"
+    },
+    {
+      "from": "llm_provider_factory",
+      "to": "logger"
+    },
+    {
+      "from": "diagram_service_factory",
+      "to": "config"
+    },
+    {
+      "from": "diagram_service_factory",
+      "to": "logger"
+    },
+    {
+      "from": "pattern_loader",
+      "to": "config"
+    },
+    {
+      "from": "openai_provider",
+      "to": "config"
+    },
+    {
+      "from": "openai_provider",
+      "to": "logger"
+    },
+    {
+      "from": "anthropic_provider",
+      "to": "config"
+    },
+    {
+      "from": "anthropic_provider",
+      "to": "logger"
+    },
+    {
+      "from": "bedrock_provider",
+      "to": "config"
+    },
+    {
+      "from": "bedrock_provider",
+      "to": "logger"
+    },
+    {
+      "from": "pattern_matcher",
+      "to": "config"
+    },
+    {
+      "from": "pattern_matcher",
+      "to": "logger"
+    },
+    {
+      "from": "pattern_matcher",
+      "to": "cache"
+    },
+    {
+      "from": "agentic_matcher",
+      "to": "config"
+    },
+    {
+      "from": "agentic_matcher",
+      "to": "logger"
+    },
+    {
+      "from": "agentic_matcher",
+      "to": "cache"
+    },
+    {
+      "from": "agentic_matcher",
+      "to": "llm_provider_factory"
+    },
+    {
+      "from": "embedding_engine",
+      "to": "config"
+    },
+    {
+      "from": "embedding_engine",
+      "to": "logger"
+    },
+    {
+      "from": "embedding_engine",
+      "to": "cache"
+    },
+    {
+      "from": "export_service",
+      "to": "config"
+    },
+    {
+      "from": "export_service",
+      "to": "logger"
+    },
+    {
+      "from": "mermaid_service",
+      "to": "config"
+    },
+    {
+      "from": "mermaid_service",
+      "to": "logger"
+    },
+    {
+      "from": "infrastructure_diagram_service",
+      "to": "config"
+    },
+    {
+      "from": "infrastructure_diagram_service",
+      "to": "logger"
+    },
+    {
+      "from": "performance_monitor",
+      "to": "config"
+    },
+    {
+      "from": "performance_monitor",
+      "to": "logger"
+    },
+    {
+      "from": "health_checker",
+      "to": "config"
+    },
+    {
+      "from": "health_checker",
+      "to": "logger"
+    },
+    {
+      "from": "jira_service",
+      "to": "config"
+    },
+    {
+      "from": "jira_service",
+      "to": "logger"
+    }
+  ],
+  "analysis": {
+    "cycles": [],
+    "orphaned_services": [],
+    "root_services": [
+      "config"
+    ],
+    "leaf_services": [
+      "security_validator",
+      "advanced_prompt_defender",
+      "diagram_service_factory",
+      "pattern_loader",
+      "openai_provider",
+      "anthropic_provider",
+      "bedrock_provider",
+      "pattern_matcher",
+      "agentic_matcher",
+      "embedding_engine",
+      "export_service",
+      "mermaid_service",
+      "infrastructure_diagram_service",
+      "performance_monitor",
+      "health_checker",
+      "jira_service"
+    ],
+    "service_categories": {
+      "core": [
+        "logger",
+        "config",
+        "cache"
+      ],
+      "security": [
+        "security_validator",
+        "advanced_prompt_defender"
+      ],
+      "llm": [
+        "llm_provider_factory",
+        "openai_provider",
+        "anthropic_provider",
+        "bedrock_provider"
+      ],
+      "diagram": [
+        "diagram_service_factory",
+        "mermaid_service",
+        "infrastructure_diagram_service"
+      ],
+      "pattern": [
+        "pattern_loader"
+      ],
+      "analysis": [
+        "pattern_matcher",
+        "agentic_matcher",
+        "embedding_engine"
+      ],
+      "export": [
+        "export_service"
+      ],
+      "monitoring": [
+        "performance_monitor",
+        "health_checker"
+      ],
+      "integration": [
+        "jira_service"
+      ]
+    }
+  }
+}

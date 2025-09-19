@@ -1,6 +1,6 @@
 """Provider configuration UI component."""
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 import streamlit as st
 
 from app.utils.imports import require_service, optional_service
@@ -9,7 +9,7 @@ from app.utils.imports import require_service, optional_service
 class ProviderConfigComponent:
     """Handles LLM provider configuration UI."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.providers = {
             "fake": {
                 "name": "Fake (Testing)",
@@ -42,9 +42,10 @@ class ProviderConfigComponent:
         st.subheader("🔧 LLM Provider Configuration")
         
         # Provider selection
+        provider_keys = list(self.providers.keys())
         provider = st.selectbox(
             "LLM Provider",
-            list(self.providers.keys()),
+            provider_keys,
             format_func=lambda x: self.providers[x]["name"],
             help="Select the LLM provider to use for analysis"
         )
@@ -53,9 +54,10 @@ class ProviderConfigComponent:
         st.info(f"ℹ️ {provider_info['description']}")
         
         # Model selection
+        models = provider_info["models"]
         model = st.selectbox(
             "Model",
-            provider_info["models"],
+            models,
             help=f"Select the model to use with {provider_info['name']}"
         )
         
@@ -239,7 +241,7 @@ class ProviderConfigComponent:
             "response_delay": response_delay
         }
     
-    def render_connection_test(self, config: Dict[str, Any], api_integration) -> bool:
+    def render_connection_test(self, config: Dict[str, Any], api_integration: Any) -> bool:
         """Render connection test UI."""
         if st.button("🔗 Test Connection", type="secondary"):
             if config["provider"] != "fake" and config.get("api_key"):
@@ -267,7 +269,7 @@ class ProviderConfigComponent:
         
         return status_info
     
-    def validate_config(self, config: Dict[str, Any]) -> tuple[bool, str]:
+    def validate_config(self, config: Dict[str, Any]) -> Tuple[bool, str]:
         """Validate provider configuration."""
         provider = config.get("provider")
         

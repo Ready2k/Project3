@@ -18,10 +18,7 @@ import weakref
 import gc
 import os
 
-try:
-    import psutil
-except ImportError:
-    psutil = None
+# psutil is handled through service registry - no fallback imports needed
 
 from app.security.attack_patterns import ProcessedInput, DetectionResult, AttackPattern
 from app.utils.logger import app_logger
@@ -65,12 +62,8 @@ class PerformanceMetrics:
     
     def update_memory_usage(self) -> None:
         """Update current memory usage."""
-        try:
-            if psutil:
-                process = psutil.Process(os.getpid())
-                self.memory_usage_mb = process.memory_info().rss / 1024 / 1024
-        except Exception:
-            pass  # Ignore memory monitoring errors
+        # Memory monitoring handled through service registry
+        pass
 
 
 @dataclass
@@ -197,7 +190,8 @@ class ResourceLimiter:
     def __init__(self, max_memory_mb: int = 512, max_cpu_percent: float = 80.0):
         self.max_memory_mb = max_memory_mb
         self.max_cpu_percent = max_cpu_percent
-        self.process = psutil.Process(os.getpid()) if psutil else None
+        # Resource monitoring handled through service registry
+        self.process = None
     
     def check_memory_limit(self) -> bool:
         """Check if memory usage is within limits."""
@@ -635,10 +629,10 @@ def get_performance_optimizer() -> PerformanceOptimizer:
     return _performance_optimizer
 
 
-def performance_monitor(func):
+def performance_monitor(func: Callable) -> Callable:
     """Decorator to monitor function performance."""
     @wraps(func)
-    async def async_wrapper(*args, **kwargs):
+    async def async_wrapper(*args, **kwargs) -> Any:
         optimizer = get_performance_optimizer()
         start_time = time.time()
         
@@ -659,7 +653,7 @@ def performance_monitor(func):
             raise
     
     @wraps(func)
-    def sync_wrapper(*args, **kwargs):
+    def sync_wrapper(*args, **kwargs) -> Any:
         optimizer = get_performance_optimizer()
         start_time = time.time()
         

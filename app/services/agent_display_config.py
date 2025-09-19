@@ -81,8 +81,8 @@ class AgentDisplayConfigManager:
         """Load configuration from file or create default."""
         
         if os.path.exists(self.config_file):
-        # Get logger from service registry
-        self.logger = require_service('logger', context='DisplayDensity')
+            # Get logger from service registry
+            self.logger = require_service('logger', context='DisplayDensity')
             try:
                 with open(self.config_file, 'r') as f:
                     config_data = json.load(f)

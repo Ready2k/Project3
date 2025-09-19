@@ -43,7 +43,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         while requests_list and requests_list[0] < cutoff_time:
             requests_list.pop(0)
     
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next) -> Response:
         """Process rate limiting for incoming requests."""
         client_ip = self._get_client_ip(request)
         current_time = time.time()
@@ -91,7 +91,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         self.max_request_size = max_request_size
         self._advanced_defender = None  # Lazy initialization
     
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next) -> Response:
         """Process security checks for incoming requests."""
         # Check request size
         content_length = request.headers.get("content-length")
@@ -209,7 +209,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             return True  # Allow on error to avoid breaking functionality
 
 
-def setup_cors_middleware(app, allowed_origins: Optional[list] = None):
+def setup_cors_middleware(app, allowed_origins: Optional[list] = None) -> None:
     """Setup CORS middleware with secure defaults."""
     if allowed_origins is None:
         # Default to localhost for development

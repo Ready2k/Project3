@@ -28,7 +28,7 @@ class AuditRun:
     created_at: Optional[datetime] = None
     id: Optional[int] = None
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.created_at is None:
             self.created_at = datetime.utcnow()
 
@@ -43,7 +43,7 @@ class AuditMatch:
     created_at: Optional[datetime] = None
     id: Optional[int] = None
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.created_at is None:
             self.created_at = datetime.utcnow()
 
@@ -51,10 +51,10 @@ class AuditMatch:
 class AuditLogger:
     """SQLite-based audit logging system with PII redaction."""
     
-    def __init__(self, db_path: str = "audit.db", redact_pii: bool = True):
-        self.db_path = Path(db_path)
-        self.redact_pii = redact_pii
-        self.redactor = PIIRedactor() if redact_pii else None
+    def __init__(self, db_path: str = "audit.db", redact_pii: bool = True) -> None:
+        self.db_path: Path = Path(db_path)
+        self.redact_pii: bool = redact_pii
+        self.redactor: Optional[PIIRedactor] = PIIRedactor() if redact_pii else None
         self._init_database()
     
     def _init_database(self) -> None:
@@ -258,7 +258,7 @@ class AuditLogger:
                  limit: int = 100) -> List[AuditRun]:
         """Retrieve LLM call audit records."""
         query = "SELECT * FROM runs WHERE 1=1"
-        params = []
+        params: List[Any] = []
         
         if session_id:
             query += " AND session_id = ?"
@@ -298,7 +298,7 @@ class AuditLogger:
                    limit: int = 100) -> List[AuditMatch]:
         """Retrieve pattern match audit records."""
         query = "SELECT * FROM matches WHERE 1=1"
-        params = []
+        params: List[Any] = []
         
         if session_id:
             query += " AND session_id = ?"
@@ -335,8 +335,8 @@ class AuditLogger:
         """Get aggregated statistics by provider with filtering options."""
         
         # Build the WHERE clause based on filters
-        where_conditions = []
-        params = []
+        where_conditions: List[str] = []
+        params: List[Any] = []
         
         # Time filtering
         if time_filter != "All Time":
@@ -438,7 +438,7 @@ class AuditLogger:
             FROM runs 
             WHERE 1=1
         """
-        params = []
+        params: List[Any] = []
         
         if session_id:
             query += " AND session_id = ?"

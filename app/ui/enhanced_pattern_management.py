@@ -2,9 +2,10 @@
 
 import streamlit as st
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Coroutine
 import asyncio
 import threading
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from app.pattern.enhanced_loader import EnhancedPatternLoader
@@ -12,9 +13,9 @@ from app.services.pattern_enhancement_service import PatternEnhancementService
 from app.utils.imports import require_service, optional_service
 
 
-def run_async_in_thread(coro):
+def run_async_in_thread(coro: Coroutine[Any, Any, Any]) -> Any:
     """Run an async coroutine in a separate thread with its own event loop."""
-    def run_in_thread():
+    def run_in_thread() -> Any:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
@@ -39,7 +40,7 @@ def run_async_in_thread(coro):
 
 
 def render_enhanced_pattern_management(pattern_loader: EnhancedPatternLoader, 
-                                     enhancement_service: PatternEnhancementService):
+                                     enhancement_service: PatternEnhancementService) -> None:
     """Render the enhanced pattern management interface."""
     
     try:
@@ -86,7 +87,7 @@ def render_enhanced_pattern_management(pattern_loader: EnhancedPatternLoader,
             st.code(traceback.format_exc())
 
 
-def render_pattern_overview(pattern_loader: EnhancedPatternLoader):
+def render_pattern_overview(pattern_loader: EnhancedPatternLoader) -> None:
     """Render pattern overview with enhanced capabilities."""
     
     st.subheader("Pattern Library Overview")
@@ -148,7 +149,7 @@ def render_pattern_overview(pattern_loader: EnhancedPatternLoader):
 
 
 def render_pattern_enhancement(pattern_loader: EnhancedPatternLoader, 
-                             enhancement_service: PatternEnhancementService):
+                             enhancement_service: PatternEnhancementService) -> None:
     """Render pattern enhancement interface."""
     
     st.subheader("Pattern Enhancement")
@@ -291,7 +292,7 @@ def render_pattern_enhancement(pattern_loader: EnhancedPatternLoader,
                         st.code(traceback.format_exc())
 
 
-def render_pattern_comparison(pattern_loader: EnhancedPatternLoader):
+def render_pattern_comparison(pattern_loader: EnhancedPatternLoader) -> None:
     """Render pattern comparison interface."""
     
     st.subheader("Pattern Comparison")
@@ -318,7 +319,7 @@ def render_pattern_comparison(pattern_loader: EnhancedPatternLoader):
             render_pattern_comparison_details(pattern1, pattern2)
 
 
-def render_pattern_comparison_details(pattern1: Dict[str, Any], pattern2: Dict[str, Any]):
+def render_pattern_comparison_details(pattern1: Dict[str, Any], pattern2: Dict[str, Any]) -> None:
     """Render detailed comparison between two patterns."""
     
     st.subheader("Detailed Comparison")
@@ -392,7 +393,7 @@ def render_pattern_comparison_details(pattern1: Dict[str, Any], pattern2: Dict[s
     st.dataframe(comparison_data, use_container_width=True)
 
 
-def render_pattern_analytics(pattern_loader: EnhancedPatternLoader):
+def render_pattern_analytics(pattern_loader: EnhancedPatternLoader) -> None:
     """Render pattern analytics and insights."""
     
     st.subheader("Pattern Analytics")
@@ -490,7 +491,7 @@ def render_pattern_analytics(pattern_loader: EnhancedPatternLoader):
 
 
 def render_bulk_operations(pattern_loader: EnhancedPatternLoader, 
-                          enhancement_service: PatternEnhancementService):
+                          enhancement_service: PatternEnhancementService) -> None:
     """Render bulk operations interface."""
     
     st.subheader("Bulk Operations")
@@ -555,7 +556,7 @@ def render_bulk_operations(pattern_loader: EnhancedPatternLoader,
                     st.rerun()
                 except AttributeError:
                     # Fallback for older Streamlit versions
-                    st.experimental_rerun()
+                    st.experimental_rerun()  # type: ignore  # type: ignore
                 
             except Exception as e:
                 st.error(f"❌ Bulk enhancement failed: {e}")

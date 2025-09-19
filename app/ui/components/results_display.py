@@ -1,7 +1,8 @@
 """Results display UI component."""
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Coroutine
 import streamlit as st
+import asyncio
 
 from app.utils.imports import require_service, optional_service
 from app.ui.mermaid_diagrams import mermaid_generator
@@ -10,7 +11,7 @@ from app.ui.mermaid_diagrams import mermaid_generator
 class ResultsDisplayComponent:
     """Handles display of analysis results and recommendations."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.export_formats = {
             "json": {"name": "JSON", "icon": "📄", "description": "Machine-readable format"},
             "markdown": {"name": "Markdown", "icon": "📝", "description": "Human-readable documentation"},
@@ -18,7 +19,7 @@ class ResultsDisplayComponent:
             "comprehensive": {"name": "Comprehensive", "icon": "📊", "description": "Complete analysis report"}
         }
     
-    def render_feasibility_assessment(self, feasibility: str, reasoning: str):
+    def render_feasibility_assessment(self, feasibility: str, reasoning: str) -> None:
         """Render feasibility assessment section."""
         st.subheader("🎯 Feasibility Assessment")
         
@@ -34,7 +35,7 @@ class ResultsDisplayComponent:
             with st.expander("🧠 Reasoning Details"):
                 st.write(reasoning)
     
-    def render_recommendations(self, recommendations: List[Dict[str, Any]]):
+    def render_recommendations(self, recommendations: List[Dict[str, Any]]) -> None:
         """Render recommendations section."""
         st.subheader("💡 Recommendations")
         
@@ -76,7 +77,7 @@ class ResultsDisplayComponent:
                 if rec.get('agent_roles'):
                     self._render_agent_roles(rec['agent_roles'])
     
-    def _render_agent_roles(self, agent_roles: List[Dict[str, Any]]):
+    def _render_agent_roles(self, agent_roles: List[Dict[str, Any]]) -> None:
         """Render agent roles information."""
         st.write("**🤖 Agent Roles:**")
         
@@ -98,7 +99,7 @@ class ResultsDisplayComponent:
                 
                 st.divider()
     
-    def render_tech_stack(self, tech_stack: List[str]):
+    def render_tech_stack(self, tech_stack: List[str]) -> None:
         """Render technology stack section."""
         st.subheader("🛠️ Technology Stack")
         
@@ -151,7 +152,7 @@ class ResultsDisplayComponent:
         # Remove empty categories
         return {k: v for k, v in categories.items() if v}
     
-    def render_diagrams_section(self, requirements: Dict[str, Any], recommendations: List[Dict[str, Any]], tech_stack: List[str]):
+    def render_diagrams_section(self, requirements: Dict[str, Any], recommendations: List[Dict[str, Any]], tech_stack: List[str]) -> None:
         """Render diagrams section."""
         st.subheader("📊 Architecture Diagrams")
         
@@ -171,7 +172,7 @@ class ResultsDisplayComponent:
         if st.button(f"🎨 Generate {selected_diagram}"):
             self._generate_and_display_diagram(selected_diagram, requirements, recommendations, tech_stack)
     
-    def _generate_and_display_diagram(self, diagram_type: str, requirements: Dict[str, Any], recommendations: List[Dict[str, Any]], tech_stack: List[str]):
+    def _generate_and_display_diagram(self, diagram_type: str, requirements: Dict[str, Any], recommendations: List[Dict[str, Any]], tech_stack: List[str]) -> None:
         """Generate and display a specific diagram type."""
         try:
             with st.spinner(f"🎨 Generating {diagram_type}..."):
@@ -297,7 +298,7 @@ Create a diagram showing:
 Use Mermaid flowchart syntax with clear labels and connection types.
 Return ONLY the raw Mermaid code without markdown formatting."""
     
-    def render_export_options(self, session_id: str, api_integration):
+    def render_export_options(self, session_id: str, api_integration: Any) -> None:
         """Render export options section."""
         st.subheader("📤 Export Results")
         
@@ -316,7 +317,7 @@ Return ONLY the raw Mermaid code without markdown formatting."""
         if st.button(f"📥 Export as {self.export_formats[export_format]['name']}", type="primary"):
             api_integration.export_results_with_ui_feedback(session_id, export_format)
     
-    def render_results_summary(self, session_summary: Dict[str, Any]):
+    def render_results_summary(self, session_summary: Dict[str, Any]) -> None:
         """Render a summary of current results."""
         st.subheader("📋 Results Summary")
         

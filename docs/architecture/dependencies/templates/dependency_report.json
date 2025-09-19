@@ -1,0 +1,27 @@
+{
+  "report_metadata": {
+    "generated_at": "{{timestamp}}",
+    "report_type": "service_dependency_analysis",
+    "version": "1.0"
+  },
+  "summary": {
+    "total_services": "{{total_services}}",
+    "total_dependencies": "{{total_dependencies}}",
+    "healthy_services": "{{healthy_services}}",
+    "unhealthy_services": "{{unhealthy_services}}",
+    "circular_dependencies": "{{circular_dependencies}}",
+    "orphaned_services": "{{orphaned_services}}"
+  },
+  "services": "{{services_data}}",
+  "dependency_graph": {
+    "nodes": "{{graph_nodes}}",
+    "edges": "{{graph_edges}}"
+  },
+  "analysis": {
+    "initialization_order": "{{init_order}}",
+    "critical_path": "{{critical_path}}",
+    "bottlenecks": "{{bottlenecks}}"
+  },
+  "issues": "{{issues_list}}",
+  "recommendations": "{{recommendations_list}}"
+}

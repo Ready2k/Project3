@@ -13,7 +13,7 @@ from app.pattern.dynamic_schema_loader import dynamic_schema_loader
 from app.utils.imports import require_service, optional_service
 
 
-def render_schema_management():
+def render_schema_management() -> None:
     """Render the schema management interface."""
     st.header("🔧 Schema Configuration")
     st.write("Configure validation enums for pattern schemas. This allows you to customize what values are accepted for different pattern fields.")
@@ -208,7 +208,7 @@ def render_schema_management():
                 st.error(f"Failed to parse configuration file: {e}")
 
 
-def render_enum_usage_stats():
+def render_enum_usage_stats() -> None:
     """Render statistics about enum usage in patterns."""
     st.subheader("📊 Enum Usage Statistics")
     

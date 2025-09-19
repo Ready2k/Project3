@@ -112,7 +112,8 @@
         "supabase",
         "custom_internal",
         "pandas",
-        "numpy"
+        "numpy",
+        "react"
       ]
     },
     "languages": {
@@ -1988,6 +1989,19 @@
         "microservices",
         "event_driven"
       ]
+    },
+    "react": {
+      "added_date": "2025-08-26",
+      "alternatives": [],
+      "auto_generated": true,
+      "category": "integration",
+      "description": "Technology component: React",
+      "integrates_with": [],
+      "license": "unknown",
+      "maturity": "unknown",
+      "name": "React",
+      "tags": [],
+      "use_cases": []
     },
     "redis": {
       "alternatives": [

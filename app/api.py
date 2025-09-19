@@ -12,9 +12,6 @@ from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-
-
-
 from pydantic import BaseModel, field_validator
 
 from app.config import Settings, load_settings

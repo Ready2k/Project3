@@ -1,7 +1,7 @@
 """API client for Streamlit UI to communicate with FastAPI backend."""
 
 import asyncio
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union, Coroutine
 import httpx
 import streamlit as st
 
@@ -12,12 +12,12 @@ from app.utils.error_boundaries import error_boundary, AsyncOperationManager
 class AAA_APIClient:
     """Client for communicating with the AAA FastAPI backend."""
     
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: str = "http://localhost:8000") -> None:
         self.base_url = base_url.rstrip('/')
-        self._async_manager = None
+        self._async_manager: Optional[AsyncOperationManager] = None
     
     @property
-    def async_manager(self):
+    def async_manager(self) -> AsyncOperationManager:
         """Lazy initialization of async manager to avoid event loop issues."""
         if self._async_manager is None:
             self._async_manager = AsyncOperationManager(max_concurrent=5, timeout_seconds=30.0)
@@ -131,10 +131,10 @@ class AAA_APIClient:
 class StreamlitAPIIntegration:
     """Integration layer between Streamlit UI and API client."""
     
-    def __init__(self, api_client: AAA_APIClient):
+    def __init__(self, api_client: AAA_APIClient) -> None:
         self.api_client = api_client
     
-    def run_async_operation(self, coro, fallback_value=None, operation_name="api_operation"):
+    def run_async_operation(self, coro: Coroutine[Any, Any, Any], fallback_value: Any = None, operation_name: str = "api_operation") -> Any:
         """Run async operation in Streamlit context."""
         try:
             # Check if we're in an async context
@@ -156,7 +156,7 @@ class StreamlitAPIIntegration:
                 return fallback_value
             raise
     
-    def submit_requirements_with_ui_feedback(self, source: str, payload: Dict[str, Any], provider_config: Optional[Dict[str, Any]] = None):
+    def submit_requirements_with_ui_feedback(self, source: str, payload: Dict[str, Any], provider_config: Optional[Dict[str, Any]] = None) -> None:
         """Submit requirements with UI feedback."""
         with st.spinner("🚀 Starting analysis..."):
             try:
@@ -176,7 +176,7 @@ class StreamlitAPIIntegration:
             except Exception as e:
                 st.error(f"❌ Failed to submit requirements: {str(e)}")
     
-    def load_session_status_with_ui_feedback(self, session_id: str):
+    def load_session_status_with_ui_feedback(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Load session status with UI feedback."""
         try:
             result = self.run_async_operation(
@@ -203,7 +203,7 @@ class StreamlitAPIIntegration:
             st.error(f"❌ Failed to load session: {str(e)}")
             return None
     
-    def submit_qa_answers_with_ui_feedback(self, session_id: str, answers: Dict[str, str]):
+    def submit_qa_answers_with_ui_feedback(self, session_id: str, answers: Dict[str, str]) -> None:
         """Submit Q&A answers with UI feedback."""
         with st.spinner("💭 Processing answers..."):
             try:
@@ -226,7 +226,7 @@ class StreamlitAPIIntegration:
             except Exception as e:
                 st.error(f"❌ Failed to submit answers: {str(e)}")
     
-    def load_recommendations_with_ui_feedback(self, session_id: str, top_k: int = 3):
+    def load_recommendations_with_ui_feedback(self, session_id: str, top_k: int = 3) -> Optional[Dict[str, Any]]:
         """Load recommendations with UI feedback."""
         with st.spinner("🧠 Generating recommendations..."):
             try:
@@ -250,7 +250,7 @@ class StreamlitAPIIntegration:
                 st.error(f"❌ Failed to load recommendations: {str(e)}")
                 return None
     
-    def export_results_with_ui_feedback(self, session_id: str, format: str):
+    def export_results_with_ui_feedback(self, session_id: str, format: str) -> Optional[Dict[str, Any]]:
         """Export results with UI feedback."""
         with st.spinner(f"📤 Exporting as {format.upper()}..."):
             try:
@@ -274,7 +274,7 @@ class StreamlitAPIIntegration:
                 st.error(f"❌ Failed to export: {str(e)}")
                 return None
     
-    def test_provider_connection_with_ui_feedback(self, provider_config: Dict[str, Any]):
+    def test_provider_connection_with_ui_feedback(self, provider_config: Dict[str, Any]) -> bool:
         """Test provider connection with UI feedback."""
         with st.spinner("🔗 Testing connection..."):
             try:
