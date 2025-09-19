@@ -464,7 +464,7 @@ class ModelDiscoveryService:
             )
         ]
     
-    def clear_cache(self, provider: Optional[str] = None):
+    def clear_cache(self, provider: Optional[str] = None) -> None:
         """Clear model cache for a specific provider or all providers."""
         if provider:
             keys_to_remove = [key for key in self.cache.keys() if key.startswith(provider)]

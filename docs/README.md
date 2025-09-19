@@ -27,6 +27,10 @@ This directory contains comprehensive documentation for the Automated AI Assessm
 - **[DEVELOPMENT.md](development/DEVELOPMENT.md)** - Development setup and guidelines
 - **[TESTING.md](development/TESTING.md)** - Testing strategy and best practices
 - **[CONTRIBUTING.md](development/CONTRIBUTING.md)** - Contribution guidelines
+- **[SERVICE_REGISTRY_GUIDE.md](development/SERVICE_REGISTRY_GUIDE.md)** - Complete service registry usage guide
+- **[SERVICE_TROUBLESHOOTING.md](development/SERVICE_TROUBLESHOOTING.md)** - Service registry troubleshooting
+- **[SERVICE_EXAMPLES.md](development/SERVICE_EXAMPLES.md)** - Practical service registry examples
+- **[TYPE_CHECKING.md](development/TYPE_CHECKING.md)** - Type checking setup and usage
 
 ## 🚀 Deployment
 

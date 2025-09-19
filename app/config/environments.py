@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 from app.config.system_config import (
     SystemConfiguration, AutonomyConfig, PatternMatchingConfig, 
-    LLMGenerationConfig, RecommendationConfig, SystemConfigurationManager
+    LLMGenerationConfig, RecommendationConfig, RateLimitConfig, SystemConfigurationManager
 )
 from app.utils.logger import app_logger
 
@@ -138,7 +138,8 @@ class EnvironmentConfig:
         autonomy=AutonomyConfig(),
         pattern_matching=PatternMatchingConfig(), 
         llm_generation=LLMGenerationConfig(),
-        recommendations=RecommendationConfig()
+        recommendations=RecommendationConfig(),
+        rate_limiting=RateLimitConfig()
     ))
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     redis: RedisConfig = field(default_factory=RedisConfig)
@@ -190,14 +191,15 @@ class ConfigurationManager:
         # Create default system configuration
         from app.config.system_config import (
             AutonomyConfig, PatternMatchingConfig, 
-            LLMGenerationConfig, RecommendationConfig, SystemConfiguration
+            LLMGenerationConfig, RecommendationConfig, RateLimitConfig, SystemConfiguration
         )
         
         system_config = SystemConfiguration(
             autonomy=AutonomyConfig(),
             pattern_matching=PatternMatchingConfig(),
             llm_generation=LLMGenerationConfig(),
-            recommendations=RecommendationConfig()
+            recommendations=RecommendationConfig(),
+            rate_limiting=RateLimitConfig()
         )
         
         base_config = EnvironmentConfig(

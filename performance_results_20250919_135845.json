@@ -1,0 +1,91 @@
+{
+  "startup_time": {
+    "average_time": 1.1351115416666666,
+    "min_time": 0.05511266699999995,
+    "max_time": 3.220931625,
+    "times": [
+      3.220931625,
+      0.12929033300000015,
+      0.05511266699999995
+    ],
+    "iterations": 3
+  },
+  "memory_usage": {
+    "baseline_memory": 467.8125,
+    "registry_memory": 467.8125,
+    "startup_memory": 468.21875,
+    "registry_overhead": 0.0,
+    "total_overhead": 0.40625
+  },
+  "service_resolution": {
+    "setup_time": 0.00017558400000039498,
+    "average_lookup_time": 1.7497999999793734e-07,
+    "min_lookup_time": 1.2499999968440534e-07,
+    "max_lookup_time": 4.4999999997408224e-06,
+    "total_lookup_time": 0.00017497999999793734,
+    "lookups_per_second": 5714938.850221671,
+    "num_services": 100,
+    "num_lookups": 1000
+  },
+  "concurrent_access": {
+    "total_time": 0.00143908299999973,
+    "total_operations": 1000,
+    "average_operation_time": 9.594719999985735e-07,
+    "operations_per_second": 694886.9523162928,
+    "errors": [],
+    "error_count": 0,
+    "success_rate": 1.0,
+    "num_threads": 10,
+    "operations_per_thread": 100
+  },
+  "dependency_scenarios": {
+    "normal_dependencies": {
+      "success": true,
+      "resolution_time": 4.580000001475071e-07,
+      "error": null
+    },
+    "missing_dependencies": {
+      "success": true,
+      "validation_errors": [
+        "Service 'service_c' depends on unregistered service 'missing_service'"
+      ],
+      "error": null
+    },
+    "circular_dependencies": {
+      "success": true,
+      "validation_errors": [
+        "Circular dependency detected: service_a -> service_b -> service_a"
+      ],
+      "error": null
+    },
+    "initialization_failure": {
+      "success": true,
+      "resolution_time": 2.7875000000232575e-05,
+      "error": "Failed to initialize service 'failing_service': Mock service failing_service failed to initialize"
+    },
+    "deep_dependency_chain": {
+      "success": true,
+      "resolution_time": 5.419999999922709e-07,
+      "chain_length": 10,
+      "error": null
+    }
+  },
+  "memory_leaks": {
+    "baseline_memory": 468.25,
+    "final_memory": 468.25,
+    "memory_growth": 0.0,
+    "max_memory": 468.25,
+    "min_memory": 468.25,
+    "memory_samples": [
+      468.25,
+      468.25,
+      468.25,
+      468.25,
+      468.25,
+      468.25,
+      468.25
+    ],
+    "iterations": 50,
+    "potential_leak": false
+  }
+}

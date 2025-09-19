@@ -556,8 +556,6 @@ class ReasoningEngine:
             
         except Exception as e:
             self.logger.error(f"Failed to analyze exception: {e}")
-        # Get logger from service registry
-        self.logger = require_service('logger', context='from')
             return self._default_resolution_strategy(context)
     
     def _default_resolution_strategy(self, context: ExceptionContext) -> Any:

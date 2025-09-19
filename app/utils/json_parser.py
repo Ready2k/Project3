@@ -2,7 +2,7 @@
 
 import json
 import re
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Optional
 from app.utils.logger import app_logger
 
 
@@ -48,7 +48,7 @@ def extract_json_from_response(response: str) -> str:
 
 
 def parse_llm_json_response(response: str, 
-                           default_value: Union[Dict, List] = None,
+                           default_value: Optional[Union[Dict, List]] = None,
                            service_name: str = "unknown") -> Union[Dict, List]:
     """Parse JSON from LLM response with robust error handling.
     
@@ -108,7 +108,7 @@ def safe_get_float(data: Dict, key: str, default: float = 0.0) -> float:
         return default
 
 
-def safe_get_list(data: Dict, key: str, default: List = None) -> List:
+def safe_get_list(data: Dict, key: str, default: Optional[List] = None) -> List:
     """Safely extract list value from parsed JSON.
     
     Args:

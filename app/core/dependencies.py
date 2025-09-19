@@ -26,23 +26,26 @@ class DependencyType(Enum):
     DEVELOPMENT = "development"
 
 
-@dataclass
+@dataclass(frozen=True)
 class DependencyInfo:
     """Information about a system dependency."""
     name: str
     version_constraint: Optional[str]
     dependency_type: DependencyType
     purpose: str
-    alternatives: List[str]
+    alternatives: tuple  # Changed from List to tuple for hashability
     import_name: Optional[str] = None
     installation_name: Optional[str] = None
     
     def __post_init__(self):
         """Set default values after initialization."""
         if self.import_name is None:
-            self.import_name = self.name
+            object.__setattr__(self, 'import_name', self.name)
         if self.installation_name is None:
-            self.installation_name = self.name
+            object.__setattr__(self, 'installation_name', self.name)
+        # Convert list to tuple for hashability
+        if isinstance(self.alternatives, list):
+            object.__setattr__(self, 'alternatives', tuple(self.alternatives))
 
 
 @dataclass
@@ -53,15 +56,16 @@ class ValidationResult:
     missing_optional: List[str]
     version_conflicts: List[str]
     warnings: List[str]
-    installation_instructions: str = ""
-    
-    def has_errors(self) -> bool:
-        """Check if validation has any errors."""
-        return len(self.missing_required) > 0 or len(self.version_conflicts) > 0
-    
-    def has_warnings(self) -> bool:
-        """Check if validation has any warnings."""
-        return len(self.warnings) > 0 or len(self.missing_optional) > 0
+    installation_instructions: str
+
+
+@dataclass
+class DependencyValidationResult:
+    """Result of individual dependency validation."""
+    is_available: bool
+    installed_version: Optional[str] = None
+    error_message: Optional[str] = None
+    installation_instructions: Optional[str] = None
 
 
 class DependencyValidator:
@@ -82,28 +86,28 @@ class DependencyValidator:
                 version_constraint=">=1.28.0",
                 dependency_type=DependencyType.REQUIRED,
                 purpose="Web UI framework for the application interface",
-                alternatives=["dash", "gradio", "flask"]
+                alternatives=("dash", "gradio", "flask")
             ),
             "fastapi": DependencyInfo(
                 name="fastapi",
                 version_constraint=">=0.104.0",
                 dependency_type=DependencyType.REQUIRED,
                 purpose="API framework for backend services",
-                alternatives=["flask", "django"]
+                alternatives=("flask", "django")
             ),
             "pydantic": DependencyInfo(
                 name="pydantic",
                 version_constraint=">=2.0.0",
                 dependency_type=DependencyType.REQUIRED,
                 purpose="Data validation and settings management",
-                alternatives=["marshmallow", "cerberus"]
+                alternatives=("marshmallow", "cerberus")
             ),
             "pyyaml": DependencyInfo(
                 name="pyyaml",
                 version_constraint=">=6.0",
                 dependency_type=DependencyType.REQUIRED,
                 purpose="YAML configuration file parsing",
-                alternatives=["ruamel.yaml"],
+                alternatives=("ruamel.yaml",),
                 import_name="yaml"
             )
         })
@@ -189,6 +193,49 @@ class DependencyValidator:
     def add_dependency(self, dependency: DependencyInfo) -> None:
         """Add a new dependency to the validator."""
         self.dependencies[dependency.name] = dependency
+    
+    def validate_dependency(self, dependency: DependencyInfo) -> DependencyValidationResult:
+        """
+        Validate a single dependency using DependencyInfo object.
+        
+        Args:
+            dependency: DependencyInfo object to validate
+            
+        Returns:
+            ValidationResult with validation details
+        """
+        try:
+            if not dependency.import_name:
+                return DependencyValidationResult(
+                    is_available=False,
+                    error_message="Import name is not specified",
+                    installation_instructions=f"pip install {dependency.installation_name}"
+                )
+            
+            module = importlib.import_module(dependency.import_name)
+            module_version = self._get_module_version(module, dependency.import_name)
+            
+            if dependency.version_constraint and module_version:
+                if not self._check_version_constraint(module_version, dependency.version_constraint):
+                    return DependencyValidationResult(
+                        is_available=False,
+                        installed_version=module_version,
+                        error_message=f"Version {module_version} does not satisfy constraint {dependency.version_constraint}",
+                        installation_instructions=f"pip install {dependency.installation_name}{dependency.version_constraint}"
+                    )
+            
+            return DependencyValidationResult(
+                is_available=True,
+                installed_version=module_version,
+                installation_instructions=f"pip install {dependency.installation_name}"
+            )
+            
+        except ImportError as e:
+            return DependencyValidationResult(
+                is_available=False,
+                error_message=f"Import failed: {str(e)}",
+                installation_instructions=f"pip install {dependency.installation_name}"
+            )
         logger.debug(f"Added dependency: {dependency.name}")
     
     def remove_dependency(self, name: str) -> bool:
@@ -221,6 +268,8 @@ class DependencyValidator:
             
             try:
                 # Try to import the module
+                if not dep_info.import_name:
+                    continue
                 module = importlib.import_module(dep_info.import_name)
                 
                 # Check version if constraint exists
@@ -275,7 +324,7 @@ class DependencyValidator:
         logger.info(f"Dependency validation completed. Valid: {is_valid}")
         return result
     
-    def validate_dependency(self, name: str) -> Tuple[bool, Optional[str]]:
+    def validate_dependency_by_name(self, name: str) -> Tuple[bool, Optional[str]]:
         """
         Validate a single dependency.
         
@@ -291,6 +340,8 @@ class DependencyValidator:
         dep_info = self.dependencies[name]
         
         try:
+            if not dep_info.import_name:
+                return False, "Import name is not specified"
             module = importlib.import_module(dep_info.import_name)
             
             if dep_info.version_constraint:
@@ -431,7 +482,7 @@ class DependencyValidator:
                 dep_info = self.dependencies[dep_name]
                 
                 # Build pip package specification
-                package_spec = dep_info.installation_name
+                package_spec = dep_info.installation_name or dep_info.name
                 if dep_info.version_constraint:
                     # Convert constraint to pip format
                     constraint = dep_info.version_constraint
@@ -463,7 +514,10 @@ class DependencyValidator:
         
         # Add pip install command
         if pip_packages:
-            instructions.append(f"pip install {' '.join(pip_packages)}")
+            # Filter out any None values
+            valid_packages = [pkg for pkg in pip_packages if pkg is not None]
+            if valid_packages:
+                instructions.append(f"pip install {' '.join(valid_packages)}")
         
         # Add special instructions
         if special_instructions:
@@ -496,7 +550,7 @@ class DependencyValidator:
         report = ["Dependency Report", "=" * 50, ""]
         
         # Group dependencies by type
-        by_type = {
+        by_type: Dict[DependencyType, List[Tuple[str, DependencyInfo]]] = {
             DependencyType.REQUIRED: [],
             DependencyType.OPTIONAL: [],
             DependencyType.DEVELOPMENT: []

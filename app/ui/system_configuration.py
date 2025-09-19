@@ -24,7 +24,7 @@ from app.utils.audit import get_audit_logger
 from app.security.security_event_logger import SecurityEventLogger
 
 
-def render_system_configuration():
+def render_system_configuration() -> None:
     """Render the system configuration management interface."""
     st.header("🔧 System Configuration")
     st.write("Configure advanced system parameters for autonomy assessment, pattern matching, and recommendations.")
@@ -105,7 +105,7 @@ def render_system_configuration():
         render_configuration_management(config_manager)
 
 
-def render_autonomy_config(config: AutonomyConfig):
+def render_autonomy_config(config: AutonomyConfig) -> None:
     """Render autonomy assessment configuration."""
     st.subheader("Autonomy Assessment Parameters")
     
@@ -201,7 +201,7 @@ def render_autonomy_config(config: AutonomyConfig):
             st.success(f"✅ Weights sum to {current_total:.2f}")
 
 
-def render_pattern_matching_config(config: PatternMatchingConfig):
+def render_pattern_matching_config(config: PatternMatchingConfig) -> None:
     """Render pattern matching configuration."""
     st.subheader("Pattern Matching Parameters")
     
@@ -255,7 +255,7 @@ def render_pattern_matching_config(config: PatternMatchingConfig):
         )
 
 
-def render_llm_generation_config(config: LLMGenerationConfig):
+def render_llm_generation_config(config: LLMGenerationConfig) -> None:
     """Render LLM generation configuration."""
     st.subheader("LLM Generation Parameters")
     
@@ -302,7 +302,7 @@ def render_llm_generation_config(config: LLMGenerationConfig):
         )
 
 
-def render_recommendation_config(config: RecommendationConfig):
+def render_recommendation_config(config: RecommendationConfig) -> None:
     """Render recommendation configuration."""
     st.subheader("Recommendation Parameters")
     
@@ -349,7 +349,7 @@ def render_recommendation_config(config: RecommendationConfig):
         )
 
 
-def render_rate_limiting_config(config):
+def render_rate_limiting_config(config: Any) -> None:
     """Render rate limiting configuration."""
     from app.config.system_config import RateLimitConfig
     
@@ -446,7 +446,7 @@ def render_rate_limiting_config(config):
         st.write(f"- **Current burst limit: {config.default_burst_limit} requests** ✅" if config.default_burst_limit >= 10 else f"- **Current burst limit: {config.default_burst_limit} requests** ⚠️")
 
 
-def render_configuration_management(config_manager: SystemConfigurationManager):
+def render_configuration_management(config_manager: SystemConfigurationManager) -> None:
     """Render configuration management tools."""
     st.subheader("Configuration Management")
     
@@ -499,7 +499,7 @@ def render_configuration_management(config_manager: SystemConfigurationManager):
         st.code(yaml.dump(config_manager.export_config(), default_flow_style=False, indent=2), language='yaml')
 
 
-def render_api_endpoints():
+def render_api_endpoints() -> None:
     """Render API endpoints information and testing interface."""
     st.subheader("🔗 API Endpoints")
     st.write("Explore and test the AAA system API endpoints directly from your browser.")

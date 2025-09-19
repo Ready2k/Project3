@@ -251,7 +251,8 @@ class SystemConfigurationManager:
                 autonomy=AutonomyConfig(**config_dict.get('autonomy', {})),
                 pattern_matching=PatternMatchingConfig(**config_dict.get('pattern_matching', {})),
                 llm_generation=LLMGenerationConfig(**config_dict.get('llm_generation', {})),
-                recommendations=RecommendationConfig(**config_dict.get('recommendations', {}))
+                recommendations=RecommendationConfig(**config_dict.get('recommendations', {})),
+                rate_limiting=RateLimitConfig(**config_dict.get('rate_limiting', {}))
             )
             return True
         except Exception as e:

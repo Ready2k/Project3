@@ -1,8 +1,9 @@
 """Agent data formatter for UI display of agentic agent roles and coordination."""
 
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple, Union
 from enum import Enum
+import hashlib
 
 from app.services.multi_agent_designer import MultiAgentSystemDesign, AgentRole
 from app.utils.imports import require_service, optional_service
@@ -16,7 +17,7 @@ class AutonomyLevel(Enum):
     HIGHLY_AUTONOMOUS = (0.7, 0.9, "Highly Autonomous", "Makes most decisions independently")
     FULLY_AUTONOMOUS = (0.9, 1.0, "Fully Autonomous", "Operates independently with minimal oversight")
 
-    def __init__(self, min_val: float, max_val: float, name: str, description: str):
+    def __init__(self, min_val: float, max_val: float, name: str, description: str) -> None:
         self.min_val = min_val
         self.max_val = max_val
         self.display_name = name
@@ -76,9 +77,9 @@ class AgentSystemDisplay:
 class AgentDataFormatter:
     """Formats agent system design data for UI display."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         # Performance optimization: cache for formatted data
-        self._format_cache = {}
+        self._format_cache: Dict[str, AgentSystemDisplay] = {}
         self._cache_max_size = 100
         
         self.autonomy_descriptions = {
@@ -110,7 +111,8 @@ class AgentDataFormatter:
         
         # Get logger service
         app_logger = require_service('logger', context="format_agent_system")
-        app_logger.info("Formatting agent system for UI display")
+        if app_logger:
+            app_logger.info("Formatting agent system for UI display")
         
         if not agent_design:
             app_logger.debug("No agent design provided, returning empty display")
@@ -184,7 +186,7 @@ class AgentDataFormatter:
         key_string = str(key_data)
         return hashlib.md5(key_string.encode()).hexdigest()
     
-    def _cache_result(self, cache_key: str, result: AgentSystemDisplay):
+    def _cache_result(self, cache_key: str, result: AgentSystemDisplay) -> None:
         """Cache the formatting result for performance."""
         
         # Implement LRU cache behavior

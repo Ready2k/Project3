@@ -1,0 +1,146 @@
+{
+  "generated_at": "2025-09-19T14:23:15.591294",
+  "system_info": {
+    "python_version": "3.9.6",
+    "platform": "macOS-26.0-arm64-arm-64bit",
+    "architecture": [
+      "64bit",
+      ""
+    ],
+    "processor": "arm",
+    "working_directory": "/Users/jamescregeen/Clean_code_project3/Project3",
+    "project_root": "/Users/jamescregeen/Clean_code_project3/Project3"
+  },
+  "dependency_validation": {
+    "required": [
+      {
+        "name": "streamlit",
+        "available": true,
+        "version": "1.48.0",
+        "error": null,
+        "installation": "pip install streamlit"
+      },
+      {
+        "name": "fastapi",
+        "available": true,
+        "version": "0.116.1",
+        "error": null,
+        "installation": "pip install fastapi"
+      },
+      {
+        "name": "pydantic",
+        "available": true,
+        "version": "2.11.7",
+        "error": null,
+        "installation": "pip install pydantic"
+      },
+      {
+        "name": "pyyaml",
+        "available": true,
+        "version": "6.0.2",
+        "error": null,
+        "installation": "pip install PyYAML"
+      },
+      {
+        "name": "uvicorn",
+        "available": true,
+        "version": "0.35.0",
+        "error": null,
+        "installation": "pip install uvicorn"
+      },
+      {
+        "name": "python-multipart",
+        "available": true,
+        "version": "0.0.20",
+        "error": null,
+        "installation": "pip install python-multipart"
+      }
+    ],
+    "optional": [
+      {
+        "name": "openai",
+        "available": true,
+        "version": "1.99.3",
+        "error": null,
+        "installation": "pip install openai"
+      },
+      {
+        "name": "anthropic",
+        "available": true,
+        "version": "0.61.0",
+        "error": null,
+        "installation": "pip install anthropic"
+      },
+      {
+        "name": "boto3",
+        "available": true,
+        "version": "1.40.5",
+        "error": null,
+        "installation": "pip install boto3"
+      },
+      {
+        "name": "diagrams",
+        "available": true,
+        "version": null,
+        "error": null,
+        "installation": "pip install diagrams"
+      },
+      {
+        "name": "graphviz",
+        "available": true,
+        "version": "0.20.3",
+        "error": null,
+        "installation": "pip install graphviz"
+      },
+      {
+        "name": "redis",
+        "available": true,
+        "version": "6.4.0",
+        "error": null,
+        "installation": "pip install redis"
+      },
+      {
+        "name": "requests",
+        "available": true,
+        "version": "2.32.4",
+        "error": null,
+        "installation": "pip install requests"
+      },
+      {
+        "name": "httpx",
+        "available": true,
+        "version": "0.28.1",
+        "error": null,
+        "installation": "pip install httpx"
+      },
+      {
+        "name": "sentence-transformers",
+        "available": true,
+        "version": "5.1.0",
+        "error": null,
+        "installation": "pip install sentence-transformers"
+      },
+      {
+        "name": "numpy",
+        "available": true,
+        "version": "2.0.2",
+        "error": null,
+        "installation": "pip install numpy"
+      },
+      {
+        "name": "scikit-learn",
+        "available": true,
+        "version": "1.6.1",
+        "error": null,
+        "installation": "pip install scikit-learn"
+      }
+    ],
+    "summary": {
+      "required_satisfied": true,
+      "required_count": 6,
+      "required_available": 6,
+      "optional_count": 11,
+      "optional_available": 11
+    }
+  }
+}

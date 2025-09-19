@@ -1,0 +1,103 @@
+graph TD
+    logger[Logger]
+    config[Config]
+    cache[Cache]
+    security_validator[Security Validator]
+    advanced_prompt_defender[Advanced Prompt Defender]
+    llm_provider_factory(Llm Provider Factory)
+    diagram_service_factory[Diagram Service Factory]
+    pattern_loader[Pattern Loader]
+    openai_provider[Openai Provider]
+    anthropic_provider[Anthropic Provider]
+    bedrock_provider[Bedrock Provider]
+    pattern_matcher[Pattern Matcher]
+    agentic_matcher[Agentic Matcher]
+    embedding_engine[Embedding Engine]
+    export_service[Export Service]
+    mermaid_service[Mermaid Service]
+    infrastructure_diagram_service[Infrastructure Diagram Service]
+    performance_monitor[Performance Monitor]
+    health_checker[Health Checker]
+    jira_service[Jira Service]
+    logger --> config
+    cache --> config
+    cache --> logger
+    security_validator --> config
+    security_validator --> logger
+    advanced_prompt_defender --> config
+    advanced_prompt_defender --> logger
+    advanced_prompt_defender --> cache
+    llm_provider_factory --> config
+    llm_provider_factory --> logger
+    diagram_service_factory --> config
+    diagram_service_factory --> logger
+    pattern_loader --> config
+    openai_provider --> config
+    openai_provider --> logger
+    anthropic_provider --> config
+    anthropic_provider --> logger
+    bedrock_provider --> config
+    bedrock_provider --> logger
+    pattern_matcher --> config
+    pattern_matcher --> logger
+    pattern_matcher --> cache
+    agentic_matcher --> config
+    agentic_matcher --> logger
+    agentic_matcher --> cache
+    agentic_matcher --> llm_provider_factory
+    embedding_engine --> config
+    embedding_engine --> logger
+    embedding_engine --> cache
+    export_service --> config
+    export_service --> logger
+    mermaid_service --> config
+    mermaid_service --> logger
+    infrastructure_diagram_service --> config
+    infrastructure_diagram_service --> logger
+    performance_monitor --> config
+    performance_monitor --> logger
+    health_checker --> config
+    health_checker --> logger
+    jira_service --> config
+    jira_service --> logger
+
+    classDef coreStyle fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    class logger coreStyle
+    classDef coreStyle fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    class config coreStyle
+    classDef coreStyle fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    class cache coreStyle
+    classDef securityStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    class security_validator securityStyle
+    classDef securityStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    class advanced_prompt_defender securityStyle
+    classDef llmStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    class llm_provider_factory llmStyle
+    classDef llmStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    class openai_provider llmStyle
+    classDef llmStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    class anthropic_provider llmStyle
+    classDef llmStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    class bedrock_provider llmStyle
+    classDef diagramStyle fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    class diagram_service_factory diagramStyle
+    classDef diagramStyle fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    class mermaid_service diagramStyle
+    classDef diagramStyle fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    class infrastructure_diagram_service diagramStyle
+    classDef analysisStyle fill:#fff8e1,stroke:#ff6f00,stroke-width:2px
+    class pattern_matcher analysisStyle
+    classDef analysisStyle fill:#fff8e1,stroke:#ff6f00,stroke-width:2px
+    class agentic_matcher analysisStyle
+    classDef analysisStyle fill:#fff8e1,stroke:#ff6f00,stroke-width:2px
+    class embedding_engine analysisStyle
+    classDef exportStyle fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    class export_service exportStyle
+    classDef monitoringStyle fill:#f1f8e9,stroke:#33691e,stroke-width:2px
+    class performance_monitor monitoringStyle
+    classDef monitoringStyle fill:#f1f8e9,stroke:#33691e,stroke-width:2px
+    class health_checker monitoringStyle
+    classDef integrationStyle fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    class jira_service integrationStyle
+    classDef patternStyle fill:#f9fbe7,stroke:#827717,stroke-width:2px
+    class pattern_loader patternStyle

@@ -13,6 +13,8 @@ import os
 import logging
 from enum import Enum
 from dataclasses import dataclass
+
+from app.utils.imports import optional_service
 from abc import ABC, abstractmethod
 
 from app.core.service import ConfigurableService
@@ -189,12 +191,9 @@ class InfrastructureServiceAdapter:
     
     def is_available(self) -> bool:
         """Check if Infrastructure service is available."""
-        # Check if diagrams library is available
-        try:
-            import diagrams
-            return True
-        except ImportError:
-            return False
+        # Check through service registry
+        diagram_service = optional_service('diagram_service', context='InfrastructureService')
+        return diagram_service is not None
     
     def get_supported_formats(self) -> List[str]:
         """Get supported formats for Infrastructure diagrams."""

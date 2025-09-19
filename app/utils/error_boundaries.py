@@ -7,7 +7,7 @@ in critical system operations with proper logging and fallback mechanisms.
 import asyncio
 import functools
 import time
-from typing import Any, Callable, Optional, TypeVar, Union, Dict
+from typing import Any, Callable, Optional, TypeVar, Union, Dict, List, Coroutine
 from contextlib import asynccontextmanager
 
 from app.utils.logger import app_logger
@@ -17,10 +17,10 @@ T = TypeVar('T')
 
 class ErrorBoundaryError(Exception):
     """Base exception for error boundary failures."""
-    def __init__(self, message: str, original_error: Exception, context: Dict[str, Any] = None):
-        self.message = message
-        self.original_error = original_error
-        self.context = context or {}
+    def __init__(self, message: str, original_error: Exception, context: Optional[Dict[str, Any]] = None) -> None:
+        self.message: str = message
+        self.original_error: Exception = original_error
+        self.context: Dict[str, Any] = context or {}
         super().__init__(message)
 
 
@@ -46,7 +46,7 @@ def error_boundary(
         if asyncio.iscoroutinefunction(func):
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs) -> Union[T, Any]:
-                last_error = None
+                last_error: Optional[Exception] = None
                 
                 for attempt in range(max_retries + 1):
                     try:
@@ -70,12 +70,19 @@ def error_boundary(
                         
                         return result
                         
-                    except asyncio.TimeoutError as e:
-                        last_error = e
-                        app_logger.error(
-                            f"Operation '{operation_name}' timed out after {timeout_seconds}s "
-                            f"(attempt {attempt + 1}/{max_retries + 1})"
-                        )
+                    except (asyncio.TimeoutError, Exception) as e:
+                        if isinstance(e, asyncio.TimeoutError):
+                            last_error = e
+                            app_logger.error(
+                                f"Operation '{operation_name}' timed out after {timeout_seconds}s "
+                                f"(attempt {attempt + 1}/{max_retries + 1})"
+                            )
+                        else:
+                            last_error = e
+                            app_logger.error(
+                                f"Operation '{operation_name}' failed on attempt {attempt + 1}/{max_retries + 1}: "
+                                f"{type(e).__name__}: {str(e)}"
+                            )
                         
                     except Exception as e:
                         last_error = e
@@ -114,7 +121,7 @@ def error_boundary(
         else:
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs) -> Union[T, Any]:
-                last_error = None
+                last_error: Optional[Exception] = None
                 
                 for attempt in range(max_retries + 1):
                     try:
@@ -181,7 +188,12 @@ async def critical_operation(operation_name: str, timeout_seconds: Optional[floa
     
     try:
         if timeout_seconds:
-            async with asyncio.timeout(timeout_seconds):
+            try:
+                # Try to use asyncio.timeout (Python 3.11+)
+                async with asyncio.timeout(timeout_seconds):
+                    yield
+            except AttributeError:
+                # Fallback for older Python versions
                 yield
         else:
             yield
@@ -203,7 +215,7 @@ async def critical_operation(operation_name: str, timeout_seconds: Optional[floa
         raise
 
 
-def safe_async_call(coro, fallback_value=None, operation_name="async_operation"):
+def safe_async_call(coro: Coroutine, fallback_value: Any = None, operation_name: str = "async_operation") -> Any:
     """Safely execute an async coroutine with error handling.
     
     Args:
@@ -231,13 +243,13 @@ def safe_async_call(coro, fallback_value=None, operation_name="async_operation")
 class AsyncOperationManager:
     """Manager for handling multiple async operations with proper error boundaries."""
     
-    def __init__(self, max_concurrent: int = 10, timeout_seconds: float = 30.0):
-        self.max_concurrent = max_concurrent
-        self.timeout_seconds = timeout_seconds
-        self._semaphore = None
+    def __init__(self, max_concurrent: int = 10, timeout_seconds: float = 30.0) -> None:
+        self.max_concurrent: int = max_concurrent
+        self.timeout_seconds: float = timeout_seconds
+        self._semaphore: Optional[asyncio.Semaphore] = None
     
     @property
-    def semaphore(self):
+    def semaphore(self) -> Optional[asyncio.Semaphore]:
         """Lazy initialization of semaphore to avoid event loop issues at import time."""
         if self._semaphore is None:
             try:
@@ -256,7 +268,7 @@ class AsyncOperationManager:
         return self._semaphore
     
     @error_boundary("batch_async_operations", fallback_value=[], timeout_seconds=60.0)
-    async def execute_batch(self, operations: list, operation_name: str = "batch_operation") -> list:
+    async def execute_batch(self, operations: List[Coroutine], operation_name: str = "batch_operation") -> List[Any]:
         """Execute a batch of async operations with concurrency control.
         
         Args:
@@ -293,7 +305,7 @@ class AsyncOperationManager:
 
 
 # Global instance for convenience - lazy initialization to avoid event loop issues
-_async_manager = None
+_async_manager: Optional[AsyncOperationManager] = None
 
 def get_async_manager() -> AsyncOperationManager:
     """Get the global async manager instance with lazy initialization."""

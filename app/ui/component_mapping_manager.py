@@ -18,10 +18,10 @@ from app.diagrams.dynamic_component_mapper import (
 class ComponentMappingManager:
     """Manages component mapping rules through Streamlit UI."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.mapper = DynamicComponentMapper()
     
-    def render_management_interface(self):
+    def render_management_interface(self) -> None:
         """Render the complete component mapping management interface."""
         st.header("🔧 Component Mapping Management")
         
@@ -51,7 +51,7 @@ class ComponentMappingManager:
         with tab4:
             self._render_statistics()
     
-    def _render_rules_viewer(self):
+    def _render_rules_viewer(self) -> None:
         """Render the rules viewing interface."""
         st.subheader("📋 Current Mapping Rules")
         
@@ -96,7 +96,7 @@ class ComponentMappingManager:
                 if st.button(f"Test Rule {i+1}", key=f"test_rule_{i}"):
                     self._test_single_rule(rule)
     
-    def _render_rule_creator(self):
+    def _render_rule_creator(self) -> None:
         """Render the rule creation interface."""
         st.subheader("➕ Add New Mapping Rule")
         
@@ -179,7 +179,7 @@ class ComponentMappingManager:
                 except re.error as e:
                     st.error(f"❌ Invalid regex pattern: {e}")
     
-    def _render_mapping_tester(self):
+    def _render_mapping_tester(self) -> None:
         """Render the mapping testing interface."""
         st.subheader("🧪 Test Technology Mapping")
         
@@ -225,7 +225,7 @@ class ComponentMappingManager:
                         if provider == "onprem" and component == "server":
                             st.warning(f"⚠️ '{tech}' fell back to generic server - consider adding a specific rule")
     
-    def _render_statistics(self):
+    def _render_statistics(self) -> None:
         """Render mapping statistics and insights."""
         st.subheader("📊 Mapping Statistics")
         
@@ -279,7 +279,7 @@ class ComponentMappingManager:
         
         return filtered
     
-    def _test_single_rule(self, rule: ComponentMapping):
+    def _test_single_rule(self, rule: ComponentMapping) -> None:
         """Test a single mapping rule."""
         st.write(f"**Testing rule:** {rule.technology_pattern}")
         
@@ -306,7 +306,7 @@ class ComponentMappingManager:
             st.info("ℹ️ Rule doesn't match any test cases")
 
 
-def render_component_mapping_tab():
+def render_component_mapping_tab() -> None:
     """Render the component mapping management tab."""
     manager = ComponentMappingManager()
     manager.render_management_interface()

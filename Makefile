@@ -3,16 +3,48 @@
 # Format code
 fmt:
 	black app/
-	ruff --fix app/
+	ruff check --fix app/
 
 # Lint code
 lint:
-	ruff app/
-	mypy app/ --ignore-missing-imports
+	ruff check app/
+	mypy --config-file mypy.ini
 
-# Run tests
+# Comprehensive code quality check
+quality:
+	@echo "🔍 Running comprehensive code quality checks..."
+	@echo "📝 Formatting with black..."
+	black --check app/
+	@echo "🔧 Linting with ruff..."
+	ruff check app/
+	@echo "🔍 Type checking with mypy..."
+	mypy --config-file mypy.ini
+	@echo "✅ All quality checks passed!"
+
+# Type check with mypy
+typecheck:
+	mypy --config-file mypy.ini
+
+# Type check with detailed output
+typecheck-verbose:
+	mypy --config-file mypy.ini --show-error-codes --pretty --show-column-numbers
+
+# Check type coverage
+type-coverage:
+	python3 scripts/check_type_coverage.py app/
+
+# Run type checking tests only
+test-types:
+	python3 -m pytest app/tests/test_type_checking.py -v -m typecheck
+
+# Run tests (includes type checking)
 test:
 	python3 -m pytest app/tests/ -v --cov=app --cov-report=html --cov-report=term
+
+# Run all tests including type checking
+test-all:
+	python3 -m pytest app/tests/ -v --cov=app --cov-report=html --cov-report=term -m "not slow"
+	make typecheck
 
 # Run e2e tests
 e2e:
@@ -136,12 +168,18 @@ help:
 	@echo ""
 	@echo "🧪 Testing:"
 	@echo "  make test       - Run all unit tests with coverage"
+	@echo "  make test-all   - Run all tests including type checking"
+	@echo "  make test-types - Run type checking tests only"
 	@echo "  make e2e        - Run integration tests"
 	@echo "  make coverage   - Generate and open coverage report"
 	@echo ""
 	@echo "🔧 Code Quality:"
-	@echo "  make fmt        - Format code with black and ruff"
-	@echo "  make lint       - Lint code with ruff and mypy"
+	@echo "  make fmt            - Format code with black and ruff"
+	@echo "  make lint           - Lint code with ruff and mypy"
+	@echo "  make quality        - Comprehensive code quality check"
+	@echo "  make typecheck      - Run type checking with mypy"
+	@echo "  make typecheck-verbose - Detailed type checking output"
+	@echo "  make type-coverage  - Check type hint coverage"
 	@echo ""
 	@echo "📦 Setup:"
 	@echo "  make install    - Install Python dependencies"

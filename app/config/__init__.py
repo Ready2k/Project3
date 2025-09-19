@@ -3,12 +3,16 @@
 # Import legacy Settings from the old config.py file using importlib
 import importlib.util
 from pathlib import Path
+from typing import Any
 
 # Load the legacy config.py file
 config_path = Path(__file__).parent.parent / "config.py"
 spec = importlib.util.spec_from_file_location("app.config_legacy", config_path)
-config_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(config_module)
+if spec is not None and spec.loader is not None:
+    config_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(config_module)
+else:
+    raise ImportError("Could not load legacy config module")
 
 # Import Settings and load_settings from the legacy config module
 Settings = config_module.Settings

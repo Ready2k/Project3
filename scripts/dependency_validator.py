@@ -1,0 +1,627 @@
+#!/usr/bin/env python3
+"""
+Dependency Validation and Monitoring Tool
+
+This script provides CLI tools for dependency validation, service health monitoring,
+and dependency report generation.
+"""
+
+import os
+import sys
+import json
+import yaml
+import argparse
+from typing import Dict, List, Any, Optional
+from pathlib import Path
+from datetime import datetime
+import subprocess
+import importlib.util
+
+# Add the project root to the Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+from app.core.dependencies import DependencyValidator, DependencyInfo, ValidationResult, DependencyType, DependencyValidationResult
+from app.core.registry import get_registry, ServiceRegistry
+
+
+def create_dependency_info(dep_config: Dict[str, Any], dep_type: DependencyType) -> DependencyInfo:
+    """Create a DependencyInfo object from configuration."""
+    return DependencyInfo(
+        name=dep_config["name"],
+        version_constraint=dep_config.get("version_constraint", ""),
+        dependency_type=dep_type,
+        purpose=dep_config.get("purpose", ""),
+        alternatives=tuple(dep_config.get("alternatives", [])),
+        import_name=dep_config["import_name"],
+        installation_name=dep_config["installation_name"]
+    )
+
+
+class DependencyMonitor:
+    """CLI tool for dependency validation and monitoring."""
+    
+    def __init__(self):
+        """Initialize the dependency monitor."""
+        self.project_root = project_root
+        self.config_dir = self.project_root / "config"
+        self.validator = DependencyValidator()
+        self.registry = get_registry()
+    
+    def validate_all_dependencies(self, verbose: bool = False) -> bool:
+        """
+        Validate all system dependencies.
+        
+        Args:
+            verbose: Enable verbose output
+            
+        Returns:
+            True if all dependencies are valid, False otherwise
+        """
+        print("🔍 Validating system dependencies...")
+        
+        # Load dependency configuration
+        deps_config = self._load_dependencies_config()
+        if not deps_config:
+            print("❌ Could not load dependency configuration")
+            return False
+        
+        all_valid = True
+        
+        # Validate required dependencies
+        required_deps = deps_config.get("dependencies", {}).get("required", [])
+        print(f"\n📋 Checking {len(required_deps)} required dependencies...")
+        
+        for dep_config in required_deps:
+            dep_info = DependencyInfo(
+                name=dep_config["name"],
+                version_constraint=dep_config.get("version_constraint", ""),
+                dependency_type=DependencyType.REQUIRED,
+                purpose=dep_config.get("purpose", ""),
+                alternatives=tuple(dep_config.get("alternatives", [])),
+                import_name=dep_config["import_name"],
+                installation_name=dep_config["installation_name"]
+            )
+            
+            result = self.validator.validate_dependency(dep_info)
+            
+            if result.is_available:
+                status = "✅"
+                if verbose:
+                    print(f"{status} {dep_info.name} ({result.installed_version})")
+            else:
+                status = "❌"
+                all_valid = False
+                print(f"{status} {dep_info.name} - {result.error_message}")
+                if result.installation_instructions:
+                    print(f"   💡 Install with: {result.installation_instructions}")
+        
+        # Validate optional dependencies
+        optional_deps = deps_config.get("dependencies", {}).get("optional", [])
+        print(f"\n📋 Checking {len(optional_deps)} optional dependencies...")
+        
+        optional_available = 0
+        for dep_config in optional_deps:
+            dep_info = DependencyInfo(
+                name=dep_config["name"],
+                version_constraint=dep_config.get("version_constraint", ""),
+                dependency_type=DependencyType.OPTIONAL,
+                purpose=dep_config.get("purpose", ""),
+                alternatives=tuple(dep_config.get("alternatives", [])),
+                import_name=dep_config["import_name"],
+                installation_name=dep_config["installation_name"]
+            )
+            
+            result = self.validator.validate_dependency(dep_info)
+            
+            if result.is_available:
+                status = "✅"
+                optional_available += 1
+                if verbose:
+                    print(f"{status} {dep_info.name} ({result.installed_version})")
+            else:
+                status = "⚠️ "
+                if verbose:
+                    print(f"{status} {dep_info.name} - Optional (not installed)")
+        
+        print(f"\n📊 Summary:")
+        print(f"   Required dependencies: {'✅ All satisfied' if all_valid else '❌ Missing dependencies'}")
+        print(f"   Optional dependencies: {optional_available}/{len(optional_deps)} available")
+        
+        return all_valid
+    
+    def check_service_health(self, service_name: Optional[str] = None) -> Dict[str, bool]:
+        """
+        Check health of services.
+        
+        Args:
+            service_name: Specific service to check (all if None)
+            
+        Returns:
+            Dictionary mapping service names to health status
+        """
+        print("🏥 Checking service health...")
+        
+        try:
+            health_status = self.registry.health_check(service_name)
+            
+            if service_name:
+                status = "✅" if health_status.get(service_name, False) else "❌"
+                print(f"{status} {service_name}")
+            else:
+                healthy_count = sum(1 for status in health_status.values() if status)
+                total_count = len(health_status)
+                
+                print(f"\n📊 Health Summary: {healthy_count}/{total_count} services healthy")
+                
+                for name, is_healthy in sorted(health_status.items()):
+                    status = "✅" if is_healthy else "❌"
+                    print(f"   {status} {name}")
+            
+            return health_status
+            
+        except Exception as e:
+            print(f"❌ Error checking service health: {e}")
+            return {}
+    
+    def validate_service_dependencies(self) -> bool:
+        """
+        Validate service registry dependencies.
+        
+        Returns:
+            True if all service dependencies are valid, False otherwise
+        """
+        print("🔗 Validating service dependencies...")
+        
+        try:
+            errors = self.registry.validate_dependencies()
+            
+            if not errors:
+                print("✅ All service dependencies are valid")
+                return True
+            else:
+                print(f"❌ Found {len(errors)} dependency issues:")
+                for error in errors:
+                    print(f"   • {error}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Error validating service dependencies: {e}")
+            return False
+    
+    def generate_dependency_report(self, output_file: Optional[str] = None) -> None:
+        """
+        Generate comprehensive dependency report.
+        
+        Args:
+            output_file: Output file path (auto-generated if None)
+        """
+        print("📄 Generating dependency report...")
+        
+        # Collect data
+        deps_config = self._load_dependencies_config()
+        services_config = self._load_services_config()
+        
+        report_data = {
+            "generated_at": datetime.now().isoformat(),
+            "system_info": self._get_system_info(),
+            "dependency_validation": self._validate_all_deps_for_report(deps_config),
+            "service_health": self._get_service_health_for_report(),
+            "service_dependencies": self._get_service_deps_for_report(),
+            "recommendations": self._generate_recommendations()
+        }
+        
+        # Generate output file name if not provided
+        if output_file is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_file = f"dependency_report_{timestamp}.json"
+        
+        output_path = Path(output_file)
+        if not output_path.is_absolute():
+            output_path = self.project_root / "docs" / "architecture" / "dependencies" / output_path
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Write report
+        with open(output_path, 'w') as f:
+            json.dump(report_data, f, indent=2)
+        
+        print(f"✅ Report generated: {output_path}")
+        
+        # Also generate a human-readable summary
+        self._generate_summary_report(report_data, output_path.with_suffix('.md'))
+    
+    def list_services(self) -> None:
+        """List all registered services with their information."""
+        print("📋 Registered Services:")
+        
+        services = self.registry.list_services()
+        if not services:
+            print("   No services registered")
+            return
+        
+        for service_name in sorted(services):
+            service_info = self.registry.get_service_info(service_name)
+            if service_info:
+                status_icon = {
+                    "registered": "🔵",
+                    "initializing": "🟡",
+                    "initialized": "🟢",
+                    "failed": "🔴",
+                    "shutdown": "⚫"
+                }.get(service_info.lifecycle.value, "❓")
+                
+                print(f"   {status_icon} {service_name}")
+                print(f"      Type: {service_info.service_type}")
+                print(f"      Dependencies: {', '.join(service_info.dependencies) if service_info.dependencies else 'None'}")
+                print(f"      Status: {service_info.lifecycle.value}")
+                if service_info.error_message:
+                    print(f"      Error: {service_info.error_message}")
+    
+    def install_missing_dependencies(self, dry_run: bool = False) -> None:
+        """
+        Install missing required dependencies.
+        
+        Args:
+            dry_run: Show what would be installed without actually installing
+        """
+        print("📦 Installing missing dependencies...")
+        
+        deps_config = self._load_dependencies_config()
+        if not deps_config:
+            print("❌ Could not load dependency configuration")
+            return
+        
+        required_deps = deps_config.get("dependencies", {}).get("required", [])
+        missing_deps = []
+        
+        for dep_config in required_deps:
+            dep_info = DependencyInfo(
+                name=dep_config["name"],
+                version_constraint=dep_config.get("version_constraint", ""),
+                dependency_type=DependencyType.REQUIRED,
+                purpose=dep_config.get("purpose", ""),
+                alternatives=tuple(dep_config.get("alternatives", [])),
+                import_name=dep_config["import_name"],
+                installation_name=dep_config["installation_name"]
+            )
+            
+            result = self.validator.validate_dependency(dep_info)
+            if not result.is_available:
+                missing_deps.append((dep_info, result))
+        
+        if not missing_deps:
+            print("✅ All required dependencies are already installed")
+            return
+        
+        print(f"Found {len(missing_deps)} missing dependencies:")
+        
+        for dep_info, result in missing_deps:
+            print(f"   📦 {dep_info.name}: {result.installation_instructions}")
+            
+            if not dry_run:
+                try:
+                    # Install using pip
+                    cmd = ["pip", "install", dep_info.installation_name]
+                    if dep_info.version_constraint:
+                        cmd[-1] += dep_info.version_constraint
+                    
+                    print(f"      Running: {' '.join(cmd)}")
+                    subprocess.run(cmd, check=True, capture_output=True, text=True)
+                    print(f"      ✅ Installed {dep_info.name}")
+                    
+                except subprocess.CalledProcessError as e:
+                    print(f"      ❌ Failed to install {dep_info.name}: {e}")
+                except Exception as e:
+                    print(f"      ❌ Error installing {dep_info.name}: {e}")
+        
+        if dry_run:
+            print("\n💡 This was a dry run. Use --install to actually install packages.")
+    
+    def _load_dependencies_config(self) -> Optional[Dict[str, Any]]:
+        """Load dependencies configuration."""
+        config_file = self.config_dir / "dependencies.yaml"
+        try:
+            with open(config_file, 'r') as f:
+                return yaml.safe_load(f)
+        except Exception as e:
+            print(f"Error loading dependencies config: {e}")
+            return None
+    
+    def _load_services_config(self) -> Optional[Dict[str, Any]]:
+        """Load services configuration."""
+        config_file = self.config_dir / "services.yaml"
+        try:
+            with open(config_file, 'r') as f:
+                return yaml.safe_load(f)
+        except Exception as e:
+            print(f"Error loading services config: {e}")
+            return None
+    
+    def _get_system_info(self) -> Dict[str, Any]:
+        """Get system information."""
+        import platform
+        
+        return {
+            "python_version": platform.python_version(),
+            "platform": platform.platform(),
+            "architecture": platform.architecture(),
+            "processor": platform.processor(),
+            "working_directory": str(Path.cwd()),
+            "project_root": str(self.project_root)
+        }
+    
+    def _validate_all_deps_for_report(self, deps_config: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate all dependencies for report generation."""
+        if not deps_config:
+            return {"error": "Could not load dependency configuration"}
+        
+        required_results = []
+        optional_results = []
+        
+        # Validate required dependencies
+        for dep_config in deps_config.get("dependencies", {}).get("required", []):
+            dep_info = DependencyInfo(
+                name=dep_config["name"],
+                version_constraint=dep_config.get("version_constraint", ""),
+                dependency_type=DependencyType.REQUIRED,
+                purpose=dep_config.get("purpose", ""),
+                alternatives=tuple(dep_config.get("alternatives", [])),
+                import_name=dep_config["import_name"],
+                installation_name=dep_config["installation_name"]
+            )
+            
+            result = self.validator.validate_dependency(dep_info)
+            required_results.append({
+                "name": dep_info.name,
+                "available": result.is_available,
+                "version": result.installed_version,
+                "error": result.error_message,
+                "installation": result.installation_instructions
+            })
+        
+        # Validate optional dependencies
+        for dep_config in deps_config.get("dependencies", {}).get("optional", []):
+            dep_info = DependencyInfo(
+                name=dep_config["name"],
+                version_constraint=dep_config.get("version_constraint", ""),
+                dependency_type=DependencyType.OPTIONAL,
+                purpose=dep_config.get("purpose", ""),
+                alternatives=tuple(dep_config.get("alternatives", [])),
+                import_name=dep_config["import_name"],
+                installation_name=dep_config["installation_name"]
+            )
+            
+            result = self.validator.validate_dependency(dep_info)
+            optional_results.append({
+                "name": dep_info.name,
+                "available": result.is_available,
+                "version": result.installed_version,
+                "error": result.error_message,
+                "installation": result.installation_instructions
+            })
+        
+        return {
+            "required": required_results,
+            "optional": optional_results,
+            "summary": {
+                "required_satisfied": all(r["available"] for r in required_results),
+                "required_count": len(required_results),
+                "required_available": sum(1 for r in required_results if r["available"]),
+                "optional_count": len(optional_results),
+                "optional_available": sum(1 for r in optional_results if r["available"])
+            }
+        }
+    
+    def _get_service_health_for_report(self) -> Dict[str, Any]:
+        """Get service health information for report."""
+        try:
+            health_status = self.registry.health_check()
+            return {
+                "services": health_status,
+                "summary": {
+                    "total_services": len(health_status),
+                    "healthy_services": sum(1 for status in health_status.values() if status),
+                    "unhealthy_services": sum(1 for status in health_status.values() if not status)
+                }
+            }
+        except Exception as e:
+            return {"error": str(e)}
+    
+    def _get_service_deps_for_report(self) -> Dict[str, Any]:
+        """Get service dependency information for report."""
+        try:
+            errors = self.registry.validate_dependencies()
+            services = self.registry.list_services()
+            
+            service_info = {}
+            for service_name in services:
+                info = self.registry.get_service_info(service_name)
+                if info:
+                    service_info[service_name] = {
+                        "type": info.service_type,
+                        "dependencies": info.dependencies,
+                        "lifecycle": info.lifecycle.value,
+                        "health": info.health_status,
+                        "error": info.error_message
+                    }
+            
+            return {
+                "validation_errors": errors,
+                "services": service_info,
+                "summary": {
+                    "total_services": len(services),
+                    "validation_passed": len(errors) == 0
+                }
+            }
+        except Exception as e:
+            return {"error": str(e)}
+    
+    def _generate_recommendations(self) -> List[str]:
+        """Generate recommendations based on current state."""
+        recommendations = []
+        
+        # Check for missing required dependencies
+        deps_config = self._load_dependencies_config()
+        if deps_config:
+            required_deps = deps_config.get("dependencies", {}).get("required", [])
+            for dep_config in required_deps:
+                dep_info = DependencyInfo(
+                    name=dep_config["name"],
+                    version_constraint=dep_config.get("version_constraint", ""),
+                    dependency_type=DependencyType.REQUIRED,
+                    purpose=dep_config.get("purpose", ""),
+                    alternatives=tuple(dep_config.get("alternatives", [])),
+                    import_name=dep_config["import_name"],
+                    installation_name=dep_config["installation_name"]
+                )
+                
+                result = self.validator.validate_dependency(dep_info)
+                if not result.is_available:
+                    recommendations.append(f"Install missing required dependency: {dep_info.name}")
+        
+        # Check service health
+        try:
+            health_status = self.registry.health_check()
+            unhealthy_services = [name for name, status in health_status.items() if not status]
+            if unhealthy_services:
+                recommendations.append(f"Investigate unhealthy services: {', '.join(unhealthy_services)}")
+        except Exception:
+            recommendations.append("Service registry is not accessible - check system configuration")
+        
+        # Check for service dependency issues
+        try:
+            errors = self.registry.validate_dependencies()
+            if errors:
+                recommendations.append("Resolve service dependency validation errors")
+        except Exception:
+            pass
+        
+        if not recommendations:
+            recommendations.append("System appears to be healthy - no immediate actions required")
+        
+        return recommendations
+    
+    def _generate_summary_report(self, report_data: Dict[str, Any], output_path: Path) -> None:
+        """Generate human-readable summary report."""
+        content = [
+            "# Dependency Validation Report",
+            "",
+            f"**Generated:** {report_data['generated_at']}",
+            "",
+            "## System Information",
+            "",
+            f"- **Python Version:** {report_data['system_info']['python_version']}",
+            f"- **Platform:** {report_data['system_info']['platform']}",
+            f"- **Project Root:** {report_data['system_info']['project_root']}",
+            "",
+            "## Dependency Status",
+            ""
+        ]
+        
+        # Dependency validation summary
+        dep_validation = report_data.get("dependency_validation", {})
+        if "summary" in dep_validation:
+            summary = dep_validation["summary"]
+            content.extend([
+                f"### Required Dependencies: {'✅' if summary['required_satisfied'] else '❌'}",
+                "",
+                f"- **Available:** {summary['required_available']}/{summary['required_count']}",
+                "",
+                f"### Optional Dependencies",
+                "",
+                f"- **Available:** {summary['optional_available']}/{summary['optional_count']}",
+                ""
+            ])
+        
+        # Service health summary
+        service_health = report_data.get("service_health", {})
+        if "summary" in service_health:
+            summary = service_health["summary"]
+            content.extend([
+                "## Service Health",
+                "",
+                f"- **Total Services:** {summary['total_services']}",
+                f"- **Healthy:** {summary['healthy_services']}",
+                f"- **Unhealthy:** {summary['unhealthy_services']}",
+                ""
+            ])
+        
+        # Recommendations
+        recommendations = report_data.get("recommendations", [])
+        if recommendations:
+            content.extend([
+                "## Recommendations",
+                ""
+            ])
+            for rec in recommendations:
+                content.append(f"- {rec}")
+            content.append("")
+        
+        # Write summary
+        with open(output_path, 'w') as f:
+            f.write('\n'.join(content))
+        
+        print(f"✅ Summary report generated: {output_path}")
+
+
+def main():
+    """Main entry point for the dependency validator CLI."""
+    parser = argparse.ArgumentParser(description="Dependency validation and monitoring tool")
+    
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    
+    # Validate command
+    validate_parser = subparsers.add_parser("validate", help="Validate all dependencies")
+    validate_parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    
+    # Health command
+    health_parser = subparsers.add_parser("health", help="Check service health")
+    health_parser.add_argument("--service", "-s", help="Specific service to check")
+    
+    # Services command
+    services_parser = subparsers.add_parser("services", help="List registered services")
+    
+    # Report command
+    report_parser = subparsers.add_parser("report", help="Generate dependency report")
+    report_parser.add_argument("--output", "-o", help="Output file path")
+    
+    # Install command
+    install_parser = subparsers.add_parser("install", help="Install missing dependencies")
+    install_parser.add_argument("--dry-run", action="store_true", help="Show what would be installed")
+    
+    args = parser.parse_args()
+    
+    if not args.command:
+        parser.print_help()
+        return
+    
+    monitor = DependencyMonitor()
+    
+    try:
+        if args.command == "validate":
+            success = monitor.validate_all_dependencies(verbose=args.verbose)
+            if not success:
+                sys.exit(1)
+        
+        elif args.command == "health":
+            monitor.check_service_health(args.service)
+        
+        elif args.command == "services":
+            monitor.list_services()
+        
+        elif args.command == "report":
+            monitor.generate_dependency_report(args.output)
+        
+        elif args.command == "install":
+            monitor.install_missing_dependencies(dry_run=args.dry_run)
+        
+    except KeyboardInterrupt:
+        print("\n⚠️  Operation cancelled by user")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

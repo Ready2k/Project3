@@ -277,7 +277,7 @@ class CacheService:
         
         return self._stats
     
-    def cache_decorator(self, namespace: str = "default", ttl_seconds: Optional[int] = None):
+    def cache_decorator(self, namespace: str = "default", ttl_seconds: Optional[int] = None) -> Callable[[Callable[..., T]], Callable[..., T]]:
         """Decorator for caching function results.
         
         Args:
@@ -339,7 +339,7 @@ def get_cache_service(settings: Optional[Settings] = None) -> CacheService:
     return _cache_service
 
 # Convenience decorators
-def cache_expensive_operation(namespace: str = "expensive", ttl_seconds: int = 3600):
+def cache_expensive_operation(namespace: str = "expensive", ttl_seconds: int = 3600) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator for caching expensive operations.
     
     Args:
@@ -349,7 +349,7 @@ def cache_expensive_operation(namespace: str = "expensive", ttl_seconds: int = 3
     cache_service = get_cache_service()
     return cache_service.cache_decorator(namespace, ttl_seconds)
 
-def cache_llm_response(ttl_seconds: int = 1800):
+def cache_llm_response(ttl_seconds: int = 1800) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator for caching LLM responses.
     
     Args:
@@ -357,7 +357,7 @@ def cache_llm_response(ttl_seconds: int = 1800):
     """
     return cache_expensive_operation("llm_responses", ttl_seconds)
 
-def cache_pattern_match(ttl_seconds: int = 7200):
+def cache_pattern_match(ttl_seconds: int = 7200) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator for caching pattern matching results.
     
     Args:
