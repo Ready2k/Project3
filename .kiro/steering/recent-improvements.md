@@ -4,6 +4,69 @@ This document outlines recent improvements made to the AAA system and best pract
 
 ## Recent Major Improvements
 
+### 20. Service Registry Fixes & Diagram Rendering (September 2025)
+
+**Problem**: Critical diagram rendering failures preventing users from viewing generated diagrams:
+- "Mermaid service not available. Please check service configuration." errors
+- "Infrastructure Diagrams Not Available - The infrastructure diagram service is not registered" errors
+- Service registry pattern incorrectly applied to external libraries
+- Missing service wrapper classes and incorrect service lookup names
+
+**Root Cause Analysis**:
+- **Mermaid Service**: Code was using service registry pattern for external `streamlit_mermaid` library instead of direct imports
+- **Infrastructure Service**: Multiple issues including missing service class, wrong service names, and incorrect availability checks
+- **Service Architecture**: External libraries were being treated as internal services in the registry
+
+**Solution**: Comprehensive service registry and diagram rendering fixes:
+
+**Mermaid Service Fix**:
+- **Direct Library Import**: Replaced service registry calls with direct `streamlit_mermaid` imports
+- **Availability Checking**: Added proper import-based availability checks with graceful fallbacks
+- **Error Messages**: Enhanced error messages to provide clear guidance about package requirements
+
+**Infrastructure Service Fix**:
+- **Service Wrapper Class**: Created missing `InfrastructureDiagramService` wrapper around `InfrastructureDiagramGenerator`
+- **Service Registration**: Added infrastructure diagram service to core service registration
+- **Library Availability**: Fixed availability checks to use direct library imports instead of service registry
+- **Service Lookup**: Corrected service names from `infrastructure_diagram_generator` to `infrastructure_diagram_service`
+
+**Technical Implementation**:
+```python
+# Before (Broken)
+mermaid_service = optional_service('mermaid_service', context='...')
+if mermaid_service:
+    mermaid_service.render(mermaid_code, height=height)
+
+# After (Fixed)
+try:
+    import streamlit_mermaid as stmd
+    MERMAID_AVAILABLE = True
+except ImportError:
+    MERMAID_AVAILABLE = False
+
+if MERMAID_AVAILABLE and stmd:
+    stmd.st_mermaid(mermaid_code, height=height)
+```
+
+**Files Modified**:
+- `streamlit_app.py`: Fixed service lookup names and added module-level service initialization
+- `app/ui/analysis_display.py`: Replaced service calls with direct imports
+- `app/ui/mermaid_diagrams.py`: Updated to use direct streamlit_mermaid imports
+- `app/diagrams/infrastructure.py`: Added service wrapper class and fixed library imports
+- `app/core/service_registration.py`: Added infrastructure diagram service registration
+
+**Service Architecture Improvements**:
+- **Clear Separation**: External libraries imported directly, service registry for internal services only
+- **Module-Level Initialization**: Services initialized when modules are imported for better availability
+- **Enhanced Error Handling**: Informative error messages with installation guidance
+
+**Testing Results**:
+- ✅ All Mermaid diagrams render correctly without service errors
+- ✅ Infrastructure diagrams generate successfully (37KB PNG files)
+- ✅ Service health checks pass for all diagram services
+- ✅ Comprehensive test suite validates all fixes
+- ✅ Both diagram types work properly in Streamlit interface
+
 ### 19. Pydantic v2 Compatibility Fix (August 2025)
 
 **Problem**: System was experiencing LLM provider creation failures with critical errors:

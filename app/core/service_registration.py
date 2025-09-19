@@ -189,6 +189,20 @@ def register_core_services(registry: Optional[ServiceRegistry] = None,
         registered_services.append("audit_logger")
         logger.info("✅ Registered audit logger service")
         
+        # 10. Register Infrastructure Diagram Service (depends on config and logger)
+        infrastructure_diagram_config = config_overrides.get("infrastructure_diagram_service", {
+            "output_format": "png",
+            "dpi": 300,
+            "font_size": 12,
+            "max_components": 50
+        })
+        
+        from app.diagrams.infrastructure import InfrastructureDiagramService
+        infrastructure_diagram_service = InfrastructureDiagramService()
+        registry.register_singleton("infrastructure_diagram_service", infrastructure_diagram_service, dependencies=["config", "logger"])
+        registered_services.append("infrastructure_diagram_service")
+        logger.info("✅ Registered infrastructure diagram service")
+        
         logger.info(f"Successfully registered {len(registered_services)} core services: {registered_services}")
         
         return registered_services
@@ -410,7 +424,7 @@ def initialize_core_services(registry: Optional[ServiceRegistry] = None) -> Dict
     if registry is None:
         registry = get_registry()
     
-    core_services = ["config", "logger", "cache", "security_validator", "advanced_prompt_defender", "llm_provider_factory", "diagram_service_factory", "pattern_loader", "audit_logger"]
+    core_services = ["config", "logger", "cache", "security_validator", "advanced_prompt_defender", "llm_provider_factory", "diagram_service_factory", "pattern_loader", "audit_logger", "infrastructure_diagram_service"]
     initialization_results = {}
     
     logger.info("Initializing core services...")
@@ -450,7 +464,7 @@ def get_core_service_health() -> Dict[str, bool]:
         Dictionary mapping service names to health status
     """
     registry = get_registry()
-    core_services = ["config", "logger", "cache", "security_validator", "advanced_prompt_defender", "llm_provider_factory", "diagram_service_factory", "pattern_loader", "audit_logger"]
+    core_services = ["config", "logger", "cache", "security_validator", "advanced_prompt_defender", "llm_provider_factory", "diagram_service_factory", "pattern_loader", "audit_logger", "infrastructure_diagram_service"]
     health_status = {}
     
     for service_name in core_services:

@@ -27,6 +27,8 @@ Interactive GUI + API system that evaluates user stories/requirements for **auto
 
 ### 📊 **Visualization & Documentation**
 - **AI-Generated Diagrams**: Context, Container, Sequence, C4, Infrastructure, Tech Stack Wiring
+- **Mermaid Diagram Rendering**: Real-time diagram visualization with streamlit-mermaid integration
+- **Infrastructure Diagrams**: AWS/GCP/Azure architecture diagrams with 50+ component types
 - **Draw.io Export**: Professional diagram customization and team collaboration
 - **Technology Catalog**: 60+ technologies across 18+ categories with rich metadata
 - **Pattern Analytics**: Real-time usage metrics and performance tracking

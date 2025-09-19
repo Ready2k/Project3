@@ -13,48 +13,26 @@ from loguru import logger
 
 from .dynamic_component_mapper import DynamicComponentMapper
 
+# Check if diagrams library is available
 try:
     from diagrams import Diagram, Cluster, Edge
-    from diagrams.aws import compute as aws_compute
-    from diagrams.aws import database as aws_database
-    from diagrams.aws import network as aws_network
-    from diagrams.aws import storage as aws_storage
-    from diagrams.aws import integration as aws_integration
-    from diagrams.aws import security as aws_security
-    from diagrams.aws import analytics as aws_analytics
-    from diagrams.aws import ml as aws_ml
-    
-    from diagrams.gcp import compute as gcp_compute
-    from diagrams.gcp import database as gcp_database
-    from diagrams.gcp import network as gcp_network
-    from diagrams.gcp import storage as gcp_storage
-    from diagrams.gcp import analytics as gcp_analytics
-    from diagrams.gcp import ml as gcp_ml
-    
-    from diagrams.azure import compute as azure_compute
-    from diagrams.azure import database as azure_database
-    from diagrams.azure import network as azure_network
-    from diagrams.azure import storage as azure_storage
-    from diagrams.azure import analytics as azure_analytics
-    from diagrams.azure import ml as azure_ml
-    
-    from diagrams.k8s import compute as k8s_compute
-    from diagrams.k8s import network as k8s_network
-    from diagrams.k8s import storage as k8s_storage
-    
-    from diagrams.onprem import compute as onprem_compute
-    from diagrams.onprem import database as onprem_database
-    from diagrams.onprem import network as onprem_network
-    from diagrams.onprem import analytics as onprem_analytics
-    
-    from diagrams.saas import analytics as saas_analytics
-    from diagrams.saas import chat as saas_chat
-    from diagrams.saas import identity as saas_identity
-    
+    from diagrams.aws import compute as aws_compute, database as aws_database, network as aws_network, storage as aws_storage, integration as aws_integration, security as aws_security, analytics as aws_analytics, ml as aws_ml
+    from diagrams.gcp import compute as gcp_compute, database as gcp_database, network as gcp_network, storage as gcp_storage, analytics as gcp_analytics, ml as gcp_ml
+    from diagrams.azure import compute as azure_compute, database as azure_database, network as azure_network, storage as azure_storage, analytics as azure_analytics, ml as azure_ml
+    from diagrams.k8s import compute as k8s_compute, network as k8s_network, storage as k8s_storage
+    from diagrams.onprem import compute as onprem_compute, database as onprem_database, network as onprem_network, analytics as onprem_analytics
+    from diagrams.saas import analytics as saas_analytics, chat as saas_chat, identity as saas_identity
     DIAGRAMS_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"Diagrams library not available: {e}")
     DIAGRAMS_AVAILABLE = False
+    # Create dummy classes to prevent import errors
+    aws_compute = aws_database = aws_network = aws_storage = aws_integration = aws_security = aws_analytics = aws_ml = None
+    gcp_compute = gcp_database = gcp_network = gcp_storage = gcp_analytics = gcp_ml = None
+    azure_compute = azure_database = azure_network = azure_storage = azure_analytics = azure_ml = None
+    k8s_compute = k8s_network = k8s_storage = None
+    onprem_compute = onprem_database = onprem_network = onprem_analytics = None
+    saas_analytics = saas_chat = saas_identity = None
 
 
 class InfrastructureDiagramGenerator:
@@ -500,6 +478,26 @@ def create_sample_infrastructure_spec() -> Dict[str, Any]:
             ["lambda_func", "s3_bucket", "store"]
         ]
     }
+
+
+class InfrastructureDiagramService:
+    """Service wrapper for InfrastructureDiagramGenerator to match service registry expectations."""
+    
+    def __init__(self):
+        self.generator = InfrastructureDiagramGenerator()
+    
+    def generate_diagram(self, diagram_spec: Dict[str, Any], output_path: str, 
+                        format: str = "png") -> Tuple[str, str]:
+        """Generate infrastructure diagram from specification."""
+        return self.generator.generate_diagram(diagram_spec, output_path, format)
+    
+    def health_check(self) -> Dict[str, Any]:
+        """Health check for the service."""
+        return {
+            "status": "healthy" if DIAGRAMS_AVAILABLE else "unhealthy",
+            "diagrams_available": DIAGRAMS_AVAILABLE,
+            "message": "Infrastructure diagram service is ready" if DIAGRAMS_AVAILABLE else "Diagrams library not available"
+        }
 
 
 async def generate_infrastructure_diagram_from_llm(requirement: str, recommendations: List[Dict]) -> Dict[str, Any]:
