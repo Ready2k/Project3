@@ -203,6 +203,87 @@ def register_core_services(registry: Optional[ServiceRegistry] = None,
         registered_services.append("infrastructure_diagram_service")
         logger.info("✅ Registered infrastructure diagram service")
         
+        # 11. Register Enhanced Pattern Loader Service (depends on config, logger, cache)
+        enhanced_pattern_loader_config = config_overrides.get("enhanced_pattern_loader", {
+            "pattern_library_path": "./data/patterns",
+            "enable_analytics": True,
+            "enable_caching": True,
+            "cache_ttl_seconds": 3600,
+            "enable_validation": True,
+            "auto_reload": False,
+            "performance_tracking": True
+        })
+        
+        from app.services.enhanced_pattern_loader import EnhancedPatternLoader
+        enhanced_pattern_loader = EnhancedPatternLoader(enhanced_pattern_loader_config)
+        enhanced_pattern_loader.initialize()  # Initialize the service
+        registry.register_singleton("enhanced_pattern_loader", enhanced_pattern_loader, dependencies=["config", "logger", "cache"])
+        registered_services.append("enhanced_pattern_loader")
+        logger.info("✅ Registered enhanced pattern loader service")
+        
+        # 12. Register Pattern Analytics Service (depends on config, logger, enhanced_pattern_loader)
+        pattern_analytics_config = config_overrides.get("pattern_analytics_service", {
+            "enable_real_time_analytics": True,
+            "analytics_retention_days": 30,
+            "performance_window_minutes": 60,
+            "trend_analysis_enabled": True,
+            "export_analytics": True,
+            "alert_thresholds": {
+                "low_success_rate": 0.7,
+                "high_response_time_ms": 1000,
+                "pattern_usage_spike": 5.0
+            }
+        })
+        
+        from app.services.pattern_analytics_service import PatternAnalyticsService
+        pattern_analytics_service = PatternAnalyticsService(pattern_analytics_config)
+        pattern_analytics_service.initialize()  # Initialize the service
+        registry.register_singleton("pattern_analytics_service", pattern_analytics_service, dependencies=["config", "logger", "enhanced_pattern_loader"])
+        registered_services.append("pattern_analytics_service")
+        logger.info("✅ Registered pattern analytics service")
+        
+        # 13. Register Pattern Enhancement Service (depends on config, logger, llm_provider_factory, enhanced_pattern_loader)
+        pattern_enhancement_config = config_overrides.get("pattern_enhancement_service", {
+            "enhancement_types": ["full", "technical", "agentic"],
+            "default_enhancement_type": "full",
+            "max_concurrent_enhancements": 3,
+            "enhancement_timeout_seconds": 300,
+            "enable_validation": True,
+            "backup_original_patterns": True,
+            "llm_provider": "openai",
+            "llm_model": "gpt-4o",
+            "temperature": 0.3,
+            "max_tokens": 4000
+        })
+        
+        from app.services.pattern_enhancement_service import PatternEnhancementService
+        
+        # Get the required dependencies
+        llm_factory_service = registry.get("llm_provider_factory")
+        enhanced_loader = registry.get("enhanced_pattern_loader")
+        
+        # Create a default LLM provider for the enhancement service
+        default_llm_config = {
+            "provider": "openai",
+            "model": "gpt-4o",
+            "temperature": 0.3,
+            "max_tokens": 4000
+        }
+        
+        # Create LLM provider instance
+        llm_provider_result = llm_factory_service.create_provider("openai", **default_llm_config)
+        
+        if not llm_provider_result.is_success():
+            # Fallback to fake provider for testing
+            llm_provider_result = llm_factory_service.create_provider("fake")
+        
+        llm_provider = llm_provider_result.value
+        
+        pattern_enhancement_service = PatternEnhancementService(enhanced_loader, llm_provider)
+        registry.register_singleton("pattern_enhancement_service", pattern_enhancement_service, dependencies=["config", "logger", "llm_provider_factory", "enhanced_pattern_loader"])
+        registered_services.append("pattern_enhancement_service")
+        logger.info("✅ Registered pattern enhancement service")
+        
         logger.info(f"Successfully registered {len(registered_services)} core services: {registered_services}")
         
         return registered_services
@@ -424,7 +505,7 @@ def initialize_core_services(registry: Optional[ServiceRegistry] = None) -> Dict
     if registry is None:
         registry = get_registry()
     
-    core_services = ["config", "logger", "cache", "security_validator", "advanced_prompt_defender", "llm_provider_factory", "diagram_service_factory", "pattern_loader", "audit_logger", "infrastructure_diagram_service"]
+    core_services = ["config", "logger", "cache", "security_validator", "advanced_prompt_defender", "llm_provider_factory", "diagram_service_factory", "pattern_loader", "audit_logger", "infrastructure_diagram_service", "enhanced_pattern_loader", "pattern_analytics_service", "pattern_enhancement_service"]
     initialization_results = {}
     
     logger.info("Initializing core services...")
@@ -464,7 +545,7 @@ def get_core_service_health() -> Dict[str, bool]:
         Dictionary mapping service names to health status
     """
     registry = get_registry()
-    core_services = ["config", "logger", "cache", "security_validator", "advanced_prompt_defender", "llm_provider_factory", "diagram_service_factory", "pattern_loader", "audit_logger", "infrastructure_diagram_service"]
+    core_services = ["config", "logger", "cache", "security_validator", "advanced_prompt_defender", "llm_provider_factory", "diagram_service_factory", "pattern_loader", "audit_logger", "infrastructure_diagram_service", "enhanced_pattern_loader", "pattern_analytics_service", "pattern_enhancement_service"]
     health_status = {}
     
     for service_name in core_services:
