@@ -8,6 +8,12 @@ from app.utils.imports import require_service
 from app.pattern.enhanced_loader import EnhancedPatternLoader
 from app.llm.base import LLMProvider
 
+# Import enhanced catalog capabilities
+from app.services.catalog.intelligent_manager import IntelligentCatalogManager
+from app.services.catalog.validator import CatalogValidator
+from app.services.requirement_parsing.enhanced_parser import EnhancedRequirementParser
+from app.services.requirement_parsing.context_extractor import TechnologyContextExtractor
+
 
 class PatternEnhancementService:
     """Service for enhancing patterns with rich technical details and agentic capabilities."""
@@ -18,6 +24,12 @@ class PatternEnhancementService:
         
         # Get logger from service registry
         self.logger = require_service('logger', context='PatternEnhancementService')
+        
+        # Initialize enhanced catalog capabilities
+        self.catalog_manager = IntelligentCatalogManager()
+        self.catalog_validator = CatalogValidator()
+        self.enhanced_parser = EnhancedRequirementParser()
+        self.context_extractor = TechnologyContextExtractor()
         
         self.enhancement_template = self._load_enhancement_template()
     
@@ -91,16 +103,52 @@ class PatternEnhancementService:
             return original_id
     
     async def _enhance_technical_details(self, pattern: Dict[str, Any]) -> Dict[str, Any]:
-        """Enhance pattern with detailed technical implementation information."""
+        """Enhance pattern with detailed technical implementation information using catalog intelligence."""
         enhanced_pattern = pattern.copy()
         
-        # Create enhancement prompt
+        # Extract technology context from pattern description and requirements
+        pattern_requirements = {
+            "description": pattern.get("description", ""),
+            "domain": pattern.get("domain", ""),
+            "constraints": pattern.get("constraints", {}),
+            "tech_stack": pattern.get("tech_stack", [])
+        }
+        
+        # Use enhanced parsing to understand technology context
+        parsed_requirements = self.enhanced_parser.parse_requirements(pattern_requirements)
+        tech_context = self.context_extractor.build_context(parsed_requirements)
+        
+        # Get catalog recommendations for missing technologies
+        current_tech_stack = pattern.get("tech_stack", [])
+        if isinstance(current_tech_stack, list):
+            current_tech_list = current_tech_stack
+        elif isinstance(current_tech_stack, dict):
+            current_tech_list = []
+            for category, techs in current_tech_stack.items():
+                if isinstance(techs, list):
+                    current_tech_list.extend(techs)
+        else:
+            current_tech_list = []
+        
+        # Get catalog suggestions for enhancement
+        catalog_suggestions = self._get_catalog_enhancement_suggestions(
+            current_tech_list, tech_context, pattern.get("domain", "")
+        )
+        
+        # Create enhancement prompt with catalog intelligence
         prompt = f"""
         Enhance the following pattern with detailed technical implementation information:
         
         Pattern: {pattern.get('name', 'Unknown')}
         Description: {pattern.get('description', 'No description')}
-        Current Tech Stack: {json.dumps(pattern.get('tech_stack', []), indent=2)}
+        Domain: {pattern.get('domain', 'general')}
+        Current Tech Stack: {json.dumps(current_tech_list, indent=2)}
+        
+        CATALOG INTELLIGENCE:
+        - Explicit Technologies Mentioned: {list(tech_context.explicit_technologies.keys())}
+        - Contextual Technologies: {list(tech_context.contextual_technologies.keys())}
+        - Catalog Suggestions: {catalog_suggestions}
+        - Domain Context: {tech_context.domain_context}
         
         IMPORTANT: Respond with ONLY a valid JSON object. Do not include any explanatory text before or after the JSON.
         
@@ -120,10 +168,20 @@ class PatternEnhancementService:
                     "development": "X weeks",
                     "testing": "X weeks"
                 }}
+            }},
+            "catalog_metadata": {{
+                "enhanced_technologies": ["Tech1", "Tech2"],
+                "missing_technologies": ["MissingTech1"],
+                "ecosystem_consistency": "aws|azure|gcp|mixed"
             }}
         }}
         
-        Focus on practical, implementable technical details.
+        INSTRUCTIONS:
+        1. Include ALL explicit technologies mentioned in the pattern
+        2. Add catalog-suggested technologies that improve the stack
+        3. Ensure ecosystem consistency (prefer AWS, Azure, or GCP alignment)
+        4. Focus on practical, implementable technical details
+        5. Mark any technologies not in catalog as missing_technologies
         """
         
         try:
@@ -499,4 +557,186 @@ class PatternEnhancementService:
         enhanced_pattern["agent_architecture"] = "single_agent"
         
         self.logger.info(f"Applied basic agentic enhancement to pattern {pattern.get('pattern_id')}")
-        return enhanced_pattern
+        return enhanced_pattern    
+
+    def _get_catalog_enhancement_suggestions(self, current_tech_stack: List[str], 
+                                           tech_context: Any, domain: str) -> Dict[str, Any]:
+        """Get catalog-based suggestions for enhancing the technology stack.
+        
+        Args:
+            current_tech_stack: Current technologies in the pattern
+            tech_context: Technology context from enhanced parsing
+            domain: Pattern domain
+            
+        Returns:
+            Dictionary of enhancement suggestions
+        """
+        try:
+            suggestions = {
+                "missing_from_catalog": [],
+                "recommended_additions": [],
+                "ecosystem_alignment": "mixed",
+                "integration_opportunities": []
+            }
+            
+            # Check which technologies are missing from catalog
+            for tech in current_tech_stack:
+                if not self.catalog_manager.lookup_technology(tech):
+                    suggestions["missing_from_catalog"].append(tech)
+                    # Auto-add to catalog for future use
+                    self.catalog_manager.auto_add_technology(
+                        tech, 
+                        {"source": "pattern_enhancement", "domain": domain}
+                    )
+            
+            # Get recommendations based on domain and context
+            if hasattr(tech_context, 'domain_context'):
+                domain_context = tech_context.domain_context
+                
+                # Suggest domain-specific technologies
+                if domain in ["legal", "compliance"]:
+                    suggestions["recommended_additions"].extend([
+                        "Microsoft Presidio", "spaCy", "FAISS"
+                    ])
+                elif domain in ["customer_support", "communication"]:
+                    suggestions["recommended_additions"].extend([
+                        "Twilio", "Slack API", "Azure Cognitive Services"
+                    ])
+                elif domain in ["data_processing", "analytics"]:
+                    suggestions["recommended_additions"].extend([
+                        "Apache Spark", "Elasticsearch", "PostgreSQL"
+                    ])
+            
+            # Determine ecosystem alignment
+            cloud_techs = [tech for tech in current_tech_stack 
+                          if any(cloud in tech.lower() for cloud in ["aws", "azure", "gcp"])]
+            if cloud_techs:
+                if any("aws" in tech.lower() for tech in cloud_techs):
+                    suggestions["ecosystem_alignment"] = "aws"
+                elif any("azure" in tech.lower() for tech in cloud_techs):
+                    suggestions["ecosystem_alignment"] = "azure"
+                elif any("gcp" in tech.lower() for tech in cloud_techs):
+                    suggestions["ecosystem_alignment"] = "gcp"
+            
+            # Suggest integration opportunities
+            if "FastAPI" in current_tech_stack and "PostgreSQL" not in current_tech_stack:
+                suggestions["integration_opportunities"].append("PostgreSQL for data persistence")
+            if "Docker" not in current_tech_stack:
+                suggestions["integration_opportunities"].append("Docker for containerization")
+            
+            return suggestions
+            
+        except Exception as e:
+            self.logger.error(f"Error getting catalog enhancement suggestions: {e}")
+            return {
+                "missing_from_catalog": [],
+                "recommended_additions": [],
+                "ecosystem_alignment": "mixed",
+                "integration_opportunities": []
+            }
+    
+    def update_existing_patterns_with_enhanced_metadata(self) -> Dict[str, Any]:
+        """Update existing patterns to use improved technology metadata.
+        
+        Returns:
+            Dictionary with update results
+        """
+        try:
+            patterns = self.pattern_loader.load_patterns()
+            results = {
+                "updated": [],
+                "failed": [],
+                "skipped": [],
+                "total": len(patterns)
+            }
+            
+            for pattern in patterns:
+                pattern_id = pattern.get("pattern_id", "")
+                
+                # Skip already enhanced patterns
+                if pattern.get("enhanced_by_llm") and pattern.get("catalog_metadata"):
+                    results["skipped"].append({
+                        "pattern_id": pattern_id,
+                        "reason": "Already has enhanced metadata"
+                    })
+                    continue
+                
+                try:
+                    # Extract current tech stack
+                    current_tech_stack = pattern.get("tech_stack", [])
+                    if isinstance(current_tech_stack, dict):
+                        # Flatten structured tech stack for analysis
+                        tech_list = []
+                        for category, techs in current_tech_stack.items():
+                            if isinstance(techs, list):
+                                tech_list.extend(techs)
+                        current_tech_stack = tech_list
+                    
+                    # Parse pattern requirements for context
+                    pattern_requirements = {
+                        "description": pattern.get("description", ""),
+                        "domain": pattern.get("domain", ""),
+                        "constraints": pattern.get("constraints", {}),
+                        "tech_stack": current_tech_stack
+                    }
+                    
+                    parsed_requirements = self.enhanced_parser.parse_requirements(pattern_requirements)
+                    tech_context = self.context_extractor.build_context(parsed_requirements)
+                    
+                    # Get catalog enhancement suggestions
+                    catalog_suggestions = self._get_catalog_enhancement_suggestions(
+                        current_tech_stack, tech_context, pattern.get("domain", "")
+                    )
+                    
+                    # Update pattern with enhanced metadata
+                    updated_pattern = pattern.copy()
+                    updated_pattern["catalog_metadata"] = {
+                        "last_updated": datetime.now().isoformat(),
+                        "enhanced_by_catalog": True,
+                        "missing_from_catalog": catalog_suggestions["missing_from_catalog"],
+                        "ecosystem_alignment": catalog_suggestions["ecosystem_alignment"],
+                        "integration_opportunities": catalog_suggestions["integration_opportunities"],
+                        "explicit_technologies": list(tech_context.explicit_technologies.keys()),
+                        "contextual_technologies": list(tech_context.contextual_technologies.keys())
+                    }
+                    
+                    # Add technology confidence scores
+                    if tech_context.explicit_technologies:
+                        updated_pattern["technology_confidence"] = tech_context.explicit_technologies
+                    
+                    # Save updated pattern
+                    success, message = self.pattern_loader.save_enhanced_pattern(updated_pattern)
+                    
+                    if success:
+                        results["updated"].append({
+                            "pattern_id": pattern_id,
+                            "enhancements": list(catalog_suggestions.keys())
+                        })
+                        self.logger.info(f"Updated pattern {pattern_id} with enhanced metadata")
+                    else:
+                        results["failed"].append({
+                            "pattern_id": pattern_id,
+                            "error": message
+                        })
+                        
+                except Exception as e:
+                    results["failed"].append({
+                        "pattern_id": pattern_id,
+                        "error": str(e)
+                    })
+                    self.logger.error(f"Failed to update pattern {pattern_id}: {e}")
+            
+            self.logger.info(f"Pattern metadata update completed: {len(results['updated'])} updated, "
+                           f"{len(results['failed'])} failed, {len(results['skipped'])} skipped")
+            
+            return results
+            
+        except Exception as e:
+            self.logger.error(f"Error updating existing patterns: {e}")
+            return {
+                "updated": [],
+                "failed": [],
+                "skipped": [],
+                "total": 0,
+                "error": str(e)
+            }
