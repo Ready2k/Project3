@@ -9,6 +9,11 @@ from app.llm.base import LLMProvider
 from app.services.tech_stack_generator import TechStackGenerator
 from app.utils.imports import require_service
 
+# Import enhanced components for integration
+from app.services.requirement_parsing.enhanced_parser import EnhancedRequirementParser
+from app.services.requirement_parsing.context_extractor import TechnologyContextExtractor
+from app.services.catalog.intelligent_manager import IntelligentCatalogManager
+
 
 class PatternCreator:
     """Service for creating new automation patterns based on requirements."""
@@ -18,13 +23,28 @@ class PatternCreator:
         
         Args:
             pattern_library_path: Path to pattern library directory
-        # Get logger from service registry
-        self.logger = require_service('logger', context='PatternCreator')
             llm_provider: LLM provider for generating pattern details
         """
         self.pattern_library_path = pattern_library_path
         self.llm_provider = llm_provider
-        self.tech_stack_generator = TechStackGenerator(llm_provider)
+        
+        # Get logger from service registry
+        self.logger = require_service('logger', context='PatternCreator')
+        
+        # Initialize enhanced components for better tech stack generation
+        self.enhanced_parser = EnhancedRequirementParser()
+        self.context_extractor = TechnologyContextExtractor()
+        self.catalog_manager = IntelligentCatalogManager()
+        
+        # Initialize enhanced tech stack generator with new capabilities
+        self.tech_stack_generator = TechStackGenerator(
+            llm_provider=llm_provider,
+            auto_update_catalog=True,
+            enhanced_parser=self.enhanced_parser,
+            context_extractor=self.context_extractor,
+            catalog_manager=self.catalog_manager,
+            enable_debug_logging=False
+        )
     
     async def create_pattern_from_requirements(self, 
                                              requirements: Dict[str, Any],
@@ -818,7 +838,7 @@ IMPORTANT:
             return "Automatable"  # Default to automatable for new patterns
     
     async def _generate_intelligent_tech_stack(self, requirements: Dict[str, Any], analysis: Dict[str, Any]) -> List[str]:
-        """Generate intelligent tech stack using the TechStackGenerator.
+        """Generate intelligent tech stack using the enhanced TechStackGenerator.
         
         Args:
             requirements: User requirements
@@ -828,6 +848,13 @@ IMPORTANT:
             List of recommended technologies
         """
         try:
+            # Use enhanced parsing to extract technology context
+            parsed_requirements = self.enhanced_parser.parse_requirements(requirements)
+            tech_context = self.context_extractor.build_context(parsed_requirements)
+            
+            self.logger.info(f"Extracted technology context: explicit={len(tech_context.explicit_technologies)}, "
+                           f"contextual={len(tech_context.contextual_technologies)}")
+            
             # Create a mock match result for context (since we're creating a new pattern)
             from app.pattern.matcher import MatchResult
             
@@ -843,22 +870,32 @@ IMPORTANT:
                 rationale="New pattern being created"
             )
             
-            # Extract constraints
+            # Extract constraints from requirements and analysis
             constraints = {
-                "banned_tools": requirements.get("banned_tools", []),
-                "required_integrations": requirements.get("integrations", [])
+                "banned_tools": requirements.get("banned_tools", []) + analysis.get("banned_tools_suggestions", []),
+                "required_integrations": requirements.get("integrations", []) + analysis.get("required_integrations_suggestions", [])
             }
             
-            # Generate intelligent tech stack
+            # Generate intelligent tech stack with enhanced context awareness
             tech_stack = await self.tech_stack_generator.generate_tech_stack(
                 [mock_match], requirements, constraints
             )
             
-            self.logger.info(f"Generated intelligent tech stack for new pattern: {tech_stack}")
+            # Auto-add any missing technologies to catalog if enabled
+            if self.tech_stack_generator.auto_update_catalog:
+                for tech in tech_context.explicit_technologies:
+                    if not self.catalog_manager.lookup_technology(tech):
+                        self.logger.info(f"Auto-adding missing technology to catalog: {tech}")
+                        self.catalog_manager.auto_add_technology(
+                            tech, 
+                            {"source": "pattern_creation", "confidence": tech_context.explicit_technologies[tech]}
+                        )
+            
+            self.logger.info(f"Generated enhanced tech stack for new pattern: {tech_stack}")
             return tech_stack
             
         except Exception as e:
-            self.logger.error(f"Failed to generate intelligent tech stack for new pattern: {e}")
+            self.logger.error(f"Failed to generate enhanced tech stack for new pattern: {e}")
             
             # Fallback to basic tech stack
             return self._generate_fallback_tech_stack(requirements, analysis)

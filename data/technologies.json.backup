@@ -113,7 +113,8 @@
         "custom_internal",
         "pandas",
         "numpy",
-        "react"
+        "react",
+        "amazon_connect"
       ]
     },
     "languages": {
@@ -122,7 +123,8 @@
       "technologies": [
         "python",
         "node.js",
-        "java"
+        "java",
+        "golang"
       ]
     },
     "monitoring": {
@@ -209,6 +211,19 @@
     "version": "2.3.0"
   },
   "technologies": {
+    "amazon_connect": {
+      "added_date": "2025-09-18",
+      "alternatives": [],
+      "auto_generated": true,
+      "category": "integration",
+      "description": "Technology component: Amazon Connect",
+      "integrates_with": [],
+      "license": "unknown",
+      "maturity": "unknown",
+      "name": "Amazon Connect",
+      "tags": [],
+      "use_cases": []
+    },
     "autogen": {
       "alternatives": [
         "crewai",
@@ -1001,6 +1016,22 @@
         "workflow_automation",
         "release_management"
       ]
+    },
+    "golang": {
+      "added_date": "2025-09-18",
+      "alternatives": [],
+      "auto_generated": true,
+      "category": "languages",
+      "description": "Technology component: GoLang",
+      "integrates_with": [],
+      "license": "unknown",
+      "maturity": "unknown",
+      "name": "GoLang",
+      "tags": [
+        "programming",
+        "language"
+      ],
+      "use_cases": []
     },
     "gpt4o_reasoning": {
       "alternatives": [

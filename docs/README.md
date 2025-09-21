@@ -48,6 +48,15 @@ This directory contains comprehensive documentation for the Automated AI Assessm
 - **[PATTERN_ANALYTICS.md](features/PATTERN_ANALYTICS.md)** - Pattern analytics and management
 - **[TECHNOLOGY_CATALOG.md](features/TECHNOLOGY_CATALOG.md)** - Technology catalog system
 - **[EXPORT_SYSTEM.md](features/EXPORT_SYSTEM.md)** - Export formats and usage
+- **[tech_stack_generation_enhanced.md](features/tech_stack_generation_enhanced.md)** - Enhanced technology stack generation system
+
+## 🛠️ Technology Stack Generation
+
+- **[tech_context_user_guide.md](guides/tech_context_user_guide.md)** - User guide for providing technology context in requirements
+- **[catalog_management_procedures.md](guides/catalog_management_procedures.md)** - Technology catalog management procedures and best practices
+- **[tech_stack_troubleshooting.md](guides/tech_stack_troubleshooting.md)** - Troubleshooting guide for tech stack generation issues
+- **[tech_stack_migration.md](guides/tech_stack_migration.md)** - Migration guide for enhanced tech stack generation
+- **[tech_stack_generation_api.md](api/tech_stack_generation_api.md)** - Complete API documentation for tech stack generation
 
 ## 🔄 Release Notes
 

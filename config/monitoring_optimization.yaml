@@ -1,0 +1,187 @@
+# Monitoring System Performance Optimization Configuration
+# This configuration helps reduce CPU and memory usage of the monitoring system
+
+# Performance Optimizer Settings
+performance_optimizer:
+  enabled: true
+  cpu_threshold_warning: 70.0
+  cpu_threshold_critical: 85.0
+  memory_threshold_warning: 80.0
+  memory_threshold_critical: 90.0
+  optimization_check_interval: 60  # seconds
+  adaptive_intervals: true
+  max_interval_multiplier: 4.0
+  min_interval_seconds: 10
+
+# Optimized Monitoring Component Settings
+monitoring_components:
+  
+  # Tech Stack Monitor - Reduced frequency
+  tech_stack_monitor:
+    quality_check_interval: 600  # 10 minutes (was 5 minutes)
+    recommendation_interval: 7200  # 2 hours (was 1 hour)
+    threshold_update_interval: 7200  # 2 hours (was 1 hour)
+    real_time_update_interval: 60  # 1 minute (was 30 seconds)
+    max_metrics_in_memory: 1000  # Reduced from unlimited
+    
+  # Quality Assurance - Reduced frequency
+  quality_assurance:
+    accuracy_check_interval: 600  # 10 minutes (was 5 minutes)
+    consistency_check_interval: 1200  # 20 minutes (was 10 minutes)
+    completeness_check_interval: 3600  # 1 hour (was 30 minutes)
+    performance_check_interval: 600  # 10 minutes (was 5 minutes)
+    catalog_health_check_interval: 7200  # 2 hours (was 1 hour)
+    user_satisfaction_check_interval: 3600  # 1 hour (was 30 minutes)
+    report_generation_interval: 7200  # 2 hours (was 1 hour)
+    
+  # Performance Analytics - Reduced frequency
+  performance_analytics:
+    analysis_interval_minutes: 30  # 30 minutes (was 15 minutes)
+    bottleneck_detection_interval: 300  # 5 minutes (was 2 minutes)
+    predictive_analysis_interval: 7200  # 2 hours (was 1 hour)
+    max_usage_patterns: 500  # Reduced from 1000
+    max_bottlenecks: 250  # Reduced from 500
+    max_satisfaction_analyses: 500  # Reduced from 1000
+    
+  # Real-time Quality Monitor - Optimized
+  real_time_quality_monitor:
+    real_time_update_interval: 60  # 1 minute (was 30 seconds)
+    trend_analysis_interval: 7200  # 2 hours (was 1 hour)
+    max_quality_scores: 500  # Reduced from 1000
+    max_consistency_scores: 500  # Reduced from 1000
+    max_quality_alerts: 250  # Reduced from 500
+    
+  # Alert System - Optimized
+  alert_system:
+    alert_processing_interval: 60  # 1 minute (was 30 seconds)
+    escalation_check_interval: 600  # 10 minutes (was 5 minutes)
+    cleanup_interval: 7200  # 2 hours (was 1 hour)
+    max_active_alerts: 500  # Reduced from 1000
+    max_history_alerts: 2500  # Reduced from 5000
+    notification_retry_delay: 120  # 2 minutes (was 1 minute)
+    
+  # Integrated Dashboard - Optimized
+  integrated_dashboard:
+    auto_refresh_interval: 60  # 1 minute (was 30 seconds)
+    health_check_interval: 600  # 10 minutes (was 5 minutes)
+    data_retention_interval: 7200  # 2 hours (was 1 hour)
+    cache_ttl_seconds: 60  # 1 minute (was 30 seconds)
+    max_alerts_display: 25  # Reduced from 50
+
+# Data Retention Settings - Reduced to save memory
+data_retention:
+  metrics_retention_hours: 72  # 3 days (was 7 days)
+  alert_retention_hours: 360  # 15 days (was 30 days)
+  analytics_retention_hours: 168  # 7 days (was unlimited)
+  quality_scores_retention_hours: 48  # 2 days (was unlimited)
+  
+# Background Task Optimization
+background_tasks:
+  # Enable task batching to reduce overhead
+  enable_batching: true
+  batch_size: 10
+  batch_timeout: 30  # seconds
+  
+  # Enable task prioritization
+  enable_prioritization: true
+  priority_levels:
+    critical: 1
+    high: 2
+    normal: 3
+    low: 4
+    
+  # Task scheduling optimization
+  enable_adaptive_scheduling: true
+  load_balancing: true
+  max_concurrent_tasks: 20  # Reduced from unlimited
+
+# Memory Optimization
+memory_optimization:
+  # Enable garbage collection optimization
+  enable_gc_optimization: true
+  gc_threshold_multiplier: 2.0
+  
+  # Enable object pooling for frequently created objects
+  enable_object_pooling: true
+  pool_sizes:
+    metrics: 1000
+    alerts: 500
+    events: 2000
+    
+  # Enable data compression for stored objects
+  enable_compression: true
+  compression_level: 6  # Balance between speed and size
+
+# CPU Optimization
+cpu_optimization:
+  # Enable async task optimization
+  enable_async_optimization: true
+  
+  # Reduce precision for non-critical calculations
+  enable_reduced_precision: true
+  
+  # Enable lazy loading for heavy operations
+  enable_lazy_loading: true
+  
+  # CPU-intensive task throttling
+  enable_throttling: true
+  throttle_threshold: 80.0  # CPU percentage
+  throttle_factor: 0.5  # Reduce task frequency by 50%
+
+# Network Optimization
+network_optimization:
+  # Connection pooling for external services
+  enable_connection_pooling: true
+  max_connections: 10
+  connection_timeout: 30
+  
+  # Request batching for external APIs
+  enable_request_batching: true
+  batch_size: 5
+  batch_timeout: 10
+  
+  # Response caching
+  enable_response_caching: true
+  cache_ttl: 300  # 5 minutes
+
+# Logging Optimization
+logging_optimization:
+  # Reduce log verbosity under high load
+  enable_adaptive_logging: true
+  high_load_threshold: 75.0  # CPU percentage
+  reduced_log_level: "WARNING"  # Reduce to WARNING level under high load
+  
+  # Async logging to reduce blocking
+  enable_async_logging: true
+  log_buffer_size: 1000
+  log_flush_interval: 10  # seconds
+
+# Development vs Production Settings
+environment_specific:
+  development:
+    # More frequent updates for development
+    override_intervals:
+      real_time_update_interval: 30
+      quality_check_interval: 300
+    enable_debug_metrics: true
+    
+  production:
+    # Conservative settings for production
+    override_intervals:
+      real_time_update_interval: 120
+      quality_check_interval: 900
+    enable_debug_metrics: false
+    enable_performance_profiling: true
+
+# Emergency Performance Mode
+emergency_mode:
+  # Triggers for emergency mode
+  cpu_threshold: 95.0
+  memory_threshold: 95.0
+  
+  # Emergency mode settings
+  disable_non_critical_monitoring: true
+  increase_all_intervals_by: 5.0  # 5x multiplier
+  disable_real_time_features: true
+  enable_aggressive_cleanup: true
+  reduce_data_retention_by: 0.5  # 50% reduction

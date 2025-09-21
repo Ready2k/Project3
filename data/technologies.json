@@ -203,25 +203,37 @@
   "metadata": {
     "description": "Comprehensive technology catalog for AAA system recommendations",
     "last_auto_update": "2025-08-14T08:44:57.363198",
-    "last_manual_update": "2025-08-26T09:42:43.762599",
-    "last_updated": "2025-08-26",
+    "last_manual_update": "2025-09-20T11:41:16.405659",
+    "last_updated": "2025-09-20",
     "release_date": "2025-08-26",
     "release_name": "Missing Technologies Fix",
-    "total_technologies": 73,
+    "total_technologies": 79,
     "version": "2.3.0"
   },
   "technologies": {
     "amazon_connect": {
       "added_date": "2025-09-18",
-      "alternatives": [],
+      "alternatives": [
+        "Amazon_Connect",
+        "AmazonConnect",
+        "Connect"
+      ],
       "auto_generated": true,
       "category": "integration",
       "description": "Technology component: Amazon Connect",
-      "integrates_with": [],
-      "license": "unknown",
-      "maturity": "unknown",
+      "integrates_with": [
+        "AWS",
+        "Lambda",
+        "Amazon Connect"
+      ],
+      "last_modified": "2025-09-20",
+      "license": "Commercial",
+      "maturity": "stable",
       "name": "Amazon Connect",
-      "tags": [],
+      "tags": [
+        "AWS",
+        "SAAS"
+      ],
       "use_cases": []
     },
     "autogen": {
