@@ -1,0 +1,130 @@
+{
+  "pattern_id": "APAT-022",
+  "name": "Multi-Agent Coordinator_Based System",
+  "description": "Multi-agent system with 4 specialized agents for Story K5 — Portfolio surveillance &amp;amp;amp;amp; proactive outreach\nAs a relationship manager\nI want the agent to monitor my portfolio and alert me when a customer needs intervention\nSo that I act before problems escalate\nBusiness value: Retention; reduced arrears.\nAssumptions: Triggers include cash-flow stress, churn risk, complaints, product expiry.\nAcceptance criteria:\nGiven a portfolio of customers\nWhen any trigger fires\nThen the agent creates an alert with recommended outreach, channel, and script\nGiven outreach is approved\nThen the agent schedules/send messages and logs outcomes back to CRM\nNon-functional / Controls:\nWeekly digest + real-time critical alerts; explainable trigger logic; customer contact preferences enforced.",
+  "feasibility": "Fully Automatable",
+  "pattern_type": [
+    "multi_agent_system",
+    "hierarchical_agents"
+  ],
+  "autonomy_level": 0.975,
+  "reasoning_capabilities": [
+    "collaborative_reasoning",
+    "distributed_decision_making",
+    "system_coordination"
+  ],
+  "decision_scope": {
+    "autonomous_decisions": [
+      "agent_coordination",
+      "task_distribution",
+      "resource_allocation",
+      "exception_handling"
+    ],
+    "escalation_triggers": [
+      "system_wide_failures",
+      "conflicting_agent_decisions",
+      "resource_exhaustion"
+    ]
+  },
+  "exception_handling_strategy": {
+    "autonomous_resolution_approaches": [
+      "Multi-agent collaborative resolution",
+      "Distributed error recovery",
+      "Agent failover mechanisms"
+    ],
+    "reasoning_fallbacks": [
+      "Coordinator-based decision making",
+      "Consensus-based resolution",
+      "Fallback to single-agent mode"
+    ],
+    "escalation_criteria": [
+      "System-wide failures",
+      "Conflicting agent decisions",
+      "Resource exhaustion"
+    ]
+  },
+  "learning_mechanisms": [
+    "reinforcement_learning",
+    "performance_optimization",
+    "continuous_improvement"
+  ],
+  "tech_stack": [
+    "LangChain",
+    "Haystack",
+    "Apache Kafka",
+    "Redis",
+    "Docker",
+    "Kubernetes"
+  ],
+  "agent_architecture": "hierarchical_agents",
+  "input_requirements": [
+    "multi_agent_coordination",
+    "distributed_processing",
+    "system_monitoring",
+    "error_handling"
+  ],
+  "related_patterns": [
+    "APAT-001",
+    "APAT-002"
+  ],
+  "confidence_score": 0.975,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": [
+      "LangChain",
+      "Haystack",
+      "Apache Kafka"
+    ]
+  },
+  "domain": "incident_management",
+  "complexity": "High",
+  "estimated_effort": "8-12 weeks",
+  "reasoning_types": [
+    "logical",
+    "causal",
+    "collaborative"
+  ],
+  "decision_boundaries": {
+    "autonomous_decisions": [
+      "agent_coordination",
+      "task_distribution",
+      "resource_allocation"
+    ],
+    "escalation_triggers": [
+      "system_failures",
+      "conflicting_decisions",
+      "resource_exhaustion"
+    ]
+  },
+  "autonomy_assessment": {
+    "overall_score": 0.8635000000000003,
+    "reasoning_complexity": "complex",
+    "workflow_coverage": 0.9,
+    "decision_independence": "high"
+  },
+  "self_monitoring_capabilities": [
+    "performance_tracking",
+    "error_detection",
+    "resource_monitoring"
+  ],
+  "integration_requirements": [
+    "Docker",
+    "Kubernetes"
+  ],
+  "created_from_session": "a40a7cd7-68d8-49b4-934e-31c33186fe26",
+  "auto_generated": true,
+  "llm_insights": [
+    "Multi-agent coordination enables distributed processing",
+    "Collaborative reasoning improves decision accuracy",
+    "System-level monitoring ensures reliability"
+  ],
+  "llm_challenges": [
+    "Coordinating multiple agents effectively",
+    "Managing distributed decision making",
+    "Ensuring system-wide consistency"
+  ],
+  "llm_recommended_approach": "Implement coordinator_based architecture with specialized agent roles, use robust communication protocols, maintain comprehensive monitoring and error handling.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "a40a7cd7-68d8-49b4-934e-31c33186fe26",
+  "color": "🟢"
+}

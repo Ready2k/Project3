@@ -50,6 +50,81 @@ test-all:
 e2e:
 	python3 -m pytest app/tests/integration/ -v
 
+# Catalog management commands
+catalog-help:
+	@echo "📚 Catalog Management Commands:"
+	@echo "  make catalog-overview    - Show catalog overview dashboard"
+	@echo "  make catalog-list        - List all technologies"
+	@echo "  make catalog-stats       - Show catalog statistics"
+	@echo "  make catalog-validate    - Validate catalog consistency"
+	@echo "  make catalog-health      - Show detailed health report"
+	@echo "  make catalog-backup      - Create catalog backup"
+	@echo "  make catalog-example     - Run catalog management examples"
+	@echo ""
+	@echo "For detailed CLI help: python -m app.cli.main --help"
+
+# Show catalog overview
+catalog-overview:
+	python3 -m app.cli.main dashboard overview
+
+# List all technologies
+catalog-list:
+	python3 -m app.cli.main catalog list
+
+# Show catalog statistics
+catalog-stats:
+	python3 -m app.cli.main catalog stats
+
+# Validate catalog
+catalog-validate:
+	python3 -m app.cli.main catalog validate --detailed
+
+# Show health report
+catalog-health:
+	python3 -m app.cli.main dashboard health
+
+# Show quality report
+catalog-quality:
+	python3 -m app.cli.main dashboard quality
+
+# Show trends
+catalog-trends:
+	python3 -m app.cli.main dashboard trends
+
+# List pending reviews
+catalog-reviews:
+	python3 -m app.cli.main review list --verbose
+
+# Create backup
+catalog-backup:
+	python3 -m app.cli.main bulk backup
+
+# Export catalog to JSON
+catalog-export:
+	python3 -m app.cli.main bulk export catalog_export.json
+	@echo "Catalog exported to catalog_export.json"
+
+# Run catalog management examples
+catalog-example:
+	python3 examples/catalog_management_example.py
+
+# CLI tool shortcuts
+cli:
+	python3 -m app.cli.main $(ARGS)
+
+catalog:
+	python3 -m app.cli.main catalog $(ARGS)
+
+review:
+	python3 -m app.cli.main review $(ARGS)
+
+bulk:
+	python3 -m app.cli.main bulk $(ARGS)
+
+dashboard:
+	python3 -m app.cli.main dashboard $(ARGS)
+	python3 -m pytest app/tests/integration/ -v
+
 # Start services (API + Streamlit) - Local development
 up:
 	@echo "🚀 Starting both FastAPI backend and Streamlit UI..."

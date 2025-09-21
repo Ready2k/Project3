@@ -1,0 +1,151 @@
+{
+  "technologies": {
+    "fastapi": {
+      "id": "fastapi",
+      "name": "FastAPI",
+      "canonical_name": "FastAPI",
+      "category": "frameworks",
+      "description": "Modern, fast web framework for building APIs with Python",
+      "aliases": [
+        "fast-api",
+        "fast_api"
+      ],
+      "ecosystem": "open_source",
+      "confidence_score": 1.0,
+      "pending_review": false,
+      "integrates_with": [
+        "python",
+        "pydantic",
+        "uvicorn"
+      ],
+      "alternatives": [
+        "django",
+        "flask"
+      ],
+      "tags": [
+        "python",
+        "api",
+        "async",
+        "web"
+      ],
+      "use_cases": [
+        "rest_api",
+        "microservices",
+        "web_backend"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "auto_generated": false,
+      "source_context": null,
+      "added_date": "2025-09-19T23:16:00.706178",
+      "last_updated": null,
+      "review_status": "approved",
+      "review_notes": null,
+      "reviewed_by": null,
+      "reviewed_date": null,
+      "mention_count": 0,
+      "selection_count": 0,
+      "validation_errors": [],
+      "last_validated": null
+    },
+    "langchain": {
+      "id": "langchain",
+      "name": "LangChain",
+      "canonical_name": "LangChain",
+      "category": "agentic",
+      "description": "Framework for developing applications powered by language models",
+      "aliases": [
+        "lang-chain",
+        "lang_chain"
+      ],
+      "ecosystem": "open_source",
+      "confidence_score": 1.0,
+      "pending_review": false,
+      "integrates_with": [
+        "openai",
+        "python",
+        "faiss"
+      ],
+      "alternatives": [
+        "llamaindex",
+        "semantic_kernel"
+      ],
+      "tags": [
+        "llm",
+        "ai",
+        "agents",
+        "python"
+      ],
+      "use_cases": [
+        "chatbots",
+        "document_qa",
+        "agents"
+      ],
+      "license": "MIT",
+      "maturity": "stable",
+      "auto_generated": false,
+      "source_context": null,
+      "added_date": "2025-09-19T23:16:00.706186",
+      "last_updated": null,
+      "review_status": "approved",
+      "review_notes": null,
+      "reviewed_by": null,
+      "reviewed_date": null,
+      "mention_count": 0,
+      "selection_count": 0,
+      "validation_errors": [],
+      "last_validated": null
+    },
+    "aws": {
+      "id": "aws",
+      "name": "AWS",
+      "canonical_name": "Amazon Web Services",
+      "category": "cloud",
+      "description": "Amazon's comprehensive cloud computing platform",
+      "aliases": [
+        "amazon_web_services",
+        "amazon-web-services"
+      ],
+      "ecosystem": "aws",
+      "confidence_score": 1.0,
+      "pending_review": false,
+      "integrates_with": [
+        "python",
+        "docker",
+        "terraform"
+      ],
+      "alternatives": [
+        "azure",
+        "gcp"
+      ],
+      "tags": [
+        "cloud",
+        "infrastructure",
+        "serverless"
+      ],
+      "use_cases": [
+        "cloud_hosting",
+        "serverless",
+        "storage"
+      ],
+      "license": "Commercial",
+      "maturity": "mature",
+      "auto_generated": false,
+      "source_context": null,
+      "added_date": "2025-09-19T23:16:00.706190",
+      "last_updated": null,
+      "review_status": "approved",
+      "review_notes": null,
+      "reviewed_by": null,
+      "reviewed_date": null,
+      "mention_count": 0,
+      "selection_count": 0,
+      "validation_errors": [],
+      "last_validated": null
+    }
+  },
+  "metadata": {
+    "total_technologies": 3,
+    "last_auto_update": "2025-09-19T23:16:00.706208"
+  }
+}

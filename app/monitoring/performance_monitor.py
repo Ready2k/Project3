@@ -494,7 +494,7 @@ class PerformanceMonitor:
             self.metrics.record_histogram("aaa_session_duration_seconds", duration, labels)
     
     def update_system_metrics(self):
-        """Update system resource metrics."""
+        """Update system resource metrics with real data from tech stack generation."""
         try:
             import psutil
             
@@ -507,11 +507,132 @@ class PerformanceMonitor:
             cpu_percent = psutil.cpu_percent(interval=1)
             self.metrics.set_gauge("aaa_cpu_usage_percent", cpu_percent)
             
+            # Connect to real tech stack generation metrics
+            self._update_tech_stack_metrics()
+            
         except ImportError:
             # psutil not available
             pass
         except Exception as e:
             app_logger.warning(f"Failed to update system metrics: {e}")
+    
+    def _update_tech_stack_metrics(self):
+        """Update tech stack generation specific metrics from real data."""
+        try:
+            # Try to get real data from monitoring integration service
+            from app.utils.imports import optional_service
+            integration_service = optional_service('tech_stack_monitoring_integration', context='PerformanceMonitor')
+            
+            if integration_service:
+                # Get real-time service metrics
+                service_metrics = integration_service.get_service_metrics()
+                active_sessions = integration_service.get_active_sessions()
+                
+                # Update active sessions metric
+                self.metrics.set_gauge("aaa_active_sessions", service_metrics.get('active_sessions', 0))
+                
+                # Calculate average session duration from active sessions
+                if active_sessions:
+                    total_duration = sum(session.get('duration_seconds', 0) for session in active_sessions)
+                    avg_duration = total_duration / len(active_sessions)
+                    self.metrics.set_gauge("aaa_session_duration_seconds", avg_duration)
+                
+                # Update event buffer metrics
+                self.metrics.set_gauge("aaa_monitoring_events_buffered", service_metrics.get('total_events_buffered', 0))
+                
+                # Process session events for detailed metrics
+                for session_info in active_sessions:
+                    session_id = session_info['session_id']
+                    session_events = integration_service.get_session_events(session_id)
+                    
+                    # Extract performance metrics from real events
+                    self._process_session_performance_metrics(session_id, session_events)
+            
+            # Try to get metrics from tech stack monitor
+            tech_monitor = optional_service('tech_stack_monitor', context='PerformanceMonitor')
+            if tech_monitor:
+                recent_metrics = tech_monitor._get_recent_metrics(hours=1)
+                
+                # Extract LLM performance metrics
+                llm_metrics = [m for m in recent_metrics if m.name == "llm_response_time"]
+                if llm_metrics:
+                    avg_llm_time = sum(m.value for m in llm_metrics) / len(llm_metrics)
+                    self.metrics.set_gauge("aaa_llm_request_duration_seconds", avg_llm_time)
+                
+                # Extract processing time metrics
+                processing_metrics = [m for m in recent_metrics if m.name == "processing_time"]
+                if processing_metrics:
+                    avg_processing_time = sum(m.value for m in processing_metrics) / len(processing_metrics)
+                    self.metrics.set_gauge("aaa_api_request_duration_seconds", avg_processing_time)
+                
+                # Count error metrics
+                error_count = len([m for m in recent_metrics if 'error' in m.name.lower() or not getattr(m, 'success', True)])
+                self.metrics.set_gauge("aaa_api_errors_total", error_count)
+                
+        except Exception as e:
+            app_logger.debug(f"Could not update tech stack metrics from real data: {e}")
+    
+    def _process_session_performance_metrics(self, session_id: str, session_events: List[Dict[str, Any]]):
+        """Process session events to extract performance metrics."""
+        try:
+            # Extract LLM call metrics
+            llm_events = [e for e in session_events if e.get('event_type') == 'llm_call_complete']
+            for event in llm_events:
+                duration_ms = event.get('duration_ms', 0)
+                data = event.get('data', {})
+                provider = data.get('provider', 'unknown')
+                model = data.get('model', 'unknown')
+                token_usage = data.get('token_usage', {})
+                success = event.get('success', True)
+                
+                # Record LLM request metrics
+                self.record_llm_request(
+                    provider=provider,
+                    model=model,
+                    duration=duration_ms / 1000.0,  # Convert to seconds
+                    tokens=token_usage.get('total_tokens', 0),
+                    success=success
+                )
+            
+            # Extract parsing performance metrics
+            parsing_events = [e for e in session_events if e.get('event_type') == 'parsing_complete']
+            for event in parsing_events:
+                duration_ms = event.get('duration_ms', 0)
+                if duration_ms > 0:
+                    self.metrics.record_histogram("aaa_parsing_duration_seconds", duration_ms / 1000.0)
+            
+            # Extract validation performance metrics
+            validation_events = [e for e in session_events if e.get('event_type') == 'validation_complete']
+            for event in validation_events:
+                duration_ms = event.get('duration_ms', 0)
+                if duration_ms > 0:
+                    self.metrics.record_histogram("aaa_validation_duration_seconds", duration_ms / 1000.0)
+            
+            # Calculate total session processing time
+            session_start = None
+            session_end = None
+            
+            for event in session_events:
+                event_time = event.get('timestamp')
+                if event_time:
+                    if event.get('event_type') == 'session_start':
+                        session_start = event_time
+                    elif event.get('event_type') in ['session_complete', 'session_error']:
+                        session_end = event_time
+            
+            if session_start and session_end:
+                try:
+                    from datetime import datetime
+                    start_time = datetime.fromisoformat(session_start.replace('Z', '+00:00'))
+                    end_time = datetime.fromisoformat(session_end.replace('Z', '+00:00'))
+                    total_duration = (end_time - start_time).total_seconds()
+                    
+                    self.record_session_metric(session_id, "complete", total_duration)
+                except Exception as time_error:
+                    app_logger.debug(f"Could not calculate session duration: {time_error}")
+                    
+        except Exception as e:
+            app_logger.error(f"Error processing session performance metrics for {session_id}: {e}")
     
     def get_metrics_summary(self) -> Dict[str, Any]:
         """Get a comprehensive metrics summary."""

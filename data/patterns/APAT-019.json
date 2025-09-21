@@ -1,0 +1,130 @@
+{
+  "pattern_id": "APAT-019",
+  "name": "Multi-Agent Coordinator_Based System",
+  "description": "Multi-agent system with 5 specialized agents for I need a solution that can dispute transactions via Amazon Connect, it must talk to the customer in a natural conversational mode and sound and act just like a human. \nThe solution has to work with regional accents and also accept DTMF digits for input.\nIt will will with both Voice and Chat modes and offer support around finical disputes, like &amp;#x27;Company X has taken money when I said no, why&amp;#x27; - the solution will capture the customers dispute along with normal dispute type questions (who/what/when/why) and offer a playbook next step.\nIt needs to be cloud based and using Lambda and GoLang as the code, it can use Bedrock as well as other third parties like IBM Watson if required.",
+  "feasibility": "Fully Automatable",
+  "pattern_type": [
+    "multi_agent_system",
+    "hierarchical_agents"
+  ],
+  "autonomy_level": 0.96,
+  "reasoning_capabilities": [
+    "collaborative_reasoning",
+    "distributed_decision_making",
+    "system_coordination"
+  ],
+  "decision_scope": {
+    "autonomous_decisions": [
+      "agent_coordination",
+      "task_distribution",
+      "resource_allocation",
+      "exception_handling"
+    ],
+    "escalation_triggers": [
+      "system_wide_failures",
+      "conflicting_agent_decisions",
+      "resource_exhaustion"
+    ]
+  },
+  "exception_handling_strategy": {
+    "autonomous_resolution_approaches": [
+      "Multi-agent collaborative resolution",
+      "Distributed error recovery",
+      "Agent failover mechanisms"
+    ],
+    "reasoning_fallbacks": [
+      "Coordinator-based decision making",
+      "Consensus-based resolution",
+      "Fallback to single-agent mode"
+    ],
+    "escalation_criteria": [
+      "System-wide failures",
+      "Conflicting agent decisions",
+      "Resource exhaustion"
+    ]
+  },
+  "learning_mechanisms": [
+    "reinforcement_learning",
+    "performance_optimization",
+    "continuous_improvement"
+  ],
+  "tech_stack": [
+    "LangChain",
+    "Haystack",
+    "Apache Kafka",
+    "Redis",
+    "Docker",
+    "Kubernetes"
+  ],
+  "agent_architecture": "hierarchical_agents",
+  "input_requirements": [
+    "multi_agent_coordination",
+    "distributed_processing",
+    "system_monitoring",
+    "error_handling"
+  ],
+  "related_patterns": [
+    "APAT-001",
+    "APAT-002"
+  ],
+  "confidence_score": 0.96,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": [
+      "LangChain",
+      "Haystack",
+      "Apache Kafka"
+    ]
+  },
+  "domain": "financial",
+  "complexity": "High",
+  "estimated_effort": "8-12 weeks",
+  "reasoning_types": [
+    "logical",
+    "causal",
+    "collaborative"
+  ],
+  "decision_boundaries": {
+    "autonomous_decisions": [
+      "agent_coordination",
+      "task_distribution",
+      "resource_allocation"
+    ],
+    "escalation_triggers": [
+      "system_failures",
+      "conflicting_decisions",
+      "resource_exhaustion"
+    ]
+  },
+  "autonomy_assessment": {
+    "overall_score": 0.87175,
+    "reasoning_complexity": "complex",
+    "workflow_coverage": 0.85,
+    "decision_independence": "high"
+  },
+  "self_monitoring_capabilities": [
+    "performance_tracking",
+    "error_detection",
+    "resource_monitoring"
+  ],
+  "integration_requirements": [
+    "Docker",
+    "Kubernetes"
+  ],
+  "created_from_session": "5def0274-8343-4560-950f-18368fb2b05b",
+  "auto_generated": true,
+  "llm_insights": [
+    "Multi-agent coordination enables distributed processing",
+    "Collaborative reasoning improves decision accuracy",
+    "System-level monitoring ensures reliability"
+  ],
+  "llm_challenges": [
+    "Coordinating multiple agents effectively",
+    "Managing distributed decision making",
+    "Ensuring system-wide consistency"
+  ],
+  "llm_recommended_approach": "Implement coordinator_based architecture with specialized agent roles, use robust communication protocols, maintain comprehensive monitoring and error handling.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "5def0274-8343-4560-950f-18368fb2b05b",
+  "color": "🟢"
+}

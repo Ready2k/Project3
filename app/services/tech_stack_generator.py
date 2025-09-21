@@ -1,8 +1,10 @@
 """Intelligent tech stack generation service using LLM analysis."""
 
-from typing import Dict, List, Any, Optional, Set
+from typing import Dict, List, Any, Optional, Set, Tuple
 import json
 from pathlib import Path
+import uuid
+import time
 
 from app.pattern.matcher import MatchResult
 from app.llm.base import LLMProvider
@@ -11,26 +13,155 @@ from app.utils.audit import log_llm_call
 from datetime import datetime
 import shutil
 
+# Import enhanced parsing and context components
+from app.services.requirement_parsing.enhanced_parser import EnhancedRequirementParser
+from app.services.requirement_parsing.context_extractor import TechnologyContextExtractor
+from app.services.requirement_parsing.context_prioritizer import RequirementContextPrioritizer
+from app.services.catalog.intelligent_manager import IntelligentCatalogManager
+from app.services.context_aware_prompt_generator import ContextAwareLLMPromptGenerator
+from app.services.validation.compatibility_validator import TechnologyCompatibilityValidator
+from app.services.requirement_parsing.base import ParsedRequirements, TechContext
+
+# Import comprehensive logging services
+from app.services.tech_logging.tech_stack_logger import TechStackLogger, LogCategory
+from app.services.tech_logging.decision_logger import DecisionLogger
+from app.services.tech_logging.llm_interaction_logger import LLMInteractionLogger
+from app.services.tech_logging.error_context_logger import ErrorContextLogger, ErrorSeverity, ErrorCategory
+from app.services.tech_logging.debug_tracer import DebugTracer, TraceLevel
+from app.services.tech_logging.performance_monitor import PerformanceMonitor
+
+# Import ecosystem intelligence
+from app.services.ecosystem.intelligence import EcosystemIntelligence
+
 
 class TechStackGenerator:
     """Service for generating intelligent, context-aware technology stacks."""
     
-    def __init__(self, llm_provider: Optional[LLMProvider] = None, auto_update_catalog: bool = True):
-        """Initialize tech stack generator.
+    def __init__(self, 
+                 llm_provider: Optional[LLMProvider] = None, 
+                 auto_update_catalog: bool = True,
+                 enhanced_parser: Optional[EnhancedRequirementParser] = None,
+                 context_extractor: Optional[TechnologyContextExtractor] = None,
+                 context_prioritizer: Optional[RequirementContextPrioritizer] = None,
+                 catalog_manager: Optional[IntelligentCatalogManager] = None,
+                 prompt_generator: Optional[ContextAwareLLMPromptGenerator] = None,
+                 compatibility_validator: Optional[TechnologyCompatibilityValidator] = None,
+                 ecosystem_intelligence: Optional[EcosystemIntelligence] = None,
+                 enable_debug_logging: bool = False):
+        """Initialize enhanced tech stack generator.
         
         Args:
             llm_provider: LLM provider for intelligent analysis
             auto_update_catalog: Whether to automatically update catalog with new technologies
+            enhanced_parser: Enhanced requirement parser
+            context_extractor: Technology context extractor
+            context_prioritizer: Requirement context prioritizer
+            catalog_manager: Intelligent catalog manager
+            prompt_generator: Context-aware prompt generator
+            compatibility_validator: Technology compatibility validator
+            ecosystem_intelligence: Ecosystem intelligence service
+            enable_debug_logging: Whether to enable comprehensive debug logging
         """
         self.llm_provider = llm_provider
         self.auto_update_catalog = auto_update_catalog
         
-        # Get logger from service registry
-        self.logger = require_service('logger', context='TechStackGenerator')
+        # Initialize comprehensive logging system
+        self._setup_logging_system(enable_debug_logging)
         
-        # Load technology catalog
+        # Get basic logger from service registry for backward compatibility
+        try:
+            self.logger = require_service('logger', context='TechStackGenerator')
+        except:
+            # Fallback to basic logging if service registry not available
+            import logging
+            self.logger = logging.getLogger('TechStackGenerator')
+        
+        # Initialize enhanced components
+        self.enhanced_parser = enhanced_parser or EnhancedRequirementParser()
+        self.context_extractor = context_extractor or TechnologyContextExtractor()
+        self.context_prioritizer = context_prioritizer or RequirementContextPrioritizer()
+        self.catalog_manager = catalog_manager or IntelligentCatalogManager()
+        self.prompt_generator = prompt_generator or ContextAwareLLMPromptGenerator(self.catalog_manager)
+        self.compatibility_validator = compatibility_validator or TechnologyCompatibilityValidator()
+        
+        # Load technology catalog (maintain backward compatibility)
         self.technology_catalog = self._load_technology_catalog()
         self.available_technologies = self._build_category_index()
+        
+        # Track generation metrics
+        self.generation_metrics = {
+            'total_generations': 0,
+            'explicit_tech_inclusion_rate': 0.0,
+            'context_aware_selections': 0,
+            'catalog_auto_additions': 0
+        }
+        
+        # Log initialization
+        self.tech_logger.log_info(
+            LogCategory.TECHNOLOGY_EXTRACTION,
+            "TechStackGenerator",
+            "initialize",
+            "Tech stack generator initialized with comprehensive logging",
+            {
+                'auto_update_catalog': auto_update_catalog,
+                'debug_logging_enabled': enable_debug_logging,
+                'catalog_size': len(self.technology_catalog.get('technologies', {})),
+                'components_initialized': [
+                    'enhanced_parser', 'context_extractor', 'context_prioritizer',
+                    'catalog_manager', 'prompt_generator', 'compatibility_validator'
+                ]
+            }
+        )
+    
+    def _setup_logging_system(self, enable_debug: bool = False) -> None:
+        """Setup comprehensive logging system for tech stack generation.
+        
+        Args:
+            enable_debug: Whether to enable debug-level logging
+        """
+        # Initialize main tech stack logger
+        logger_config = {
+            'log_level': 'DEBUG' if enable_debug else 'INFO',
+            'output_format': 'structured',
+            'enable_console': True,
+            'enable_debug_mode': enable_debug,
+            'buffer_size': 500,
+            'auto_flush': True
+        }
+        
+        self.tech_logger = TechStackLogger(logger_config)
+        self.tech_logger.initialize()
+        
+        # Initialize specialized loggers
+        self.decision_logger = DecisionLogger(self.tech_logger)
+        self.llm_logger = LLMInteractionLogger(self.tech_logger)
+        self.error_logger = ErrorContextLogger(self.tech_logger)
+        self.debug_tracer = DebugTracer(self.tech_logger)
+        self.performance_monitor = PerformanceMonitor(self.tech_logger)
+        
+        # Enable debug tracing if requested
+        if enable_debug:
+            self.debug_tracer.enable_tracing(TraceLevel.DETAILED)
+        
+        # Start performance monitoring
+        self.performance_monitor.start_monitoring(
+            interval_seconds=10.0,
+            enable_resource_monitoring=True
+        )
+        
+        # Set performance thresholds
+        self.performance_monitor.set_threshold(
+            "tech_stack_generation_duration", "max", 30000.0, "warning"  # 30 seconds
+        )
+        self.performance_monitor.set_threshold(
+            "tech_stack_generation_duration", "max", 60000.0, "critical"  # 60 seconds
+        )
+        self.performance_monitor.set_threshold(
+            "cpu_percent", "max", 80.0, "warning"
+        )
+        self.performance_monitor.set_threshold(
+            "memory_percent", "max", 85.0, "critical"
+        )
         
     def _load_technology_catalog(self) -> Dict[str, Any]:
         """Load technology catalog from JSON file.
@@ -162,7 +293,1032 @@ class TechStackGenerator:
         Returns:
             List of recommended technologies
         """
-        self.logger.info("Generating intelligent tech stack")
+        # Initialize monitoring integration
+        monitoring_session = None
+        try:
+            from app.services.monitoring_integration_service import TechStackMonitoringIntegrationService
+            monitoring_service = require_service('tech_stack_monitoring_integration', context='TechStackGenerator')
+            
+            # Start monitoring session
+            monitoring_session = monitoring_service.start_generation_monitoring(
+                requirements=requirements,
+                metadata={
+                    'matches_count': len(matches),
+                    'has_constraints': constraints is not None,
+                    'generator_version': '2.0_enhanced'
+                }
+            )
+            
+            session_id = monitoring_session.session_id
+            self.logger.info(f"Started monitoring session: {session_id}")
+            
+        except Exception as monitoring_error:
+            self.logger.debug(f"Monitoring integration not available: {monitoring_error}")
+            # Generate unique session and request IDs for tracking (fallback)
+            session_id = str(uuid.uuid4())
+        
+        request_id = f"tech_stack_gen_{int(time.time())}"
+        
+        # Set logging context
+        self.tech_logger.set_session_context(session_id, {
+            'operation': 'tech_stack_generation',
+            'matches_count': len(matches),
+            'has_constraints': constraints is not None
+        })
+        self.tech_logger.set_request_context(request_id, {
+            'requirements_keys': list(requirements.keys()),
+            'constraints': constraints
+        })
+        
+        # Start debug tracing
+        trace_id = self.debug_tracer.start_trace(
+            session_id,
+            "TechStackGenerator",
+            "generate_tech_stack",
+            {
+                'matches_count': len(matches),
+                'requirements_size': len(str(requirements)),
+                'constraints': constraints
+            }
+        )
+        
+        # Start performance monitoring
+        self.performance_monitor.start_performance_tracking(request_id)
+        
+        self.tech_logger.log_info(
+            LogCategory.TECHNOLOGY_EXTRACTION,
+            "TechStackGenerator",
+            "generate_tech_stack",
+            "Starting enhanced tech stack generation",
+            {
+                'session_id': session_id,
+                'request_id': request_id,
+                'matches_count': len(matches),
+                'requirements_keys': list(requirements.keys()),
+                'has_constraints': constraints is not None
+            }
+        )
+        
+        self.generation_metrics['total_generations'] += 1
+        
+        try:
+            with self.debug_tracer.trace_step(trace_id, "requirement_parsing", {'requirements': requirements}):
+                # Step 1: Enhanced requirement parsing
+                parsing_start_time = time.time()
+                parsed_requirements = await self._parse_requirements_enhanced(requirements, constraints)
+                parsing_duration_ms = (time.time() - parsing_start_time) * 1000
+                
+                # Track parsing step in monitoring
+                if monitoring_session:
+                    try:
+                        await monitoring_service.track_parsing_step(
+                            session_id=session_id,
+                            step_name='enhanced_requirement_parsing',
+                            input_data={
+                                'requirements_keys': list(requirements.keys()),
+                                'constraints': constraints,
+                                'requirements_size': len(str(requirements))
+                            },
+                            output_data={
+                                'explicit_technologies': [t.name for t in parsed_requirements.explicit_technologies],
+                                'confidence_score': parsed_requirements.confidence_score,
+                                'context_clues': len(parsed_requirements.context_clues.domain_indicators),
+                                'integration_patterns': len(parsed_requirements.integration_patterns)
+                            },
+                            duration_ms=parsing_duration_ms,
+                            success=True
+                        )
+                    except Exception as track_error:
+                        self.logger.debug(f"Could not track parsing step: {track_error}")
+                
+                self.tech_logger.log_info(
+                    LogCategory.REQUIREMENT_PARSING,
+                    "TechStackGenerator",
+                    "parse_requirements",
+                    f"Parsed requirements: {len(parsed_requirements.explicit_technologies)} explicit technologies found",
+                    {
+                        'explicit_technologies': [t.name for t in parsed_requirements.explicit_technologies],
+                        'context_clues': len(parsed_requirements.context_clues.domain_indicators),
+                        'integration_patterns': len(parsed_requirements.integration_patterns),
+                        'parsing_duration_ms': parsing_duration_ms
+                    }
+                )
+            
+            with self.debug_tracer.trace_step(trace_id, "context_extraction", {'parsed_requirements': len(parsed_requirements.explicit_technologies)}):
+                # Step 2: Build technology context
+                extraction_start_time = time.time()
+                tech_context = self.context_extractor.build_context(parsed_requirements)
+                extraction_duration_ms = (time.time() - extraction_start_time) * 1000
+                
+                # Track extraction step in monitoring
+                if monitoring_session:
+                    try:
+                        extracted_technologies = list(tech_context.explicit_technologies.keys()) + list(tech_context.contextual_technologies.keys())
+                        confidence_scores = {**tech_context.explicit_technologies, **tech_context.contextual_technologies}
+                        
+                        await monitoring_service.track_extraction_step(
+                            session_id=session_id,
+                            extraction_type='context_aware_extraction',
+                            extracted_technologies=extracted_technologies,
+                            confidence_scores=confidence_scores,
+                            context_data={
+                                'ecosystem_preference': tech_context.ecosystem_preference,
+                                'domain_context': str(tech_context.domain_context),
+                                'explicit_count': len(tech_context.explicit_technologies),
+                                'contextual_count': len(tech_context.contextual_technologies)
+                            },
+                            duration_ms=extraction_duration_ms,
+                            success=True
+                        )
+                    except Exception as track_error:
+                        self.logger.debug(f"Could not track extraction step: {track_error}")
+                
+                self.tech_logger.log_info(
+                    LogCategory.CONTEXT_ANALYSIS,
+                    "TechStackGenerator",
+                    "build_context",
+                    f"Built technology context with {len(tech_context.explicit_technologies)} explicit and {len(tech_context.contextual_technologies)} contextual technologies",
+                    {
+                        'explicit_technologies': list(tech_context.explicit_technologies.keys()),
+                        'contextual_technologies': list(tech_context.contextual_technologies.keys()),
+                        'ecosystem_preference': tech_context.ecosystem_preference,
+                        'domain_context': tech_context.domain_context.__dict__ if hasattr(tech_context.domain_context, '__dict__') else str(tech_context.domain_context),
+                        'extraction_duration_ms': extraction_duration_ms
+                    }
+                )
+            
+            with self.debug_tracer.trace_step(trace_id, "technology_prioritization"):
+                # Step 3: Enhanced context-aware prioritization
+                context_weights = self.context_prioritizer.calculate_context_weights(parsed_requirements, tech_context)
+                
+                # Detect and handle ambiguities
+                ambiguities = self.context_prioritizer.detect_requirement_ambiguity(parsed_requirements)
+                if ambiguities:
+                    self.tech_logger.log_warning(
+                        LogCategory.REQUIREMENT_PARSING,
+                        "TechStackGenerator",
+                        "detect_ambiguity",
+                        f"Detected {len(ambiguities)} requirement ambiguities",
+                        {
+                            'ambiguities': [
+                                {
+                                    'type': amb.ambiguity_type.value,
+                                    'description': amb.description,
+                                    'impact': amb.impact_level,
+                                    'confidence': amb.confidence
+                                }
+                                for amb in ambiguities
+                            ]
+                        }
+                    )
+                    
+                    # Resolve conflicts using context-based tie-breaking
+                    resolutions = self.context_prioritizer.resolve_technology_conflicts(ambiguities, tech_context)
+                    if resolutions:
+                        self.tech_logger.log_info(
+                            LogCategory.CONTEXT_ANALYSIS,
+                            "TechStackGenerator",
+                            "resolve_conflicts",
+                            f"Resolved {len(resolutions)} technology conflicts",
+                            {'resolutions': resolutions}
+                        )
+                
+                # Apply domain-specific preferences
+                domain_preferences = self.context_prioritizer.implement_domain_specific_preferences(
+                    tech_context, parsed_requirements.domain_context
+                )
+                
+                # Convert context weights to prioritized technologies for backward compatibility
+                prioritized_technologies = {
+                    tech: weight.final_weight 
+                    for tech, weight in context_weights.items()
+                }
+                
+                # Get prioritization summary
+                prioritization_summary = self.context_prioritizer.get_prioritization_summary(context_weights)
+                
+                self.tech_logger.log_info(
+                    LogCategory.TECHNOLOGY_EXTRACTION,
+                    "TechStackGenerator",
+                    "prioritize_technologies",
+                    f"Enhanced prioritization completed: {prioritization_summary['total_technologies']} technologies processed",
+                    {
+                        'prioritization_summary': prioritization_summary,
+                        'domain_preferences_applied': len(domain_preferences),
+                        'ambiguities_detected': len(ambiguities),
+                        'high_priority_count': prioritization_summary['weight_distribution']['critical'] + prioritization_summary['weight_distribution']['high']
+                    }
+                )
+            
+            # Step 4: Generate tech stack using context-aware LLM prompts
+            if self.llm_provider:
+                try:
+                    with self.debug_tracer.trace_step(trace_id, "llm_generation"):
+                        # Set session context for LLM generation
+                        self._current_session_id = session_id
+                        if monitoring_session:
+                            self._monitoring_service = monitoring_service
+                        
+                        tech_stack = await self._generate_context_aware_llm_tech_stack(
+                            parsed_requirements, tech_context, prioritized_technologies, matches
+                        )
+                    
+                    with self.debug_tracer.trace_step(trace_id, "validation_and_enforcement"):
+                        # Step 5: Validate and enforce explicit technology inclusion
+                        validated_stack = await self._validate_and_enforce_explicit_inclusion(
+                            tech_stack, parsed_requirements, tech_context
+                        )
+                    
+                    with self.debug_tracer.trace_step(trace_id, "catalog_auto_addition"):
+                        # Step 6: Auto-add missing technologies to catalog
+                        if self.auto_update_catalog:
+                            await self._auto_add_missing_technologies(validated_stack, tech_context)
+                    
+                    with self.debug_tracer.trace_step(trace_id, "final_validation"):
+                        # Step 7: Final compatibility validation
+                        final_stack = await self._perform_final_validation(validated_stack, tech_context)
+                    
+                    # Update metrics
+                    self._update_generation_metrics(parsed_requirements, final_stack)
+                    
+                    # Record performance metrics
+                    duration_ms = self.performance_monitor.end_performance_tracking(
+                        request_id,
+                        LogCategory.PERFORMANCE,
+                        "TechStackGenerator",
+                        "generate_tech_stack"
+                    )
+                    
+                    # Complete monitoring session
+                    if monitoring_session:
+                        try:
+                            explicit_inclusion_rate = self._calculate_explicit_inclusion_rate(parsed_requirements, final_stack)
+                            
+                            await monitoring_service.complete_generation_monitoring(
+                                session_id=session_id,
+                                final_tech_stack=final_stack,
+                                generation_metrics={
+                                    'extraction_accuracy': parsed_requirements.confidence_score,
+                                    'explicit_inclusion_rate': explicit_inclusion_rate,
+                                    'context_aware_selections': len([t for t in final_stack if t in tech_context.contextual_technologies]),
+                                    'total_processing_time_ms': duration_ms,
+                                    'generation_method': 'llm_enhanced',
+                                    'explicit_technologies': [t.name for t in parsed_requirements.explicit_technologies],
+                                    'final_stack_size': len(final_stack)
+                                },
+                                success=True
+                            )
+                        except Exception as complete_error:
+                            self.logger.debug(f"Could not complete monitoring session: {complete_error}")
+                    
+                    # Log successful completion
+                    self.tech_logger.log_info(
+                        LogCategory.TECHNOLOGY_EXTRACTION,
+                        "TechStackGenerator",
+                        "generate_tech_stack",
+                        f"Successfully generated tech stack with {len(final_stack)} technologies in {duration_ms:.2f}ms",
+                        {
+                            'final_stack': final_stack,
+                            'duration_ms': duration_ms,
+                            'explicit_inclusion_rate': self._calculate_explicit_inclusion_rate(parsed_requirements, final_stack),
+                            'generation_method': 'llm_enhanced'
+                        }
+                    )
+                    
+                    # End debug trace
+                    self.debug_tracer.end_trace(trace_id, success=True)
+                    
+                    return final_stack
+                    
+                except Exception as e:
+                    # Log LLM generation failure
+                    error_id = self.error_logger.log_llm_error(
+                        "TechStackGenerator",
+                        "generate_context_aware_llm_tech_stack",
+                        self.llm_provider.__class__.__name__ if self.llm_provider else "unknown",
+                        "unknown",  # model would need to be passed from provider
+                        "Tech stack generation prompt",
+                        e
+                    )
+                    
+                    self.tech_logger.log_warning(
+                        LogCategory.LLM_INTERACTION,
+                        "TechStackGenerator",
+                        "generate_tech_stack",
+                        f"LLM generation failed, falling back to rule-based generation. Error ID: {error_id}",
+                        {'error_id': error_id, 'fallback_method': 'rule_based'}
+                    )
+                    
+                    # Fall back to enhanced rule-based generation
+                    with self.debug_tracer.trace_step(trace_id, "fallback_rule_based_generation"):
+                        return await self._generate_enhanced_rule_based_tech_stack(
+                            parsed_requirements, tech_context, prioritized_technologies, matches
+                        )
+            else:
+                # Use enhanced rule-based generation
+                with self.debug_tracer.trace_step(trace_id, "rule_based_generation"):
+                    return await self._generate_enhanced_rule_based_tech_stack(
+                        parsed_requirements, tech_context, prioritized_technologies, matches
+                    )
+                
+        except Exception as e:
+            # Log critical error
+            error_id = self.error_logger.log_error_with_context(
+                "TechStackGenerator",
+                "generate_tech_stack",
+                e,
+                ErrorSeverity.CRITICAL,
+                ErrorCategory.SYSTEM_ERROR,
+                input_data={
+                    'requirements': requirements,
+                    'constraints': constraints,
+                    'matches_count': len(matches)
+                },
+                suggested_fixes=[
+                    "Check requirement format and structure",
+                    "Verify LLM provider configuration",
+                    "Check technology catalog availability",
+                    "Review system logs for detailed error information"
+                ]
+            )
+            
+            self.tech_logger.log_error(
+                LogCategory.ERROR_HANDLING,
+                "TechStackGenerator",
+                "generate_tech_stack",
+                f"Critical error in tech stack generation. Error ID: {error_id}",
+                {
+                    'error_id': error_id,
+                    'session_id': session_id,
+                    'request_id': request_id,
+                    'fallback_method': 'legacy'
+                },
+                exception=e
+            )
+            
+            # Complete monitoring session with error
+            if monitoring_session:
+                try:
+                    await monitoring_service.complete_generation_monitoring(
+                        session_id=session_id,
+                        final_tech_stack=[],
+                        generation_metrics={
+                            'error': True,
+                            'error_message': str(e),
+                            'generation_method': 'failed'
+                        },
+                        success=False,
+                        error_message=str(e)
+                    )
+                except Exception as complete_error:
+                    self.logger.debug(f"Could not complete monitoring session with error: {complete_error}")
+            
+            # End debug trace with error
+            self.debug_tracer.end_trace(trace_id, success=False, error_message=str(e))
+            
+            # Fallback to original method for backward compatibility
+            return await self._generate_legacy_tech_stack(matches, requirements, constraints)
+        
+        finally:
+            # Clear request context
+            self.tech_logger.clear_request_context()
+    
+    async def _parse_requirements_enhanced(self, 
+                                         requirements: Dict[str, Any], 
+                                         constraints: Optional[Dict[str, Any]] = None) -> ParsedRequirements:
+        """Parse requirements using enhanced parser.
+        
+        Args:
+            requirements: User requirements
+            constraints: Additional constraints
+            
+        Returns:
+            ParsedRequirements object
+        """
+        # Merge constraints into requirements for parsing
+        enhanced_requirements = requirements.copy()
+        if constraints:
+            enhanced_requirements['constraints'] = constraints
+        
+        parsed_req = self.enhanced_parser.parse_requirements(enhanced_requirements)
+        
+        self.logger.debug(f"Parsed {len(parsed_req.explicit_technologies)} explicit technologies "
+                         f"with confidence {parsed_req.confidence_score:.2f}")
+        
+        return parsed_req
+    
+    async def _generate_context_aware_llm_tech_stack(self,
+                                                   parsed_req: ParsedRequirements,
+                                                   tech_context: TechContext,
+                                                   prioritized_techs: Dict[str, float],
+                                                   matches: List[MatchResult]) -> List[str]:
+        """Generate tech stack using context-aware LLM prompts.
+        
+        Args:
+            parsed_req: Parsed requirements
+            tech_context: Technology context
+            prioritized_techs: Prioritized technologies
+            matches: Pattern matching results
+            
+        Returns:
+            Generated tech stack
+        """
+        # Generate context-aware prompt
+        prompt = self.prompt_generator.generate_tech_stack_prompt(
+            tech_context, parsed_req, prioritized_techs, matches
+        )
+        
+        # Validate prompt effectiveness
+        validation_result = self.prompt_generator.validate_prompt(prompt, tech_context)
+        if not validation_result.is_valid:
+            self.logger.warning(f"Prompt validation issues: {validation_result.issues}")
+            # Apply suggestions to improve prompt
+            prompt = self.prompt_generator.apply_prompt_improvements(prompt, validation_result.suggestions)
+        
+        # Generate response using LLM
+        start_time = datetime.now()
+        
+        try:
+            response = await self.llm_provider.generate(prompt, purpose="enhanced_tech_stack_generation")
+            
+            # Calculate latency
+            end_time = datetime.now()
+            latency_ms = int((end_time - start_time).total_seconds() * 1000)
+            
+            # Parse and validate LLM response
+            tech_stack = self._parse_llm_response(response)
+            
+            # Track LLM interaction in monitoring (if available)
+            session_id = getattr(self, '_current_session_id', 'enhanced_tech_stack_generation')
+            monitoring_service = getattr(self, '_monitoring_service', None)
+            
+            if monitoring_service and hasattr(monitoring_service, 'track_llm_interaction'):
+                try:
+                    # Extract token usage if available
+                    token_usage = {}
+                    if hasattr(response, 'usage'):
+                        token_usage = {
+                            'prompt_tokens': getattr(response.usage, 'prompt_tokens', 0),
+                            'completion_tokens': getattr(response.usage, 'completion_tokens', 0),
+                            'total_tokens': getattr(response.usage, 'total_tokens', 0)
+                        }
+                    elif isinstance(response, dict) and 'usage' in response:
+                        token_usage = response['usage']
+                    
+                    await monitoring_service.track_llm_interaction(
+                        session_id=session_id,
+                        provider=self.llm_provider.__class__.__name__,
+                        model=getattr(self.llm_provider, 'model', 'unknown'),
+                        prompt_data={
+                            'prompt_type': 'context_aware_tech_stack_generation',
+                            'context_size': len(prompt),
+                            'explicit_technologies': list(tech_context.explicit_technologies.keys()),
+                            'contextual_technologies': list(tech_context.contextual_technologies.keys()),
+                            'prompt_validated': validation_result.is_valid if 'validation_result' in locals() else True
+                        },
+                        response_data={
+                            'generated_technologies': tech_stack,
+                            'response_type': type(response).__name__,
+                            'tech_stack_size': len(tech_stack)
+                        },
+                        token_usage=token_usage,
+                        duration_ms=float(latency_ms),
+                        success=True
+                    )
+                except Exception as track_error:
+                    self.logger.debug(f"Could not track LLM interaction: {track_error}")
+            
+            # Log the LLM call for audit
+            await log_llm_call(
+                session_id=session_id,
+                provider=self.llm_provider.__class__.__name__,
+                model=getattr(self.llm_provider, 'model', 'unknown'),
+                latency_ms=latency_ms,
+                prompt=prompt,
+                response=json.dumps(response) if isinstance(response, dict) else str(response),
+                purpose="enhanced_tech_stack_generation"
+            )
+            
+            self.generation_metrics['context_aware_selections'] += 1
+            return tech_stack
+            
+        except Exception as e:
+            # Track failed LLM interaction
+            if monitoring_service and hasattr(monitoring_service, 'track_llm_interaction'):
+                try:
+                    await monitoring_service.track_llm_interaction(
+                        session_id=session_id,
+                        provider=self.llm_provider.__class__.__name__,
+                        model=getattr(self.llm_provider, 'model', 'unknown'),
+                        prompt_data={
+                            'prompt_type': 'context_aware_tech_stack_generation',
+                            'context_size': len(prompt),
+                            'error_occurred': True
+                        },
+                        response_data={},
+                        duration_ms=float((datetime.now() - start_time).total_seconds() * 1000),
+                        success=False,
+                        error_message=str(e)
+                    )
+                except Exception as track_error:
+                    self.logger.debug(f"Could not track failed LLM interaction: {track_error}")
+            
+            self.logger.error(f"LLM generation failed: {e}")
+            raise
+    
+    async def _validate_and_enforce_explicit_inclusion(self,
+                                                     tech_stack: List[str],
+                                                     parsed_req: ParsedRequirements,
+                                                     tech_context: TechContext) -> List[str]:
+        """Validate tech stack and enforce 70% explicit technology inclusion.
+        
+        Args:
+            tech_stack: Generated tech stack
+            parsed_req: Parsed requirements
+            tech_context: Technology context
+            
+        Returns:
+            Validated tech stack with enforced explicit inclusion
+        """
+        validation_start_time = time.time()
+        session_id = getattr(self, '_current_session_id', 'unknown')
+        monitoring_service = getattr(self, '_monitoring_service', None)
+        
+        if not parsed_req.explicit_technologies:
+            # Track validation step for empty explicit technologies
+            if monitoring_service and hasattr(monitoring_service, 'track_validation_step'):
+                try:
+                    await monitoring_service.track_validation_step(
+                        session_id=session_id,
+                        validation_type='explicit_technology_inclusion',
+                        input_technologies=tech_stack,
+                        validation_results={
+                            'explicit_technologies_count': 0,
+                            'inclusion_rate': 1.0,
+                            'enforcement_applied': False,
+                            'technologies_added': 0
+                        },
+                        conflicts_detected=[],
+                        resolutions_applied=[],
+                        duration_ms=(time.time() - validation_start_time) * 1000,
+                        success=True
+                    )
+                except Exception as track_error:
+                    self.logger.debug(f"Could not track validation step: {track_error}")
+            
+            return tech_stack
+        
+        # Calculate explicit technology inclusion rate
+        explicit_tech_names = {tech.canonical_name or tech.name for tech in parsed_req.explicit_technologies}
+        included_explicit = set(tech_stack) & explicit_tech_names
+        inclusion_rate = len(included_explicit) / len(explicit_tech_names)
+        
+        self.logger.info(f"Explicit technology inclusion rate: {inclusion_rate:.2%}")
+        
+        conflicts_detected = []
+        resolutions_applied = []
+        technologies_added = 0
+        
+        # Enforce 70% minimum requirement
+        if inclusion_rate < 0.7:
+            self.logger.warning(f"Inclusion rate {inclusion_rate:.2%} below 70% threshold, enforcing explicit technologies")
+            
+            # Record conflict for monitoring
+            conflicts_detected.append({
+                'type': 'explicit_inclusion_rate_low',
+                'description': f'Explicit technology inclusion rate {inclusion_rate:.2%} below 70% threshold',
+                'severity': 'warning',
+                'technologies': list(explicit_tech_names - set(tech_stack))
+            })
+            
+            # Add missing explicit technologies
+            missing_explicit = explicit_tech_names - set(tech_stack)
+            
+            # Prioritize by confidence score
+            missing_with_confidence = []
+            for tech in parsed_req.explicit_technologies:
+                tech_name = tech.canonical_name or tech.name
+                if tech_name in missing_explicit:
+                    missing_with_confidence.append((tech_name, tech.confidence))
+            
+            # Sort by confidence and add highest confidence technologies
+            missing_with_confidence.sort(key=lambda x: x[1], reverse=True)
+            
+            # Calculate how many to add to reach 70%
+            import math
+            target_count = max(1, math.ceil(len(explicit_tech_names) * 0.7))
+            current_explicit_count = len(included_explicit)
+            needed_count = target_count - current_explicit_count
+            
+            for tech_name, confidence in missing_with_confidence[:needed_count]:
+                # Check if technology exists in catalog or can be auto-added
+                if self.catalog_manager.lookup_technology(tech_name) or self.auto_update_catalog:
+                    tech_stack.append(tech_name)
+                    technologies_added += 1
+                    self.logger.info(f"Added explicit technology: {tech_name} (confidence: {confidence:.2f})")
+                    
+                    # Record resolution for monitoring
+                    resolutions_applied.append({
+                        'type': 'explicit_technology_addition',
+                        'description': f'Added explicit technology: {tech_name}',
+                        'technology': tech_name,
+                        'confidence': confidence
+                    })
+        
+        validation_duration_ms = (time.time() - validation_start_time) * 1000
+        final_inclusion_rate = len(set(tech_stack) & explicit_tech_names) / len(explicit_tech_names)
+        
+        # Track validation step in monitoring
+        if monitoring_service and hasattr(monitoring_service, 'track_validation_step'):
+            try:
+                await monitoring_service.track_validation_step(
+                    session_id=session_id,
+                    validation_type='explicit_technology_inclusion',
+                    input_technologies=tech_stack,
+                    validation_results={
+                        'explicit_technologies_count': len(explicit_tech_names),
+                        'initial_inclusion_rate': inclusion_rate,
+                        'final_inclusion_rate': final_inclusion_rate,
+                        'enforcement_applied': inclusion_rate < 0.7,
+                        'technologies_added': technologies_added,
+                        'threshold_met': final_inclusion_rate >= 0.7
+                    },
+                    conflicts_detected=conflicts_detected,
+                    resolutions_applied=resolutions_applied,
+                    duration_ms=validation_duration_ms,
+                    success=True
+                )
+            except Exception as track_error:
+                self.logger.debug(f"Could not track validation step: {track_error}")
+        
+        return tech_stack
+    
+    async def _auto_add_missing_technologies(self, tech_stack: List[str], tech_context: TechContext) -> None:
+        """Auto-add missing technologies to catalog.
+        
+        Args:
+            tech_stack: Generated tech stack
+            tech_context: Technology context
+        """
+        if not self.auto_update_catalog:
+            return
+        
+        auto_add_start_time = time.time()
+        session_id = getattr(self, '_current_session_id', 'unknown')
+        monitoring_service = getattr(self, '_monitoring_service', None)
+        
+        technologies_added = []
+        technologies_failed = []
+        
+        for tech_name in tech_stack:
+            if not self.catalog_manager.lookup_technology(tech_name):
+                try:
+                    # Auto-add technology with context
+                    context_info = {
+                        'source': 'llm_generation',
+                        'domain': tech_context.domain_context.primary_domain if tech_context.domain_context else None,
+                        'ecosystem': tech_context.ecosystem_preference,
+                        'generation_timestamp': datetime.now().isoformat()
+                    }
+                    
+                    tech_entry = self.catalog_manager.auto_add_technology(tech_name, context_info)
+                    self.logger.info(f"Auto-added technology to catalog: {tech_name}")
+                    self.generation_metrics['catalog_auto_additions'] += 1
+                    technologies_added.append({
+                        'technology': tech_name,
+                        'context': context_info,
+                        'entry_id': tech_entry.id if hasattr(tech_entry, 'id') else None
+                    })
+                    
+                except Exception as e:
+                    self.logger.error(f"Failed to auto-add technology {tech_name}: {e}")
+                    technologies_failed.append({
+                        'technology': tech_name,
+                        'error': str(e)
+                    })
+        
+        auto_add_duration_ms = (time.time() - auto_add_start_time) * 1000
+        
+        # Track catalog auto-addition step in monitoring
+        if monitoring_service and hasattr(monitoring_service, 'track_validation_step'):
+            try:
+                await monitoring_service.track_validation_step(
+                    session_id=session_id,
+                    validation_type='catalog_auto_addition',
+                    input_technologies=tech_stack,
+                    validation_results={
+                        'technologies_processed': len(tech_stack),
+                        'technologies_added': len(technologies_added),
+                        'technologies_failed': len(technologies_failed),
+                        'auto_update_enabled': self.auto_update_catalog,
+                        'success_rate': len(technologies_added) / max(1, len(technologies_added) + len(technologies_failed))
+                    },
+                    conflicts_detected=[],
+                    resolutions_applied=[{
+                        'type': 'catalog_addition',
+                        'description': f'Auto-added technology: {tech["technology"]}',
+                        'technology': tech['technology']
+                    } for tech in technologies_added],
+                    duration_ms=auto_add_duration_ms,
+                    success=len(technologies_failed) == 0
+                )
+            except Exception as track_error:
+                self.logger.debug(f"Could not track catalog auto-addition step: {track_error}")
+    
+    async def _perform_final_validation(self, tech_stack: List[str], tech_context: TechContext) -> List[str]:
+        """Perform final compatibility validation on tech stack.
+        
+        Args:
+            tech_stack: Tech stack to validate
+            tech_context: Technology context
+            
+        Returns:
+            Validated and potentially modified tech stack
+        """
+        validation_start_time = time.time()
+        session_id = getattr(self, '_current_session_id', 'unknown')
+        monitoring_service = getattr(self, '_monitoring_service', None)
+        
+        try:
+            validation_report = self.compatibility_validator.validate_tech_stack(
+                tech_stack, tech_context.priority_weights
+            )
+            
+            compatibility_result = validation_report.compatibility_result
+            validation_duration_ms = (time.time() - validation_start_time) * 1000
+            
+            conflicts_detected = []
+            resolutions_applied = []
+            
+            if not compatibility_result.is_compatible:
+                self.logger.warning(f"Tech stack validation issues: {len(compatibility_result.conflicts)} conflicts found")
+                
+                # Log conflicts for debugging and monitoring
+                for conflict in compatibility_result.conflicts:
+                    self.logger.warning(f"Conflict: {conflict.description} ({conflict.severity.value})")
+                    conflicts_detected.append({
+                        'type': conflict.conflict_type.value if hasattr(conflict, 'conflict_type') else 'unknown',
+                        'description': conflict.description,
+                        'severity': conflict.severity.value,
+                        'technologies': getattr(conflict, 'technologies', [])
+                    })
+                
+                # Use the validated tech stack from the report
+                # The validator has already applied fixes and removed incompatible technologies
+                validated_stack = validation_report.validated_tech_stack
+                
+                if len(validated_stack) != len(tech_stack):
+                    removed_count = len(tech_stack) - len(validated_stack)
+                    removed_techs = set(tech_stack) - set(validated_stack)
+                    self.logger.info(f"Validation removed {removed_count} incompatible technologies: {removed_techs}")
+                    
+                    # Record resolutions applied
+                    for tech in removed_techs:
+                        resolutions_applied.append({
+                            'type': 'technology_removal',
+                            'description': f'Removed incompatible technology: {tech}',
+                            'technology': tech
+                        })
+                
+                final_stack = validated_stack
+            else:
+                final_stack = tech_stack
+            
+            # Track validation step in monitoring
+            if monitoring_service and hasattr(monitoring_service, 'track_validation_step'):
+                try:
+                    await monitoring_service.track_validation_step(
+                        session_id=session_id,
+                        validation_type='final_compatibility_validation',
+                        input_technologies=tech_stack,
+                        validation_results={
+                            'is_compatible': compatibility_result.is_compatible,
+                            'conflicts_count': len(compatibility_result.conflicts),
+                            'technologies_removed': len(tech_stack) - len(final_stack),
+                            'ecosystem_consistent': getattr(compatibility_result, 'ecosystem_consistent', True),
+                            'compatibility_score': getattr(compatibility_result, 'compatibility_score', 1.0)
+                        },
+                        conflicts_detected=conflicts_detected,
+                        resolutions_applied=resolutions_applied,
+                        duration_ms=validation_duration_ms,
+                        success=True
+                    )
+                except Exception as track_error:
+                    self.logger.debug(f"Could not track validation step: {track_error}")
+            
+            return final_stack
+            
+        except Exception as e:
+            validation_duration_ms = (time.time() - validation_start_time) * 1000
+            
+            # Track failed validation step
+            if monitoring_service and hasattr(monitoring_service, 'track_validation_step'):
+                try:
+                    await monitoring_service.track_validation_step(
+                        session_id=session_id,
+                        validation_type='final_compatibility_validation',
+                        input_technologies=tech_stack,
+                        validation_results={'error': True},
+                        conflicts_detected=[],
+                        resolutions_applied=[],
+                        duration_ms=validation_duration_ms,
+                        success=False,
+                        error_message=str(e)
+                    )
+                except Exception as track_error:
+                    self.logger.debug(f"Could not track failed validation step: {track_error}")
+            
+            self.logger.error(f"Final validation failed: {e}")
+            return tech_stack
+    
+    async def _generate_enhanced_rule_based_tech_stack(self,
+                                                     parsed_req: ParsedRequirements,
+                                                     tech_context: TechContext,
+                                                     prioritized_techs: Dict[str, float],
+                                                     matches: List[MatchResult]) -> List[str]:
+        """Generate tech stack using enhanced rule-based approach.
+        
+        Args:
+            parsed_req: Parsed requirements
+            tech_context: Technology context
+            prioritized_techs: Prioritized technologies
+            matches: Pattern matching results
+            
+        Returns:
+            Rule-based tech stack
+        """
+        rule_based_start_time = time.time()
+        session_id = getattr(self, '_current_session_id', 'unknown')
+        monitoring_service = getattr(self, '_monitoring_service', None)
+        
+        tech_stack = []
+        
+        # Start with explicit technologies (highest priority)
+        for tech in parsed_req.explicit_technologies:
+            tech_name = tech.canonical_name or tech.name
+            if tech_name not in tech_context.banned_tools:
+                tech_stack.append(tech_name)
+        
+        # Add contextual technologies based on priority
+        sorted_contextual = sorted(
+            tech_context.contextual_technologies.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+        
+        for tech_name, confidence in sorted_contextual:
+            if (tech_name not in tech_stack and 
+                tech_name not in tech_context.banned_tools and 
+                len(tech_stack) < 12):  # Limit total technologies
+                tech_stack.append(tech_name)
+        
+        # Add pattern-based technologies if needed
+        pattern_technologies = self._extract_pattern_technologies(matches)
+        for tech in pattern_technologies.get("high_confidence", []):
+            if (tech not in tech_stack and 
+                tech not in tech_context.banned_tools and 
+                len(tech_stack) < 12):
+                tech_stack.append(tech)
+        
+        rule_based_duration_ms = (time.time() - rule_based_start_time) * 1000
+        
+        # Track rule-based generation in monitoring
+        if monitoring_service and hasattr(monitoring_service, 'track_llm_interaction'):
+            try:
+                await monitoring_service.track_llm_interaction(
+                    session_id=session_id,
+                    provider='rule_based_generator',
+                    model='enhanced_rule_based',
+                    prompt_data={
+                        'generation_type': 'rule_based',
+                        'explicit_technologies': [t.name for t in parsed_req.explicit_technologies],
+                        'contextual_technologies': list(tech_context.contextual_technologies.keys()),
+                        'pattern_matches': len(matches)
+                    },
+                    response_data={
+                        'generated_technologies': tech_stack,
+                        'tech_stack_size': len(tech_stack),
+                        'explicit_included': len([t for t in tech_stack if t in [tech.name for tech in parsed_req.explicit_technologies]]),
+                        'contextual_included': len([t for t in tech_stack if t in tech_context.contextual_technologies])
+                    },
+                    duration_ms=rule_based_duration_ms,
+                    success=True
+                )
+            except Exception as track_error:
+                self.logger.debug(f"Could not track rule-based generation: {track_error}")
+        
+        self.logger.info(f"Generated enhanced rule-based tech stack with {len(tech_stack)} technologies")
+        return tech_stack
+    
+    def _validate_monitoring_data(self, session_id: str, data: Dict[str, Any], operation: str) -> bool:
+        """Validate monitoring data for quality and completeness.
+        
+        Args:
+            session_id: Session identifier
+            data: Monitoring data to validate
+            operation: Operation being monitored
+            
+        Returns:
+            True if data is valid, False otherwise
+        """
+        try:
+            # Check required fields
+            required_fields = ['session_id', 'timestamp', 'operation']
+            for field in required_fields:
+                if field not in data and field != 'session_id':  # session_id is passed separately
+                    self.logger.warning(f"Missing required field '{field}' in monitoring data for {operation}")
+                    return False
+            
+            # Validate session_id format
+            if not session_id or not isinstance(session_id, str):
+                self.logger.warning(f"Invalid session_id format in monitoring data for {operation}")
+                return False
+            
+            # Validate data types and ranges
+            if 'duration_ms' in data:
+                duration = data['duration_ms']
+                if not isinstance(duration, (int, float)) or duration < 0:
+                    self.logger.warning(f"Invalid duration_ms value in monitoring data for {operation}: {duration}")
+                    return False
+                
+                # Check for unreasonable durations (> 5 minutes)
+                if duration > 300000:
+                    self.logger.warning(f"Unusually high duration_ms in monitoring data for {operation}: {duration}ms")
+            
+            # Validate confidence scores
+            if 'confidence_scores' in data:
+                scores = data['confidence_scores']
+                if isinstance(scores, dict):
+                    for tech, score in scores.items():
+                        if not isinstance(score, (int, float)) or not (0 <= score <= 1):
+                            self.logger.warning(f"Invalid confidence score for {tech} in {operation}: {score}")
+                            return False
+            
+            # Validate technology lists
+            for field in ['extracted_technologies', 'final_tech_stack', 'input_technologies']:
+                if field in data:
+                    tech_list = data[field]
+                    if not isinstance(tech_list, list):
+                        self.logger.warning(f"Invalid {field} format in monitoring data for {operation}")
+                        return False
+                    
+                    # Check for empty technology names
+                    for tech in tech_list:
+                        if not tech or not isinstance(tech, str):
+                            self.logger.warning(f"Invalid technology name in {field} for {operation}: {tech}")
+                            return False
+            
+            # Validate success/error states
+            if 'success' in data:
+                success = data['success']
+                if not isinstance(success, bool):
+                    self.logger.warning(f"Invalid success value in monitoring data for {operation}: {success}")
+                    return False
+                
+                # If success is False, error_message should be present
+                if not success and 'error_message' not in data:
+                    self.logger.warning(f"Missing error_message for failed operation {operation}")
+                    return False
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error validating monitoring data for {operation}: {e}")
+            return False
+    
+    def _calculate_explicit_inclusion_rate(self, parsed_req: ParsedRequirements, tech_stack: List[str]) -> float:
+        """Calculate the rate of explicit technology inclusion in the tech stack.
+        
+        Args:
+            parsed_req: Parsed requirements with explicit technologies
+            tech_stack: Generated tech stack
+            
+        Returns:
+            Inclusion rate as a float between 0.0 and 1.0
+        """
+        if not parsed_req.explicit_technologies:
+            return 1.0  # Perfect score when no explicit technologies exist
+        
+        explicit_tech_names = {tech.canonical_name or tech.name for tech in parsed_req.explicit_technologies}
+        included_explicit = set(tech_stack) & explicit_tech_names
+        
+        return len(included_explicit) / len(explicit_tech_names)
+    
+    async def _generate_legacy_tech_stack(self,
+                                        matches: List[MatchResult],
+                                        requirements: Dict[str, Any],
+                                        constraints: Optional[Dict[str, Any]] = None) -> List[str]:
+        """Generate tech stack using legacy method for backward compatibility.
+        
+        Args:
+            matches: Pattern matching results
+            requirements: User requirements
+            constraints: Constraints including banned tools
+            
+        Returns:
+            Legacy tech stack
+        """
+        self.logger.info("Using legacy tech stack generation for backward compatibility")
         
         # Extract constraint information
         banned_tools = set()
@@ -180,23 +1336,174 @@ class TechStackGenerator:
         # Get available technologies from patterns
         pattern_technologies = self._extract_pattern_technologies(matches)
         
-        # Use LLM for intelligent analysis if available
+        # Use original LLM method if available
         if self.llm_provider:
             try:
                 llm_tech_stack = await self._generate_llm_tech_stack(
                     requirements, pattern_technologies, banned_tools, required_integrations, constraints
                 )
                 if llm_tech_stack:
-                    self.logger.info(f"Generated LLM-based tech stack with {len(llm_tech_stack)} technologies")
                     return llm_tech_stack
             except Exception as e:
-                self.logger.error(f"LLM tech stack generation failed: {e}")
+                self.logger.error(f"Legacy LLM tech stack generation failed: {e}")
         
-        # Fallback to rule-based generation
-        self.logger.info("Using rule-based tech stack generation")
+        # Fallback to original rule-based generation
         return self._generate_rule_based_tech_stack(
             matches, requirements, pattern_technologies, banned_tools, required_integrations
         )
+    
+    def _parse_llm_response(self, response: Any) -> List[str]:
+        """Parse LLM response to extract tech stack.
+        
+        Args:
+            response: LLM response (dict or string)
+            
+        Returns:
+            List of technology names
+        """
+        try:
+            if isinstance(response, dict):
+                # Handle structured response
+                if 'tech_stack' in response:
+                    tech_stack = response['tech_stack']
+                    if isinstance(tech_stack, list):
+                        # Handle list of dicts or strings
+                        technologies = []
+                        for item in tech_stack:
+                            if isinstance(item, dict):
+                                technologies.append(item.get('name', str(item)))
+                            else:
+                                technologies.append(str(item))
+                        return technologies
+                    else:
+                        return [str(tech_stack)]
+                else:
+                    # Try to extract from other fields
+                    for key in ['technologies', 'recommendations', 'stack']:
+                        if key in response:
+                            return [str(tech) for tech in response[key]]
+            
+            elif isinstance(response, str):
+                # Try to parse JSON from string
+                import re
+                json_match = re.search(r'\{.*\}', response, re.DOTALL)
+                if json_match:
+                    parsed = json.loads(json_match.group())
+                    return self._parse_llm_response(parsed)
+                else:
+                    # Extract technology names from text
+                    return self._extract_technologies_from_text(response)
+            
+            # Fallback
+            return [str(response)]
+            
+        except Exception as e:
+            self.logger.error(f"Failed to parse LLM response: {e}")
+            return []
+    
+    def _extract_technologies_from_text(self, text: str) -> List[str]:
+        """Extract technology names from text response.
+        
+        Args:
+            text: Text to extract technologies from
+            
+        Returns:
+            List of extracted technology names
+        """
+        # Simple extraction - could be enhanced
+        technologies = []
+        
+        # Look for common patterns
+        import re
+        
+        # Pattern for bullet points or numbered lists
+        patterns = [
+            r'[-*•]\s*([A-Za-z][A-Za-z0-9\s\./_-]+)',
+            r'\d+\.\s*([A-Za-z][A-Za-z0-9\s\./_-]+)',
+            r'([A-Z][A-Za-z0-9\s\./_-]+)(?:\s*[-:]\s*)',
+        ]
+        
+        for pattern in patterns:
+            matches = re.findall(pattern, text)
+            for match in matches:
+                tech_name = match.strip()
+                if len(tech_name) > 2 and len(tech_name) < 50:  # Reasonable length
+                    technologies.append(tech_name)
+        
+        return technologies[:10]  # Limit to 10 technologies
+    
+    def _update_generation_metrics(self, parsed_req: ParsedRequirements, final_stack: List[str]) -> None:
+        """Update generation metrics.
+        
+        Args:
+            parsed_req: Parsed requirements
+            final_stack: Final generated tech stack
+        """
+        if parsed_req.explicit_technologies:
+            explicit_tech_names = {tech.canonical_name or tech.name for tech in parsed_req.explicit_technologies}
+            included_explicit = set(final_stack) & explicit_tech_names
+            inclusion_rate = len(included_explicit) / len(explicit_tech_names)
+            
+            # Update running average
+            total_gens = self.generation_metrics['total_generations']
+            current_avg = self.generation_metrics['explicit_tech_inclusion_rate']
+            new_avg = ((current_avg * (total_gens - 1)) + inclusion_rate) / total_gens
+            self.generation_metrics['explicit_tech_inclusion_rate'] = new_avg
+    
+    def get_generation_metrics(self) -> Dict[str, Any]:
+        """Get current generation metrics.
+        
+        Returns:
+            Dictionary of generation metrics
+        """
+        return self.generation_metrics.copy()
+    
+    def learn_from_user_feedback(self, 
+                                selected_technologies: List[str],
+                                rejected_technologies: List[str],
+                                domain: str,
+                                context_patterns: List[str]) -> None:
+        """Learn from user feedback to improve future recommendations.
+        
+        Args:
+            selected_technologies: Technologies user selected/approved
+            rejected_technologies: Technologies user rejected/removed
+            domain: Domain context for the session
+            context_patterns: Context patterns from the requirements
+        """
+        try:
+            # Use context prioritizer to learn preferences
+            self.context_prioritizer.learn_user_preferences(
+                selected_technologies,
+                rejected_technologies,
+                domain,
+                context_patterns
+            )
+            
+            self.tech_logger.log_info(
+                LogCategory.CONTEXT_ANALYSIS,
+                "TechStackGenerator",
+                "learn_user_preferences",
+                f"Learned preferences from user feedback in {domain} domain",
+                {
+                    'selected_count': len(selected_technologies),
+                    'rejected_count': len(rejected_technologies),
+                    'domain': domain,
+                    'context_patterns': context_patterns,
+                    'selected_technologies': selected_technologies,
+                    'rejected_technologies': rejected_technologies
+                }
+            )
+            
+        except Exception as e:
+            self.error_logger.log_error(
+                ErrorCategory.PROCESSING_ERROR,
+                ErrorSeverity.MEDIUM,
+                "TechStackGenerator",
+                "learn_user_preferences",
+                f"Failed to learn from user feedback: {e}",
+                {'error': str(e), 'domain': domain}
+            )
     
     def _extract_pattern_technologies(self, matches: List[MatchResult]) -> Dict[str, List[str]]:
         """Extract technologies from matched patterns.
@@ -910,4 +2217,227 @@ Respond with a JSON object containing:
         await self._save_catalog_to_file()
         
         self.logger.info(f"Manually added technology: {tech_name} -> {tech_id}")
+    
+    def _calculate_explicit_inclusion_rate(self, parsed_req: ParsedRequirements, final_stack: List[str]) -> float:
+        """Calculate the rate of explicit technology inclusion.
+        
+        Args:
+            parsed_req: Parsed requirements with explicit technologies
+            final_stack: Final generated tech stack
+            
+        Returns:
+            Inclusion rate as a float between 0 and 1
+        """
+        if not parsed_req.explicit_technologies:
+            return 1.0  # No explicit technologies to include
+        
+        explicit_tech_names = {tech.canonical_name or tech.name for tech in parsed_req.explicit_technologies}
+        included_explicit = set(final_stack) & explicit_tech_names
+        return len(included_explicit) / len(explicit_tech_names)
+    
+    def get_logging_summary(self) -> Dict[str, Any]:
+        """Get comprehensive logging summary for debugging and monitoring.
+        
+        Returns:
+            Dictionary containing logging statistics and summaries
+        """
+        try:
+            # Get performance summary
+            performance_summary = self.performance_monitor.get_performance_summary()
+            
+            # Get decision summary
+            decision_summary = self.decision_logger.get_decision_summary(
+                component="TechStackGenerator"
+            )
+            
+            # Get LLM interaction summary
+            llm_summary = self.llm_logger.get_interaction_summary()
+            
+            # Get error summary
+            error_summary = self.error_logger.get_error_summary()
+            
+            # Get debug trace summary
+            trace_summary = self.debug_tracer.get_performance_summary()
+            
+            # Get recent alerts
+            recent_alerts = self.performance_monitor.get_alerts(limit=10)
+            
+            return {
+                'performance': performance_summary,
+                'decisions': decision_summary,
+                'llm_interactions': llm_summary,
+                'errors': error_summary,
+                'debug_traces': trace_summary,
+                'recent_alerts': [
+                    {
+                        'alert_id': alert.alert_id,
+                        'metric_name': alert.metric_name,
+                        'severity': alert.severity,
+                        'message': alert.message,
+                        'timestamp': alert.timestamp
+                    }
+                    for alert in recent_alerts
+                ],
+                'generation_metrics': self.generation_metrics
+            }
+        except Exception as e:
+            self.tech_logger.log_error(
+                LogCategory.ERROR_HANDLING,
+                "TechStackGenerator",
+                "get_logging_summary",
+                f"Failed to generate logging summary: {e}",
+                {},
+                exception=e
+            )
+            return {'error': str(e)}
+    
+    def export_logs(self, 
+                   file_path: str,
+                   format: str = 'json',
+                   include_traces: bool = True,
+                   include_performance: bool = True) -> bool:
+        """Export comprehensive logs to file.
+        
+        Args:
+            file_path: Output file path
+            format: Export format (json, csv, text)
+            include_traces: Whether to include debug traces
+            include_performance: Whether to include performance data
+            
+        Returns:
+            True if export successful, False otherwise
+        """
+        try:
+            # Export main logs
+            self.tech_logger.export_logs(file_path, format)
+            
+            # Export traces if requested
+            if include_traces:
+                traces = self.debug_tracer.get_traces(
+                    component="TechStackGenerator",
+                    limit=50
+                )
+                
+                if traces:
+                    trace_file = file_path.replace('.', '_traces.')
+                    for i, trace in enumerate(traces):
+                        trace_path = trace_file.replace('.', f'_{i}.')
+                        self.debug_tracer.export_trace(trace.trace_id, trace_path, format)
+            
+            # Export performance data if requested
+            if include_performance:
+                perf_summary = self.performance_monitor.get_performance_metrics()
+                if perf_summary:
+                    perf_file = file_path.replace('.', '_performance.')
+                    with open(perf_file, 'w') as f:
+                        if format == 'json':
+                            import json
+                            json.dump(perf_summary, f, indent=2, default=str)
+                        else:
+                            f.write(str(perf_summary))
+            
+            self.tech_logger.log_info(
+                LogCategory.DEBUG_TRACE,
+                "TechStackGenerator",
+                "export_logs",
+                f"Successfully exported logs to {file_path}",
+                {
+                    'file_path': file_path,
+                    'format': format,
+                    'include_traces': include_traces,
+                    'include_performance': include_performance
+                }
+            )
+            
+            return True
+            
+        except Exception as e:
+            self.tech_logger.log_error(
+                LogCategory.ERROR_HANDLING,
+                "TechStackGenerator",
+                "export_logs",
+                f"Failed to export logs: {e}",
+                {
+                    'file_path': file_path,
+                    'format': format
+                },
+                exception=e
+            )
+            return False
+    
+    def enable_debug_mode(self, enabled: bool = True) -> None:
+        """Enable or disable debug mode for comprehensive logging.
+        
+        Args:
+            enabled: Whether to enable debug mode
+        """
+        self.tech_logger.enable_debug_mode(enabled)
+        
+        if enabled:
+            self.debug_tracer.enable_tracing(TraceLevel.DETAILED)
+        else:
+            self.debug_tracer.disable_tracing()
+        
+        self.tech_logger.log_info(
+            LogCategory.DEBUG_TRACE,
+            "TechStackGenerator",
+            "enable_debug_mode",
+            f"Debug mode {'enabled' if enabled else 'disabled'}",
+            {'debug_mode': enabled}
+        )
+    
+    def get_performance_recommendations(self) -> List[str]:
+        """Get performance optimization recommendations.
+        
+        Returns:
+            List of performance recommendations
+        """
+        recommendations = []
+        
+        # Get recommendations from performance monitor
+        perf_recommendations = self.performance_monitor.get_performance_recommendations()
+        recommendations.extend(perf_recommendations)
+        
+        # Add tech stack specific recommendations
+        metrics = self.generation_metrics
+        
+        if metrics['total_generations'] > 0:
+            if metrics['explicit_tech_inclusion_rate'] < 0.7:
+                recommendations.append(
+                    f"Low explicit technology inclusion rate ({metrics['explicit_tech_inclusion_rate']:.1%}) - "
+                    "review requirement parsing and context extraction"
+                )
+            
+            if metrics['catalog_auto_additions'] > metrics['total_generations'] * 0.5:
+                recommendations.append(
+                    "High catalog auto-addition rate - consider pre-populating catalog with common technologies"
+                )
+        
+        # Check for frequent errors
+        error_summary = self.error_logger.get_error_summary()
+        if error_summary.get('total_errors', 0) > 10:
+            recommendations.append(
+                f"High error count ({error_summary['total_errors']}) - investigate error patterns and root causes"
+            )
+        
+        return recommendations
+    
+    def shutdown_logging(self) -> None:
+        """Shutdown logging services gracefully."""
+        try:
+            self.performance_monitor.stop_monitoring()
+            self.tech_logger.flush_logs()
+            self.tech_logger.shutdown()
+            
+            self.tech_logger.log_info(
+                LogCategory.DEBUG_TRACE,
+                "TechStackGenerator",
+                "shutdown_logging",
+                "Logging services shutdown completed",
+                {}
+            )
+        except Exception as e:
+            # Use basic logging as fallback
+            import logging
+            logging.error(f"Error during logging shutdown: {e}")
         return tech_id
