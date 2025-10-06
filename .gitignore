@@ -140,4 +140,8 @@ audit.db
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db
+Thumbs.db# Local
+ development environment files (may contain secrets)
+localdev.env
+*.env.local
+*.env.development
