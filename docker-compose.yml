@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   api:
     build: 
@@ -73,7 +71,4 @@ volumes:
   redis_data:
     driver: local
 
-# Optional: Profile for running without Redis (uses diskcache)
-# Usage: docker-compose --profile no-redis up api ui
-profiles:
-  - no-redis
+# Note: To run without Redis, use docker-compose up api ui (excludes redis service)

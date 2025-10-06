@@ -2,6 +2,8 @@
 
 from typing import Dict, Any, Tuple
 import streamlit as st
+import asyncio
+from app.ui.api_client import api_client
 
 
 
@@ -242,17 +244,71 @@ class ProviderConfigComponent:
     
     def render_connection_test(self, config: Dict[str, Any], api_integration: Any) -> bool:
         """Render connection test UI."""
-        if st.button("🔗 Test Connection", type="secondary"):
-            if config["provider"] != "fake" and config.get("api_key"):
-                return api_integration.test_provider_connection_with_ui_feedback(config)
-            elif config["provider"] == "fake":
-                st.success("✅ Fake provider connection successful!")
-                return True
-            else:
-                st.warning("⚠️ Please enter API key to test connection")
-                return False
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("🔗 Test Connection", type="secondary"):
+                if config["provider"] != "fake" and config.get("api_key"):
+                    return api_integration.test_provider_connection_with_ui_feedback(config)
+                elif config["provider"] == "fake":
+                    st.success("✅ Fake provider connection successful!")
+                    return True
+                else:
+                    st.warning("⚠️ Please enter API key to test connection")
+                    return False
+        
+        with col2:
+            if st.button("🔍 Discover Models", type="secondary"):
+                return self._discover_models(config)
         
         return False
+    
+    def _discover_models(self, config: Dict[str, Any]) -> bool:
+        """Discover available models for the provider."""
+        provider = config.get("provider")
+        
+        if provider == "fake":
+            st.info("🧪 Fake provider has predefined models")
+            return True
+        
+        if not config.get("api_key") and provider in ["openai", "claude"]:
+            st.warning("⚠️ Please enter API key to discover models")
+            return False
+        
+        with st.spinner("🔍 Discovering models..."):
+            try:
+                # Use asyncio to run the async function
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+                result = loop.run_until_complete(
+                    api_client.discover_models(config)
+                )
+                
+                loop.close()
+                
+                if result and result.get("ok"):
+                    models = result.get("models", [])
+                    st.success(f"✅ Discovered {len(models)} models!")
+                    
+                    # Display discovered models
+                    with st.expander("📋 Available Models"):
+                        for model in models:
+                            st.write(f"**{model.get('name', model.get('id'))}**")
+                            if model.get('description'):
+                                st.caption(model['description'])
+                            if model.get('context_length'):
+                                st.caption(f"Context length: {model['context_length']:,} tokens")
+                    
+                    return True
+                else:
+                    error_msg = result.get("message", "Unknown error") if result else "Failed to discover models"
+                    st.error(f"❌ {error_msg}")
+                    return False
+                    
+            except Exception as e:
+                st.error(f"❌ Error discovering models: {str(e)}")
+                return False
     
     def get_provider_status_info(self, provider: str) -> Dict[str, Any]:
         """Get status information for a provider."""

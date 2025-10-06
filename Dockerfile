@@ -41,11 +41,15 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Copy Python packages from builder stage
-COPY --from=builder /root/.local /root/.local
+# Create non-root user first
+RUN useradd --create-home --shell /bin/bash agentic
 
-# Make sure scripts in .local are usable
-ENV PATH=/root/.local/bin:$PATH
+# Copy Python packages from builder stage to user directory
+COPY --from=builder /root/.local /home/agentic/.local
+
+# Make sure scripts in .local are usable and fix permissions
+ENV PATH=/home/agentic/.local/bin:$PATH
+RUN chown -R agentic:agentic /home/agentic/.local
 
 # Copy application code
 COPY app/ ./app/
@@ -56,11 +60,10 @@ COPY run_streamlit.py .
 
 # Create necessary directories with proper permissions
 RUN mkdir -p exports cache \
-    && chmod 755 exports cache
-
-# Create non-root user for security
-RUN useradd --create-home --shell /bin/bash agentic \
+    && chmod 755 exports cache \
     && chown -R agentic:agentic /app
+
+# Switch to non-root user
 USER agentic
 
 # Expose ports

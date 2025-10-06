@@ -1,11 +1,12 @@
 """API client for Streamlit UI to communicate with FastAPI backend."""
 
 import asyncio
+import os
 from typing import Dict, Any, Optional, List, Coroutine
 import httpx
 import streamlit as st
 
-from app.utils.imports import require_service
+from app.utils.imports import require_service, optional_service
 from app.utils.error_boundaries import error_boundary, AsyncOperationManager
 
 
@@ -23,7 +24,6 @@ class AAA_APIClient:
             self._async_manager = AsyncOperationManager(max_concurrent=5, timeout_seconds=30.0)
         return self._async_manager
     
-    @error_boundary("api_request", timeout_seconds=30.0, max_retries=2)
     async def make_request(self, method: str, endpoint: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Make an HTTP request to the API."""
         url = f"{self.base_url}{endpoint}"
@@ -43,28 +43,36 @@ class AAA_APIClient:
         except httpx.HTTPStatusError as e:
             try:
                 error_detail = e.response.json().get("detail", str(e))
-                # Get logger service for error logging
-                app_logger = require_service('logger', context="api_request")
-                app_logger.error(f"API HTTP Error {e.response.status_code}: {error_detail}")
-                return {"error": f"API Error: {error_detail}"}
-            except Exception as e:
-                # Get logger service for error logging
+                # Get logger service for error logging (with fallback)
                 try:
                     app_logger = require_service('logger', context="api_request")
-                    app_logger.error(f"Unexpected API error: {e}")
+                    app_logger.error(f"API HTTP Error {e.response.status_code}: {error_detail}")
                 except Exception:
-                    pass
-                app_logger.error(f"API HTTP Error {e.response.status_code}: {str(e)}")
+                    print(f"API HTTP Error {e.response.status_code}: {error_detail}")
+                return {"error": f"API Error: {error_detail}"}
+            except Exception as parse_error:
+                # Get logger service for error logging (with fallback)
+                try:
+                    app_logger = require_service('logger', context="api_request")
+                    app_logger.error(f"API HTTP Error {e.response.status_code}: {str(e)}")
+                except Exception:
+                    print(f"API HTTP Error {e.response.status_code}: {str(e)}")
                 return {"error": f"API Error: {str(e)}"}
         except httpx.RequestError as e:
-            # Get logger service for error logging
-            app_logger = require_service('logger', context="api_request")
-            app_logger.error(f"API Connection Error: {e}")
+            # Get logger service for error logging (with fallback)
+            try:
+                app_logger = require_service('logger', context="api_request")
+                app_logger.error(f"API Connection Error: {e}")
+            except Exception:
+                print(f"API Connection Error: {e}")
             return {"error": f"Connection Error: {e}"}
         except Exception as e:
-            # Get logger service for error logging
-            app_logger = require_service('logger', context="api_request")
-            app_logger.error(f"Unexpected API Error: {e}")
+            # Get logger service for error logging (with fallback)
+            try:
+                app_logger = require_service('logger', context="api_request")
+                app_logger.error(f"Unexpected API Error: {e}")
+            except Exception:
+                print(f"Unexpected API Error: {e}")
             return {"error": f"Unexpected Error: {e}"}
     
     async def ingest_requirements(self, source: str, payload: Dict[str, Any], provider_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -102,11 +110,47 @@ class AAA_APIClient:
     
     async def test_provider_connection(self, provider_config: Dict[str, Any]) -> Dict[str, Any]:
         """Test LLM provider connection."""
-        return await self.make_request("POST", "/providers/test", provider_config)
+        # Direct API call without error boundary to avoid service registration issues
+        url = f"{self.base_url}/providers/test"
+        
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(url, json=provider_config)
+                response.raise_for_status()
+                return response.json()
+                
+        except httpx.HTTPStatusError as e:
+            try:
+                error_detail = e.response.json().get("detail", str(e))
+                return {"error": f"API Error: {error_detail}"}
+            except Exception:
+                return {"error": f"API Error: {str(e)}"}
+        except httpx.RequestError as e:
+            return {"error": f"Connection Error: {e}"}
+        except Exception as e:
+            return {"error": f"Unexpected Error: {e}"}
     
     async def discover_models(self, provider_config: Dict[str, Any]) -> Dict[str, Any]:
         """Discover available models for a provider."""
-        return await self.make_request("POST", "/providers/models", provider_config)
+        # Direct API call without error boundary to avoid service registration issues
+        url = f"{self.base_url}/providers/models"
+        
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(url, json=provider_config)
+                response.raise_for_status()
+                return response.json()
+                
+        except httpx.HTTPStatusError as e:
+            try:
+                error_detail = e.response.json().get("detail", str(e))
+                return {"error": f"API Error: {error_detail}"}
+            except Exception:
+                return {"error": f"API Error: {str(e)}"}
+        except httpx.RequestError as e:
+            return {"error": f"Connection Error: {e}"}
+        except Exception as e:
+            return {"error": f"Unexpected Error: {e}"}
     
     async def test_jira_connection(self, jira_config: Dict[str, Any]) -> Dict[str, Any]:
         """Test Jira connection."""
@@ -153,9 +197,12 @@ class StreamlitAPIIntegration:
                 # Run the coroutine
                 return loop.run_until_complete(coro)
         except Exception as e:
-            # Get logger service for error logging
-            app_logger = require_service('logger', context="run_async_operation")
-            app_logger.error(f"Async operation '{operation_name}' failed: {e}")
+            # Get logger service for error logging (with fallback)
+            try:
+                app_logger = require_service('logger', context="run_async_operation")
+                app_logger.error(f"Async operation '{operation_name}' failed: {e}")
+            except Exception:
+                print(f"Async operation '{operation_name}' failed: {e}")
             if fallback_value is not None:
                 return fallback_value
             raise
@@ -310,5 +357,11 @@ class StreamlitAPIIntegration:
 
 
 # Global instances for convenience
-api_client = AAA_APIClient()
+def get_api_client():
+    """Get a fresh API client instance."""
+    api_base_url = os.getenv("API_BASE_URL", "http://localhost:8000")
+    return AAA_APIClient(base_url=api_base_url)
+
+# Create global instances
+api_client = get_api_client()
 streamlit_integration = StreamlitAPIIntegration(api_client)

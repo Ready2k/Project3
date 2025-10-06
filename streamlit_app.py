@@ -17,6 +17,17 @@ from streamlit.components.v1 import html
 # Import service utilities (but don't access services at module level)
 from app.utils.imports import require_service, optional_service
 
+# Import API client for provider configuration
+from app.ui.api_client import AAA_APIClient
+import os
+
+# Create a fresh API client instance to avoid caching issues
+def get_fresh_api_client():
+    api_base_url = os.getenv("API_BASE_URL", "http://localhost:8000")
+    return AAA_APIClient(base_url=api_base_url)
+
+api_client = get_fresh_api_client()
+
 # Import streamlit_mermaid directly
 try:
     import streamlit_mermaid as stmd
@@ -1909,14 +1920,10 @@ class AutomatedAIAssessmentUI:
                     with st.sidebar:
                         with st.spinner("Discovering OpenAI models..."):
                             try:
-                                response = asyncio.run(self.make_api_request(
-                                    "POST",
-                                    "/providers/models",
-                                    {
-                                        "provider": "openai",
-                                        "api_key": api_key
-                                    }
-                                ))
+                                response = asyncio.run(api_client.discover_models({
+                                    "provider": "openai",
+                                    "api_key": api_key
+                                }))
                                 if response.get('ok'):
                                     available_models = response.get('models', [])
                                     st.session_state[f'discovered_models_{current_provider}'] = available_models
@@ -1950,14 +1957,10 @@ class AutomatedAIAssessmentUI:
                     with st.sidebar:
                         with st.spinner("Discovering Claude models..."):
                             try:
-                                response = asyncio.run(self.make_api_request(
-                                    "POST",
-                                    "/providers/models",
-                                    {
-                                        "provider": "claude",
-                                        "api_key": api_key
-                                    }
-                                ))
+                                response = asyncio.run(api_client.discover_models({
+                                    "provider": "claude",
+                                    "api_key": api_key
+                                }))
                                 if response.get('ok'):
                                     available_models = response.get('models', [])
                                     st.session_state[f'discovered_models_{current_provider}'] = available_models
@@ -2111,11 +2114,7 @@ class AutomatedAIAssessmentUI:
                             else:
                                 request_data["bedrock_api_key"] = bedrock_api_key
                             
-                            response = asyncio.run(self.make_api_request(
-                                "POST",
-                                "/providers/models",
-                                request_data
-                            ))
+                            response = asyncio.run(api_client.discover_models(request_data))
                             if response.get('ok'):
                                 available_models = response.get('models', [])
                                 st.session_state[f'discovered_models_{current_provider}'] = available_models
@@ -2152,15 +2151,11 @@ class AutomatedAIAssessmentUI:
                     with st.sidebar:
                         with st.spinner("Discovering internal models..."):
                             try:
-                                response = asyncio.run(self.make_api_request(
-                                    "POST",
-                                    "/providers/models",
-                                    {
-                                        "provider": "internal",
-                                        "endpoint_url": endpoint_url,
-                                        "api_key": api_key if api_key else None
-                                    }
-                                ))
+                                response = asyncio.run(api_client.discover_models({
+                                    "provider": "internal",
+                                    "endpoint_url": endpoint_url,
+                                    "api_key": api_key if api_key else None
+                                }))
                                 if response.get('ok'):
                                     available_models = response.get('models', [])
                                     st.session_state[f'discovered_models_{current_provider}'] = available_models
@@ -2264,9 +2259,9 @@ class AutomatedAIAssessmentUI:
         
         # Test connection button
         if st.sidebar.button("🔍 Test Connection"):
-            self.test_provider_connection()
+            test_provider_connection()
     
-    def test_provider_connection(self):
+def test_provider_connection():
         """Test the current provider configuration."""
         with st.sidebar:
             with st.spinner("Testing connection..."):
@@ -2289,19 +2284,22 @@ class AutomatedAIAssessmentUI:
                             "bedrock_api_key": config.get('bedrock_api_key')
                         })
                     
-                    response = asyncio.run(self.make_api_request(
-                        "POST",
-                        "/providers/test",
-                        test_data
-                    ))
+                    response = asyncio.run(api_client.test_provider_connection(test_data))
                     
-                    if response['ok']:
+                    if response and response.get('ok'):
                         st.success("✅ Connection successful!")
+                    elif response:
+                        st.error(f"❌ Connection failed: {response.get('message', 'Unknown error')}")
                     else:
-                        st.error(f"❌ Connection failed: {response['message']}")
+                        st.error("❌ Connection failed: No response from API")
                 
                 except Exception as e:
                     st.error(f"❌ Error testing connection: {str(e)}")
+                    # Debug information
+                    st.write(f"Debug - Exception type: {type(e).__name__}")
+                    st.write(f"Debug - API client base URL: {api_client.base_url}")
+                    import traceback
+                    st.code(traceback.format_exc())
         
 
     
