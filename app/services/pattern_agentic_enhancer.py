@@ -1,12 +1,10 @@
 """Pattern enhancement service for converting traditional automation to agentic solutions."""
 
 import json
-import asyncio
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from pathlib import Path
 
 from app.llm.base import LLMProvider
-from app.utils.imports import require_service
 
 
 class PatternAgenticEnhancer:

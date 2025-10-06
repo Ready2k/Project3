@@ -171,7 +171,6 @@ async def test_pii_redaction_integration():
     """Test PII redaction integration with the application."""
     from app.api import app
     from fastapi.testclient import TestClient
-    import json
     
     client = TestClient(app)
     

@@ -1,7 +1,7 @@
 {
   "pattern_id": "APAT-009",
   "name": "Multi-Agent Coordinator_Based System",
-  "description": "Multi-agent system with 4 specialized agents for I need a solution that can dispute transactions via Amazon Connect, it must talk to the customer in a natural conversational mode and sound and act just like a human. \nThe solution has to work with regional accents and also accept DTMF digits for input.\nIt will will with both Voice and Chat modes and offer support around finical disputes, like &amp;#x27;Company X has taken money when I said no, why&amp;#x27; - the solution will capture the customers dispute along with normal dispute type questions (who/what/when/why) and offer a playbook next step.\nIt needs to be cloud based and using Lambda and GoLang as the code, it can use Bedrock as well as other third parties like IBM Watson if required.",
+  "description": "Multi-agent system with 4 specialized agents for I need a solution that can dispute transactions via Amazon Connect, it must talk to the customer in a natural conversational mode and sound and act just like a human. \nThe solution has to work with regional accents and also accept DTMF digits for input.\nIt will will with both Voice and Chat modes and offer support around finical disputes, like 'Company X has taken money when I said no, why' - the solution will capture the customers dispute along with normal dispute type questions (who/what/when/why) and offer a playbook next step.\nIt needs to be cloud based and using Lambda and GoLang as the code, it can use Bedrock as well as other third parties like IBM Watson if required.",
   "feasibility": "Fully Automatable",
   "pattern_type": [
     "multi_agent_system",
@@ -126,5 +126,5 @@
   "llm_recommended_approach": "Implement coordinator_based architecture with specialized agent roles, use robust communication protocols, maintain comprehensive monitoring and error handling.",
   "enhanced_by_llm": true,
   "enhanced_from_session": "5def0274-8343-4560-950f-18368fb2b05b",
-  "color": "🟢"
+  "color": "\ud83d\udfe2"
 }

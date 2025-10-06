@@ -192,7 +192,7 @@ class QuestionLoop:
                                              requirements: Dict[str, Any]) -> List[Question]:
         """Generate questions from a template using LLM."""
         template_name = template.get("name", "unknown")
-        template_domain = template.get("domain", "general")
+        template.get("domain", "general")
         
         # Create a prompt for the LLM to generate contextual questions
         prompt = f"""You are an expert consultant in software-based AI agents and Agentic AI solutions.
@@ -607,7 +607,7 @@ STRICT OUTPUT FORMAT:
             
             # Handle empty array response (scope gate rejection)
             if isinstance(analysis, list) and len(analysis) == 0:
-                app_logger.info(f"LLM returned empty array - requirement rejected by scope gate")
+                app_logger.info("LLM returned empty array - requirement rejected by scope gate")
                 return {
                     "llm_analysis_automation_feasibility": "Not Automatable",
                     "llm_analysis_feasibility_reasoning": "Requirement involves physical-world aspects that cannot be automated through software agents",
@@ -633,7 +633,7 @@ STRICT OUTPUT FORMAT:
                 app_logger.info(f"LLM analysis extracted confidence_level: {confidence_level} (type: {type(confidence_level)})")
                 app_logger.info(f"Will be stored as llm_analysis_confidence_level: {prefixed_analysis.get('llm_analysis_confidence_level')}")
             else:
-                app_logger.warning(f"LLM analysis did not include confidence_level field")
+                app_logger.warning("LLM analysis did not include confidence_level field")
             
             app_logger.info(f"Successfully analyzed answers for session {session_id}")
             return prefixed_analysis

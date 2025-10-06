@@ -160,11 +160,11 @@ class TestAuditIntegration:
             # Check specific matches
             pat_001_match = next(m for m in matches if m.pattern_id == "PAT-001")
             assert pat_001_match.score == 0.85
-            assert pat_001_match.accepted == True
+            assert pat_001_match.accepted
             
             pat_002_match = next(m for m in matches if m.pattern_id == "PAT-002")
             assert pat_002_match.score == 0.65
-            assert pat_002_match.accepted == False
+            assert not pat_002_match.accepted
             
             # Test pattern statistics
             pattern_stats = audit_logger.get_pattern_stats()

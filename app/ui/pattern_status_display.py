@@ -5,7 +5,7 @@ Provides UI components for displaying pattern enhancement and analytics status.
 """
 
 import streamlit as st
-from typing import Dict, Any, Optional
+from typing import Dict
 import logging
 
 from app.utils.imports import optional_service

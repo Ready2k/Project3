@@ -1,19 +1,16 @@
 """Automated security scanning system for continuous security monitoring."""
 
-import os
 import re
-import ast
 import json
 import hashlib
 import subprocess
-from typing import Dict, List, Any, Optional, Set, Tuple
+from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from enum import Enum
 
 import yaml
-from loguru import logger
 
 from app.utils.logger import app_logger
 from app.config import Settings
@@ -383,7 +380,7 @@ class SecurityScanner:
                     version = package["version"]
                     
                     if name in vulnerable_packages:
-                        vuln_info = vulnerable_packages[name]
+                        vulnerable_packages[name]
                         
                         issue = SecurityIssue(
                             id=f"dep_{name}_{version}",

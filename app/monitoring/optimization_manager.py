@@ -9,7 +9,7 @@ import asyncio
 import yaml
 import psutil
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Any
 from pathlib import Path
 import logging
 
@@ -32,7 +32,7 @@ class MonitoringOptimizationManager(ConfigurableService):
         # Initialize logger
         try:
             self.logger = require_service('logger', context='MonitoringOptimizationManager')
-        except:
+        except Exception:
             import logging
             self.logger = logging.getLogger('MonitoringOptimizationManager')
         

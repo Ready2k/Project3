@@ -8,9 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Depends, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
 
@@ -226,10 +225,8 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 @app.get("/health")
 async def health_check(response: Response):
     """Enhanced health check endpoint with key system metrics."""
-    from app.health.health_checker import get_health_checker
     import psutil
     import os
-    from pathlib import Path
     
     # Add security headers
     SecurityHeaders.add_security_headers(response)
@@ -324,7 +321,6 @@ async def health_check(response: Response):
         
         # Check security system
         try:
-            from app.security.advanced_prompt_defender import AdvancedPromptDefender
             components["security_system"] = {"status": "healthy", "enabled": True}
         except Exception:
             components["security_system"] = {"status": "error", "enabled": False}
@@ -547,10 +543,19 @@ def create_llm_provider(provider_config: Optional[ProviderConfig] = None, sessio
         app_logger.info(f"No provider config, using settings: provider={settings.provider}")
         
         if settings.provider == "openai" and os.getenv("OPENAI_API_KEY"):
-            base_provider = OpenAIProvider(
-                api_key=os.getenv("OPENAI_API_KEY"),
-                model=settings.model
-            )
+            # Use enhanced provider for GPT-5 and o1 models
+            if settings.model.startswith("gpt-5") or settings.model.startswith("o1"):
+                from app.llm.gpt5_enhanced_provider import GPT5EnhancedProvider
+                base_provider = GPT5EnhancedProvider(
+                    api_key=os.getenv("OPENAI_API_KEY"),
+                    model=settings.model
+                )
+                app_logger.info(f"Using GPT-5 enhanced provider from settings: {settings.model}")
+            else:
+                base_provider = OpenAIProvider(
+                    api_key=os.getenv("OPENAI_API_KEY"),
+                    model=settings.model
+                )
             app_logger.info(f"✅ Using OpenAI provider from environment: {settings.model}")
         
         elif settings.provider == "claude" and os.getenv("ANTHROPIC_API_KEY"):
@@ -597,10 +602,20 @@ def create_llm_provider(provider_config: Optional[ProviderConfig] = None, sessio
         if provider_config.provider == "openai":
             if not provider_config.api_key:
                 raise ValueError("OpenAI API key is required")
-            base_provider = OpenAIProvider(
-                api_key=provider_config.api_key,
-                model=provider_config.model
-            )
+            
+            # Use enhanced provider for GPT-5 and o1 models
+            if provider_config.model.startswith("gpt-5") or provider_config.model.startswith("o1"):
+                from app.llm.gpt5_enhanced_provider import GPT5EnhancedProvider
+                base_provider = GPT5EnhancedProvider(
+                    api_key=provider_config.api_key,
+                    model=provider_config.model
+                )
+                app_logger.info(f"Using GPT-5 enhanced provider from config: {provider_config.model}")
+            else:
+                base_provider = OpenAIProvider(
+                    api_key=provider_config.api_key,
+                    model=provider_config.model
+                )
             app_logger.info(f"✅ Using OpenAI provider from config: {provider_config.model}")
         
         elif provider_config.provider == "claude":
@@ -1383,7 +1398,9 @@ async def get_qa_questions(session_id: str, response: Response):
             from app.services.automation_suitability_assessor import AutomationSuitabilityAssessor
             
             # Create assessor with same LLM provider
-            llm_provider = get_llm_provider(provider_config, session_id)
+            from app.llm.factory import LLMProviderFactory
+            factory = LLMProviderFactory()
+            llm_provider = factory.create_provider(provider_config.get("provider", "openai"))
             assessor = AutomationSuitabilityAssessor(llm_provider)
             
             # Assess automation suitability
@@ -2053,7 +2070,14 @@ async def test_provider(request: ProviderTestRequest, response: Response):
             if not request.api_key:
                 return ProviderTestResponse(ok=False, message="API key required for OpenAI")
             
-            provider = OpenAIProvider(api_key=request.api_key, model=request.model)
+            # Use enhanced provider for GPT-5 and o1 models
+            if request.model and (request.model.startswith("gpt-5") or request.model.startswith("o1")):
+                from app.llm.gpt5_enhanced_provider import GPT5EnhancedProvider
+                provider = GPT5EnhancedProvider(api_key=request.api_key, model=request.model)
+                app_logger.info(f"Using GPT-5 enhanced provider for connection test: {request.model}")
+            else:
+                provider = OpenAIProvider(api_key=request.api_key, model=request.model)
+            
             success, error_msg = await provider.test_connection_detailed()
             
             return ProviderTestResponse(
@@ -2491,7 +2515,7 @@ async def fetch_jira_ticket(request: JiraFetchRequest, response: Response):
             )
         
         # Create JiraConfig from request
-        from app.config import JiraConfig, JiraAuthType, JiraDeploymentType
+        from app.config import JiraConfig, JiraAuthType
         
         # Map string auth type to enum
         auth_type_mapping = {
@@ -2631,7 +2655,14 @@ async def test_provider(request: dict, response: Response):
                         "message": f"Invalid model '{model}'. Valid models: {', '.join(valid_models)}"
                     }
                 else:
-                    provider_instance = OpenAIProvider(api_key=api_key, model=model)
+                    # Use enhanced provider for GPT-5 and o1 models
+                    if model.startswith("gpt-5") or model.startswith("o1"):
+                        from app.llm.gpt5_enhanced_provider import GPT5EnhancedProvider
+                        provider_instance = GPT5EnhancedProvider(api_key=api_key, model=model)
+                        app_logger.info(f"Using GPT-5 enhanced provider for test: {model}")
+                    else:
+                        provider_instance = OpenAIProvider(api_key=api_key, model=model)
+                    
                     success, error_msg = await provider_instance.test_connection_detailed()
                     
                     result = {

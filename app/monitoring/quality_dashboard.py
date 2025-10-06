@@ -5,19 +5,15 @@ Provides comprehensive visualization and reporting of quality metrics,
 performance data, and system health indicators.
 """
 
-import json
 import streamlit as st
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-import plotly.express as px
+from datetime import datetime
+from typing import Dict, Any
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
 
 from app.core.service import ConfigurableService
 from app.utils.imports import require_service, optional_service
-from app.monitoring.tech_stack_monitor import TechStackMonitor, MetricType, AlertLevel
-from app.monitoring.quality_assurance import QualityAssuranceSystem, QACheckType, QAStatus
 
 
 class QualityDashboard(ConfigurableService):

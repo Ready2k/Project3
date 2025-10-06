@@ -7,9 +7,9 @@ and streaming to monitoring components.
 
 import pytest
 import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import Mock, AsyncMock, patch
-from typing import Dict, Any, List
+from datetime import datetime
+from unittest.mock import patch
+from typing import Dict, Any
 
 from app.services.monitoring_integration_service import (
     TechStackMonitoringIntegrationService,
@@ -459,7 +459,7 @@ class TestTechStackMonitoringIntegrationService:
     def test_get_service_metrics(self, monitoring_service, sample_requirements):
         """Test getting service metrics."""
         # Start session
-        session = monitoring_service.start_generation_monitoring(sample_requirements)
+        monitoring_service.start_generation_monitoring(sample_requirements)
         
         # Get service metrics
         metrics = monitoring_service.get_service_metrics()

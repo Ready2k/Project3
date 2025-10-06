@@ -1,16 +1,17 @@
 """Unit tests for enhanced TechStackGenerator methods."""
 
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
-from typing import Dict, List, Any
+from unittest.mock import Mock, patch
+from typing import Dict, Any
 
 from app.services.tech_stack_generator import TechStackGenerator
 from app.services.requirement_parsing.base import (
     ParsedRequirements, ExplicitTech, ContextClues, RequirementConstraints,
     DomainContext, TechContext, ExtractionMethod
 )
-from app.services.validation.models import CompatibilityResult, TechnologyConflict, ConflictType, ConflictSeverity
+from app.services.validation.models import CompatibilityResult, TechnologyConflict, ConflictType, ConflictSeverity, ValidationReport, EcosystemConsistencyResult
 from app.llm.base import LLMProvider
+from datetime import datetime
 
 
 class MockLLMProvider(LLMProvider):

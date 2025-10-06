@@ -10,10 +10,9 @@ import asyncio
 import json
 import streamlit as st
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Union
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
-import logging
 from pathlib import Path
 import pandas as pd
 
@@ -105,7 +104,7 @@ class IntegratedMonitoringDashboard(ConfigurableService):
         # Initialize logger
         try:
             self.logger = require_service('logger', context='IntegratedMonitoringDashboard')
-        except:
+        except Exception:
             import logging
             self.logger = logging.getLogger('IntegratedMonitoringDashboard')
         
@@ -1113,7 +1112,7 @@ def render_integrated_monitoring_dashboard():
                 if timestamp:
                     try:
                         timestamp = datetime.fromisoformat(timestamp).strftime("%Y-%m-%d %H:%M:%S")
-                    except:
+                    except Exception:
                         pass
                 
                 alert_data.append({

@@ -5,21 +5,17 @@ configuration parameters that are currently hardcoded throughout the system.
 """
 
 import streamlit as st
-from typing import Dict, Any, Optional, List
-from dataclasses import asdict
+from typing import Any
 import yaml
 import sqlite3
 import json
-from pathlib import Path
 from datetime import datetime, timedelta
 import pandas as pd
 
-from app.config import Settings, load_settings
 from app.config.system_config import (
     AutonomyConfig, PatternMatchingConfig, LLMGenerationConfig, RecommendationConfig,
-    SystemConfiguration, SystemConfigurationManager
+    SystemConfigurationManager
 )
-from app.utils.imports import require_service, optional_service
 from app.utils.audit import get_audit_logger
 from app.security.security_event_logger import SecurityEventLogger
 
@@ -158,7 +154,6 @@ def render_autonomy_config(config: AutonomyConfig) -> None:
     
     with col2:
         st.write("**Scoring Weights**")
-        total_weight = 1.0
         
         config.reasoning_capability_weight = st.slider(
             "Reasoning Capability Weight",
@@ -351,7 +346,6 @@ def render_recommendation_config(config: RecommendationConfig) -> None:
 
 def render_rate_limiting_config(config: Any) -> None:
     """Render rate limiting configuration."""
-    from app.config.system_config import RateLimitConfig
     
     st.subheader("API Rate Limiting Configuration")
     st.info("Configure rate limits to prevent API abuse while allowing normal Q&A interactions.")
@@ -439,10 +433,10 @@ def render_rate_limiting_config(config: Any) -> None:
     # Show example scenarios
     with st.expander("📊 Rate Limiting Scenarios"):
         st.write("**Q&A Interaction Example:**")
-        st.write(f"- User loads questions: 1 request")
-        st.write(f"- User submits answers: 1 request") 
-        st.write(f"- System processes: 2-3 requests")
-        st.write(f"- **Total burst needed: 4-5 requests**")
+        st.write("- User loads questions: 1 request")
+        st.write("- User submits answers: 1 request") 
+        st.write("- System processes: 2-3 requests")
+        st.write("- **Total burst needed: 4-5 requests**")
         st.write(f"- **Current burst limit: {config.default_burst_limit} requests** ✅" if config.default_burst_limit >= 10 else f"- **Current burst limit: {config.default_burst_limit} requests** ⚠️")
 
 
@@ -937,7 +931,7 @@ def render_audit_data_viewer(audit_logger):
                     st.write(f"**Found {len(df)} LLM calls:**")
                     
                     # Display data with selection
-                    selected_rows = st.dataframe(
+                    st.dataframe(
                         df,
                         use_container_width=True,
                         hide_index=True,

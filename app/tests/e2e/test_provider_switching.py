@@ -4,15 +4,14 @@ import pytest
 import asyncio
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+from unittest.mock import Mock, patch, AsyncMock
 
 from streamlit_app import AutomatedAIAssessmentUI
-from app.llm.fakes import FakeLLM, FakeEmbedder
+from app.llm.fakes import FakeLLM
 from app.llm.openai_provider import OpenAIProvider
 from app.llm.claude_provider import ClaudeProvider
 from app.llm.bedrock_provider import BedrockProvider
 from app.llm.internal_provider import InternalProvider
-from app.config import Settings
 
 
 class TestProviderSwitching:
@@ -163,7 +162,7 @@ class TestProviderSwitching:
                  patch('streamlit.text_input') as mock_text_input, \
                  patch('streamlit.button') as mock_button, \
                  patch('streamlit.success') as mock_success, \
-                 patch('streamlit.error') as mock_error:
+                 patch('streamlit.error'):
                 
                 # Mock user selections
                 mock_selectbox.return_value = "claude"
@@ -287,7 +286,7 @@ class TestExportFunctionality:
             with patch('streamlit.subheader') as mock_subheader, \
                  patch('streamlit.selectbox') as mock_selectbox, \
                  patch('streamlit.button') as mock_button, \
-                 patch('streamlit.download_button') as mock_download, \
+                 patch('streamlit.download_button'), \
                  patch('streamlit.success') as mock_success:
                 
                 # Mock user selections

@@ -6,7 +6,6 @@ and demonstrates the comprehensive guidance generation.
 """
 
 import asyncio
-from typing import List
 
 from app.security.advanced_prompt_defender import AdvancedPromptDefender
 from app.security.defense_config import get_defense_config
@@ -95,13 +94,13 @@ class UserEducationDemo:
                 print(f"   • {attack.id}: {attack.name}")
         
         if decision.sanitized_input:
-            print(f"🧹 Sanitized Input Available: Yes")
+            print("🧹 Sanitized Input Available: Yes")
         
         print(f"📝 User Message Length: {len(decision.user_message)} characters")
     
     def _display_guidance_details(self, guidance):
         """Display detailed guidance information."""
-        print(f"\n💡 Guidance Details:")
+        print("\n💡 Guidance Details:")
         print(f"   Type: {guidance.message_type.value}")
         print(f"   Title: {guidance.title}")
         print(f"   Content Length: {len(guidance.content)} characters")
@@ -111,13 +110,13 @@ class UserEducationDemo:
         
         # Show first few action items
         if guidance.action_items:
-            print(f"   Sample Action Items:")
+            print("   Sample Action Items:")
             for item in guidance.action_items[:2]:
                 print(f"     • {item}")
     
     def demo_educational_content(self):
         """Demonstrate educational content access."""
-        print(f"\n📚 Educational Content Demo")
+        print("\n📚 Educational Content Demo")
         print("=" * 50)
         
         # Get all educational content
@@ -131,7 +130,7 @@ class UserEducationDemo:
     
     def demo_acceptable_examples(self):
         """Demonstrate acceptable examples."""
-        print(f"\n✅ Acceptable Examples Demo")
+        print("\n✅ Acceptable Examples Demo")
         print("=" * 50)
         
         all_examples = self.defender.get_acceptable_examples("all")
@@ -143,7 +142,7 @@ class UserEducationDemo:
     
     def demo_appeal_system(self):
         """Demonstrate appeal system functionality."""
-        print(f"\n📝 Appeal System Demo")
+        print("\n📝 Appeal System Demo")
         print("=" * 50)
         
         # Submit a sample appeal
@@ -178,7 +177,7 @@ class UserEducationDemo:
     
     def demo_system_documentation(self):
         """Demonstrate system documentation generation."""
-        print(f"\n📄 System Documentation Demo")
+        print("\n📄 System Documentation Demo")
         print("=" * 50)
         
         doc = self.defender.generate_system_documentation()
@@ -187,27 +186,27 @@ class UserEducationDemo:
         
         # Show first few lines
         lines = doc.split('\n')
-        print(f"\n📖 Documentation Preview:")
+        print("\n📖 Documentation Preview:")
         for line in lines[:10]:
             if line.strip():
                 print(f"   {line}")
     
     def demo_statistics(self):
         """Demonstrate statistics and metrics."""
-        print(f"\n📊 Statistics Demo")
+        print("\n📊 Statistics Demo")
         print("=" * 50)
         
         dashboard_data = self.defender.get_security_dashboard_data()
         
         if 'user_education_stats' in dashboard_data:
             stats = dashboard_data['user_education_stats']
-            print(f"📈 User Education Statistics:")
+            print("📈 User Education Statistics:")
             for key, value in stats.items():
                 print(f"   {key.replace('_', ' ').title()}: {value}")
         
         # Show detector status
         detector_status = self.defender.get_detector_status()
-        print(f"\n🔧 Detector Status:")
+        print("\n🔧 Detector Status:")
         for detector, status in detector_status.items():
             enabled = "✅" if status.get('enabled', False) else "❌"
             print(f"   {enabled} {detector}: {status.get('patterns', 0)} patterns")
@@ -225,7 +224,7 @@ class UserEducationDemo:
         self.demo_system_documentation()
         self.demo_statistics()
         
-        print(f"\n🎉 Demo Complete!")
+        print("\n🎉 Demo Complete!")
         print("=" * 80)
 
 

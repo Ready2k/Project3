@@ -194,7 +194,7 @@ class TestCompleteWorkflows:
         }
         
         session_id = "test-qa-session"
-        session = components["session_store"].create_session(session_id, requirements)
+        components["session_store"].create_session(session_id, requirements)
         
         # Generate questions
         qa_result = await components["question_loop"].generate_questions(requirements, session_id)
@@ -264,7 +264,7 @@ class TestCompleteWorkflows:
         
         # Should handle gracefully
         try:
-            session = components["session_store"].create_session(session_id, invalid_requirements)
+            components["session_store"].create_session(session_id, invalid_requirements)
             # Pattern matching should still work with empty requirements
             patterns = components["pattern_loader"].load_patterns()
             matches = await components["pattern_matcher"].match_patterns(invalid_requirements, patterns)
@@ -328,7 +328,7 @@ class TestCompleteWorkflows:
             components["question_loop"].llm_provider = provider
             
             session_id = f"provider-test-{i}"
-            session = components["session_store"].create_session(session_id, requirements)
+            components["session_store"].create_session(session_id, requirements)
             
             # Generate questions with different providers
             qa_result = await components["question_loop"].generate_questions(requirements, session_id)

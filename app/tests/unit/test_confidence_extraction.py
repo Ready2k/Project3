@@ -1,8 +1,6 @@
 """Unit tests for enhanced LLM confidence extraction and validation."""
 
-import pytest
-import math
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from app.services.recommendation import RecommendationService
 from app.pattern.matcher import MatchResult
@@ -238,7 +236,7 @@ class TestConfidenceExtraction:
         """Test that confidence extraction includes proper logging."""
         requirements = {"llm_analysis_confidence_level": 0.85}
         
-        confidence = self.service._extract_llm_confidence(requirements)
+        self.service._extract_llm_confidence(requirements)
         
         # Verify logging calls were made
         assert mock_logger.info.called
@@ -475,7 +473,7 @@ class TestConfidenceExtraction:
         requirements_with_llm = {"llm_analysis_confidence_level": 0.85}
         
         with patch('app.services.recommendation.app_logger') as mock_logger:
-            confidence = self.service._calculate_confidence(
+            self.service._calculate_confidence(
                 self.mock_match, requirements_with_llm, "Automatable"
             )
             
@@ -487,7 +485,7 @@ class TestConfidenceExtraction:
         requirements_without_llm = {"description": "Test requirement"}
         
         with patch('app.services.recommendation.app_logger') as mock_logger:
-            confidence = self.service._calculate_confidence(
+            self.service._calculate_confidence(
                 self.mock_match, requirements_without_llm, "Automatable"
             )
             

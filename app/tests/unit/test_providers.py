@@ -1,7 +1,6 @@
 import asyncio
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
-import httpx
 import pytest
 
 from app.llm.base import LLMProvider, EmbeddingProvider

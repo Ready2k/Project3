@@ -2,10 +2,7 @@
 
 import asyncio
 import pytest
-import tempfile
-import json
-from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+from unittest.mock import patch, AsyncMock
 import sys
 import os
 
@@ -79,8 +76,6 @@ class TestC4DiagramUIWorkflow:
             assert "Rel(" in cleaned_code
             
             # Step 6: Simulate session state storage (UI workflow)
-            session_state_key = "c4_diagram_code"
-            session_state_type = "c4_diagram_type"
             
             # Verify the diagram can be stored in session state format
             assert isinstance(cleaned_code, str)

@@ -5,14 +5,12 @@ Tests verify end-to-end monitoring data flow during tech stack generation.
 """
 
 import pytest
-import asyncio
-import uuid
 from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, Any
 
 from app.services.tech_stack_generator import TechStackGenerator
-from app.services.monitoring_integration_service import TechStackMonitoringIntegrationService, MonitoringSession
+from app.services.monitoring_integration_service import TechStackMonitoringIntegrationService
 from app.pattern.matcher import MatchResult
 from app.llm.base import LLMProvider
 
@@ -167,7 +165,7 @@ class TestTechStackGeneratorMonitoringIntegration:
             
             try:
                 # Track initial state
-                initial_sessions = len(monitoring_service.active_sessions)
+                len(monitoring_service.active_sessions)
                 
                 # Generate tech stack
                 result = await tech_stack_generator.generate_tech_stack(
@@ -299,7 +297,7 @@ class TestTechStackGeneratorMonitoringIntegration:
                     all_events.extend(events)
                 
                 # Look for error-related events or LLM failure tracking
-                error_events = [e for e in all_events if not e.success or 'error' in e.data]
+                [e for e in all_events if not e.success or 'error' in e.data]
                 
                 # Should have some error tracking (either in events or completion)
                 assert len(all_events) > 0, "No monitoring events recorded during error condition"
@@ -410,7 +408,7 @@ class TestTechStackGeneratorMonitoringIntegration:
                 # Verify key data points are captured
                 parsing_events = [e for e in all_events if 'parsing' in e.operation.lower()]
                 extraction_events = [e for e in all_events if 'extraction' in e.operation.lower()]
-                llm_events = [e for e in all_events if e.component == 'LLMProvider' or 'llm' in e.operation.lower()]
+                [e for e in all_events if e.component == 'LLMProvider' or 'llm' in e.operation.lower()]
                 validation_events = [e for e in all_events if 'validation' in e.operation.lower()]
                 
                 # Should have events from major steps

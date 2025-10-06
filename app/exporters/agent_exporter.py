@@ -1,12 +1,9 @@
 """Agent system export functionality for various formats."""
 
-import json
-from typing import Dict, Any, List
+from typing import Dict, Any
 from datetime import datetime
-import os
 
-from app.ui.agent_formatter import AgentSystemDisplay, AgentRoleDisplay, AgentCoordinationDisplay
-from app.services.tech_stack_enhancer import TechStackValidationResult
+from app.ui.agent_formatter import AgentSystemDisplay
 from app.utils.logger import app_logger
 
 
@@ -107,7 +104,7 @@ class AgentSystemExporter:
             md_content.append(f"### {i}. {agent.name}")
             md_content.append(f"**Autonomy Level:** {agent.autonomy_level:.1f} - {agent.autonomy_description}")
             md_content.append("")
-            md_content.append(f"**Primary Responsibility:**")
+            md_content.append("**Primary Responsibility:**")
             md_content.append(agent.responsibility)
             md_content.append("")
             

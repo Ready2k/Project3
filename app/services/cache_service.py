@@ -2,15 +2,12 @@
 
 import hashlib
 import json
-import time
-from typing import Any, Dict, Optional, Union, Callable, TypeVar, Generic
+from typing import Any, Optional, Callable, TypeVar
 from functools import wraps
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 
 import redis
 from diskcache import Cache
-from loguru import logger
 
 from app.config import Settings
 from app.utils.imports import require_service

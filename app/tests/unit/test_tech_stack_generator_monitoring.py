@@ -6,14 +6,11 @@ Tests individual monitoring methods and data validation.
 
 import pytest
 import uuid
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, AsyncMock
 from datetime import datetime
-from typing import Dict, List, Any
 
 from app.services.tech_stack_generator import TechStackGenerator
-from app.services.monitoring_integration_service import MonitoringSession
 from app.services.requirement_parsing.base import ParsedRequirements, TechContext, ExplicitTech, ContextClues
-from app.pattern.matcher import MatchResult
 
 
 class TestTechStackGeneratorMonitoring:

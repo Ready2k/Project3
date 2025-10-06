@@ -4,8 +4,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict
-import json
+from dataclasses import dataclass
 import logging
 
 from .redact import PIIRedactor

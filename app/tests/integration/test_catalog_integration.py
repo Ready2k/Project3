@@ -1,14 +1,13 @@
 """Integration tests for catalog management system."""
 
 import pytest
-import json
 import tempfile
 from pathlib import Path
 from unittest.mock import patch, Mock
 
 from app.services.catalog import (
     IntelligentCatalogManager, CatalogValidator, ReviewWorkflow,
-    TechEntry, EcosystemType, MaturityLevel, ReviewStatus
+    TechEntry, EcosystemType, ReviewStatus
 )
 
 

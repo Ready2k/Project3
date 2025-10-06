@@ -3,7 +3,6 @@ Unit tests for the ScopeValidator class.
 
 Tests all out-of-scope detection patterns (9-13) from the Attack Pack v2.
 """
-import pytest
 from unittest.mock import patch
 
 from app.security.scope_validator import ScopeValidator

@@ -1,14 +1,12 @@
 """Proxy configuration and handling for Jira Data Center integration."""
 
-import re
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List
 from urllib.parse import urlparse, urlunparse
 from dataclasses import dataclass
 
 import httpx
 from pydantic import BaseModel
 
-from app.utils.imports import require_service
 
 
 @dataclass
@@ -430,6 +428,9 @@ class ProxyHandler:
             Proxy URL if detected, None otherwise
         """
         import os
+        import logging
+        
+        logger = logging.getLogger(__name__)
         
         # Check common proxy environment variables
         proxy_vars = ['HTTP_PROXY', 'http_proxy', 'HTTPS_PROXY', 'https_proxy']
@@ -437,7 +438,7 @@ class ProxyHandler:
         for var in proxy_vars:
             proxy_url = os.environ.get(var)
             if proxy_url:
-                self.logger.info(f"Detected system proxy from {var}: {proxy_url}")
+                logger.info(f"Detected system proxy from {var}: {proxy_url}")
                 return proxy_url
         
         return None
@@ -491,7 +492,9 @@ class ProxyHandler:
             return False
             
         except Exception as e:
-            self.logger.error(f"Error checking no_proxy for {url}: {e}")
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error checking no_proxy for {url}: {e}")
             return False
     
     def should_use_proxy_for_url(self, url: str) -> bool:

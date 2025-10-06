@@ -1,11 +1,10 @@
 """Technology context extractor for building comprehensive technology context."""
 
-from typing import Dict, List, Optional, Set, Tuple
-from dataclasses import replace
+from typing import Dict, List, Optional, Tuple
 
 from .base import (
     ContextExtractor, ParsedRequirements, TechContext, ContextClues,
-    DomainContext, ExplicitTech, ConfidenceLevel
+    DomainContext
 )
 from app.utils.imports import require_service
 

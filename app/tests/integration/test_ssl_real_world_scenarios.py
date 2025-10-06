@@ -7,20 +7,14 @@ This module tests the SSL verification fix with realistic scenarios:
 """
 
 import pytest
-import pytest_asyncio
 import tempfile
-import ssl
-import socket
 from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+from unittest.mock import Mock, patch, AsyncMock
 import httpx
-from typing import Dict, Any
 
-from app.config import JiraConfig, JiraAuthType, JiraDeploymentType
-from app.services.jira import JiraService, ConnectionResult
-from app.services.ssl_handler import SSLHandler, SSLValidationResult, SSLCertificateInfo
-from app.services.deployment_detector import DeploymentDetector, DeploymentInfo
-from app.services.api_version_manager import APIVersionManager
+from app.config import JiraConfig, JiraDeploymentType
+from app.services.jira import JiraService
+from app.services.ssl_handler import SSLHandler, SSLCertificateInfo
 
 
 # Sample self-signed certificate for testing

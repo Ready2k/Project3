@@ -1,8 +1,8 @@
 """Catalog validation and consistency checking mechanisms."""
 
-from typing import Dict, List, Set, Optional, Any, Tuple
+from typing import Dict, List
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 import re
 
 from .models import TechEntry, EcosystemType, MaturityLevel, ReviewStatus, ValidationResult

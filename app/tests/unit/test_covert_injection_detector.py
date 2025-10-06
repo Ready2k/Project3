@@ -10,7 +10,6 @@ Tests all covert injection detection methods for attack patterns 18-21:
 
 import pytest
 import base64
-from unittest.mock import patch
 
 from app.security.covert_injection_detector import CovertInjectionDetector
 from app.security.attack_patterns import ProcessedInput, SecurityAction, AttackSeverity

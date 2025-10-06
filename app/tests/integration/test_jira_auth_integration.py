@@ -1,7 +1,6 @@
 """Integration tests for Jira authentication system."""
 
 import pytest
-from unittest.mock import Mock
 
 from app.services.jira_auth import AuthenticationManager
 from app.services.jira_auth_handlers import (

@@ -3,9 +3,8 @@ Integration tests for monitoring system components.
 """
 
 import pytest
-import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest.mock import Mock, patch, AsyncMock
 
 from app.monitoring.tech_stack_monitor import TechStackMonitor

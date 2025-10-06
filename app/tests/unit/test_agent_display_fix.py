@@ -3,8 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from app.services.agentic_recommendation_service import AgenticRecommendationService
-from app.services.multi_agent_designer import AgentRole, MultiAgentSystemDesign, AgentArchitectureType
-from app.services.autonomy_assessor import AutonomyAssessment
+from app.services.multi_agent_designer import MultiAgentSystemDesign, AgentArchitectureType
 
 
 class TestAgentNameGeneration:

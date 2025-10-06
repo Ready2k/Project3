@@ -2,7 +2,6 @@
 
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
-from typing import Dict, Any
 
 from app.services.proxy_handler import (
     ProxyHandler, 

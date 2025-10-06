@@ -11,13 +11,10 @@ Requirements covered: 2.1, 2.5, 5.1, 5.3
 """
 
 import pytest
-import asyncio
-import logging
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, Any, List, Optional
+from unittest.mock import Mock, patch
+from typing import Any, List
 
 from app.core.registry import (
-    ServiceRegistry, 
     get_registry, 
     reset_registry,
     ServiceNotFoundError,
@@ -26,11 +23,10 @@ from app.core.registry import (
 )
 from app.core.service_registration import (
     register_core_services,
-    initialize_core_services,
-    get_core_service_health
+    initialize_core_services
 )
 from app.core.startup import ApplicationStartup, StartupError
-from app.core.service import Service, ConfigurableService
+from app.core.service import Service
 
 
 class MockFailingService(Service):

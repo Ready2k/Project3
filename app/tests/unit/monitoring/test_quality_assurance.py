@@ -3,8 +3,7 @@ Unit tests for QualityAssuranceSystem.
 """
 
 import pytest
-import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest.mock import Mock, patch, AsyncMock
 
 from app.monitoring.quality_assurance import (

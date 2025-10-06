@@ -6,12 +6,10 @@ efficiency of the monitoring system components.
 """
 
 import asyncio
-import time
 import psutil
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable
+from datetime import datetime
+from typing import Dict, List, Any
 from dataclasses import dataclass
-import logging
 
 from app.core.service import ConfigurableService
 from app.utils.imports import require_service, optional_service
@@ -52,7 +50,7 @@ class MonitoringPerformanceOptimizer(ConfigurableService):
         # Initialize logger
         try:
             self.logger = require_service('logger', context='MonitoringPerformanceOptimizer')
-        except:
+        except Exception:
             import logging
             self.logger = logging.getLogger('MonitoringPerformanceOptimizer')
         

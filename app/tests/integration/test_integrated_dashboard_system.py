@@ -7,10 +7,9 @@ Tests the complete integration of dashboard, alert system, and monitoring compon
 import pytest
 import asyncio
 from datetime import datetime, timedelta
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from typing import Dict, List, Any
+from unittest.mock import Mock, AsyncMock, patch
 
-from app.monitoring.integrated_dashboard import IntegratedMonitoringDashboard, DashboardConfig
+from app.monitoring.integrated_dashboard import IntegratedMonitoringDashboard
 from app.monitoring.alert_system import AlertSystem, AlertRule, AlertSeverity
 from app.monitoring.tech_stack_monitor import TechStackMonitor
 from app.monitoring.quality_assurance import QualityAssuranceSystem
@@ -331,7 +330,6 @@ class TestIntegratedDashboardSystem:
         dashboard, alert_system = integrated_system
         
         # Test dashboard configuration updates
-        original_interval = dashboard.dashboard_config.auto_refresh_interval
         dashboard.dashboard_config.auto_refresh_interval = 60
         
         # Mock configuration saving
@@ -475,7 +473,7 @@ class TestIntegratedDashboardSystem:
         
         # Create known alerts and verify metrics
         alert1 = await alert_system.create_alert('performance_critical', 50.0)
-        alert2 = await alert_system.create_alert('accuracy_warning', 0.8)
+        await alert_system.create_alert('accuracy_warning', 0.8)
         
         # Check alert metrics
         metrics = alert_system.get_alert_metrics()
@@ -562,8 +560,8 @@ class TestDashboardUIIntegration:
         dashboard = IntegratedMonitoringDashboard()
         
         # Mock Streamlit components to avoid actual UI calls
-        with patch('streamlit.warning') as mock_warning:
-            with patch('streamlit.error') as mock_error:
+        with patch('streamlit.warning'):
+            with patch('streamlit.error'):
                 # These methods should handle errors gracefully
                 dashboard._get_dashboard_data()
                 health_status = dashboard._get_system_health_status()

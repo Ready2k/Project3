@@ -10,7 +10,6 @@ from urllib.parse import urlparse
 import httpx
 from pydantic import BaseModel
 
-from app.utils.imports import require_service
 
 
 class SSLCertificateInfo(BaseModel):
@@ -208,7 +207,7 @@ class SSLHandler:
             with socket.create_connection((hostname, port), timeout=10) as sock:
                 with context.wrap_socket(sock, server_hostname=hostname) as ssock:
                     cert = ssock.getpeercert()
-                    cert_der = ssock.getpeercert(binary_form=True)
+                    ssock.getpeercert(binary_form=True)
                     
                     if not cert:
                         return None
@@ -222,7 +221,7 @@ class SSLHandler:
                     
                     # Get additional certificate details
                     import datetime
-                    not_before = datetime.datetime.strptime(cert['notBefore'], '%b %d %H:%M:%S %Y %Z')
+                    datetime.datetime.strptime(cert['notBefore'], '%b %d %H:%M:%S %Y %Z')
                     not_after = datetime.datetime.strptime(cert['notAfter'], '%b %d %H:%M:%S %Y %Z')
                     is_expired = datetime.datetime.now() > not_after
                     
@@ -257,7 +256,7 @@ class SSLHandler:
             verify_config = self.get_httpx_verify_config()
             
             async with httpx.AsyncClient(verify=verify_config, timeout=10) as client:
-                response = await client.get(base_url, follow_redirects=True)
+                await client.get(base_url, follow_redirects=True)
                 return None  # Success
                 
         except httpx.ConnectError as e:

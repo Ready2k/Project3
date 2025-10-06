@@ -1,12 +1,10 @@
 """Integration tests for Jira UI authentication fallback scenarios."""
 
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
-import asyncio
-from typing import Dict, Any
+from unittest.mock import Mock, patch
 
-from app.config import JiraConfig, JiraAuthType, JiraDeploymentType
-from app.services.jira import JiraService, JiraConnectionError, JiraError
+from app.config import JiraConfig, JiraAuthType
+from app.services.jira import JiraConnectionError
 from app.services.jira_auth import AuthResult
 
 
@@ -33,11 +31,6 @@ class TestJiraUIAuthenticationFallback:
         
         if initial_auth_failed:
             # User selects basic auth fallback
-            fallback_config = {
-                "auth_type": "basic",
-                "username": "test_user",
-                "password": "test_pass"
-            }
             
             # Simulate successful fallback authentication
             fallback_result = Mock(
@@ -60,10 +53,6 @@ class TestJiraUIAuthenticationFallback:
     async def test_api_token_to_sso_fallback(self):
         """Test fallback from API token to SSO authentication."""
         # Simulate UI fallback to SSO
-        fallback_config = {
-            "auth_type": "sso",
-            "use_sso": True
-        }
         
         # Simulate successful SSO fallback
         fallback_result = Mock(
@@ -84,10 +73,6 @@ class TestJiraUIAuthenticationFallback:
     async def test_api_token_to_pat_fallback(self):
         """Test fallback from API token to Personal Access Token."""
         # Simulate UI fallback to PAT
-        fallback_config = {
-            "auth_type": "pat",
-            "personal_access_token": "test_pat_token"
-        }
         
         # Simulate successful PAT fallback
         fallback_result = Mock(

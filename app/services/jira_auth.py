@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Any
-from enum import Enum
 from pydantic import BaseModel
 
 from app.config import JiraAuthType

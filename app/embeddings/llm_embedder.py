@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from typing import List, Optional
+from typing import List
 
 from app.llm.base import EmbeddingProvider, LLMProvider
 from app.utils.logger import app_logger

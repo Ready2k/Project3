@@ -9,8 +9,7 @@ This detector identifies attempts to extract sensitive information including:
 """
 
 import re
-from typing import List, Optional
-from abc import ABC, abstractmethod
+from typing import List
 
 from app.security.attack_patterns import (
     AttackPattern, ProcessedInput, DetectionResult, SecurityAction, AttackSeverity

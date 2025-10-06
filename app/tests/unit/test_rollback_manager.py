@@ -1,7 +1,6 @@
 """
 Unit tests for rollback manager.
 """
-import asyncio
 import pytest
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock, AsyncMock
@@ -118,7 +117,7 @@ class TestRollbackManager:
     def test_start_stop_monitoring(self):
         """Test starting and stopping monitoring."""
         # Mock the monitoring loop
-        with patch.object(self.manager, '_monitoring_loop', new_callable=AsyncMock) as mock_loop:
+        with patch.object(self.manager, '_monitoring_loop', new_callable=AsyncMock):
             mock_task = MagicMock()
             mock_task.done.return_value = True
             

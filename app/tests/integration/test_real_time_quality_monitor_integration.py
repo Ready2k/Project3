@@ -8,8 +8,6 @@ and end-to-end quality monitoring workflows.
 import pytest
 import asyncio
 from datetime import datetime, timedelta
-from unittest.mock import Mock, AsyncMock, patch
-from typing import Dict, List, Any
 
 from app.monitoring.real_time_quality_monitor import (
     RealTimeQualityMonitor,
@@ -105,7 +103,7 @@ class TestRealTimeQualityMonitorIntegration:
             'missing_technologies': 0
         }
         
-        completed_session = await monitoring_integration_service.complete_generation_monitoring(
+        await monitoring_integration_service.complete_generation_monitoring(
             session_id=session.session_id,
             final_tech_stack=final_tech_stack,
             generation_metrics=generation_metrics,
@@ -622,7 +620,7 @@ class TestRealTimeQualityMonitorIntegration:
             quality_monitor.quality_scores.append(old_score)
         
         # Add recent data
-        recent_scores_count = len(quality_monitor.quality_scores)
+        len(quality_monitor.quality_scores)
         
         for i in range(5):
             await quality_monitor.validate_extraction_quality(

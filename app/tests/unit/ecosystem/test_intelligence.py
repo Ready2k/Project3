@@ -1,15 +1,12 @@
 """Unit tests for ecosystem intelligence."""
 
 import pytest
-from unittest.mock import Mock, MagicMock
-from typing import List, Dict, Any
+from unittest.mock import Mock
 
 from app.services.ecosystem.intelligence import (
     EcosystemIntelligence,
     IntegrationPattern,
     CompatibilityLevel,
-    EcosystemMapping,
-    IntegrationSuggestion,
     CompatibilityResult,
     EcosystemConsistencyResult,
     DependencyGraph
@@ -288,7 +285,7 @@ class TestEcosystemMappings:
         )
         
         assert len(mappings) > 0
-        gcp_mapping = next((m for m in mappings if "google" in m.equivalent_tech.lower()), None)
+        azure_mapping = next((m for m in mappings if "azure" in m.equivalent_tech.lower()), None)
         assert azure_mapping is not None
     
     def test_bidirectional_mappings(self, ecosystem_intelligence):
@@ -400,7 +397,7 @@ class TestIntegrationPatterns:
         )
         
         # Should include AI-specific suggestions
-        ai_specific = [s for s in ai_suggestions if any(
+        [s for s in ai_suggestions if any(
             ai_tech in s.suggested_tech.lower() 
             for ai_tech in ["openai", "faiss", "vector"]
         )]

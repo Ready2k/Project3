@@ -1,9 +1,8 @@
 """Provider configuration UI component."""
 
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Tuple
 import streamlit as st
 
-from app.utils.imports import require_service, optional_service
 
 
 class ProviderConfigComponent:

@@ -5,11 +5,10 @@ Provides detailed error logging with context, suggested fixes, recovery actions,
 and error pattern analysis for improved debugging and system reliability.
 """
 
-from typing import Dict, Any, List, Optional, Union, Callable
+from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass, asdict
 from datetime import datetime
 import traceback
-import sys
 from enum import Enum
 
 from .tech_stack_logger import TechStackLogger, LogCategory
@@ -511,7 +510,7 @@ class ErrorContextLogger:
                     LogCategory.ERROR_HANDLING,
                     component,
                     operation,
-                    f"Recovery action completed successfully",
+                    "Recovery action completed successfully",
                     {'error_id': error_id, 'action_type': action.action_type}
                 )
             else:
@@ -519,7 +518,7 @@ class ErrorContextLogger:
                     LogCategory.ERROR_HANDLING,
                     component,
                     operation,
-                    f"Recovery action failed",
+                    "Recovery action failed",
                     {'error_id': error_id, 'action_type': action.action_type}
                 )
             

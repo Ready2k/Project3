@@ -3,7 +3,6 @@
 import pytest
 import asyncio
 from unittest.mock import Mock, AsyncMock, patch
-from typing import Dict, Any
 
 from app.ui.api_client import AAA_APIClient, StreamlitAPIIntegration
 from app.ui.components.provider_config import ProviderConfigComponent
@@ -411,12 +410,12 @@ class TestComponentPerformance:
         # First validation
         start_time = time.time()
         is_valid1, _ = mermaid_generator.validate_mermaid_syntax(test_code)
-        first_time = time.time() - start_time
+        time.time() - start_time
         
         # Second validation (should be faster if cached)
         start_time = time.time()
         is_valid2, _ = mermaid_generator.validate_mermaid_syntax(test_code)
-        second_time = time.time() - start_time
+        time.time() - start_time
         
         assert is_valid1 == is_valid2
         # Note: Actual caching would need to be implemented in the component
@@ -438,7 +437,7 @@ class TestComponentPerformance:
         assert len(categorized) > 0
         
         # Test with large recommendations list
-        large_recommendations = [
+        [
             {
                 "pattern_id": f"PAT-{i:03d}",
                 "pattern_name": f"Pattern {i}",

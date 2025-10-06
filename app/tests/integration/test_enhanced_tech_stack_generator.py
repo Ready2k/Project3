@@ -1,22 +1,15 @@
 """Integration tests for enhanced TechStackGenerator."""
 
 import pytest
-import asyncio
 from unittest.mock import Mock, AsyncMock, patch
-from typing import Dict, List, Any
+from typing import Dict, Any
 
 from app.services.tech_stack_generator import TechStackGenerator
-from app.services.requirement_parsing.enhanced_parser import EnhancedRequirementParser
-from app.services.requirement_parsing.context_extractor import TechnologyContextExtractor
-from app.services.catalog.intelligent_manager import IntelligentCatalogManager
-from app.services.context_aware_prompt_generator import ContextAwareLLMPromptGenerator
-from app.services.validation.compatibility_validator import TechnologyCompatibilityValidator
 from app.services.requirement_parsing.base import (
     ParsedRequirements, ExplicitTech, ContextClues, RequirementConstraints,
     DomainContext, TechContext, ExtractionMethod
 )
 from app.services.validation.models import CompatibilityResult, TechnologyConflict, ConflictType, ConflictSeverity
-from app.pattern.matcher import MatchResult
 from app.llm.base import LLMProvider
 
 
@@ -293,7 +286,7 @@ class TestEnhancedTechStackGenerator:
             )
             
             matches = []
-            result = await enhanced_generator.generate_tech_stack(
+            await enhanced_generator.generate_tech_stack(
                 matches=matches,
                 requirements=sample_requirements
             )
@@ -491,7 +484,7 @@ class TestEnhancedTechStackGenerator:
         
         # Messaging technologies
         messaging_techs = {"Apache Kafka", "RabbitMQ", "Redis", "Amazon SQS"}
-        has_messaging = bool(set(result) & messaging_techs)
+        bool(set(result) & messaging_techs)
         
         assert has_database, "Should include database technology for database integration requirement"
         # Messaging is not required, so it's optional
@@ -513,7 +506,7 @@ class TestEnhancedTechStackGenerator:
         
         # Should include ML-related technologies
         ml_techs = {"PyTorch", "TensorFlow", "Scikit-learn", "Pandas", "NumPy", "Jupyter"}
-        ml_count = len(set(result) & ml_techs)
+        len(set(result) & ml_techs)
         
         # Should have some ML technologies for ML domain
         # Note: This depends on the contextual technology mapping in the context extractor

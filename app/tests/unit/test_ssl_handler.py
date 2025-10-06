@@ -2,9 +2,7 @@
 
 import pytest
 import ssl
-from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock
-from typing import Dict, Any
+from unittest.mock import Mock, patch
 
 from app.services.ssl_handler import (
     SSLHandler, 

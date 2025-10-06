@@ -6,12 +6,10 @@ Provides automated quality checks, validation, and reporting capabilities.
 
 import asyncio
 import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Set
+from datetime import datetime
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
-import logging
-from pathlib import Path
 
 from app.core.service import ConfigurableService
 from app.utils.imports import require_service, optional_service
@@ -89,7 +87,7 @@ class QualityAssuranceSystem(ConfigurableService):
             self.logger = require_service('logger', context='QualityAssurance')
             self.monitor = optional_service('tech_stack_monitor', context='QualityAssurance')
             self.catalog_manager = optional_service('intelligent_catalog_manager', context='QualityAssurance')
-        except:
+        except Exception:
             # Fallback for testing/standalone use
             import logging
             self.logger = logging.getLogger('QualityAssurance')
@@ -203,7 +201,6 @@ class QualityAssuranceSystem(ConfigurableService):
             if integration_service:
                 # Get real session data for accuracy analysis
                 active_sessions = integration_service.get_active_sessions()
-                completed_sessions = []  # Would need to be tracked by integration service
                 
                 # Analyze real accuracy from recent sessions
                 real_accuracy_data = await self._analyze_real_accuracy_data(integration_service, active_sessions)
@@ -292,7 +289,7 @@ class QualityAssuranceSystem(ConfigurableService):
                 
                 # Analyze parsing and extraction events for accuracy
                 parsing_events = [e for e in session_events if e.get('event_type') == 'parsing_complete']
-                extraction_events = [e for e in session_events if e.get('event_type') == 'extraction_complete']
+                [e for e in session_events if e.get('event_type') == 'extraction_complete']
                 completion_events = [e for e in session_events if e.get('event_type') == 'session_complete']
                 
                 for parsing_event in parsing_events:
@@ -1002,7 +999,7 @@ class QualityAssuranceSystem(ConfigurableService):
             # Analyze satisfaction metrics
             satisfaction_metrics = [m for m in recent_metrics if hasattr(m, 'name') and 'satisfaction' in m.name]
             accuracy_metrics = [m for m in recent_metrics if hasattr(m, 'name') and m.name == "extraction_accuracy"]
-            inclusion_metrics = [m for m in recent_metrics if hasattr(m, 'name') and m.name == "explicit_tech_inclusion_rate"]
+            [m for m in recent_metrics if hasattr(m, 'name') and m.name == "explicit_tech_inclusion_rate"]
             
             analysis = {
                 'satisfaction_analysis': self._analyze_satisfaction_metrics(satisfaction_metrics),

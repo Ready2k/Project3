@@ -8,10 +8,8 @@ with real requirements containing new technologies.
 import pytest
 import json
 import tempfile
-import os
-import hashlib
 from pathlib import Path
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 from app.services.recommendation import RecommendationService
 from app.services.pattern_creator import PatternCreator

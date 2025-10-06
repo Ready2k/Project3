@@ -10,11 +10,11 @@ import pytest
 import ssl
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 import httpx
 
-from app.config import JiraConfig, JiraAuthType, JiraDeploymentType
-from app.services.ssl_handler import SSLHandler, SSLCertificateInfo, SSLValidationResult
+from app.config import JiraConfig, JiraDeploymentType
+from app.services.ssl_handler import SSLHandler
 from app.services.jira import JiraService
 
 
@@ -274,7 +274,7 @@ class TestSSLHandlerInitialization:
     @patch('app.services.ssl_handler.app_logger')
     def test_ssl_handler_logging_ssl_enabled(self, mock_logger):
         """Test SSL handler logs appropriate messages when SSL is enabled."""
-        handler = SSLHandler(verify_ssl=True, ca_cert_path=None)
+        SSLHandler(verify_ssl=True, ca_cert_path=None)
         
         # Should log SSL verification enabled
         mock_logger.info.assert_called_with("🔐 SSL verification enabled with system CA certificates")
@@ -282,7 +282,7 @@ class TestSSLHandlerInitialization:
     @patch('app.services.ssl_handler.app_logger')
     def test_ssl_handler_logging_ssl_disabled(self, mock_logger):
         """Test SSL handler logs security warnings when SSL is disabled."""
-        handler = SSLHandler(verify_ssl=False, ca_cert_path=None)
+        SSLHandler(verify_ssl=False, ca_cert_path=None)
         
         # Should log multiple security warnings
         warning_calls = [call for call in mock_logger.warning.call_args_list]
@@ -298,7 +298,7 @@ class TestSSLHandlerInitialization:
     def test_ssl_handler_logging_custom_ca(self, mock_logger):
         """Test SSL handler logs custom CA certificate usage."""
         ca_cert_path = "/path/to/custom/ca.pem"
-        handler = SSLHandler(verify_ssl=True, ca_cert_path=ca_cert_path)
+        SSLHandler(verify_ssl=True, ca_cert_path=ca_cert_path)
         
         # Should log custom CA certificate usage
         mock_logger.info.assert_called_with(f"🔐 SSL verification enabled with custom CA certificate: {ca_cert_path}")
@@ -414,7 +414,7 @@ class TestSSLHandlerHttpxConfiguration:
         verify_config = handler.get_httpx_verify_config()
         
         # Create httpx client with SSL configuration
-        async with httpx.AsyncClient(verify=verify_config, timeout=30) as client:
+        async with httpx.AsyncClient(verify=verify_config, timeout=30):
             pass
         
         # Verify httpx.AsyncClient was called with correct SSL configuration
@@ -431,7 +431,7 @@ class TestSSLHandlerHttpxConfiguration:
         verify_config = handler.get_httpx_verify_config()
         
         # Create httpx client with SSL configuration
-        async with httpx.AsyncClient(verify=verify_config, timeout=30) as client:
+        async with httpx.AsyncClient(verify=verify_config, timeout=30):
             pass
         
         # Verify httpx.AsyncClient was called with correct SSL configuration
@@ -451,7 +451,7 @@ class TestSSLHandlerHttpxConfiguration:
         verify_config = handler.get_httpx_verify_config()
         
         # Create httpx client with SSL configuration
-        async with httpx.AsyncClient(verify=verify_config, timeout=30) as client:
+        async with httpx.AsyncClient(verify=verify_config, timeout=30):
             pass
         
         # Verify httpx.AsyncClient was called with correct SSL configuration
@@ -548,7 +548,7 @@ class TestJiraServiceSSLIntegration:
             ca_cert_path=None
         )
         
-        service = JiraService(config)
+        JiraService(config)
         
         # Should log SSL configuration security level
         info_calls = [call for call in mock_logger.info.call_args_list]

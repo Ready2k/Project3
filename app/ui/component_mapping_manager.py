@@ -5,10 +5,7 @@ Provides UI for managing dynamic component mapping rules.
 """
 
 import streamlit as st
-import json
-from pathlib import Path
-from typing import Dict, List, Any, Optional
-from loguru import logger
+from typing import List
 
 from app.diagrams.dynamic_component_mapper import (
     DynamicComponentMapper, ComponentMapping, ComponentType, DeploymentModel
@@ -132,7 +129,7 @@ class ComponentMappingManager:
                     placeholder="e.g., ai, orchestration, framework"
                 )
                 
-                description = st.text_area(
+                st.text_area(
                     "Description",
                     placeholder="Brief description of what this rule matches"
                 )

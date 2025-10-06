@@ -1,14 +1,14 @@
 """Requirement context prioritization logic for technology selection."""
 
-from typing import Dict, List, Optional, Set, Tuple, Any
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
 import re
 from collections import defaultdict
 
 from .base import (
-    ParsedRequirements, TechContext, ContextClues, DomainContext,
-    ExplicitTech, RequirementConstraints
+    ParsedRequirements, TechContext, DomainContext,
+    ExplicitTech
 )
 from app.utils.imports import require_service
 

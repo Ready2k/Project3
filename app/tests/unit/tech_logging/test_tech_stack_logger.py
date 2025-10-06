@@ -4,11 +4,9 @@ import pytest
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
-from datetime import datetime
 
 from app.services.tech_logging.tech_stack_logger import (
-    TechStackLogger, LogLevel, LogCategory, LogEntry
+    TechStackLogger, LogCategory
 )
 
 

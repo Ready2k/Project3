@@ -2,10 +2,9 @@
 
 import pytest
 from unittest.mock import Mock
-from datetime import datetime
 
 from app.services.tech_logging.decision_logger import (
-    DecisionLogger, DecisionContext, DecisionCriteria, 
+    DecisionLogger, DecisionCriteria, 
     OptionEvaluation, DecisionResult
 )
 from app.services.tech_logging.tech_stack_logger import TechStackLogger, LogCategory
@@ -136,7 +135,7 @@ class TestDecisionLogger:
         decision_id = "test_decision_123"
         
         # Start decision
-        context = decision_logger.start_decision(
+        decision_logger.start_decision(
             decision_id=decision_id,
             decision_type="technology_selection",
             component="TechStackGenerator",

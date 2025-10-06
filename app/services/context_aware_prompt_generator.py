@@ -1,13 +1,11 @@
 """Context-aware LLM prompt generator for tech stack generation."""
 
-import json
-from typing import Dict, List, Any, Optional, Set, Tuple
+from typing import Dict, List, Any, Optional, Set
 from dataclasses import dataclass
-from datetime import datetime
 
-from app.services.requirement_parsing.base import TechContext, ParsedRequirements
+from app.services.requirement_parsing.base import TechContext
 from app.services.catalog.intelligent_manager import IntelligentCatalogManager
-from app.services.catalog.models import TechEntry, EcosystemType
+from app.services.catalog.models import TechEntry
 from app.utils.imports import require_service
 
 

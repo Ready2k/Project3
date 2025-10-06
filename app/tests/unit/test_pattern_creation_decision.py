@@ -1,7 +1,7 @@
 """Tests for pattern creation decision logic."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from pathlib import Path
 
 from app.services.recommendation import RecommendationService

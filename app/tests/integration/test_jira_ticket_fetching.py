@@ -1,11 +1,11 @@
 """Integration tests for Jira ticket fetching with API version support."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 import httpx
 
-from app.services.jira import JiraService, JiraConnectionError, JiraTicketNotFoundError, JiraError
-from app.config import JiraConfig, JiraAuthType, JiraDeploymentType
+from app.services.jira import JiraService, JiraConnectionError, JiraTicketNotFoundError
+from app.config import JiraConfig, JiraAuthType
 from app.services.jira_auth import AuthResult
 
 

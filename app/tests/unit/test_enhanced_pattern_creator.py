@@ -1,9 +1,8 @@
 """Tests for enhanced pattern creator with duplicate validation and error handling."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, mock_open
+from unittest.mock import AsyncMock, MagicMock, patch
 from pathlib import Path
-import json
 
 from app.services.pattern_creator import PatternCreator
 

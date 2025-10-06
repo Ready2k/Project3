@@ -1,7 +1,7 @@
 """Integration tests for confidence extraction and display."""
 
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import patch
 from app.services.recommendation import RecommendationService
 from app.pattern.matcher import MatchResult
 from app.state.store import Recommendation
@@ -194,7 +194,7 @@ class TestConfidenceIntegration:
         }
         
         with patch('app.services.recommendation.app_logger') as mock_logger:
-            recommendations = await self.service.generate_recommendations(
+            await self.service.generate_recommendations(
                 [self.mock_match], requirements, "test_session"
             )
             

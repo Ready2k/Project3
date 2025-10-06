@@ -13,9 +13,8 @@ from unittest.mock import Mock, patch
 
 from app.security.overt_injection_detector import OvertInjectionDetector, AttackDetector
 from app.security.attack_patterns import (
-    ProcessedInput, DetectionResult, SecurityAction, AttackSeverity
+    ProcessedInput, SecurityAction, AttackSeverity
 )
-from app.security.defense_config import AdvancedPromptDefenseConfig, DetectorConfig
 
 
 class TestOvertInjectionDetector:
@@ -556,7 +555,7 @@ class TestOvertInjectionDetector:
     
     def test_config_updates(self, detector):
         """Test updating detector configuration."""
-        original_threshold = detector.get_confidence_threshold()
+        detector.get_confidence_threshold()
         
         # Update configuration
         detector.update_config(confidence_threshold=0.9, sensitivity="low")

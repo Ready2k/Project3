@@ -8,8 +8,7 @@ instead of mock data.
 import pytest
 import asyncio
 from datetime import datetime, timedelta
-from unittest.mock import Mock, AsyncMock, patch
-from typing import Dict, Any, List
+from unittest.mock import AsyncMock, patch
 
 from app.services.monitoring_integration_service import TechStackMonitoringIntegrationService
 from app.services.tech_stack_generator import TechStackGenerator

@@ -1,7 +1,7 @@
 """Backward compatibility layer for existing patterns with enhanced system."""
 
 import json
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Tuple
 from pathlib import Path
 from datetime import datetime
 
@@ -15,7 +15,7 @@ class PatternCompatibilityLayer:
         """Initialize compatibility layer."""
         try:
             self.logger = require_service('logger', context='PatternCompatibilityLayer')
-        except:
+        except Exception:
             import logging
             self.logger = logging.getLogger('PatternCompatibilityLayer')
     

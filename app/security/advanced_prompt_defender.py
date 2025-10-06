@@ -7,7 +7,7 @@ against the 42 attack patterns identified in the Prompt Attack Pack v2.
 
 import asyncio
 import time
-from typing import List, Dict, Optional, Tuple, Any, Callable
+from typing import List, Dict, Optional, Any, Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from app.security.attack_patterns import (
@@ -27,7 +27,7 @@ from app.security.business_logic_protector import BusinessLogicProtector
 from app.security.security_event_logger import SecurityEventLogger, AlertSeverity
 from app.security.user_education import UserEducationSystem, UserGuidanceMessage
 from app.security.performance_optimizer import (
-    PerformanceOptimizer, get_performance_optimizer, performance_monitor
+    PerformanceOptimizer, performance_monitor
 )
 from app.utils.logger import app_logger
 
@@ -712,7 +712,6 @@ class AdvancedPromptDefender:
     def get_recent_security_events(self, limit: int = 100, 
                                  action_filter: Optional[SecurityAction] = None) -> List[Dict[str, Any]]:
         """Get recent security events."""
-        from app.security.security_event_logger import AlertSeverity
         return self.logger.get_recent_events(limit, action_filter)
     
     def register_security_alert_callback(self, callback: callable) -> None:

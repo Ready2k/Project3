@@ -167,7 +167,6 @@ async def test_banned_tools_in_api_responses():
     """Test that API responses are validated for banned tools."""
     from app.api import app
     from fastapi.testclient import TestClient
-    from unittest.mock import patch
     
     client = TestClient(app)
     

@@ -1,10 +1,9 @@
 """Integration tests for JiraService authentication flows."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-import httpx
+from unittest.mock import MagicMock, patch
 
-from app.services.jira import JiraService, JiraConnectionError, JiraTicketNotFoundError
+from app.services.jira import JiraService
 from app.config import JiraConfig, JiraAuthType, JiraDeploymentType
 from app.services.jira_auth import AuthResult
 from app.services.deployment_detector import DeploymentInfo
@@ -125,7 +124,7 @@ class TestJiraServiceAuthIntegration:
         ]
         
         with patch.object(service.auth_manager, 'authenticate', 
-                         side_effect=mock_auth_results) as mock_auth:
+                         side_effect=mock_auth_results):
             
             # First call should fail and trigger fallback
             result1 = await service.auth_manager.authenticate()
@@ -215,7 +214,7 @@ class TestJiraServiceAuthIntegration:
         service = JiraService(cloud_config)
         
         # Mock authentication results
-        mock_auth_result_fail = AuthResult(
+        AuthResult(
             success=False,
             auth_type=JiraAuthType.API_TOKEN,
             headers={},

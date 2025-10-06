@@ -1,6 +1,5 @@
 """LLM-driven architecture explanation service."""
 
-import json
 from typing import Dict, List, Any, Optional
 
 from app.llm.base import LLMProvider
@@ -77,7 +76,6 @@ class ArchitectureExplainer:
         
         try:
             # Create empty matches list since we're generating from requirements
-            from app.pattern.matcher import MatchResult
             matches = []
             
             # Extract constraints from requirements (this is the key fix!)

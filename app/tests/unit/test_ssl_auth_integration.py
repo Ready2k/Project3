@@ -5,7 +5,6 @@ authentication methods supported by the JIRA integration.
 """
 
 import pytest
-import pytest_asyncio
 from unittest.mock import Mock, patch, AsyncMock
 from pathlib import Path
 import tempfile
@@ -13,7 +12,7 @@ import base64
 
 from app.services.jira import JiraService, JiraConfig
 from app.config import JiraAuthType
-from app.services.jira_auth_handlers import APITokenHandler, PATHandler, BasicAuthHandler, SSOAuthHandler
+from app.services.jira_auth_handlers import APITokenHandler, PATHandler, BasicAuthHandler
 
 
 # Sample valid certificate for testing

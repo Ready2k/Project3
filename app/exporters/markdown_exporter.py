@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from app.exporters.base import BaseExporter
 from app.state.store import SessionState
@@ -70,7 +70,7 @@ class MarkdownExporter(BaseExporter):
         lines.append("## 📋 Requirements")
         lines.append("")
         description = session.requirements.get("description", "No description provided")
-        lines.append(f"**Description:**")
+        lines.append("**Description:**")
         lines.append(f"> {description}")
         lines.append("")
         

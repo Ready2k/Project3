@@ -1,12 +1,11 @@
 """Deployment guidance generator for agentic systems."""
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from dataclasses import dataclass
 from enum import Enum
 
 from app.services.multi_agent_designer import MultiAgentSystemDesign, AgentArchitectureType
 from app.services.tech_stack_enhancer import TechStackValidationResult
-from app.utils.imports import require_service
 
 
 class DeploymentComplexity(Enum):

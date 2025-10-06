@@ -10,7 +10,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from app.security.attack_patterns import AttackPattern
 from app.security.deployment_config import AttackPackVersion, get_deployment_config
 from app.utils.logger import app_logger
 

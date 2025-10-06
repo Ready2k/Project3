@@ -1,7 +1,7 @@
 """Enhanced data models for technology catalog management."""
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Any
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 from enum import Enum
 

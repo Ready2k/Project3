@@ -5,11 +5,11 @@ Handles automatic and manual rollbacks based on health metrics and triggers.
 import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 from enum import Enum
 
 from app.security.deployment_config import (
-    get_deployment_config, RollbackTrigger, DeploymentStage
+    get_deployment_config, RollbackTrigger
 )
 from app.security.attack_pack_manager import get_attack_pack_manager
 from app.utils.logger import app_logger
@@ -368,7 +368,6 @@ class RollbackManager:
     async def _send_rollback_notification(self, rollback_event: RollbackEvent) -> None:
         """Send notifications about the rollback event."""
         try:
-            notification_channels = self.deployment_config.rollback_config.notification_channels
             
             message = (
                 f"Security System Rollback Alert\n"

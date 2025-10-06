@@ -8,10 +8,9 @@ and system insights for the pattern matching system.
 import json
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 from collections import defaultdict, Counter
 import statistics
-import logging
 
 from app.core.service import ConfigurableService
 from app.utils.imports import require_service, optional_service
@@ -35,7 +34,7 @@ class PatternAnalyticsService(ConfigurableService):
         # Initialize logger
         try:
             self.logger = require_service('logger', context='PatternAnalyticsService')
-        except:
+        except Exception:
             import logging
             self.logger = logging.getLogger('PatternAnalyticsService')
         

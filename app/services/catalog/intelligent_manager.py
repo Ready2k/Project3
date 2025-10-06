@@ -1,12 +1,10 @@
 """Intelligent catalog manager with fuzzy matching and auto-addition capabilities."""
 
 import json
-import uuid
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Any, Tuple
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 from difflib import SequenceMatcher
-from dataclasses import asdict
 
 from .models import (
     TechEntry, EcosystemType, MaturityLevel, ReviewStatus,

@@ -2,7 +2,6 @@
 
 import pytest
 from unittest.mock import Mock, patch
-from typing import Dict, Any, List
 
 from app.ui.agent_formatter import AgentDataFormatter, AgentSystemDisplay, AgentRoleDisplay
 from app.ui.analysis_display import AgentRolesUIComponent, AgentDisplayErrorHandler
@@ -55,7 +54,7 @@ class TestAgentDataFormatter:
         )
         
         assert isinstance(result, AgentSystemDisplay)
-        assert result.has_agents == True
+        assert result.has_agents
         assert result.system_autonomy_score == 0.8
         assert len(result.agent_roles) == 1
         assert result.agent_roles[0].name == "Test Agent"
@@ -66,7 +65,7 @@ class TestAgentDataFormatter:
         result = self.formatter.format_agent_system(None, [], {})
         
         assert isinstance(result, AgentSystemDisplay)
-        assert result.has_agents == False
+        assert not result.has_agents
         assert result.system_autonomy_score == 0.0
         assert len(result.agent_roles) == 0
     
@@ -100,7 +99,7 @@ class TestAgentDataFormatter:
             complete_stack, self.mock_agent_design
         )
         
-        assert result["is_agent_ready"] == True
+        assert result["is_agent_ready"]
         assert "LangChain" in result["deployment_frameworks"]
         assert "Redis" in result["orchestration_tools"]
         
@@ -110,7 +109,7 @@ class TestAgentDataFormatter:
             incomplete_stack, self.mock_agent_design
         )
         
-        assert result["is_agent_ready"] == False
+        assert not result["is_agent_ready"]
         assert len(result["missing_components"]) > 0
     
     def test_error_handling(self):
@@ -122,7 +121,7 @@ class TestAgentDataFormatter:
                 self.mock_agent_design, [], {}
             )
             
-            assert result.has_agents == False
+            assert not result.has_agents
             assert "error" in result.tech_stack_validation
 
 
@@ -333,7 +332,7 @@ class TestAgentSystemExporter:
         assert "agent_system" in result
         assert "agent_roles" in result
         assert result["export_metadata"]["session_id"] == "test_session"
-        assert result["agent_system"]["has_agents"] == True
+        assert result["agent_system"]["has_agents"]
         assert len(result["agent_roles"]) == 1
     
     def test_export_to_markdown(self):
@@ -394,7 +393,7 @@ class TestAgentDisplayErrorHandler:
         result = AgentDisplayErrorHandler.handle_agent_formatting_error(error, agent_data)
         
         assert isinstance(result, AgentSystemDisplay)
-        assert result.has_agents == False
+        assert not result.has_agents
         assert "error" in result.tech_stack_validation
     
     def test_handle_tech_validation_error(self):
@@ -406,7 +405,7 @@ class TestAgentDisplayErrorHandler:
         result = AgentDisplayErrorHandler.handle_tech_validation_error(error, tech_stack)
         
         assert isinstance(result, dict)
-        assert result["is_agent_ready"] == False
+        assert not result["is_agent_ready"]
         assert "error" in result
         assert "fallback_recommendations" in result
     
@@ -471,7 +470,7 @@ class TestAgentDisplayIntegration:
         )
         
         # Verify formatting
-        assert agent_display.has_agents == True
+        assert agent_display.has_agents
         assert len(agent_display.agent_roles) == 1
         assert agent_display.agent_roles[0].name == "Coordinator"
         
@@ -480,7 +479,7 @@ class TestAgentDisplayIntegration:
             tech_stack, mock_agent_design
         )
         
-        assert tech_validation.is_deployment_ready == True
+        assert tech_validation.is_deployment_ready
         assert tech_validation.readiness_score > 0.7
         
         # Test export functionality

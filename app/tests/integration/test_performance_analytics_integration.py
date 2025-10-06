@@ -5,11 +5,10 @@ Integration tests for Performance Analytics system.
 import pytest
 import asyncio
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
-from typing import Dict, Any
+from unittest.mock import patch, AsyncMock
 
 from app.monitoring.performance_analytics import PerformanceAnalytics, BottleneckSeverity
-from app.services.monitoring_integration_service import TechStackMonitoringIntegrationService, MonitoringEvent, MonitoringEventType
+from app.services.monitoring_integration_service import TechStackMonitoringIntegrationService
 
 
 @pytest.fixture

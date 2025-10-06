@@ -5,7 +5,7 @@ This module implements detection for attack patterns 38-39 from the Attack Pack 
 which represent attempts to manipulate system configuration, safety settings, or business logic.
 """
 import re
-from typing import List, Optional
+from typing import List
 
 from app.security.attack_patterns import (
     AttackPattern, DetectionResult, ProcessedInput, SecurityAction, AttackSeverity

@@ -1,12 +1,11 @@
 """Enhanced requirement parser implementation with NER and pattern matching."""
 
 import re
-from typing import Dict, List, Any, Optional, Set
-from dataclasses import replace
+from typing import Dict, List, Any, Optional
 
 from .base import (
     RequirementParser, ParsedRequirements, ExplicitTech, ContextClues,
-    RequirementConstraints, DomainContext, ExtractionMethod, ConfidenceLevel
+    RequirementConstraints, DomainContext, ExtractionMethod
 )
 from .tech_extractor import TechnologyExtractor
 from app.utils.imports import require_service

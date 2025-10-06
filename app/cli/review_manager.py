@@ -7,18 +7,14 @@ approving/rejecting entries, and managing the review workflow.
 """
 
 import argparse
-import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Any
-from datetime import datetime
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from app.services.catalog.intelligent_manager import IntelligentCatalogManager
-from app.services.catalog.models import TechEntry, ReviewStatus
-from app.utils.imports import require_service
+from app.services.catalog.models import ReviewStatus
 
 
 class ReviewManagerCLI:
@@ -98,7 +94,7 @@ class ReviewManagerCLI:
             if tech.use_cases:
                 print(f"Use Cases: {', '.join(tech.use_cases)}")
             
-            print(f"\nReview Information:")
+            print("\nReview Information:")
             print(f"  Status: {tech.review_status.value}")
             print(f"  Auto-generated: {tech.auto_generated}")
             print(f"  Confidence Score: {tech.confidence_score}")
@@ -120,7 +116,7 @@ class ReviewManagerCLI:
             # Validate the entry
             validation_result = self.manager.validate_catalog_entry(tech)
             
-            print(f"\nValidation Status:")
+            print("\nValidation Status:")
             if validation_result.is_valid:
                 print("  ✓ Entry is valid")
             else:
@@ -333,7 +329,7 @@ class ReviewManagerCLI:
             print(f"Auto-generated: {auto_generated_count}")
             
             if pending_count > 0:
-                print(f"\nPending Review Breakdown:")
+                print("\nPending Review Breakdown:")
                 
                 # By status
                 status_counts = {}
@@ -350,14 +346,14 @@ class ReviewManagerCLI:
                     category = tech.category
                     category_counts[category] = category_counts.get(category, 0) + 1
                 
-                print(f"\nBy Category:")
+                print("\nBy Category:")
                 for category, count in sorted(category_counts.items()):
                     print(f"  {category}: {count}")
                 
                 # Confidence distribution for auto-generated
                 auto_pending = [t for t in pending_techs if t.auto_generated]
                 if auto_pending:
-                    print(f"\nAuto-generated Confidence Distribution:")
+                    print("\nAuto-generated Confidence Distribution:")
                     high_conf = len([t for t in auto_pending if t.confidence_score >= 0.8])
                     med_conf = len([t for t in auto_pending if 0.6 <= t.confidence_score < 0.8])
                     low_conf = len([t for t in auto_pending if t.confidence_score < 0.6])
@@ -438,7 +434,7 @@ Examples:
     batch_parser.add_argument('--force', action='store_true', help='Skip confirmation prompt')
     
     # Statistics command
-    stats_parser = subparsers.add_parser('stats', help='Show review queue statistics')
+    subparsers.add_parser('stats', help='Show review queue statistics')
     
     return parser
 

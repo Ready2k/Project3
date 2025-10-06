@@ -1,9 +1,8 @@
 """Technology extractor with NER and pattern matching capabilities."""
 
 import re
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, Optional
 from dataclasses import dataclass
-import string
 
 from .base import ExplicitTech, ExtractionMethod, TechnologyExtractor as BaseTechnologyExtractor
 from app.utils.imports import require_service
@@ -888,7 +887,7 @@ class TechnologyExtractor(BaseTechnologyExtractor):
             List of extracted technologies
         """
         technologies = []
-        text_lower = text.lower()
+        text.lower()
         
         for alias, mapping in self.technology_aliases.items():
             # Create regex pattern for the alias

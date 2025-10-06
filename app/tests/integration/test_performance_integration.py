@@ -8,12 +8,10 @@ with the actual security validation pipeline.
 import asyncio
 import pytest
 import time
-from unittest.mock import Mock, patch
 
 from app.security.advanced_prompt_defender import AdvancedPromptDefender
-from app.security.defense_config import AdvancedPromptDefenseConfig, DetectorConfig
+from app.security.defense_config import AdvancedPromptDefenseConfig
 from app.security.attack_patterns import SecurityAction
-from app.security.performance_optimizer import get_performance_optimizer
 
 
 class TestPerformanceIntegration:
@@ -121,7 +119,7 @@ class TestPerformanceIntegration:
         test_input = "Test input for cache invalidation"
         
         # First validation
-        result1 = await defender.validate_input(test_input, "cache_test_1")
+        await defender.validate_input(test_input, "cache_test_1")
         
         # Change configuration
         new_config = performance_config
@@ -129,7 +127,7 @@ class TestPerformanceIntegration:
         defender.update_config(new_config)
         
         # Second validation should not use cached result due to config change
-        result2 = await defender.validate_input(test_input, "cache_test_2")
+        await defender.validate_input(test_input, "cache_test_2")
         
         # Results might be different due to different thresholds
         # But the important thing is that cache was invalidated

@@ -1,12 +1,10 @@
 """Integration tests for diagram analysis consistency."""
 
 import pytest
-import asyncio
-from unittest.mock import Mock, patch, AsyncMock
-from typing import Dict, List, Any
+from unittest.mock import patch
 
 # Import test utilities
-from app.tests.fixtures.test_data import create_test_session, create_test_recommendations
+from app.tests.fixtures.test_data import create_test_session
 
 
 class TestAnalysisDiagramConsistency:

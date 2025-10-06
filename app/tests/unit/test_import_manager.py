@@ -9,10 +9,7 @@ Tests cover:
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch, call
-from typing import Any, Dict, Optional
-import importlib
-import sys
+from unittest.mock import Mock, patch
 
 from app.utils.imports import (
     ImportManager,

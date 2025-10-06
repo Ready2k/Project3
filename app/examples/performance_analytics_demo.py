@@ -6,10 +6,8 @@ with real-time monitoring, bottleneck detection, and predictive insights.
 """
 
 import asyncio
-import json
 import random
 from datetime import datetime, timedelta
-from typing import Dict, Any, List
 
 from app.monitoring.performance_analytics import PerformanceAnalytics, BottleneckSeverity
 from app.services.monitoring_integration_service import TechStackMonitoringIntegrationService
@@ -98,7 +96,7 @@ class PerformanceAnalyticsDemo:
         await asyncio.sleep(1)
         
         # Display results
-        print(f"\n📈 Analysis Results:")
+        print("\n📈 Analysis Results:")
         print(f"  • Total interactions tracked: {len(self.analytics.user_interactions)}")
         print(f"  • Usage patterns detected: {len(self.analytics.usage_patterns)}")
         
@@ -180,7 +178,7 @@ class PerformanceAnalyticsDemo:
         await asyncio.sleep(1)
         
         # Display results
-        print(f"\n🚨 Bottleneck Detection Results:")
+        print("\n🚨 Bottleneck Detection Results:")
         print(f"  • Total bottlenecks detected: {len(self.analytics.performance_bottlenecks)}")
         
         for bottleneck in self.analytics.performance_bottlenecks:
@@ -252,7 +250,7 @@ class PerformanceAnalyticsDemo:
             print(f"  ✓ Session {session_id}: Satisfaction {sum(scenario['satisfaction'].values())/4:.1f}/5.0")
         
         # Display correlation analysis
-        print(f"\n🔗 Satisfaction Correlation Analysis:")
+        print("\n🔗 Satisfaction Correlation Analysis:")
         print(f"  • Total satisfaction analyses: {len(self.analytics.satisfaction_analyses)}")
         
         for analysis in self.analytics.satisfaction_analyses:
@@ -310,14 +308,14 @@ class PerformanceAnalyticsDemo:
         await self.analytics._generate_predictive_insights()
         
         # Display results
-        print(f"\n🎯 Predictive Insights Generated:")
+        print("\n🎯 Predictive Insights Generated:")
         print(f"  • Total insights: {len(self.analytics.predictive_insights)}")
         
         for insight in self.analytics.predictive_insights:
             print(f"    - Type: {insight.insight_type}")
             print(f"      Horizon: {insight.prediction_horizon}")
             print(f"      Confidence: {insight.confidence_score:.2f}")
-            print(f"      Predictions:")
+            print("      Predictions:")
             for metric, value in insight.predicted_metrics.items():
                 if isinstance(value, (int, float)):
                     print(f"        • {metric}: {value:.2f}")
@@ -414,7 +412,7 @@ class PerformanceAnalyticsDemo:
         await asyncio.sleep(1)
         
         # Show analytics data
-        print(f"\n📊 Real-Time Analytics Data:")
+        print("\n📊 Real-Time Analytics Data:")
         print(f"  • Performance metrics collected: {len(self.analytics.performance_metrics)}")
         print(f"  • User interactions tracked: {len(self.analytics.user_interactions)}")
         
@@ -438,26 +436,26 @@ class PerformanceAnalyticsDemo:
         
         report = await self.analytics.generate_analytics_report((start_time, end_time))
         
-        print(f"\n📈 Analytics Report Summary:")
+        print("\n📈 Analytics Report Summary:")
         print(f"  • Report ID: {report.report_id}")
         print(f"  • Time Period: {report.time_period[0].strftime('%H:%M')} - {report.time_period[1].strftime('%H:%M')}")
         print(f"  • Generated At: {report.generated_at.strftime('%Y-%m-%d %H:%M:%S')}")
         
-        print(f"\n📊 Summary Metrics:")
+        print("\n📊 Summary Metrics:")
         for metric, value in report.summary_metrics.items():
             if isinstance(value, float):
                 print(f"    • {metric}: {value:.2f}")
             else:
                 print(f"    • {metric}: {value}")
         
-        print(f"\n🎯 Key Findings:")
+        print("\n🎯 Key Findings:")
         print(f"  • Usage Patterns: {len(report.usage_patterns)} detected")
         print(f"  • Performance Bottlenecks: {len(report.performance_bottlenecks)} identified")
         print(f"  • Satisfaction Analyses: {len(report.satisfaction_analysis)} completed")
         print(f"  • Predictive Insights: {len(report.predictive_insights)} generated")
         
         if report.recommendations:
-            print(f"\n💡 Recommendations:")
+            print("\n💡 Recommendations:")
             for i, rec in enumerate(report.recommendations[:3], 1):  # Show first 3
                 print(f"    {i}. {rec}")
         
@@ -484,14 +482,14 @@ class PerformanceAnalyticsDemo:
         
         # Data Points
         data_points = summary['system_status']['data_points']
-        print(f"📈 Data Collection:")
+        print("📈 Data Collection:")
         print(f"  • User Interactions: {data_points['user_interactions']:,}")
         print(f"  • Performance Metrics: {data_points['performance_metrics']:,}")
         print(f"  • System Metrics: {data_points['system_metrics']:,}")
         
         # Recent Activity
         recent_summary = summary['summary']
-        print(f"\n⏰ Recent Activity (Last Hour):")
+        print("\n⏰ Recent Activity (Last Hour):")
         print(f"  • Usage Patterns: {recent_summary['recent_usage_patterns']}")
         print(f"  • Performance Bottlenecks: {recent_summary['recent_bottlenecks']}")
         print(f"  • Satisfaction Analyses: {recent_summary['recent_satisfaction_analyses']}")
@@ -499,21 +497,21 @@ class PerformanceAnalyticsDemo:
         
         # Performance Baselines
         if summary['baselines']['performance']:
-            print(f"\n📏 Performance Baselines:")
+            print("\n📏 Performance Baselines:")
             for metric, baseline in summary['baselines']['performance'].items():
                 if isinstance(baseline, dict) and 'mean' in baseline:
                     print(f"  • {metric}: {baseline['mean']:.2f} ± {baseline.get('std', 0):.2f}")
         
         # Usage Baselines
         if summary['baselines']['usage']:
-            print(f"\n👥 Usage Baselines:")
+            print("\n👥 Usage Baselines:")
             for metric, baseline in summary['baselines']['usage'].items():
                 if isinstance(baseline, dict):
                     for sub_metric, value in baseline.items():
                         print(f"  • {metric}.{sub_metric}: {value:.2f}")
         
         # Health Indicators
-        print(f"\n🎯 Health Indicators:")
+        print("\n🎯 Health Indicators:")
         
         # Calculate health scores
         total_bottlenecks = recent_summary['total_bottlenecks']
@@ -547,7 +545,7 @@ class PerformanceAnalyticsDemo:
             
             print(f"  • User Satisfaction: {satisfaction_health} ({avg_satisfaction:.1f}/5.0)")
         else:
-            print(f"  • User Satisfaction: ⚪ No Data")
+            print("  • User Satisfaction: ⚪ No Data")
         
         # System load health
         data_load = data_points['user_interactions'] + data_points['performance_metrics']

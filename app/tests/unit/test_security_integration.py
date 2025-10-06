@@ -6,10 +6,9 @@ AdvancedPromptDefender with existing security components.
 """
 
 import pytest
-import asyncio
 from unittest.mock import Mock, patch, AsyncMock
 
-from app.security.validation import SecurityValidator, InputValidator
+from app.security.validation import SecurityValidator
 from app.security.pattern_sanitizer import PatternSanitizer
 from app.security.middleware import SecurityMiddleware
 from app.security.attack_patterns import SecurityAction, SecurityDecision, AttackPattern, AttackSeverity

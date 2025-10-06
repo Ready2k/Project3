@@ -5,10 +5,9 @@ Provides detailed logging of decision-making processes including confidence scor
 reasoning, alternatives considered, and decision criteria.
 """
 
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime
-import json
 
 from .tech_stack_logger import TechStackLogger, LogCategory
 

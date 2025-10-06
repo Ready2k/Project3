@@ -2,7 +2,7 @@
 
 import time
 from functools import wraps
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from .audit import log_llm_call
 

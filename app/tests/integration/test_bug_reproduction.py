@@ -135,7 +135,7 @@ class TestOriginalBugReproduction:
                             agent_roles_found.append(agent)
                 
                 # VERIFICATION: The bug should be fixed
-                print(f"\nBug Reproduction Test Results:")
+                print("\nBug Reproduction Test Results:")
                 print(f"Total recommendations generated: {len(recommendations)}")
                 print(f"Total agent roles found: {len(agent_roles_found)}")
                 
@@ -289,7 +289,7 @@ class TestOriginalBugReproduction:
                 # Verify diverse agents are created
                 agent_names = [agent.get('name', 'Unknown') for agent in agent_roles_found]
                 
-                print(f"\nDiverse Pattern Test Results:")
+                print("\nDiverse Pattern Test Results:")
                 print(f"Agent names: {agent_names}")
                 
                 # Should have diverse, specialized agent names

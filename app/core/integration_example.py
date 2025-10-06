@@ -93,7 +93,7 @@ class IntegratedApplicationStartup:
             # Demonstrate configuration access through services
             if self.registry.has('config'):
                 try:
-                    config_service = self.registry.get('config')
+                    self.registry.get('config')
                     # This would work if we had implemented the ConfigService
                     integration_results['configuration_access']['config_service'] = 'available'
                 except Exception as e:
@@ -158,7 +158,7 @@ def demonstrate_service_usage():
             
             # Show service startup results
             service_results = results['service_startup']
-            print(f"\n📋 Service Configuration:")
+            print("\n📋 Service Configuration:")
             print(f"   Environment: {service_results.get('environment', 'unknown')}")
             
             if 'services' in service_results:
@@ -169,7 +169,7 @@ def demonstrate_service_usage():
             
             # Show integration results
             integration = results['integration']
-            print(f"\n🔧 Service Integration:")
+            print("\n🔧 Service Integration:")
             available_services = integration.get('services_available', [])
             print(f"   Available services: {len(available_services)}")
             for service in available_services[:5]:  # Show first 5
@@ -183,11 +183,11 @@ def demonstrate_service_usage():
             # Show settings integration
             settings_integration = integration.get('settings_integration', {})
             if settings_integration:
-                print(f"\n⚙️  Settings Integration:")
+                print("\n⚙️  Settings Integration:")
                 print(f"   LLM Provider: {settings_integration.get('llm_provider', 'unknown')}")
                 print(f"   LLM Model: {settings_integration.get('llm_model', 'unknown')}")
             
-            print(f"\n📊 Full Startup Report:")
+            print("\n📊 Full Startup Report:")
             print(app.get_startup_summary())
             
         else:

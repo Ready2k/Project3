@@ -1,11 +1,11 @@
 """API client for Streamlit UI to communicate with FastAPI backend."""
 
 import asyncio
-from typing import Dict, Any, Optional, List, Union, Coroutine
+from typing import Dict, Any, Optional, List, Coroutine
 import httpx
 import streamlit as st
 
-from app.utils.imports import require_service, optional_service
+from app.utils.imports import require_service
 from app.utils.error_boundaries import error_boundary, AsyncOperationManager
 
 
@@ -47,9 +47,13 @@ class AAA_APIClient:
                 app_logger = require_service('logger', context="api_request")
                 app_logger.error(f"API HTTP Error {e.response.status_code}: {error_detail}")
                 return {"error": f"API Error: {error_detail}"}
-            except:
+            except Exception as e:
                 # Get logger service for error logging
-                app_logger = require_service('logger', context="api_request")
+                try:
+                    app_logger = require_service('logger', context="api_request")
+                    app_logger.error(f"Unexpected API error: {e}")
+                except Exception:
+                    pass
                 app_logger.error(f"API HTTP Error {e.response.status_code}: {str(e)}")
                 return {"error": f"API Error: {str(e)}"}
         except httpx.RequestError as e:
@@ -141,7 +145,7 @@ class StreamlitAPIIntegration:
             loop = asyncio.get_event_loop()
             if loop.is_running():
                 # Create a task for the coroutine
-                task = asyncio.create_task(coro)
+                asyncio.create_task(coro)
                 # For Streamlit, we need to handle this differently
                 # This is a simplified approach - in production you might want to use st.session_state
                 return None  # Placeholder - would need proper async handling
@@ -262,7 +266,7 @@ class StreamlitAPIIntegration:
                 if result and not result.get("error"):
                     download_url = result.get("download_url")
                     if download_url:
-                        st.success(f"✅ Export complete!")
+                        st.success("✅ Export complete!")
                         st.markdown(f"[📥 Download {format.upper()} file]({download_url})")
                     return result
                 else:

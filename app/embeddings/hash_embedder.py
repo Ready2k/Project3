@@ -5,7 +5,6 @@ import re
 from typing import List, Set
 
 from app.llm.base import EmbeddingProvider
-from app.utils.logger import app_logger
 
 
 class HashEmbedder(EmbeddingProvider):

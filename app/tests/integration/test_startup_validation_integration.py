@@ -14,10 +14,7 @@ import pytest
 import tempfile
 import os
 import yaml
-import logging
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, Any, List, Optional
+from unittest.mock import Mock, patch
 
 from app.core.startup import (
     ApplicationStartup, 
@@ -26,15 +23,7 @@ from app.core.startup import (
     validate_environment_setup,
     print_startup_summary
 )
-from app.core.dependencies import (
-    DependencyValidator,
-    DependencyInfo,
-    DependencyType,
-    ValidationResult,
-    validate_startup_dependencies
-)
 from app.core.registry import get_registry, reset_registry
-from app.core.service_config import ServiceConfigLoader
 
 
 class TestStartupValidationIntegration:
@@ -557,7 +546,7 @@ class TestStartupValidationIntegration:
         """Test startup validation when service registration fails."""
         with patch('importlib.import_module') as mock_import, \
              patch('app.core.service_registration.register_core_services') as mock_register, \
-             patch('app.core.service_registration.initialize_core_services') as mock_init, \
+             patch('app.core.service_registration.initialize_core_services'), \
              patch('app.core.dependencies.validate_startup_dependencies') as mock_dep_validation:
             
             # Mock dependencies as available

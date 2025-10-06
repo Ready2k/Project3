@@ -1,7 +1,7 @@
 {
   "pattern_id": "APAT-022",
   "name": "Multi-Agent Coordinator_Based System",
-  "description": "Multi-agent system with 4 specialized agents for Story K5 — Portfolio surveillance &amp;amp;amp;amp; proactive outreach\nAs a relationship manager\nI want the agent to monitor my portfolio and alert me when a customer needs intervention\nSo that I act before problems escalate\nBusiness value: Retention; reduced arrears.\nAssumptions: Triggers include cash-flow stress, churn risk, complaints, product expiry.\nAcceptance criteria:\nGiven a portfolio of customers\nWhen any trigger fires\nThen the agent creates an alert with recommended outreach, channel, and script\nGiven outreach is approved\nThen the agent schedules/send messages and logs outcomes back to CRM\nNon-functional / Controls:\nWeekly digest + real-time critical alerts; explainable trigger logic; customer contact preferences enforced.",
+  "description": "Multi-agent system with 4 specialized agents for Story K5 \u2014 Portfolio surveillance & proactive outreach\nAs a relationship manager\nI want the agent to monitor my portfolio and alert me when a customer needs intervention\nSo that I act before problems escalate\nBusiness value: Retention; reduced arrears.\nAssumptions: Triggers include cash-flow stress, churn risk, complaints, product expiry.\nAcceptance criteria:\nGiven a portfolio of customers\nWhen any trigger fires\nThen the agent creates an alert with recommended outreach, channel, and script\nGiven outreach is approved\nThen the agent schedules/send messages and logs outcomes back to CRM\nNon-functional / Controls:\nWeekly digest + real-time critical alerts; explainable trigger logic; customer contact preferences enforced.",
   "feasibility": "Fully Automatable",
   "pattern_type": [
     "multi_agent_system",
@@ -126,5 +126,5 @@
   "llm_recommended_approach": "Implement coordinator_based architecture with specialized agent roles, use robust communication protocols, maintain comprehensive monitoring and error handling.",
   "enhanced_by_llm": true,
   "enhanced_from_session": "a40a7cd7-68d8-49b4-934e-31c33186fe26",
-  "color": "🟢"
+  "color": "\ud83d\udfe2"
 }

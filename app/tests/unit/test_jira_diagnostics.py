@@ -5,7 +5,7 @@ Unit tests for Jira diagnostics and validation utilities.
 import pytest
 import socket
 import ssl
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch
 import httpx
 
 from app.services.jira_diagnostics import (

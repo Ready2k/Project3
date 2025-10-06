@@ -7,8 +7,6 @@ for tech stack generation monitoring.
 
 import asyncio
 import time
-from datetime import datetime, timedelta
-from typing import Dict, Any
 
 from app.monitoring.integrated_dashboard import IntegratedMonitoringDashboard
 from app.monitoring.alert_system import AlertSystem, AlertRule, AlertSeverity, NotificationChannel
@@ -247,7 +245,7 @@ async def demo_integrated_dashboard():
         end_time = time.time()
         avg_time = (end_time - start_time) / 5
         
-        print(f"Dashboard data collection performance:")
+        print("Dashboard data collection performance:")
         print(f"  Average time per request: {avg_time*1000:.1f}ms")
         print(f"  Caching enabled: {'Yes' if dashboard.cached_dashboard_data else 'No'}")
         
@@ -268,7 +266,7 @@ async def demo_integrated_dashboard():
         
         if test_alerts:
             avg_alert_time = (end_time - start_time) / len(test_alerts)
-            print(f"\nAlert creation performance:")
+            print("\nAlert creation performance:")
             print(f"  Average time per alert: {avg_alert_time*1000:.1f}ms")
             print(f"  Alerts created: {len(test_alerts)}")
         
@@ -277,7 +275,7 @@ async def demo_integrated_dashboard():
         
         # Summary
         print("\n📋 Demo Summary:")
-        print(f"  • Dashboard initialized and configured")
+        print("  • Dashboard initialized and configured")
         print(f"  • Alert system with {len(alert_system.alert_rules)} rules")
         print(f"  • {len(alert_system.active_alerts)} active alerts")
         print(f"  • {len(alert_system.alert_history)} total alerts in history")

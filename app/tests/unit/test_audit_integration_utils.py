@@ -1,7 +1,7 @@
 """Unit tests for audit integration utilities."""
 
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, AsyncMock
 
 from app.utils.audit_integration import AuditedLLMProvider, create_audited_provider
 from app.llm.fakes import FakeLLM

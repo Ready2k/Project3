@@ -1,6 +1,6 @@
 """Recommendation generation service."""
 
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Dict, List, Any, Optional
 import math
 import json
 import re
@@ -11,7 +11,6 @@ from app.state.store import Recommendation
 from app.services.pattern_creator import PatternCreator
 from app.services.tech_stack_generator import TechStackGenerator
 from app.llm.base import LLMProvider
-from app.utils.imports import require_service
 from app.utils.audit import log_pattern_match
 
 
@@ -82,7 +81,7 @@ class RecommendationService:
                 pattern_id="PHYSICAL_TASK",
                 feasibility="Not Automatable",
                 confidence=0.95,
-                reasoning=f"This requirement involves physical manipulation that cannot be automated by software agents. The task requires physical actions like picking up and feeding a pet, which are outside the scope of digital automation. Digital alternatives like 'send feeding reminders' or 'track feeding schedule' could be automated instead.",
+                reasoning="This requirement involves physical manipulation that cannot be automated by software agents. The task requires physical actions like picking up and feeding a pet, which are outside the scope of digital automation. Digital alternatives like 'send feeding reminders' or 'track feeding schedule' could be automated instead.",
                 tech_stack=[]
             )
             return [physical_recommendation]
@@ -107,7 +106,7 @@ class RecommendationService:
                     tag_score=1.0,  # Perfect tag match since it was created from requirements
                     vector_score=0.8,  # High vector score for custom pattern
                     blended_score=0.9,  # High blended score
-                    rationale=f"Custom pattern created for this specific requirement"
+                    rationale="Custom pattern created for this specific requirement"
                 )
                 
                 # Add the new pattern match to the beginning of the list
@@ -189,7 +188,7 @@ class RecommendationService:
                 return llm_feasibility
         
         # Fallback to pattern-based analysis
-        self.logger.info(f"No LLM feasibility found, using pattern-based analysis")
+        self.logger.info("No LLM feasibility found, using pattern-based analysis")
         base_feasibility = match.feasibility
         
         # Analyze complexity factors
@@ -1000,7 +999,7 @@ class RecommendationService:
         
         self.logger.info(f"PATTERN_DECISION [{session_id}]: {decision_type}")
         self.logger.info(f"  Rationale: {rationale}")
-        self.logger.info(f"  Decision Factors:")
+        self.logger.info("  Decision Factors:")
         for factor, value in decision_factors.items():
             self.logger.info(f"    - {factor}: {value}")
         
@@ -1083,7 +1082,7 @@ class RecommendationService:
                 return 1.0
             
             # Calculate intersection and union
-            intersection = req_technologies.intersection(existing_technologies)
+            req_technologies.intersection(existing_technologies)
             union = req_technologies.union(existing_technologies)
             
             # Novelty score is based on how many new technologies are introduced
@@ -1099,7 +1098,7 @@ class RecommendationService:
             # Combine novelty ratio (70%) and diversity factor (30%)
             novelty_score = (novelty_ratio * 0.7) + (diversity_factor * 0.3)
             
-            self.logger.info(f"Technology novelty analysis:")
+            self.logger.info("Technology novelty analysis:")
             self.logger.info(f"  Required technologies: {sorted(req_technologies)}")
             self.logger.info(f"  Novel technologies: {sorted(novel_technologies)}")
             self.logger.info(f"  Novelty ratio: {novelty_ratio:.3f}")

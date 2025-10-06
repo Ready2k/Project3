@@ -6,8 +6,6 @@ instead of using mock data.
 """
 
 import asyncio
-from typing import Dict, Any, List
-from datetime import datetime
 
 from app.services.monitoring_integration_service import TechStackMonitoringIntegrationService
 from app.monitoring.tech_stack_monitor import TechStackMonitor
@@ -350,7 +348,7 @@ async def main():
         await demo.demonstrate_performance_analytics()
         await demo.demonstrate_dynamic_thresholds()
         
-        print(f"\n🎉 Demo completed successfully!")
+        print("\n🎉 Demo completed successfully!")
         print(f"📋 Final tech stack: {', '.join(tech_stack[:5])}{'...' if len(tech_stack) > 5 else ''}")
         
     except Exception as e:

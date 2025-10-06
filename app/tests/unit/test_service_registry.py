@@ -10,15 +10,13 @@ Tests cover:
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 from typing import List, Optional
 
 from app.core.registry import (
     ServiceRegistry,
-    ServiceInfo,
     ServiceLifecycle,
     ServiceNotFoundError,
-    CircularDependencyError,
     ServiceInitializationError,
     get_registry,
     reset_registry
@@ -421,7 +419,7 @@ class TestServiceRegistry:
         assert service_info.lifecycle == ServiceLifecycle.REGISTERED
         
         # After creation, should be initialized
-        service = self.registry.get("lifecycle_service")
+        self.registry.get("lifecycle_service")
         service_info = self.registry.get_service_info("lifecycle_service")
         assert service_info.lifecycle == ServiceLifecycle.INITIALIZED
     

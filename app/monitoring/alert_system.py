@@ -9,7 +9,7 @@ import asyncio
 import json
 import smtplib
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable, Union
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
 import logging
@@ -18,7 +18,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 from app.core.service import ConfigurableService
-from app.utils.imports import require_service, optional_service
+from app.utils.imports import require_service
 
 
 class AlertSeverity(Enum):
@@ -160,7 +160,7 @@ class AlertSystem(ConfigurableService):
         # Initialize logger
         try:
             self.logger = require_service('logger', context='AlertSystem')
-        except:
+        except Exception:
             import logging
             self.logger = logging.getLogger('AlertSystem')
         

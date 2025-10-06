@@ -2,8 +2,7 @@
 
 import sys
 import traceback
-from typing import Dict, Any, List
-import asyncio
+from typing import Dict, Any
 
 # Add the app directory to the path
 sys.path.append('.')
@@ -11,12 +10,10 @@ sys.path.append('.')
 from app.ui.agent_formatter import AgentDataFormatter, AgentSystemDisplay
 from app.ui.analysis_display import AgentRolesUIComponent
 from app.services.tech_stack_enhancer import TechStackEnhancer
-from app.services.multi_agent_designer import MultiAgentSystemDesigner, AgentRole, AgentArchitectureType
-from app.services.autonomy_assessor import AutonomyAssessor
+from app.services.multi_agent_designer import AgentArchitectureType
 from app.exporters.agent_exporter import AgentSystemExporter
 from app.services.agent_display_config import AgentDisplayConfigManager
 from app.utils.logger import app_logger
-from app.utils.error_boundaries import error_boundary
 
 
 class AgentDisplayValidator:
@@ -74,7 +71,7 @@ class AgentDisplayValidator:
             
             # Test with None input
             result = formatter.format_agent_system(None, [], {})
-            assert result.has_agents == False
+            assert not result.has_agents
             
             self.validation_results["component_tests"]["agent_formatter"] = "PASS"
             app_logger.info("  ✅ AgentDataFormatter: PASS")
@@ -136,7 +133,7 @@ class AgentDisplayValidator:
             
             # Test configuration update
             success = config_manager.update_preferences(display_density="compact")
-            assert success == True
+            assert success
             
             self.validation_results["component_tests"]["config_manager"] = "PASS"
             app_logger.info("  ✅ AgentDisplayConfigManager: PASS")
@@ -162,11 +159,11 @@ class AgentDisplayValidator:
             
             # Format agent system
             agent_system = formatter.format_agent_system(mock_design, tech_stack, {})
-            assert agent_system.has_agents == True
+            assert agent_system.has_agents
             
             # Validate tech stack
             validation = enhancer.validate_tech_stack_comprehensive(tech_stack, mock_design)
-            assert validation.is_deployment_ready == True
+            assert validation.is_deployment_ready
             
             # Export system
             json_export = exporter.export_to_json(agent_system, "integration_test")
@@ -185,7 +182,7 @@ class AgentDisplayValidator:
             
             # Test with invalid data
             result = formatter.format_agent_system(None, [], {})
-            assert result.has_agents == False
+            assert not result.has_agents
             
             # Test error display
             error_result = formatter._create_error_display("Test error")
@@ -219,7 +216,7 @@ class AgentDisplayValidator:
             
             # Should complete within 1 second
             assert formatting_time < 1.0
-            assert result.has_agents == True
+            assert result.has_agents
             
             self.validation_results["performance_tests"]["formatting_speed"] = f"PASS ({formatting_time:.3f}s)"
             app_logger.info(f"  ✅ Formatting Performance: PASS ({formatting_time:.3f}s)")

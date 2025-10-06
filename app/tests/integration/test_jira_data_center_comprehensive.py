@@ -1,14 +1,11 @@
 """Comprehensive integration tests for Jira Data Center compatibility."""
 
 import pytest
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
-from typing import Dict, Any
+from unittest.mock import Mock, patch, AsyncMock
 
 from app.config import JiraConfig, JiraAuthType, JiraDeploymentType
 from app.services.jira import JiraService
-from app.services.jira_auth import AuthenticationManager
 from app.services.deployment_detector import DeploymentDetector, DeploymentInfo
-from app.services.api_version_manager import APIVersionManager
 from app.services.jira_error_handler import JiraErrorHandler
 from app.services.jira_diagnostics import JiraDiagnostics
 

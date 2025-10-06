@@ -5,7 +5,6 @@ import json
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, AsyncMock, patch
-from typing import Dict, Any
 
 from app.services.pattern_creator import PatternCreator
 from app.services.pattern_enhancement_service import PatternEnhancementService

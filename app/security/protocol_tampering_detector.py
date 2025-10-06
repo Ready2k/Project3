@@ -10,7 +10,7 @@ This detector identifies response format manipulation attempts including:
 
 import re
 import json
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 from abc import ABC, abstractmethod
 
 from app.security.attack_patterns import (

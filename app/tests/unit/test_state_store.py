@@ -1,8 +1,6 @@
-import asyncio
 import json
-from dataclasses import asdict
 from datetime import datetime
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -247,7 +245,6 @@ class TestRedisStore:
         assert call_args[0][0] == f"session:{session_id}"
         
         # Mock Redis get to return stored data
-        import json
         stored_data = json.dumps(state.to_dict())
         mock_redis.get.return_value = stored_data.encode()
         

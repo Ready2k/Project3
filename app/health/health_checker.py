@@ -5,12 +5,11 @@ import time
 import psutil
 from typing import Dict, List, Any, Optional, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 
 import redis
 import httpx
-from sqlalchemy import create_engine, text
 from diskcache import Cache
 
 from app.config import Settings
@@ -383,7 +382,16 @@ class HealthChecker:
             # Test OpenAI if configured
             if hasattr(self.settings, 'openai_api_key') and self.settings.openai_api_key:
                 try:
-                    provider = OpenAIProvider(api_key=self.settings.openai_api_key)
+                    # Get model from settings or use default
+                    model = getattr(self.settings, 'model', 'gpt-4o')
+                    
+                    # Use enhanced provider for GPT-5 and o1 models
+                    if model.startswith("gpt-5") or model.startswith("o1"):
+                        from app.llm.gpt5_enhanced_provider import GPT5EnhancedProvider
+                        provider = GPT5EnhancedProvider(api_key=self.settings.openai_api_key, model=model)
+                    else:
+                        provider = OpenAIProvider(api_key=self.settings.openai_api_key, model=model)
+                    
                     success, error = await provider.test_connection_detailed()
                     providers_status["openai"] = {
                         "status": "healthy" if success else "unhealthy",

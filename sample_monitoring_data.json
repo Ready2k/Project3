@@ -1,0 +1,53 @@
+{
+  "system_health": {
+    "overall_score": 0.87,
+    "health_status": "good",
+    "component_scores": {
+      "accuracy": 0.89,
+      "performance": 0.85,
+      "satisfaction": 0.88,
+      "catalog_health": 0.86
+    }
+  },
+  "latest_metrics": {
+    "extraction_accuracy": {
+      "value": 0.89,
+      "timestamp": "2025-09-20T11:47:14.043540"
+    },
+    "processing_time": {
+      "value": 15.2,
+      "timestamp": "2025-09-20T11:47:14.043554"
+    },
+    "overall_satisfaction": {
+      "value": 4.2,
+      "timestamp": "2025-09-20T11:47:14.043555"
+    },
+    "catalog_consistency_rate": {
+      "value": 0.96,
+      "timestamp": "2025-09-20T11:47:14.043555"
+    }
+  },
+  "recent_alerts": [
+    {
+      "timestamp": "2025-09-20T11:47:14.043556",
+      "level": "warning",
+      "category": "performance",
+      "message": "Processing time above average: 18.5s"
+    },
+    {
+      "timestamp": "2025-09-20T11:47:14.043557",
+      "level": "info",
+      "category": "catalog",
+      "message": "5 new technologies added to catalog"
+    }
+  ],
+  "recommendations": [
+    {
+      "category": "performance",
+      "priority": "medium",
+      "description": "Optimize LLM prompt size to reduce processing time",
+      "impact": "Reduce average response time by 15-20%",
+      "implementation": "Review and streamline prompts, implement caching for common patterns"
+    }
+  ]
+}

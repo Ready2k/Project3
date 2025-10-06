@@ -1,10 +1,8 @@
 """Technology ecosystem intelligence and integration recommendations."""
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any
 from enum import Enum
-import json
-from pathlib import Path
 
 from ..catalog.models import TechEntry, EcosystemType
 from app.utils.imports import require_service
@@ -763,7 +761,7 @@ class EcosystemIntelligence:
     
     def _infer_integration_pattern(self, tech1: str, tech2: str) -> Optional[IntegrationPattern]:
         """Infer integration pattern between two technologies."""
-        tech1_lower = tech1.lower()
+        tech1.lower()
         tech2_lower = tech2.lower()
         
         # Database patterns

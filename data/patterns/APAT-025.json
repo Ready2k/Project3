@@ -1,0 +1,130 @@
+{
+  "pattern_id": "APAT-025",
+  "name": "Multi-Agent Coordinator_Based System",
+  "description": "Multi-agent system with 4 specialized agents for Think hard about this one. \nIt&amp;#x27;s Financial Services, I want to automate my disputes handling process, so that customers can use self-service (voice and chat) to be able to raise a transitional dispute.\nI have an Amazon Connect platform that will be used as the base, and I expect it to work with my Amazon Bedrock platform with an Agent. Disputes are complicated and could be down to several factors these are unique base on each customers reason for the dispute.\n\nThe current process is very manual, a customer has to speak to an agent (human) who in turns captures a load of information and then raises a dispute, this information is consistent.\nWhen a customer calls back , they should be able to track their dispute, the platform should know who they are (once they have passed ID&amp;amp;v) and we should play them back their current status - for example, &amp;quot;Your dispute is with the Vendor&amp;quot;. \n\nThere are APIs available for me to call to get all the current dispute information",
+  "feasibility": "Fully Automatable",
+  "pattern_type": [
+    "multi_agent_system",
+    "hierarchical_agents"
+  ],
+  "autonomy_level": 0.975,
+  "reasoning_capabilities": [
+    "collaborative_reasoning",
+    "distributed_decision_making",
+    "system_coordination"
+  ],
+  "decision_scope": {
+    "autonomous_decisions": [
+      "agent_coordination",
+      "task_distribution",
+      "resource_allocation",
+      "exception_handling"
+    ],
+    "escalation_triggers": [
+      "system_wide_failures",
+      "conflicting_agent_decisions",
+      "resource_exhaustion"
+    ]
+  },
+  "exception_handling_strategy": {
+    "autonomous_resolution_approaches": [
+      "Multi-agent collaborative resolution",
+      "Distributed error recovery",
+      "Agent failover mechanisms"
+    ],
+    "reasoning_fallbacks": [
+      "Coordinator-based decision making",
+      "Consensus-based resolution",
+      "Fallback to single-agent mode"
+    ],
+    "escalation_criteria": [
+      "System-wide failures",
+      "Conflicting agent decisions",
+      "Resource exhaustion"
+    ]
+  },
+  "learning_mechanisms": [
+    "reinforcement_learning",
+    "performance_optimization",
+    "continuous_improvement"
+  ],
+  "tech_stack": [
+    "LangChain",
+    "Haystack",
+    "Apache Kafka",
+    "Redis",
+    "Docker",
+    "Kubernetes"
+  ],
+  "agent_architecture": "hierarchical_agents",
+  "input_requirements": [
+    "multi_agent_coordination",
+    "distributed_processing",
+    "system_monitoring",
+    "error_handling"
+  ],
+  "related_patterns": [
+    "APAT-001",
+    "APAT-002"
+  ],
+  "confidence_score": 0.975,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": [
+      "LangChain",
+      "Haystack",
+      "Apache Kafka"
+    ]
+  },
+  "domain": "financial",
+  "complexity": "High",
+  "estimated_effort": "8-12 weeks",
+  "reasoning_types": [
+    "logical",
+    "causal",
+    "collaborative"
+  ],
+  "decision_boundaries": {
+    "autonomous_decisions": [
+      "agent_coordination",
+      "task_distribution",
+      "resource_allocation"
+    ],
+    "escalation_triggers": [
+      "system_failures",
+      "conflicting_decisions",
+      "resource_exhaustion"
+    ]
+  },
+  "autonomy_assessment": {
+    "overall_score": 0.8855000000000003,
+    "reasoning_complexity": "complex",
+    "workflow_coverage": 0.9,
+    "decision_independence": "high"
+  },
+  "self_monitoring_capabilities": [
+    "performance_tracking",
+    "error_detection",
+    "resource_monitoring"
+  ],
+  "integration_requirements": [
+    "Docker",
+    "Kubernetes"
+  ],
+  "created_from_session": "86f5e2e4-8d71-4b9f-bb76-7d10098227ce",
+  "auto_generated": true,
+  "llm_insights": [
+    "Multi-agent coordination enables distributed processing",
+    "Collaborative reasoning improves decision accuracy",
+    "System-level monitoring ensures reliability"
+  ],
+  "llm_challenges": [
+    "Coordinating multiple agents effectively",
+    "Managing distributed decision making",
+    "Ensuring system-wide consistency"
+  ],
+  "llm_recommended_approach": "Implement coordinator_based architecture with specialized agent roles, use robust communication protocols, maintain comprehensive monitoring and error handling.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "86f5e2e4-8d71-4b9f-bb76-7d10098227ce",
+  "color": "🟢"
+}

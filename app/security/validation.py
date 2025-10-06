@@ -3,8 +3,7 @@
 import re
 import html
 import asyncio
-from typing import Any, Dict, List, Optional, Union, Tuple
-from pydantic import BaseModel, validator
+from typing import Any, Dict, List, Tuple
 from app.utils.logger import app_logger
 from app.utils.redact import PIIRedactor
 

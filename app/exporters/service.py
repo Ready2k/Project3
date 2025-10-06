@@ -98,7 +98,6 @@ class ExportService:
         Returns:
             Number of files deleted
         """
-        import time
         from datetime import datetime, timedelta
         
         cutoff_time = datetime.now() - timedelta(hours=max_age_hours)

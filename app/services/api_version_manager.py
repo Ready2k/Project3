@@ -7,7 +7,6 @@ from urllib.parse import urljoin
 import httpx
 from pydantic import BaseModel
 
-from app.utils.imports import require_service
 
 
 class APIVersionInfo(BaseModel):
@@ -249,7 +248,7 @@ class APIVersionManager:
                 return self.preferred_version
             
             if len(version_parts) >= 2:
-                major, minor = version_parts[0], version_parts[1]
+                major, _minor = version_parts[0], version_parts[1]
                 
                 # API v3 is available from Jira 7.0+
                 if major >= 7:

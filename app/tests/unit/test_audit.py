@@ -5,7 +5,7 @@ import sqlite3
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from app.utils.audit import (
     AuditLogger, 
@@ -130,7 +130,7 @@ class TestAuditLogger:
     
     def test_database_initialization(self, temp_db):
         """Test that database tables are created correctly."""
-        logger = AuditLogger(db_path=temp_db)
+        AuditLogger(db_path=temp_db)
         
         with sqlite3.connect(temp_db) as conn:
             cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -153,7 +153,7 @@ class TestAuditLogger:
     
     def test_database_indexes(self, temp_db):
         """Test that database indexes are created."""
-        logger = AuditLogger(db_path=temp_db)
+        AuditLogger(db_path=temp_db)
         
         with sqlite3.connect(temp_db) as conn:
             cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='index'")
@@ -225,7 +225,7 @@ class TestAuditLogger:
         assert match.session_id == "test-session-123"
         assert match.pattern_id == "PAT-001"
         assert match.score == 0.85
-        assert match.accepted == True
+        assert match.accepted
         assert match.id is not None
         assert match.created_at is not None
     

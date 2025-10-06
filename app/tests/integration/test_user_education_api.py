@@ -4,7 +4,6 @@ Integration tests for User Education API endpoints.
 Tests the REST API endpoints for user education and guidance functionality.
 """
 
-import pytest
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 

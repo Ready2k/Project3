@@ -6,13 +6,10 @@ concurrent operations, and system scalability validation.
 """
 
 import pytest
-import asyncio
 import time
-import statistics
 import concurrent.futures
-import threading
 from typing import Dict, List, Any, Optional, Tuple
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 import json
 import psutil
 import gc
@@ -20,9 +17,6 @@ from dataclasses import dataclass
 
 from app.services.tech_stack_generator import TechStackGenerator
 from app.services.requirement_parsing.enhanced_parser import EnhancedRequirementParser
-from app.services.requirement_parsing.context_extractor import TechnologyContextExtractor
-from app.services.catalog.intelligent_manager import IntelligentCatalogManager
-from app.services.validation.compatibility_validator import TechnologyCompatibilityValidator
 
 
 @dataclass
@@ -72,11 +66,10 @@ class PerformanceTestSuite:
         error_count = 0
         
         try:
-            result = operation_func(*args, **kwargs)
+            operation_func(*args, **kwargs)
             success_count = 1
-        except Exception as e:
+        except Exception:
             error_count = 1
-            result = None
         
         end_time = time.time()
         execution_time = end_time - start_time

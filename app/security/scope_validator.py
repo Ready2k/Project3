@@ -5,7 +5,7 @@ This module implements detection for attack patterns 9-13 from the Attack Pack v
 which represent requests that fall outside the business automation scope of the AAA system.
 """
 import re
-from typing import List, Optional
+from typing import List
 
 from app.security.attack_patterns import (
     AttackPattern, DetectionResult, ProcessedInput, SecurityAction, AttackSeverity

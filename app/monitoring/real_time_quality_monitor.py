@@ -6,15 +6,13 @@ ecosystem consistency checking, user satisfaction prediction, and quality trend 
 """
 
 import asyncio
-import json
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Set
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
 import logging
 import statistics
-from pathlib import Path
 
 from app.core.service import ConfigurableService
 from app.utils.imports import require_service, optional_service
@@ -137,7 +135,7 @@ class RealTimeQualityMonitor(ConfigurableService):
         # Initialize logger
         try:
             self.logger = require_service('logger', context='RealTimeQualityMonitor')
-        except:
+        except Exception:
             import logging
             self.logger = logging.getLogger('RealTimeQualityMonitor')
         

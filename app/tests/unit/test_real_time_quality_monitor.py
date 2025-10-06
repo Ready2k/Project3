@@ -6,10 +6,8 @@ user satisfaction prediction, and quality trend analysis.
 """
 
 import pytest
-import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import Mock, AsyncMock, patch
-from typing import Dict, List, Any
 
 from app.monitoring.real_time_quality_monitor import (
     RealTimeQualityMonitor,
@@ -737,7 +735,7 @@ class TestRealTimeQualityMonitor:
             )
             monitor.quality_scores.append(score)
         
-        original_threshold = monitor.config['alert_thresholds'][QualityMetricType.EXTRACTION_ACCURACY]
+        monitor.config['alert_thresholds'][QualityMetricType.EXTRACTION_ACCURACY]
         
         await monitor._update_dynamic_thresholds()
         

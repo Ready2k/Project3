@@ -10,14 +10,14 @@ import json
 import sqlite3
 import time
 from collections import defaultdict, deque
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 from enum import Enum
 
 from app.security.attack_patterns import (
-    AttackPattern, ProcessedInput, DetectionResult, SecurityDecision, SecurityAction
+    SecurityDecision, SecurityAction
 )
 from app.security.defense_config import get_defense_config
 from app.utils.logger import app_logger

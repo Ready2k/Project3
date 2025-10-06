@@ -20,16 +20,15 @@ Requirements Coverage: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8
 import pytest
 import asyncio
 import time
-from typing import List, Dict, Any
-from unittest.mock import Mock, patch, MagicMock
+from typing import Dict, Any
+from unittest.mock import Mock, patch
 
 from app.security.advanced_prompt_defender import AdvancedPromptDefender
-from app.security.attack_patterns import SecurityAction, SecurityDecision, AttackSeverity
+from app.security.attack_patterns import SecurityAction, SecurityDecision
 from app.security.defense_config import AdvancedPromptDefenseConfig
 from app.security.security_event_logger import SecurityEventLogger
 from app.security.validation import SecurityValidator
 from app.security.pattern_sanitizer import PatternSanitizer
-from app.security.input_preprocessor import InputPreprocessor
 
 
 class TestExistingSecurityPatterns:
@@ -224,7 +223,7 @@ class TestBackwardCompatibility:
         new_config = AdvancedPromptDefenseConfig()
         new_config.enabled = False
         defender2.update_config(new_config)
-        assert defender2.config.enabled == False
+        assert not defender2.config.enabled
     
     def test_security_action_enum_compatibility(self):
         """Test that SecurityAction enum values are backward compatible."""
@@ -334,7 +333,7 @@ class TestPerformanceRegression:
         
         for input_text in test_inputs:
             start_time = time.perf_counter()
-            decision = await defender.validate_input(input_text)
+            await defender.validate_input(input_text)
             end_time = time.perf_counter()
             
             processing_time_ms = (end_time - start_time) * 1000
@@ -516,7 +515,7 @@ class TestErrorHandlingRegression:
         assert isinstance(decision, SecurityDecision)
         
         # May have timeout indication in results
-        timeout_indicated = any(
+        any(
             "timeout" in str(result.evidence).lower() or "time" in str(result.evidence).lower()
             for result in decision.detection_results
         )

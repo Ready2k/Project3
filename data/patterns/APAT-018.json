@@ -1,7 +1,7 @@
 {
   "pattern_id": "APAT-018",
   "name": "Multi-Agent Hierarchical System",
-  "description": "Multi-agent system with 3 specialized agents for I want to create a solution whereby I can simulate Amazon Connect interactions from my laptop.\nThere are two parts to this solution \nPart 1:\nThe laptop will setup a session with connect as a &amp;#x27;customer&amp;#x27;, via WebRTC and the Start Chat API, it will then take the persona of a customer and interact. this persona could be anything that I like so I need an interface that will create this and act as a configuration store. I.e. I create a persona of Angry Customer that has lost his credit card and needs an urgent replacement. When I choose and select that persona the solution will use this to generate typical customer interactions in that persona - I&amp;#x27;ve lost my card and Im really unhappy, send me a replacement card now..\nThe customer will be intelligent enough to interact with any IVRs when prompted.\n\nPart 2:\nThe laptop will also be the &amp;#x27;agent&amp;#x27; should the contact fall out of the IVR and be handled by an agent. The laptop will therefore need an Amazon connect CCP connect via the SDK - allowing the agent to respond back to the customer via text",
+  "description": "Multi-agent system with 3 specialized agents for I want to create a solution whereby I can simulate Amazon Connect interactions from my laptop.\nThere are two parts to this solution \nPart 1:\nThe laptop will setup a session with connect as a 'customer', via WebRTC and the Start Chat API, it will then take the persona of a customer and interact. this persona could be anything that I like so I need an interface that will create this and act as a configuration store. I.e. I create a persona of Angry Customer that has lost his credit card and needs an urgent replacement. When I choose and select that persona the solution will use this to generate typical customer interactions in that persona - I've lost my card and Im really unhappy, send me a replacement card now..\nThe customer will be intelligent enough to interact with any IVRs when prompted.\n\nPart 2:\nThe laptop will also be the 'agent' should the contact fall out of the IVR and be handled by an agent. The laptop will therefore need an Amazon connect CCP connect via the SDK - allowing the agent to respond back to the customer via text",
   "feasibility": "Fully Automatable",
   "pattern_type": [
     "multi_agent_system",
@@ -126,5 +126,5 @@
   "llm_recommended_approach": "Implement hierarchical architecture with specialized agent roles, use robust communication protocols, maintain comprehensive monitoring and error handling.",
   "enhanced_by_llm": true,
   "enhanced_from_session": "71949938-6925-4e58-b090-512764400d12",
-  "color": "🟢"
+  "color": "\ud83d\udfe2"
 }

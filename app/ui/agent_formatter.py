@@ -1,12 +1,12 @@
 """Agent data formatter for UI display of agentic agent roles and coordination."""
 
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional, Tuple, Union
+from typing import List, Dict, Any, Optional
 from enum import Enum
 import hashlib
 
 from app.services.multi_agent_designer import MultiAgentSystemDesign, AgentRole
-from app.utils.imports import require_service, optional_service
+from app.utils.imports import require_service
 
 
 class AutonomyLevel(Enum):
@@ -106,7 +106,12 @@ class AgentDataFormatter:
         # Performance optimization: check cache first
         cache_key = self._generate_cache_key(agent_design, tech_stack, session_data)
         if cache_key in self._format_cache:
-            app_logger.debug("Using cached agent system format")
+            # Use logger from service registry
+            try:
+                logger = require_service('logger', context='AgentSystemDisplay')
+                logger.debug("Using cached agent system format")
+            except Exception:
+                pass
             return self._format_cache[cache_key]
         
         # Get logger service
@@ -174,7 +179,6 @@ class AgentDataFormatter:
                            tech_stack: List[str], session_data: Dict[str, Any]) -> str:
         """Generate cache key for performance optimization."""
         
-        import hashlib
         
         # Create a hash of the input parameters
         key_data = {

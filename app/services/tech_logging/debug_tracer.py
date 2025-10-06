@@ -5,7 +5,7 @@ Provides detailed debug tracing capabilities with step-by-step execution logs,
 variable state tracking, and interactive debugging support.
 """
 
-from typing import Dict, Any, List, Optional, Union, Callable
+from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime
 import time

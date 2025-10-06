@@ -1,9 +1,7 @@
 """Unit tests for Streamlit Jira UI components."""
 
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
-import streamlit as st
-from streamlit.testing.v1 import AppTest
+from unittest.mock import patch
 
 # Mock the streamlit app components for testing
 class MockStreamlitApp:

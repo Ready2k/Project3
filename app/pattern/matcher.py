@@ -242,7 +242,7 @@ class PatternMatcher:
         vector_results = await self.faiss_index.search(query_text, top_k=len(patterns))
         
         # Map vector results to pattern IDs (assuming FAISS index built from pattern descriptions)
-        pattern_descriptions = [p["description"] for p in patterns]
+        [p["description"] for p in patterns]
         vector_candidates = []
         
         for result in vector_results:

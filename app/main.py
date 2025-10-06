@@ -15,7 +15,6 @@ from app.ui.agent_formatter import AgentDataFormatter, AgentSystemDisplay, Agent
 from app.ui.analysis_display import AgentRolesUIComponent, AgentDisplayErrorHandler
 from app.services.tech_stack_enhancer import TechStackEnhancer
 from app.exporters.agent_exporter import AgentSystemExporter
-from app.services.agent_display_config import get_agent_display_config
 
 # Configure page
 st.set_page_config(
@@ -45,7 +44,7 @@ def call_api(endpoint: str, method: str = "GET", data: Dict[str, Any] = None) ->
         try:
             error_detail = response.json().get("detail", str(e))
             st.error(f"API Error: {error_detail}")
-        except:
+        except Exception:
             st.error(f"API Error: {e}")
         return {}
     except requests.exceptions.RequestException as e:
@@ -76,7 +75,7 @@ def _export_agent_results(session_id: str, export_format: str, rec: Dict[str, An
     
     try:
         # Initialize components
-        agent_formatter = AgentDataFormatter()
+        AgentDataFormatter()
         agent_exporter = AgentSystemExporter()
         tech_enhancer = TechStackEnhancer()
         
@@ -85,6 +84,24 @@ def _export_agent_results(session_id: str, export_format: str, rec: Dict[str, An
         
         # Create mock agent system for export
         from app.ui.agent_formatter import AgentSystemDisplay, AgentRoleDisplay
+        from app.services.multi_agent_designer import MultiAgentSystemDesign, AgentRole, AgentArchitectureType
+        
+        # Create mock agent design for tech stack enhancement
+        mock_agent_design = MultiAgentSystemDesign(
+            architecture_type=AgentArchitectureType.SINGLE_AGENT,
+            agent_roles=[
+                AgentRole(
+                    name="Processing Agent",
+                    responsibility="Handle processing tasks",
+                    autonomy_level=0.85,
+                    capabilities=["processing", "decision-making"],
+                    decision_authority={"scope": "processing"},
+                    communication_requirements=["status_updates"]
+                )
+            ],
+            coordination_patterns=[],
+            deployment_requirements={"architecture": "single_agent"}
+        )
         
         demo_agent_system = AgentSystemDisplay(
             has_agents=True,
@@ -204,7 +221,7 @@ def _render_agentic_solution_display(rec: Dict[str, Any], session_id: str):
         is_agentic = False
         
         # Check feasibility and reasoning for agentic indicators
-        feasibility = rec.get("feasibility", "")
+        rec.get("feasibility", "")
         reasoning = rec.get("reasoning", "").lower()
         
         # Look for agentic keywords in reasoning or recommendations
@@ -228,13 +245,12 @@ def _render_agentic_solution_display(rec: Dict[str, Any], session_id: str):
         if is_agentic:
             app_logger.info("🚀 Rendering agentic solution display")
             # Initialize components
-            agent_formatter = AgentDataFormatter()
+            AgentDataFormatter()
             agent_ui = AgentRolesUIComponent()
-            tech_enhancer = TechStackEnhancer()
+            TechStackEnhancer()
             
             # Format agent system data
             tech_stack = rec.get("tech_stack", [])
-            session_data = {"session_id": session_id}
             
             # Import classes are already available from the top-level imports
             

@@ -7,19 +7,17 @@ statistics, and trends over time.
 """
 
 import argparse
-import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime, timedelta
+from typing import Dict, List
+from datetime import datetime
 from collections import defaultdict, Counter
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from app.services.catalog.intelligent_manager import IntelligentCatalogManager
-from app.services.catalog.models import TechEntry, EcosystemType, MaturityLevel, ReviewStatus
-from app.utils.imports import require_service
+from app.services.catalog.models import TechEntry
 
 
 class CatalogDashboard:
@@ -39,7 +37,7 @@ class CatalogDashboard:
             print("=" * 80)
             
             # Basic statistics
-            print(f"\n📊 OVERVIEW")
+            print("\n📊 OVERVIEW")
             print(f"Total Technologies: {stats.total_entries}")
             print(f"Pending Review: {stats.pending_review}")
             print(f"Auto-Generated: {stats.auto_generated}")
@@ -52,7 +50,7 @@ class CatalogDashboard:
             
             # Distribution by ecosystem
             if stats.by_ecosystem:
-                print(f"\n🌐 BY ECOSYSTEM")
+                print("\n🌐 BY ECOSYSTEM")
                 for ecosystem, count in sorted(stats.by_ecosystem.items(), key=lambda x: x[1], reverse=True):
                     percentage = (count / stats.total_entries) * 100
                     bar = self._create_bar(percentage, 30)
@@ -60,7 +58,7 @@ class CatalogDashboard:
             
             # Distribution by category
             if stats.by_category:
-                print(f"\n📂 BY CATEGORY")
+                print("\n📂 BY CATEGORY")
                 for category, count in sorted(stats.by_category.items(), key=lambda x: x[1], reverse=True):
                     percentage = (count / stats.total_entries) * 100
                     bar = self._create_bar(percentage, 30)
@@ -68,7 +66,7 @@ class CatalogDashboard:
             
             # Distribution by maturity
             if stats.by_maturity:
-                print(f"\n🔄 BY MATURITY")
+                print("\n🔄 BY MATURITY")
                 for maturity, count in sorted(stats.by_maturity.items(), key=lambda x: x[1], reverse=True):
                     percentage = (count / stats.total_entries) * 100
                     bar = self._create_bar(percentage, 30)
@@ -108,7 +106,7 @@ class CatalogDashboard:
             freshness_score = self._calculate_freshness_score(technologies)
             quality_score = self._calculate_quality_score(technologies)
             
-            print(f"\n📋 HEALTH COMPONENTS:")
+            print("\n📋 HEALTH COMPONENTS:")
             print(f"Completeness: {completeness_score:.1f}/100 {self._get_score_indicator(completeness_score)}")
             print(f"Consistency:  {consistency_score:.1f}/100 {self._get_score_indicator(consistency_score)}")
             print(f"Freshness:    {freshness_score:.1f}/100 {self._get_score_indicator(freshness_score)}")
@@ -141,7 +139,7 @@ class CatalogDashboard:
             # Validation summary
             validation_result = self.manager.validate_catalog_consistency()
             
-            print(f"\n🔍 VALIDATION SUMMARY:")
+            print("\n🔍 VALIDATION SUMMARY:")
             print(f"Errors:      {len(validation_result.errors)}")
             print(f"Warnings:    {len(validation_result.warnings)}")
             print(f"Suggestions: {len(validation_result.suggestions)}")
@@ -194,7 +192,7 @@ class CatalogDashboard:
             has_use_cases = len([t for t in technologies if t.use_cases])
             has_tags = len([t for t in technologies if t.tags])
             
-            print(f"\n📝 COMPLETENESS METRICS:")
+            print("\n📝 COMPLETENESS METRICS:")
             print(f"Complete descriptions: {complete_descriptions}/{total_techs} ({(complete_descriptions/total_techs)*100:.1f}%)")
             print(f"Has integrations:      {has_integrations}/{total_techs} ({(has_integrations/total_techs)*100:.1f}%)")
             print(f"Has alternatives:      {has_alternatives}/{total_techs} ({(has_alternatives/total_techs)*100:.1f}%)")
@@ -212,7 +210,7 @@ class CatalogDashboard:
                 if result.warnings:
                     validation_warnings += 1
             
-            print(f"\n✅ VALIDATION METRICS:")
+            print("\n✅ VALIDATION METRICS:")
             print(f"Validation errors:     {validation_errors}/{total_techs} ({(validation_errors/total_techs)*100:.1f}%)")
             print(f"Validation warnings:   {validation_warnings}/{total_techs} ({(validation_warnings/total_techs)*100:.1f}%)")
             
@@ -221,7 +219,7 @@ class CatalogDashboard:
             auto_generated = len([t for t in technologies if t.auto_generated])
             low_confidence = len([t for t in technologies if t.confidence_score < 0.7])
             
-            print(f"\n👥 REVIEW METRICS:")
+            print("\n👥 REVIEW METRICS:")
             print(f"Pending review:        {pending_review}/{total_techs} ({(pending_review/total_techs)*100:.1f}%)")
             print(f"Auto-generated:        {auto_generated}/{total_techs} ({(auto_generated/total_techs)*100:.1f}%)")
             print(f"Low confidence (<0.7): {low_confidence}/{total_techs} ({(low_confidence/total_techs)*100:.1f}%)")
@@ -251,7 +249,7 @@ class CatalogDashboard:
                     quality_issues.append((tech.name, issues))
             
             if quality_issues:
-                print(f"\n🔍 TOP QUALITY ISSUES:")
+                print("\n🔍 TOP QUALITY ISSUES:")
                 for tech_name, issues in sorted(quality_issues, key=lambda x: len(x[1]), reverse=True)[:10]:
                     print(f"{tech_name}: {', '.join(issues)}")
             
@@ -467,7 +465,7 @@ class CatalogDashboard:
             if t.last_updated and (now - t.last_updated).days <= 30
         ]
         
-        print(f"\n📅 RECENT ACTIVITY (Last 30 days)")
+        print("\n📅 RECENT ACTIVITY (Last 30 days)")
         print(f"New additions: {len(recent_additions)}")
         print(f"Updates: {len(recent_updates)}")
         
@@ -493,7 +491,7 @@ class CatalogDashboard:
             if self.manager.validate_catalog_entry(t).is_valid
         ])
         
-        print(f"\n⭐ QUALITY METRICS")
+        print("\n⭐ QUALITY METRICS")
         print(f"Complete entries: {complete_entries}/{total} ({(complete_entries/total)*100:.1f}%)")
         print(f"High confidence: {high_confidence}/{total} ({(high_confidence/total)*100:.1f}%)")
         print(f"Validated: {validated_entries}/{total} ({(validated_entries/total)*100:.1f}%)")
@@ -513,7 +511,7 @@ class CatalogDashboard:
             recommendations.append(f"Improve descriptions for {missing_descriptions} technologies")
         
         if recommendations:
-            print(f"\n💡 RECOMMENDATIONS")
+            print("\n💡 RECOMMENDATIONS")
             for i, rec in enumerate(recommendations[:5], 1):
                 print(f"{i}. {rec}")
     
@@ -527,7 +525,7 @@ class CatalogDashboard:
                 month_key = tech.added_date.strftime("%Y-%m")
                 monthly_additions[month_key] += 1
         
-        print(f"\n📈 GROWTH TRENDS")
+        print("\n📈 GROWTH TRENDS")
         
         if monthly_additions:
             recent_months = sorted(monthly_additions.keys())[-6:]  # Last 6 months
@@ -547,7 +545,7 @@ class CatalogDashboard:
         selected_techs = [(t.name, t.selection_count) for t in technologies if t.selection_count > 0]
         selected_techs.sort(key=lambda x: x[1], reverse=True)
         
-        print(f"\n📊 USAGE PATTERNS")
+        print("\n📊 USAGE PATTERNS")
         
         if mentioned_techs:
             print("Most mentioned:")
@@ -563,7 +561,7 @@ class CatalogDashboard:
         """Show review queue trends."""
         pending_by_status = Counter(t.review_status.value for t in technologies if t.pending_review)
         
-        print(f"\n👥 REVIEW QUEUE")
+        print("\n👥 REVIEW QUEUE")
         
         for status, count in pending_by_status.most_common():
             print(f"{status}: {count}")
@@ -580,7 +578,7 @@ class CatalogDashboard:
         
         popularity_scores.sort(key=lambda x: x[1], reverse=True)
         
-        print(f"\n🌟 POPULARITY RANKINGS")
+        print("\n🌟 POPULARITY RANKINGS")
         
         for i, (name, score) in enumerate(popularity_scores[:10], 1):
             print(f"{i:>2}. {name:<25} (score: {score})")
@@ -610,16 +608,16 @@ Examples:
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
     
     # Overview command
-    overview_parser = subparsers.add_parser('overview', help='Show catalog overview dashboard')
+    subparsers.add_parser('overview', help='Show catalog overview dashboard')
     
     # Health command
-    health_parser = subparsers.add_parser('health', help='Show detailed health report')
+    subparsers.add_parser('health', help='Show detailed health report')
     
     # Trends command
-    trends_parser = subparsers.add_parser('trends', help='Show trends and analytics')
+    subparsers.add_parser('trends', help='Show trends and analytics')
     
     # Quality command
-    quality_parser = subparsers.add_parser('quality', help='Show detailed quality report')
+    subparsers.add_parser('quality', help='Show detailed quality report')
     
     return parser
 

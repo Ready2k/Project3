@@ -4,7 +4,6 @@ This module provides a centralized dependency injection system for managing
 service dependencies, configuration, and component lifecycle.
 """
 
-import asyncio
 import inspect
 from typing import Dict, Any, Type, TypeVar, Callable, Optional, Union, get_type_hints
 from dataclasses import dataclass
@@ -315,9 +314,6 @@ def configure_services() -> ServiceContainer:
     container.register_singleton(ConfigurationService, ConfigurationService)
     
     # Register LLM providers
-    from app.llm.openai_provider import OpenAIProvider
-    from app.llm.claude_provider import ClaudeProvider
-    from app.llm.bedrock_provider import BedrockProvider
     from app.llm.fakes import FakeLLM
     
     # Register as factories since they need configuration
@@ -327,11 +323,6 @@ def configure_services() -> ServiceContainer:
     container.register_factory(FakeLLM, create_fake_llm, ServiceScope.SINGLETON)
     
     # Register services
-    from app.services.agentic_recommendation_service import AgenticRecommendationService
-    from app.services.autonomy_assessor import AutonomyAssessor
-    from app.services.multi_agent_designer import MultiAgentSystemDesigner
-    from app.services.tech_stack_generator import TechStackGenerator
-    from app.services.architecture_explainer import ArchitectureExplainer
     
     # These will be registered as transient since they need LLM providers
     # In a real implementation, you'd create factories that inject the right LLM provider

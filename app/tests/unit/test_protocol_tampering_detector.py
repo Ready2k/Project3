@@ -9,12 +9,11 @@ Tests all protocol and schema tampering attack patterns:
 """
 
 import pytest
-import json
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from app.security.protocol_tampering_detector import ProtocolTamperingDetector
 from app.security.attack_patterns import (
-    ProcessedInput, SecurityAction, AttackSeverity
+    ProcessedInput, SecurityAction
 )
 from app.security.defense_config import DetectorConfig
 

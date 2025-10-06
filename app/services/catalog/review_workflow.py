@@ -1,6 +1,6 @@
 """Pending review queue and approval workflow for technology catalog."""
 
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum

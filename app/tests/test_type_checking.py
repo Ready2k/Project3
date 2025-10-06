@@ -148,7 +148,7 @@ def test_type_stubs_available():
     for stub in required_stubs:
         cmd = [sys.executable, "-c", f"import {stub.replace('types-', '').replace('-', '_')}"]
         try:
-            result = subprocess.run(cmd, capture_output=True, timeout=10)
+            subprocess.run(cmd, capture_output=True, timeout=10)
             # Note: Some type stubs don't have importable modules, so we just check they're installed
         except subprocess.TimeoutExpired:
             pytest.fail(f"Import check for {stub} timed out")

@@ -16,11 +16,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from functools import wraps
 import weakref
 import gc
-import os
 
 # psutil is handled through service registry - no fallback imports needed
 
-from app.security.attack_patterns import ProcessedInput, DetectionResult, AttackPattern
+from app.security.attack_patterns import ProcessedInput, DetectionResult
 from app.utils.logger import app_logger
 
 
@@ -647,7 +646,7 @@ def performance_monitor(func: Callable) -> Callable:
             
             return result
             
-        except Exception as e:
+        except Exception:
             latency_ms = (time.time() - start_time) * 1000
             optimizer.metrics.update_latency(latency_ms)
             raise
@@ -663,7 +662,7 @@ def performance_monitor(func: Callable) -> Callable:
             optimizer.metrics.update_latency(latency_ms)
             return result
             
-        except Exception as e:
+        except Exception:
             latency_ms = (time.time() - start_time) * 1000
             optimizer.metrics.update_latency(latency_ms)
             raise

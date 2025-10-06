@@ -8,8 +8,6 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-from app.services.catalog.intelligent_manager import IntelligentCatalogManager
-from app.services.catalog.models import TechEntry, EcosystemType, MaturityLevel
 
 
 class TestCLIIntegration:

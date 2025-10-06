@@ -8,7 +8,7 @@ structured data, context tracking, and configurable output formats.
 import logging
 import json
 import time
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass, asdict

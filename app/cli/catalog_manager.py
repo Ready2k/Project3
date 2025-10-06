@@ -7,18 +7,15 @@ including adding, updating, validating technologies, and managing the review que
 """
 
 import argparse
-import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from app.services.catalog.intelligent_manager import IntelligentCatalogManager
-from app.services.catalog.models import TechEntry, EcosystemType, MaturityLevel, ReviewStatus
-from app.utils.imports import require_service
+from app.services.catalog.models import TechEntry, EcosystemType, MaturityLevel
 
 
 class CatalogManagerCLI:
@@ -293,7 +290,7 @@ class CatalogManagerCLI:
             if tech.use_cases:
                 print(f"Use Cases: {', '.join(tech.use_cases)}")
             
-            print(f"\nMetadata:")
+            print("\nMetadata:")
             print(f"  Auto-generated: {tech.auto_generated}")
             print(f"  Pending Review: {tech.pending_review}")
             print(f"  Review Status: {tech.review_status.value}")
@@ -307,7 +304,7 @@ class CatalogManagerCLI:
                 print(f"  Last Updated: {tech.last_updated.strftime('%Y-%m-%d %H:%M:%S')}")
             
             if tech.validation_errors:
-                print(f"\nValidation Errors:")
+                print("\nValidation Errors:")
                 for error in tech.validation_errors:
                     print(f"  - {error}")
             
@@ -466,7 +463,7 @@ Examples:
     validate_parser.add_argument('--detailed', action='store_true', help='Perform detailed validation of individual entries')
     
     # Statistics command
-    stats_parser = subparsers.add_parser('stats', help='Show catalog statistics')
+    subparsers.add_parser('stats', help='Show catalog statistics')
     
     # Search command
     search_parser = subparsers.add_parser('search', help='Search for technologies')

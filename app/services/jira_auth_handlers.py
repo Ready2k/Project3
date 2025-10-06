@@ -1,11 +1,9 @@
 """Concrete authentication handlers for Jira integration."""
 
 import base64
-from typing import Dict, Optional, Any
 
 from app.services.jira_auth import AuthenticationHandler, AuthResult
 from app.config import JiraAuthType, JiraConfig
-from app.utils.imports import require_service
 
 
 class APITokenHandler(AuthenticationHandler):

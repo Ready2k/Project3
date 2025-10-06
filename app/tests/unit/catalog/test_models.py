@@ -1,8 +1,5 @@
 """Tests for catalog models."""
 
-import pytest
-from datetime import datetime
-from unittest.mock import patch
 
 from app.services.catalog.models import (
     TechEntry, EcosystemType, MaturityLevel, ReviewStatus,

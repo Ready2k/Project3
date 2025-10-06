@@ -8,8 +8,7 @@ and configuration management.
 import pytest
 import asyncio
 from datetime import datetime, timedelta
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from typing import Dict, List, Any
+from unittest.mock import Mock, AsyncMock, patch
 
 from app.monitoring.integrated_dashboard import (
     IntegratedMonitoringDashboard,
@@ -18,7 +17,6 @@ from app.monitoring.integrated_dashboard import (
     DashboardSection,
     AlertSeverity
 )
-from app.monitoring.alert_system import AlertSystem, AlertRule, Alert, AlertStatus
 
 
 class TestIntegratedMonitoringDashboard:
@@ -177,7 +175,7 @@ class TestIntegratedMonitoringDashboard:
     @pytest.mark.asyncio
     async def test_create_alert(self, dashboard):
         """Test alert creation."""
-        alert = await dashboard._create_alert(
+        await dashboard._create_alert(
             'critical',
             'performance',
             'Test alert message',
@@ -316,7 +314,7 @@ class TestIntegratedMonitoringDashboard:
         
         with patch.object(dashboard, '_check_alert_conditions', new_callable=AsyncMock) as mock_check:
             # Run task for a short time
-            task = asyncio.create_task(dashboard._real_time_update_task())
+            asyncio.create_task(dashboard._real_time_update_task())
             await asyncio.sleep(0.1)  # Let it run briefly
             dashboard.dashboard_config.real_time_update_enabled = False
             await asyncio.sleep(0.1)  # Let it exit
@@ -362,7 +360,7 @@ class TestIntegratedMonitoringDashboard:
         dashboard.alert_history.append(old_alert)
         
         # Run retention task
-        with patch.object(dashboard, '_archive_old_data', new_callable=AsyncMock) as mock_archive:
+        with patch.object(dashboard, '_archive_old_data', new_callable=AsyncMock):
             task = asyncio.create_task(dashboard._data_retention_task())
             await asyncio.sleep(0.1)
             task.cancel()
@@ -392,7 +390,7 @@ class TestIntegratedMonitoringDashboard:
     
     def test_test_alert_system(self, dashboard):
         """Test alert system testing functionality."""
-        with patch.object(dashboard, '_create_alert', new_callable=AsyncMock) as mock_create:
+        with patch.object(dashboard, '_create_alert', new_callable=AsyncMock):
             dashboard._test_alert_system()
             
             # Verify test alert creation was attempted
@@ -409,7 +407,7 @@ class TestIntegratedMonitoringDashboard:
         }
         
         with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', create=True) as mock_open:
+            with patch('builtins.open', create=True):
                 with patch('json.load', return_value=config_data):
                     await dashboard._load_dashboard_configuration()
                     

@@ -4,7 +4,6 @@ import base64
 import html
 import json
 from typing import Dict, Any, Optional, Tuple
-from urllib.parse import urljoin
 
 import httpx
 from pydantic import BaseModel
@@ -17,7 +16,7 @@ from app.services.api_version_manager import APIVersionManager
 from app.services.ssl_handler import SSLHandler, SSLValidationResult
 from app.services.proxy_handler import ProxyHandler, ProxyValidationResult
 from app.services.retry_handler import RetryHandler, RetryConfig, RetryStrategy
-from app.services.jira_error_handler import JiraErrorHandler, JiraErrorDetail, create_jira_error_handler
+from app.services.jira_error_handler import JiraErrorDetail, create_jira_error_handler
 from app.utils.imports import require_service
 from app.utils.error_boundaries import error_boundary
 
@@ -877,7 +876,7 @@ class JiraService:
                     elif response.status_code == 404:
                         # Try fallback API version if we're using v3
                         if self.api_version == "3":
-                            self.logger.info(f"Ticket not found with API v3, trying v2 fallback")
+                            self.logger.info("Ticket not found with API v3, trying v2 fallback")
                             fallback_url = self.api_version_manager.build_endpoint(
                                 self.base_url, f"issue/{ticket_key}", "2"
                             )
@@ -1620,7 +1619,7 @@ class JiraService:
                 decoded_body = self._decode_html_entities(comment['body'])
                 comments_text.append(f"- {comment['author']}: {decoded_body[:200]}{'...' if len(decoded_body) > 200 else ''}")
             if comments_text:
-                description_parts.append(f"**Recent Comments:**\n" + "\n".join(comments_text))
+                description_parts.append("**Recent Comments:**\n" + "\n".join(comments_text))
         
         # Add custom fields that might contain requirements
         if ticket.custom_fields:
@@ -1631,7 +1630,7 @@ class JiraService:
                     decoded_value = self._decode_html_entities(field_value)
                     relevant_custom_fields.append(f"- {field_name}: {decoded_value[:150]}{'...' if len(decoded_value) > 150 else ''}")
             if relevant_custom_fields:
-                description_parts.append(f"**Additional Requirements (Custom Fields):**\n" + "\n".join(relevant_custom_fields))
+                description_parts.append("**Additional Requirements (Custom Fields):**\n" + "\n".join(relevant_custom_fields))
         
         # Create comprehensive requirements object
         requirements = {

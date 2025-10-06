@@ -1,16 +1,12 @@
 """End-to-end tests for Streamlit UI to API integration."""
 
-import asyncio
-import json
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from pathlib import Path
 
-import httpx
 
 # Import the Streamlit app
 import sys
-from pathlib import Path
 
 # Add the project root to the path
 project_root = Path(__file__).parent.parent.parent.parent
@@ -20,7 +16,7 @@ try:
     from streamlit_app import AutomatedAIAssessmentUI
     import streamlit as st
     STREAMLIT_AVAILABLE = True
-except ImportError as e:
+except ImportError:
     # Handle case where streamlit_app.py doesn't exist yet or streamlit is not installed
     STREAMLIT_AVAILABLE = False
     
@@ -466,7 +462,7 @@ class TestUIComponentIntegration:
     def test_provider_config_updates(self):
         """Test that provider configuration updates work correctly."""
         
-        ui_app = AutomatedAIAssessmentUI()
+        AutomatedAIAssessmentUI()
         
         # Mock session state
         class MockSessionState:
@@ -494,7 +490,7 @@ class TestUIComponentIntegration:
     def test_qa_questions_structure(self):
         """Test Q&A questions structure."""
         
-        ui_app = AutomatedAIAssessmentUI()
+        AutomatedAIAssessmentUI()
         
         # Test default Q&A questions
         expected_questions = [
@@ -671,7 +667,7 @@ class TestObservabilityDashboardE2E:
                 
                 with patch('streamlit.header'), \
                      patch('streamlit.tabs') as mock_tabs, \
-                     patch('streamlit.error') as mock_error:
+                     patch('streamlit.error'):
                     
                     # Mock tabs
                     mock_tab1, mock_tab2, mock_tab3 = MagicMock(), MagicMock(), MagicMock()

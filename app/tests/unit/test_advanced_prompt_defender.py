@@ -3,11 +3,10 @@ Unit tests for AdvancedPromptDefender core functionality.
 """
 
 import pytest
-import asyncio
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from app.security.advanced_prompt_defender import AdvancedPromptDefender, SecurityEventLogger
-from app.security.attack_patterns import SecurityAction, SecurityDecision, AttackSeverity
+from app.security.attack_patterns import SecurityAction, SecurityDecision
 from app.security.defense_config import AdvancedPromptDefenseConfig
 
 
@@ -171,7 +170,7 @@ class TestSecurityEventLoggerUnit:
     
     def test_log_security_decision_no_error(self, logger):
         """Test that logging security decisions doesn't raise errors."""
-        from app.security.attack_patterns import AttackPattern, DetectionResult, SecurityAction, AttackSeverity
+        from app.security.attack_patterns import SecurityAction
         
         # Create minimal test decision
         decision = SecurityDecision(

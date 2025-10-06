@@ -4,13 +4,11 @@ import json
 import re
 from typing import Dict, Optional, Any, Union
 from urllib.parse import urlparse, urljoin
-from enum import Enum
 
 import httpx
 from pydantic import BaseModel
 
 from app.config import JiraDeploymentType
-from app.utils.imports import require_service
 
 
 class DeploymentInfo(BaseModel):

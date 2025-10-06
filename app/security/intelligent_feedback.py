@@ -7,7 +7,6 @@ without exposing potentially malicious content to LLMs.
 
 import re
 from typing import Dict, List, Tuple
-from app.utils.logger import app_logger
 
 
 class SecurityFeedbackGenerator:
@@ -87,7 +86,7 @@ class SecurityFeedbackGenerator:
         # Generate specific suggestions
         for safe_term, info in term_suggestions.items():
             feedback_parts.extend([
-                f"",
+                "",
                 f"• **{', '.join(info['found_terms'])}**",
                 f"  - {info['explanation']}",
                 f"  - **Suggested alternatives**: {', '.join(info['alternatives'][:3])}"

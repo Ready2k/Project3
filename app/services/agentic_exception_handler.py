@@ -1,14 +1,12 @@
 """Agentic exception handling system that resolves issues through reasoning."""
 
 import json
-import asyncio
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime
 
 from app.llm.base import LLMProvider
-from app.utils.imports import require_service
 
 
 class ExceptionType(Enum):
@@ -111,7 +109,6 @@ class AgenticExceptionHandler:
         
         # Try multiple resolution approaches
         attempted_approaches = []
-        successful_approach = None
         
         for approach in resolution_strategy.approaches:
             try:
@@ -124,7 +121,6 @@ class AgenticExceptionHandler:
                 attempted_approaches.append(approach)
                 
                 if result.success:
-                    successful_approach = approach
                     resolution_time = (datetime.now() - start_time).total_seconds()
                     
                     # Learn from successful resolution

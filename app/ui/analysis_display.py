@@ -1,13 +1,10 @@
 """Analysis display components for showing agent roles and coordination in the UI."""
 
 import streamlit as st
-from typing import Dict, Any, List, Optional, Tuple
-import json
-import time
-import urllib.parse
+from typing import Dict, Any, List
 
 from app.ui.agent_formatter import AgentSystemDisplay, AgentRoleDisplay, AgentCoordinationDisplay
-from app.utils.imports import require_service, optional_service
+from app.utils.imports import require_service
 
 # Import streamlit_mermaid directly
 try:
@@ -620,7 +617,12 @@ graph LR
             try:
                 stmd.st_mermaid(flow_diagram, height=200)
             except Exception as e:
-                app_logger.error(f"Error rendering coordination flow: {e}")
+                # Use logger from service registry
+                try:
+                    logger = require_service('logger', context='AnalysisDisplay')
+                    logger.error(f"Error rendering coordination flow: {e}")
+                except Exception:
+                    pass
                 with st.expander("View Coordination Flow (Mermaid)"):
                     st.code(flow_diagram, language="mermaid")
         else:

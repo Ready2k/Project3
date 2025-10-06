@@ -8,8 +8,7 @@ providing session-based monitoring with correlation IDs and real-time data colle
 import asyncio
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Union
-import logging
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
 
@@ -94,7 +93,7 @@ class TechStackMonitoringIntegrationService(ConfigurableService):
         # Initialize logger
         try:
             self.logger = require_service('logger', context='TechStackMonitoringIntegration')
-        except:
+        except Exception:
             import logging
             self.logger = logging.getLogger('TechStackMonitoringIntegration')
         
@@ -748,7 +747,7 @@ class TechStackMonitoringIntegrationService(ConfigurableService):
             explicit_techs = []
             if session.requirements:
                 # Extract explicit technologies from requirements
-                req_text = str(session.requirements)
+                str(session.requirements)
                 # This would need to be enhanced with actual extraction logic
                 explicit_techs = generation_metrics.get('explicit_technologies', [])
             

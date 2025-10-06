@@ -6,13 +6,11 @@ Provides real-time monitoring, alerting, and quality assurance for tech stack ge
 
 import asyncio
 import json
-import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
 import logging
-from pathlib import Path
 
 from app.core.service import ConfigurableService
 from app.utils.imports import require_service
@@ -99,7 +97,7 @@ class TechStackMonitor(ConfigurableService):
         super().__init__(config or {}, 'TechStackMonitor')
         try:
             self.logger = require_service('logger', context='TechStackMonitor')
-        except:
+        except Exception:
             # Fallback logger for testing/standalone use
             import logging
             self.logger = logging.getLogger('TechStackMonitor')
@@ -169,7 +167,7 @@ class TechStackMonitor(ConfigurableService):
         response_time_metrics = [m for m in recent_metrics if m.name == "processing_time"]
         if len(response_time_metrics) >= 10:
             recent_times = [m.value for m in response_time_metrics[-20:]]
-            avg_time = sum(recent_times) / len(recent_times)
+            sum(recent_times) / len(recent_times)
             p95_time = sorted(recent_times)[int(len(recent_times) * 0.95)]
             
             # Set threshold to 95th percentile + 50% buffer, but not below base minimum
@@ -220,7 +218,7 @@ class TechStackMonitor(ConfigurableService):
                 self._create_alert(
                     AlertLevel.INFO,
                     "threshold_update",
-                    f"Alert thresholds updated based on system performance",
+                    "Alert thresholds updated based on system performance",
                     {
                         "changes": threshold_changes,
                         "reason": "dynamic_baseline_adjustment"
@@ -600,11 +598,10 @@ class TechStackMonitor(ConfigurableService):
             try:
                 # Connect to monitoring integration service for real data
                 try:
-                    from app.services.monitoring_integration_service import TechStackMonitoringIntegrationService
                     integration_service = require_service('tech_stack_monitoring_integration', context='TechStackMonitor')
                     
                     # Get real-time data from integration service
-                    service_metrics = integration_service.get_service_metrics()
+                    integration_service.get_service_metrics()
                     active_sessions = integration_service.get_active_sessions()
                     
                     # Process real session data
@@ -652,7 +649,7 @@ class TechStackMonitor(ConfigurableService):
         """Process real session events to extract monitoring metrics."""
         try:
             parsing_events = [e for e in session_events if e.get('event_type') == 'parsing_complete']
-            extraction_events = [e for e in session_events if e.get('event_type') == 'extraction_complete']
+            [e for e in session_events if e.get('event_type') == 'extraction_complete']
             llm_events = [e for e in session_events if e.get('event_type') == 'llm_call_complete']
             validation_events = [e for e in session_events if e.get('event_type') == 'validation_complete']
             

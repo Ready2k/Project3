@@ -1,14 +1,12 @@
 """End-to-end integration tests for agent display system."""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-import streamlit as st
-from typing import Dict, Any, List
+from unittest.mock import Mock, patch
 
 from app.ui.agent_formatter import AgentDataFormatter, AgentSystemDisplay
 from app.ui.analysis_display import AgentRolesUIComponent
 from app.services.tech_stack_enhancer import TechStackEnhancer
-from app.services.multi_agent_designer import MultiAgentSystemDesigner, MultiAgentSystemDesign, AgentRole, AgentArchitectureType
+from app.services.multi_agent_designer import MultiAgentSystemDesigner, MultiAgentSystemDesign, AgentArchitectureType
 from app.services.autonomy_assessor import AutonomyAssessor
 from app.exporters.agent_exporter import AgentSystemExporter
 from app.services.agent_display_config import AgentDisplayConfigManager
@@ -110,7 +108,7 @@ class TestAgentDisplayIntegration:
         )
         
         assert isinstance(agent_system_display, AgentSystemDisplay)
-        assert agent_system_display.has_agents == True
+        assert agent_system_display.has_agents
         assert len(agent_system_display.agent_roles) >= 1
         
         # Step 4: Validate tech stack
@@ -118,7 +116,7 @@ class TestAgentDisplayIntegration:
             tech_stack, agent_design
         )
         
-        assert tech_validation.is_deployment_ready == True
+        assert tech_validation.is_deployment_ready
         assert tech_validation.readiness_score > 0.7
         
         # Step 5: Test export functionality
@@ -134,8 +132,8 @@ class TestAgentDisplayIntegration:
             show_performance_metrics=True
         )
         
-        assert config_updated == True
-        assert self.config_manager.should_show_component("performance_metrics") == True
+        assert config_updated
+        assert self.config_manager.should_show_component("performance_metrics")
     
     @patch('streamlit.header')
     @patch('streamlit.subheader')
@@ -187,7 +185,7 @@ class TestAgentDisplayIntegration:
             rendering_success = False
             pytest.fail(f"UI rendering failed: {e}")
         
-        assert rendering_success == True
+        assert rendering_success
         
         # Verify Streamlit components were called
         mock_header.assert_called()
@@ -199,7 +197,7 @@ class TestAgentDisplayIntegration:
         
         # Test agent formatter error handling
         result = self.agent_formatter.format_agent_system(None, [], {})
-        assert result.has_agents == False
+        assert not result.has_agents
         
         # Test tech enhancer with invalid data
         try:
@@ -269,7 +267,7 @@ class TestAgentDisplayIntegration:
         
         # Should complete within reasonable time (< 1 second)
         assert formatting_time < 1.0
-        assert result.has_agents == True
+        assert result.has_agents
         assert len(result.agent_roles) == 10
     
     def test_configuration_persistence(self):
@@ -283,14 +281,14 @@ class TestAgentDisplayIntegration:
             show_performance_metrics=False
         )
         
-        assert success == True
+        assert success
         
         # Create new config manager instance (simulating new session)
         new_config_manager = AgentDisplayConfigManager(self.config_manager.config_file)
         
         # Verify persistence
         assert new_config_manager.config.preferences.display_density.value == "compact"
-        assert new_config_manager.config.preferences.show_performance_metrics == False
+        assert not new_config_manager.config.preferences.show_performance_metrics
         
         # Reset to original
         self.config_manager.update_preferences(display_density=original_density.value)
@@ -305,7 +303,7 @@ class TestAgentDisplayIntegration:
         except Exception:
             accessibility_success = False
         
-        assert accessibility_success == True
+        assert accessibility_success
         
         # Test screen reader summary generation
         test_agent_system = AgentSystemDisplay(
@@ -325,7 +323,7 @@ class TestAgentDisplayIntegration:
         except Exception:
             summary_success = False
         
-        assert summary_success == True
+        assert summary_success
     
     def test_export_format_consistency(self):
         """Test consistency across different export formats."""

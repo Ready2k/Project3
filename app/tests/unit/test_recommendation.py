@@ -1,7 +1,6 @@
 """Unit tests for recommendation service."""
 
 import pytest
-from unittest.mock import Mock
 
 from app.services.recommendation import RecommendationService
 from app.pattern.matcher import MatchResult

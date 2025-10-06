@@ -1,6 +1,5 @@
 """Integration tests for Jira service with mocked responses."""
 
-import json
 from unittest.mock import AsyncMock, patch, MagicMock
 
 import httpx
@@ -12,7 +11,6 @@ from app.config import JiraConfig
 from app.services.jira import (
     JiraService, 
     JiraTicket, 
-    JiraError, 
     JiraConnectionError, 
     JiraTicketNotFoundError
 )

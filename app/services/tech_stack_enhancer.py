@@ -1,11 +1,10 @@
 """Tech stack enhancer for validating and enhancing technology recommendations for agent deployment."""
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
 
 from app.services.multi_agent_designer import MultiAgentSystemDesign, AgentArchitectureType
-from app.utils.imports import require_service
 
 
 class ComponentPriority(Enum):

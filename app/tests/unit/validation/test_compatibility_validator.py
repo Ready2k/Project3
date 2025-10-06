@@ -1,9 +1,7 @@
 """Unit tests for TechnologyCompatibilityValidator."""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime
-from pathlib import Path
+from unittest.mock import Mock, patch
 
 from app.services.validation.compatibility_validator import TechnologyCompatibilityValidator
 from app.services.validation.models import (

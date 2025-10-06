@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 from app.services.validation.compatibility_validator import TechnologyCompatibilityValidator
 from app.services.validation.models import ConflictSeverity, ConflictType
 from app.services.catalog.intelligent_manager import IntelligentCatalogManager
-from app.services.catalog.models import TechEntry, EcosystemType, MaturityLevel
+from app.services.catalog.models import EcosystemType
 
 
 class TestValidationIntegration:
@@ -295,7 +295,7 @@ class TestValidationIntegration:
         assert report.context_priority == context_priority
         
         # Check explanations exist for all technologies
-        all_technologies = set(report.validated_tech_stack + report.compatibility_result.removed_technologies)
+        set(report.validated_tech_stack + report.compatibility_result.removed_technologies)
         
         for tech in report.validated_tech_stack:
             assert tech in report.inclusion_explanations

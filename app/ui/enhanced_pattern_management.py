@@ -2,15 +2,13 @@
 
 import streamlit as st
 import json
-from typing import Any, Dict, List, Optional, Coroutine
+from typing import Any, Dict, Coroutine
 import asyncio
-import threading
-import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from app.pattern.enhanced_loader import EnhancedPatternLoader
 from app.services.pattern_enhancement_service import PatternEnhancementService
-from app.utils.imports import require_service, optional_service
+from app.utils.imports import require_service
 
 
 def run_async_in_thread(coro: Coroutine[Any, Any, Any]) -> Any:
@@ -399,7 +397,7 @@ def render_pattern_analytics(pattern_loader: EnhancedPatternLoader) -> None:
     st.subheader("Pattern Analytics")
     
     patterns = pattern_loader.load_patterns()
-    stats = pattern_loader.get_pattern_statistics()
+    pattern_loader.get_pattern_statistics()
     
     # Complexity distribution
     st.subheader("Complexity Score Distribution")
@@ -542,7 +540,7 @@ def render_bulk_operations(pattern_loader: EnhancedPatternLoader,
                     enhancement_service.batch_enhance_patterns(pattern_ids, enhancement_type)
                 )
                 
-                st.success(f"Bulk enhancement completed!")
+                st.success("Bulk enhancement completed!")
                 st.write(f"✅ Successful: {len(results['successful'])}")
                 st.write(f"❌ Failed: {len(results['failed'])}")
                 

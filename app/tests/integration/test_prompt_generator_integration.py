@@ -2,7 +2,6 @@
 
 import pytest
 import json
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 from app.services.context_aware_prompt_generator import ContextAwareLLMPromptGenerator
@@ -159,7 +158,7 @@ class TestPromptGeneratorIntegration:
             'sla': {'availability': '99.5%'}
         }
         
-        constraints = RequirementConstraints(
+        RequirementConstraints(
             banned_tools={'Django', 'MySQL'},
             required_integrations=['database'],
             compliance_requirements=[],
@@ -218,7 +217,7 @@ class TestPromptGeneratorIntegration:
             'sla': {'availability': '99.9%', 'response_time': '200ms'}
         }
         
-        constraints = RequirementConstraints(
+        RequirementConstraints(
             banned_tools=set(),
             required_integrations=['database', 'authentication'],
             compliance_requirements=['GDPR'],
@@ -267,7 +266,7 @@ class TestPromptGeneratorIntegration:
             'sla': {'availability': '99.9%'}
         }
         
-        constraints = RequirementConstraints(
+        RequirementConstraints(
             banned_tools=set(),
             required_integrations=['serverless'],
             compliance_requirements=[],
@@ -379,7 +378,7 @@ class TestPromptGeneratorIntegration:
             'domain': 'web_api'
         }
         
-        constraints = RequirementConstraints(
+        RequirementConstraints(
             banned_tools=set(),
             required_integrations=[],
             compliance_requirements=[],

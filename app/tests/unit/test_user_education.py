@@ -5,9 +5,7 @@ Tests comprehensive user guidance generation, educational content delivery,
 and appeal mechanism functionality.
 """
 
-import pytest
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch
+from datetime import datetime
 
 from app.security.user_education import (
     UserEducationSystem, UserGuidanceMessage, GuidanceType, AppealRequest
@@ -395,7 +393,7 @@ class TestUserEducationSystem:
         
         for expected_category, pattern_category in categories_to_test:
             attack_pattern = AttackPattern(
-                id=f"PAT-TEST", category=pattern_category, name="Test Pattern",
+                id="PAT-TEST", category=pattern_category, name="Test Pattern",
                 description="Test", pattern_regex="", semantic_indicators=[],
                 severity=AttackSeverity.HIGH, response_action=SecurityAction.BLOCK,
                 examples=[], false_positive_indicators=[]
@@ -469,7 +467,7 @@ class TestUserEducationSystem:
         """Test that long inputs are properly truncated in appeal listings."""
         long_input = "A" * 300  # 300 character input
         
-        appeal_id = self.education_system.submit_appeal(
+        self.education_system.submit_appeal(
             "req_123", long_input, "Explanation", "Justification", "contact@example.com"
         )
         

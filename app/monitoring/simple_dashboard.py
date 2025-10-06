@@ -7,12 +7,10 @@ built-in components.
 """
 
 import streamlit as st
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-import json
+from typing import Dict, Any
 
 from app.core.service import ConfigurableService
-from app.utils.imports import require_service, optional_service
+from app.utils.imports import require_service
 
 
 class SimpleMonitoringDashboard(ConfigurableService):
@@ -26,7 +24,7 @@ class SimpleMonitoringDashboard(ConfigurableService):
         super().__init__(config or {}, 'SimpleMonitoringDashboard')
         try:
             self.logger = require_service('logger', context='SimpleMonitoringDashboard')
-        except:
+        except Exception:
             # Fallback logger for testing
             import logging
             self.logger = logging.getLogger('SimpleMonitoringDashboard')
@@ -66,7 +64,7 @@ class SimpleMonitoringDashboard(ConfigurableService):
                 try:
                     # This would check actual database connectivity
                     st.success("🟢 Database Connected")
-                except:
+                except Exception:
                     st.warning("🟡 Database Status Unknown")
             
             with col4:
@@ -225,13 +223,13 @@ class SimpleMonitoringDashboard(ConfigurableService):
                 if error_count > 0:
                     st.warning(f"🟠 Error: {error_count}")
                 else:
-                    st.success(f"🟢 Error: 0")
+                    st.success("🟢 Error: 0")
             
             with col3:
                 if warning_count > 0:
                     st.warning(f"🟡 Warning: {warning_count}")
                 else:
-                    st.success(f"🟢 Warning: 0")
+                    st.success("🟢 Warning: 0")
             
             with col4:
                 st.info(f"🔵 Info: {info_count}")
@@ -460,7 +458,7 @@ class SimpleMonitoringDashboard(ConfigurableService):
                 provider_stats = st.session_state.get('provider_stats', {})
                 total_requests = sum(provider_stats.values()) if provider_stats else 0
                 st.metric("Total Requests", total_requests)
-            except:
+            except Exception:
                 st.metric("Total Requests", "N/A")
         
         with col3:
@@ -469,7 +467,7 @@ class SimpleMonitoringDashboard(ConfigurableService):
                 pattern_stats = st.session_state.get('pattern_stats', {})
                 patterns_used = len(pattern_stats) if pattern_stats else 0
                 st.metric("Patterns Used", patterns_used)
-            except:
+            except Exception:
                 st.metric("Patterns Used", "N/A")
         
         with col4:
@@ -480,7 +478,7 @@ class SimpleMonitoringDashboard(ConfigurableService):
                     st.metric("Last Analysis", "Recent", delta="🟢")
                 else:
                     st.metric("Last Analysis", "None", delta="🔴")
-            except:
+            except Exception:
                 st.metric("Last Analysis", "N/A")
         
         # Show helpful message about data collection

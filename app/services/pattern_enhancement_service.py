@@ -3,6 +3,7 @@
 import json
 from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
+from datetime import datetime
 
 from app.utils.imports import require_service
 from app.pattern.enhanced_loader import EnhancedPatternLoader
@@ -190,7 +191,7 @@ class PatternEnhancementService:
             # Clean and extract JSON from response
             enhancement_data = self._extract_json_from_response(response)
             if not enhancement_data:
-                self.logger.warning(f"No valid JSON found in LLM response for technical enhancement")
+                self.logger.warning("No valid JSON found in LLM response for technical enhancement")
                 return self._apply_basic_technical_enhancement(pattern)
             
             # Merge enhancement data with existing pattern
@@ -267,7 +268,7 @@ class PatternEnhancementService:
             # Clean and extract JSON from response
             enhancement_data = self._extract_json_from_response(response)
             if not enhancement_data:
-                self.logger.warning(f"No valid JSON found in LLM response for agentic enhancement")
+                self.logger.warning("No valid JSON found in LLM response for agentic enhancement")
                 return self._apply_basic_agentic_enhancement(pattern)
             
             # Merge agentic capabilities
@@ -591,7 +592,6 @@ class PatternEnhancementService:
             
             # Get recommendations based on domain and context
             if hasattr(tech_context, 'domain_context'):
-                domain_context = tech_context.domain_context
                 
                 # Suggest domain-specific technologies
                 if domain in ["legal", "compliance"]:

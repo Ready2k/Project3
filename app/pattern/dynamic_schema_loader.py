@@ -8,7 +8,6 @@ allowing users to configure and extend validation values through configuration f
 import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from loguru import logger
 
 from app.utils.logger import app_logger
 

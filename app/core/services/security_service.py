@@ -5,7 +5,7 @@ Provides a centralized security service that wraps existing security components
 and implements the Service interface for registry integration.
 """
 
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple
 
 from app.core.service import ConfigurableService
 from app.security.validation import SecurityValidator

@@ -12,33 +12,22 @@ Requirements covered: 1.1, 1.5, 5.1
 
 import pytest
 import time
-import sys
-import importlib
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, Any, List, Optional
-from pathlib import Path
+from unittest.mock import Mock, patch
 
 from app.utils.imports import (
-    ImportManager,
-    ServiceRequiredError,
     ImportError as CustomImportError,
     get_import_manager,
     reset_import_manager,
-    safe_import,
     require_service,
     optional_service,
-    is_available,
-    try_import_service,
     import_optional_dependency,
     require_dependency,
     create_fallback_service
 )
 from app.core.registry import (
     get_registry,
-    reset_registry,
-    ServiceNotFoundError
+    reset_registry
 )
-from app.core.service_registration import register_core_services
 
 
 class MockRealModule:
@@ -496,7 +485,7 @@ class TestFallbackBehavior:
     
     def test_optional_feature_detection_and_adaptation(self, clean_environment):
         """Test optional feature detection and service adaptation."""
-        import_manager = get_import_manager()
+        get_import_manager()
         
         # Mock only some features as available
         def mock_import_module(name):
@@ -542,7 +531,7 @@ class TestErrorPropagation:
     
     def test_required_service_failure_propagation(self, clean_environment):
         """Test that required service failures propagate correctly."""
-        import_manager = get_import_manager()
+        get_import_manager()
         registry = get_registry()
         
         # Scenario: Service chain where a required dependency is missing
@@ -568,7 +557,7 @@ class TestErrorPropagation:
     
     def test_import_failure_error_chain(self, clean_environment):
         """Test error chain when required imports fail."""
-        import_manager = get_import_manager()
+        get_import_manager()
         
         # Test require_dependency with missing module
         with pytest.raises(CustomImportError) as exc_info:
@@ -623,7 +612,7 @@ class TestErrorPropagation:
     
     def test_circular_dependency_error_propagation(self, clean_environment):
         """Test error propagation for circular dependencies."""
-        import_manager = get_import_manager()
+        get_import_manager()
         registry = get_registry()
         
         # Create circular dependency scenario
@@ -720,7 +709,7 @@ class TestImportPerformance:
     
     def test_service_resolution_performance(self, clean_environment):
         """Test performance of service resolution."""
-        import_manager = get_import_manager()
+        get_import_manager()
         registry = get_registry()
         
         # Register multiple services
@@ -823,7 +812,7 @@ class TestImportPerformance:
             imported_objects = [result for status, result in results]
             first_object = imported_objects[0]
             assert all(obj is not None for obj in imported_objects)
-            assert all(type(obj) == type(first_object) for obj in imported_objects)
+            assert all(isinstance(obj, type(first_object)) for obj in imported_objects)
 
 
 class TestRealisticIntegrationScenarios:

@@ -2,7 +2,6 @@
 
 import pytest
 import json
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 from app.services.ecosystem.intelligence import (
@@ -12,7 +11,7 @@ from app.services.ecosystem.intelligence import (
     EcosystemConsistencyResult
 )
 from app.services.catalog.intelligent_manager import IntelligentCatalogManager
-from app.services.catalog.models import TechEntry, EcosystemType
+from app.services.catalog.models import EcosystemType
 
 
 class TestEcosystemIntelligenceIntegration:
@@ -163,7 +162,7 @@ class TestEcosystemIntelligenceIntegration:
         assert len(suggestions) > 0
         
         # Should include database and caching suggestions
-        suggestion_techs = [s.suggested_tech for s in suggestions]
+        [s.suggested_tech for s in suggestions]
         integration_patterns = [s.integration_pattern for s in suggestions]
         
         # Check for expected patterns

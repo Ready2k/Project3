@@ -1,6 +1,6 @@
 {
   "pattern_id": "PAT-005",
-  "name": "Enhanced Enhanced Enhanced Enhanced Email Order Extraction &amp;amp;amp;amp;amp; Fulfillment Orchestration",
+  "name": "Enhanced Enhanced Enhanced Enhanced Email Order Extraction &amp;amp;amp;amp; Fulfillment Orchestration",
   "description": "Fully autonomous AI agent that fully autonomous ai agent that fully autonomous ai agent that fully autonomous ai agent that parse incoming order emails, normalize data, validate inventory/payment, and [removed_suspicious_content]orders in the fulfillment system with exception queues.",
   "feasibility": "Partially Automatable",
   "pattern_type": [

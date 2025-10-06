@@ -20,7 +20,8 @@ Interactive GUI + API system that evaluates user stories/requirements for **auto
 - **Exception Handling Through Reasoning**: AI agents resolve problems autonomously
 
 ### 🔍 **Intelligent Analysis**
-- **Multi-Provider LLM Support**: OpenAI, Anthropic, Bedrock, Claude, Internal HTTP
+- **Multi-Provider LLM Support**: OpenAI (GPT-4, GPT-5, o1), Anthropic, Bedrock, Claude, Internal HTTP
+- **GPT-5 Full Support**: Automatic parameter conversion, enhanced error handling, intelligent retry logic
 - **Smart Pattern Matching**: Tag filtering + FAISS vector similarity search
 - **AI-Generated Q&A**: Contextual clarifying questions based on requirements
 - **Comprehensive Feasibility Assessment**: Detailed insights with confidence scoring
@@ -80,7 +81,7 @@ ticket classification and automated response generation.
 
 ### Prerequisites
 - Python 3.10+
-- LLM provider API key (OpenAI, Anthropic, or AWS Bedrock)
+- LLM provider API key (OpenAI with GPT-5 support, Anthropic, or AWS Bedrock)
 
 ### Installation & Setup
 

@@ -2,10 +2,10 @@
 
 import pytest
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from app.services.catalog.review_workflow import (
-    ReviewWorkflow, ReviewQueueItem, ReviewPriority, ReviewAction
+    ReviewWorkflow, ReviewQueueItem, ReviewPriority
 )
 from app.services.catalog.models import TechEntry, ReviewStatus, ValidationResult
 from app.services.catalog.intelligent_manager import IntelligentCatalogManager

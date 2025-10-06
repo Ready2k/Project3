@@ -5,10 +5,9 @@ import hashlib
 from typing import Dict, Optional, Tuple, Any
 from dataclasses import dataclass, field
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
 
 import redis
-from fastapi import Request, HTTPException
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 

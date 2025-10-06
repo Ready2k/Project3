@@ -5067,12 +5067,28 @@ verify_ssl = True
                 
                 # Record catalog health metrics
                 import asyncio
-                asyncio.create_task(monitoring_service.update_catalog_health_metrics(
-                    total_technologies=len(tech_stack),
-                    missing_technologies=0,  # Assume no missing for successful generation
-                    inconsistent_entries=0,
-                    pending_review=0
-                ))
+                # Update monitoring metrics (handle async properly)
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        # If loop is running, schedule the task
+                        asyncio.create_task(monitoring_service.update_catalog_health_metrics(
+                            total_technologies=len(tech_stack),
+                            missing_technologies=0,
+                            inconsistent_entries=0,
+                            pending_review=0
+                        ))
+                    else:
+                        # If no loop, run synchronously
+                        loop.run_until_complete(monitoring_service.update_catalog_health_metrics(
+                            total_technologies=len(tech_stack),
+                            missing_technologies=0,
+                            inconsistent_entries=0,
+                            pending_review=0
+                        ))
+                except Exception as monitoring_error:
+                    # Silently ignore monitoring errors
+                    pass
                 
                 # Update session state
                 import time

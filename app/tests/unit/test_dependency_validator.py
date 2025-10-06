@@ -9,9 +9,7 @@ Tests cover:
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-import importlib
-from typing import List, Dict, Any
+from unittest.mock import Mock, patch
 
 from app.core.dependencies import (
     DependencyValidator,

@@ -1,7 +1,7 @@
 {
   "pattern_id": "APAT-015",
   "name": "Multi-Agent Coordinator_Based System",
-  "description": "Multi-agent system with 5 specialized agents for I need a solution that can dispute transactions via Amazon Connect, it must talk to the customer in a natural conversational mode and sound and act just like a human. \nThe solution has to work with regional accents and also accept DTMF digits for input.\nIt will will with both Voice and Chat modes and offer support around finical disputes, like &amp;amp;amp;#x27;Company X has taken money when I said no, why&amp;amp;amp;#x27; - the solution will capture the customers dispute along with normal dispute type questions (who/what/when/why) and offer a playbook next step.\nIt needs to be cloud based and using Lambda and GoLang as the code, it can use Bedrock Agents and all Bedrock features.\nDescribe the solution in great detail along with some python code that I can run",
+  "description": "Multi-agent system for automated financial services dispute handling. Enables customers to raise and track disputes through self-service voice and chat interfaces. Integrates with Amazon Connect for customer interaction and Amazon Bedrock for intelligent processing. Handles complex dispute scenarios with automated classification, assessment, and status tracking. Supports natural language processing, regional accents, and DTMF input for comprehensive customer service automation.",
   "feasibility": "Fully Automatable",
   "pattern_type": [
     "multi_agent_system",
@@ -126,5 +126,5 @@
   "llm_recommended_approach": "Implement coordinator_based architecture with specialized agent roles, use robust communication protocols, maintain comprehensive monitoring and error handling.",
   "enhanced_by_llm": true,
   "enhanced_from_session": "fd4cf15f-8699-4513-af0c-30de41bda17f",
-  "color": "🟢"
+  "color": "\ud83d\udfe2"
 }

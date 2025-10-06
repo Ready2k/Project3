@@ -1,14 +1,12 @@
 """Mermaid diagram generation and utilities for Streamlit UI."""
 
-import asyncio
 import re
 import time
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, Tuple
 
 import streamlit as st
-from streamlit.components.v1 import html
 
-from app.utils.imports import require_service, optional_service
+from app.utils.imports import require_service
 from app.utils.error_boundaries import error_boundary
 
 # Import streamlit_mermaid directly

@@ -1,8 +1,7 @@
 """Unit tests for InputPreprocessor class."""
 
-import pytest
 import base64
-from app.security.input_preprocessor import InputPreprocessor, ProcessedInput
+from app.security.input_preprocessor import InputPreprocessor
 
 
 class TestInputPreprocessor:

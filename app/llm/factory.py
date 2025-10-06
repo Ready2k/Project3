@@ -8,7 +8,7 @@ This module provides a factory for creating LLM provider instances with:
 - Service registry integration
 """
 
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional
 import os
 import logging
 from enum import Enum
@@ -382,10 +382,16 @@ class LLMProviderFactory(ConfigurableService):
         # Create provider instance
         try:
             if provider_name == "openai":
-                return provider_class(
-                    api_key=provider_config.get("api_key", os.getenv("OPENAI_API_KEY")),
-                    model=provider_config.get("model", "gpt-4o")
-                )
+                api_key = provider_config.get("api_key", os.getenv("OPENAI_API_KEY"))
+                model = provider_config.get("model", "gpt-4o")
+                
+                # Use enhanced provider for GPT-5 and o1 models
+                if model.startswith("gpt-5") or model.startswith("o1"):
+                    from app.llm.gpt5_enhanced_provider import GPT5EnhancedProvider
+                    self._logger.info(f"Using GPT-5 enhanced provider for model: {model}")
+                    return GPT5EnhancedProvider(api_key=api_key, model=model)
+                else:
+                    return provider_class(api_key=api_key, model=model)
             elif provider_name in ["anthropic", "claude"]:
                 return provider_class(
                     api_key=provider_config.get("api_key", os.getenv("ANTHROPIC_API_KEY")),

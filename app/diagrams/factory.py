@@ -8,14 +8,12 @@ This module provides a factory for creating diagram service instances with:
 - Service registry integration
 """
 
-from typing import Any, Dict, List, Optional, Type, Union, Protocol
-import os
+from typing import Any, Dict, List, Optional, Protocol
 import logging
 from enum import Enum
 from dataclasses import dataclass
 
 from app.utils.imports import optional_service
-from abc import ABC, abstractmethod
 
 from app.core.service import ConfigurableService
 from app.core.types import Result, Success, Error

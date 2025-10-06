@@ -1,7 +1,5 @@
 """Pattern creation service for generating new patterns when no existing patterns match."""
 
-import json
-import uuid
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
@@ -165,7 +163,7 @@ class PatternCreator:
                 tech_stack = pattern_analysis.get("tech_stack") or await self._generate_intelligent_tech_stack(requirements, pattern_analysis)
                 if not isinstance(tech_stack, list):
                     tech_stack = []
-                    self.logger.warning(f"Invalid tech stack format, using empty list")
+                    self.logger.warning("Invalid tech stack format, using empty list")
             except Exception as e:
                 self.logger.error(f"Tech stack generation failed: {e}")
                 tech_stack = self._generate_fallback_tech_stack(requirements, pattern_analysis)
@@ -780,7 +778,7 @@ IMPORTANT:
     
     def _generate_pattern_description(self, requirements: Dict[str, Any], analysis: Dict[str, Any]) -> str:
         """Generate a comprehensive pattern description."""
-        base_description = requirements.get("description", "")
+        requirements.get("description", "")
         automation_type = analysis.get("automation_type", "general_automation")
         data_flow = analysis.get("data_flow", "on_demand")
         integrations = analysis.get("integration_points", [])

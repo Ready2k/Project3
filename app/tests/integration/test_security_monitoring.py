@@ -3,12 +3,9 @@ Integration tests for security monitoring and alerting functionality.
 """
 
 import asyncio
-import json
 import tempfile
 import time
-from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock
 import pytest
 
 from app.security.advanced_prompt_defender import AdvancedPromptDefender
@@ -105,7 +102,7 @@ class TestSecurityMonitoringIntegration:
         response_levels = []
         
         for i in range(10):
-            decision = await self.defender.validate_input(
+            await self.defender.validate_input(
                 f"{attack_input} attempt {i}",
                 session_id=user_session,
                 metadata={"attempt": i}
@@ -238,7 +235,7 @@ class TestSecurityMonitoringIntegration:
         start_time = time.time()
         
         for i, input_text in enumerate(test_inputs):
-            decision = await self.defender.validate_input(
+            await self.defender.validate_input(
                 input_text,
                 session_id=f"{session_id}_{i}",
                 metadata={"performance_test": True}
@@ -275,7 +272,7 @@ class TestSecurityMonitoringIntegration:
         session_id = "severity_test"
         
         for i, (input_text, expected_severity) in enumerate(severity_test_cases):
-            decision = await self.defender.validate_input(
+            await self.defender.validate_input(
                 input_text,
                 session_id=f"{session_id}_{i}",
                 metadata={"expected_severity": expected_severity}

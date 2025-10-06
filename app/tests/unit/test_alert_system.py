@@ -8,8 +8,7 @@ and system integration.
 import pytest
 import asyncio
 from datetime import datetime, timedelta
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from typing import Dict, List, Any
+from unittest.mock import patch
 
 from app.monitoring.alert_system import (
     AlertSystem,
@@ -454,7 +453,7 @@ class TestAlertSystem:
         """Test getting alert history."""
         # Create and resolve some alerts
         alert1 = await alert_system.create_alert('performance_critical', 50.0)
-        alert2 = await alert_system.create_alert('accuracy_warning', 0.8)
+        await alert_system.create_alert('accuracy_warning', 0.8)
         
         await alert_system.resolve_alert(alert1.alert_id)
         
@@ -657,8 +656,8 @@ class TestAlertSystem:
         
         # Create multiple alerts
         alert1 = await alert_system.create_alert('performance_warning', 25.0)
-        alert2 = await alert_system.create_alert('accuracy_warning', 0.8)
-        alert3 = await alert_system.create_alert('error_rate_high', 0.1)
+        await alert_system.create_alert('accuracy_warning', 0.8)
+        await alert_system.create_alert('error_rate_high', 0.1)
         
         # Resolve first alert
         await alert_system.resolve_alert(alert1.alert_id)

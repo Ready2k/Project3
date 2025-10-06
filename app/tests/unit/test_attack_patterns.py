@@ -1,7 +1,6 @@
 """
 Unit tests for attack pattern database and defense configuration.
 """
-import pytest
 from pathlib import Path
 
 from app.security.attack_patterns import (

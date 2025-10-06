@@ -4,11 +4,7 @@ Supports exporting Mermaid diagrams and Infrastructure specifications to Draw.io
 """
 
 import json
-import xml.etree.ElementTree as ET
-from typing import Dict, Any, List, Optional
-from pathlib import Path
-import base64
-import zlib
+from typing import Dict, Any, List
 from urllib.parse import quote
 import uuid
 from datetime import datetime

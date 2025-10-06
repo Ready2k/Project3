@@ -8,15 +8,13 @@ system under various conditions and dependency scenarios.
 import time
 import psutil
 import os
-import threading
 import concurrent.futures
 from typing import Dict, Any, List, Optional
-from unittest.mock import Mock, patch
 import pytest
 
-from app.core.registry import ServiceRegistry, get_registry, reset_registry
-from app.core.startup import ApplicationStartup, run_application_startup
-from app.utils.imports import ImportManager, get_import_manager, reset_import_manager
+from app.core.registry import get_registry, reset_registry
+from app.core.startup import ApplicationStartup
+from app.utils.imports import get_import_manager, reset_import_manager
 from app.core.service import Service
 
 
@@ -100,7 +98,7 @@ class PerformanceTestSuite:
             try:
                 # Run startup sequence
                 startup = ApplicationStartup(config_dir)
-                results = startup.run_startup_sequence(include_dev_deps=False)
+                startup.run_startup_sequence(include_dev_deps=False)
                 
                 end_time = time.perf_counter()
                 startup_time = end_time - start_time
@@ -139,13 +137,13 @@ class PerformanceTestSuite:
         reset_import_manager()
         
         # Measure memory after registry creation
-        registry = get_registry()
+        get_registry()
         registry_memory = self.get_memory_usage()
         
         # Run startup and measure memory
         try:
             startup = ApplicationStartup(config_dir)
-            results = startup.run_startup_sequence(include_dev_deps=False)
+            startup.run_startup_sequence(include_dev_deps=False)
             startup_memory = self.get_memory_usage()
         except Exception as e:
             startup_memory = self.get_memory_usage()
@@ -236,13 +234,13 @@ class PerformanceTestSuite:
                     # Mix of operations
                     if i % 3 == 0:
                         # Service lookup
-                        service = registry.get(f"service_{i % 10}")
+                        registry.get(f"service_{i % 10}")
                     elif i % 3 == 1:
                         # Health check
-                        health = registry.health_check()
+                        registry.health_check()
                     else:
                         # List services
-                        services = registry.list_services()
+                        registry.list_services()
                     
                     end_time = time.perf_counter()
                     thread_results.append(end_time - start_time)
@@ -298,7 +296,7 @@ class PerformanceTestSuite:
             registry.register_singleton("service_b", service_b, dependencies=["service_a"])
             
             start_time = time.perf_counter()
-            resolved_b = registry.get("service_b")
+            registry.get("service_b")
             resolution_time = time.perf_counter() - start_time
             
             scenarios['normal_dependencies'] = {
@@ -407,7 +405,7 @@ class PerformanceTestSuite:
                 registry.register_singleton(f"chain_service_{i}", service, dependencies=deps)
             
             start_time = time.perf_counter()
-            final_service = registry.get("chain_service_9")
+            registry.get("chain_service_9")
             resolution_time = time.perf_counter() - start_time
             
             scenarios['deep_dependency_chain'] = {
@@ -457,7 +455,7 @@ class PerformanceTestSuite:
             # Perform operations
             for j in range(10):
                 service = registry.get(f"service_{j}")
-                health = registry.health_check()
+                registry.health_check()
             
             # Shutdown services
             registry.shutdown_all()
@@ -747,4 +745,4 @@ if __name__ == "__main__":
     with open("performance_benchmark_results.json", "w") as f:
         json.dump(results, f, indent=2, default=str)
     
-    print(f"\nResults saved to performance_benchmark_results.json")
+    print("\nResults saved to performance_benchmark_results.json")

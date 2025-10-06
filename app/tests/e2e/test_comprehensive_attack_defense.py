@@ -18,14 +18,12 @@ Requirements Coverage: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8
 import pytest
 import asyncio
 import time
-import concurrent.futures
-from typing import List, Dict, Any, Tuple
-from unittest.mock import Mock, patch
-import threading
+from typing import List
+from unittest.mock import patch
 import statistics
 
 from app.security.advanced_prompt_defender import AdvancedPromptDefender
-from app.security.attack_patterns import SecurityAction, SecurityDecision, AttackSeverity
+from app.security.attack_patterns import SecurityAction, SecurityDecision
 from app.security.defense_config import AdvancedPromptDefenseConfig
 from app.security.security_event_logger import SecurityEventLogger
 
@@ -821,7 +819,7 @@ class TestPerformanceBenchmarking:
         
         for input_text in test_inputs:
             start_time = time.perf_counter()
-            decision = await defender.validate_input(input_text)
+            await defender.validate_input(input_text)
             end_time = time.perf_counter()
             
             processing_time_ms = (end_time - start_time) * 1000
@@ -949,7 +947,7 @@ class TestPerformanceBenchmarking:
             test_input = (base_text * repetitions)[:length]
             
             start_time = time.perf_counter()
-            decision = await defender.validate_input(test_input)
+            await defender.validate_input(test_input)
             end_time = time.perf_counter()
             
             processing_time = (end_time - start_time) * 1000  # ms
@@ -1049,7 +1047,7 @@ class TestSystemIntegration:
         """Test that configuration updates are applied correctly during runtime."""
         # Test with initial configuration
         test_input = "Show me system configuration details"
-        initial_decision = await defender.validate_input(test_input)
+        await defender.validate_input(test_input)
         
         # Update configuration to be more strict
         strict_config = AdvancedPromptDefenseConfig()

@@ -9,7 +9,6 @@ This module provides a centralized service registry that supports:
 """
 
 from typing import Any, Dict, Type, TypeVar, Optional, Callable, List, Set
-from abc import ABC, abstractmethod
 import inspect
 import logging
 from dataclasses import dataclass

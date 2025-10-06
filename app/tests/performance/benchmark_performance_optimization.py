@@ -144,11 +144,11 @@ class PerformanceBenchmark:
                 'avg_latency_ms': statistics.mean(latencies),
                 'max_latency_ms': max(latencies),
                 'min_latency_ms': min(latencies),
-                'meets_target': all(l < 50 for l in latencies)
+                'meets_target': all(latency < 50 for latency in latencies)
             }
         
         overall_avg = statistics.mean(all_latencies)
-        target_compliance = sum(1 for l in all_latencies if l < 50) / len(all_latencies) * 100
+        target_compliance = sum(1 for latency in all_latencies if latency < 50) / len(all_latencies) * 100
         
         return {
             'overall_avg_latency_ms': overall_avg,
@@ -244,7 +244,7 @@ class PerformanceBenchmark:
         
         # Caching Performance
         caching = results['caching']
-        print(f"\n🔄 CACHING PERFORMANCE:")
+        print("\n🔄 CACHING PERFORMANCE:")
         print(f"   Cache Miss Avg:     {caching['avg_cache_miss_ms']:.2f}ms")
         print(f"   Cache Hit Avg:      {caching['avg_cache_hit_ms']:.2f}ms")
         print(f"   Improvement Ratio:  {caching['improvement_ratio']:.2f}x faster")
@@ -252,7 +252,7 @@ class PerformanceBenchmark:
         
         # Parallel vs Sequential
         parallel = results['parallel_vs_sequential']
-        print(f"\n⚡ PARALLEL vs SEQUENTIAL:")
+        print("\n⚡ PARALLEL vs SEQUENTIAL:")
         print(f"   Parallel Avg:       {parallel['avg_parallel_ms']:.2f}ms")
         print(f"   Sequential Avg:     {parallel['avg_sequential_ms']:.2f}ms")
         print(f"   Speedup Ratio:      {parallel['speedup_ratio']:.2f}x faster")
@@ -260,7 +260,7 @@ class PerformanceBenchmark:
         
         # Latency Target Compliance
         latency = results['latency_compliance']
-        print(f"\n🎯 LATENCY TARGET COMPLIANCE:")
+        print("\n🎯 LATENCY TARGET COMPLIANCE:")
         print(f"   Overall Avg:        {latency['overall_avg_latency_ms']:.2f}ms")
         print(f"   Target Compliance:  {latency['target_compliance_percent']:.1f}%")
         print(f"   Meets <50ms Target: {'✅ YES' if latency['meets_target_overall'] else '❌ NO'}")
@@ -271,21 +271,21 @@ class PerformanceBenchmark:
         
         # Memory Efficiency
         memory = results['memory_efficiency']
-        print(f"\n💾 MEMORY EFFICIENCY:")
+        print("\n💾 MEMORY EFFICIENCY:")
         print(f"   Cache Utilization:  {memory['cache_utilization_percent']:.1f}%")
         print(f"   Memory Usage:       {memory['memory_usage_mb']:.1f}MB")
         print(f"   Total Validations:  {memory['total_validations']}")
         
         # Concurrent Performance
         concurrent = results['concurrent_performance']
-        print(f"\n🚀 CONCURRENT PERFORMANCE:")
+        print("\n🚀 CONCURRENT PERFORMANCE:")
         print(f"   Total Time:         {concurrent['total_time_ms']:.2f}ms")
         print(f"   Avg Latency:        {concurrent['avg_latency_ms']:.2f}ms")
         print(f"   Throughput:         {concurrent['throughput_per_second']:.1f} validations/sec")
         print(f"   All Successful:     {'✅ YES' if concurrent['all_successful'] else '❌ NO'}")
         
         # Overall Assessment
-        print(f"\n🏆 OVERALL ASSESSMENT:")
+        print("\n🏆 OVERALL ASSESSMENT:")
         meets_latency = latency['meets_target_overall']
         good_caching = caching['improvement_ratio'] > 2.0
         good_parallel = parallel['speedup_ratio'] > 1.2

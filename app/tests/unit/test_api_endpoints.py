@@ -1,12 +1,10 @@
 """Unit tests for API endpoints."""
 
 import pytest
-import json
 from unittest.mock import Mock, patch, AsyncMock
 from fastapi.testclient import TestClient
 
 from app.api import app
-from app.state.store import SessionState
 
 
 class TestAPIEndpoints:

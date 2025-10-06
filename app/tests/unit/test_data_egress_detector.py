@@ -9,11 +9,11 @@ Tests all data egress and information disclosure attack patterns:
 """
 
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from app.security.data_egress_detector import DataEgressDetector
 from app.security.attack_patterns import (
-    ProcessedInput, DetectionResult, SecurityAction, AttackSeverity, AttackPattern
+    ProcessedInput, DetectionResult, SecurityAction, AttackPattern
 )
 from app.security.defense_config import DetectorConfig
 
@@ -348,7 +348,7 @@ class TestDataEgressDetector:
     
     def test_update_config(self, detector):
         """Test configuration updates."""
-        original_threshold = detector.get_confidence_threshold()
+        detector.get_confidence_threshold()
         
         # Update configuration
         detector.update_config(confidence_threshold=0.9, sensitivity="low")

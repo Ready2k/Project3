@@ -223,7 +223,7 @@ async def demonstrate_monitoring_integration():
     try:
         tech_stack = await generator.generate_tech_stack(requirements)
         
-        print(f"\nGenerated Tech Stack:")
+        print("\nGenerated Tech Stack:")
         for i, tech in enumerate(tech_stack, 1):
             print(f"  {i}. {tech}")
         
@@ -231,7 +231,7 @@ async def demonstrate_monitoring_integration():
         active_sessions = monitoring_service.get_active_sessions()
         service_metrics = monitoring_service.get_service_metrics()
         
-        print(f"\nMonitoring Summary:")
+        print("\nMonitoring Summary:")
         print(f"  Active sessions: {service_metrics['active_sessions']}")
         print(f"  Events buffered: {service_metrics['total_events_buffered']}")
         print(f"  Real-time streaming: {service_metrics['real_time_streaming_enabled']}")

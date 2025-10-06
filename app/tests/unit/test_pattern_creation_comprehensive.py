@@ -1,10 +1,8 @@
 """Comprehensive tests for pattern creation decision logic, validation, and audit logging."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, mock_open
+from unittest.mock import AsyncMock, MagicMock, patch
 from pathlib import Path
-import json
-from datetime import datetime
 
 from app.services.recommendation import RecommendationService
 from app.services.pattern_creator import PatternCreator

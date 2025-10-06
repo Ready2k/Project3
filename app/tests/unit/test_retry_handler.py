@@ -2,8 +2,7 @@
 
 import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
-from typing import Dict, Any
+from unittest.mock import Mock
 
 import httpx
 

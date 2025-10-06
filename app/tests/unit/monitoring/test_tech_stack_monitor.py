@@ -3,9 +3,8 @@ Unit tests for TechStackMonitor.
 """
 
 import pytest
-import asyncio
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch
 
 from app.monitoring.tech_stack_monitor import (
     TechStackMonitor, TechStackMetric, QualityAlert, 

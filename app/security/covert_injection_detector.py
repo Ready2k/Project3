@@ -10,7 +10,7 @@ This detector handles attack patterns 18-21 from the Attack Pack v2:
 
 import re
 import base64
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from abc import ABC, abstractmethod
 
 from app.security.attack_patterns import (
@@ -211,7 +211,7 @@ class CovertInjectionDetector(AttackDetector):
                         app_logger.warning(f"Base64 attack detected: {decoded_str[:50]}...")
                         break  # Found one attack, that's enough
                         
-                except Exception as e:
+                except Exception:
                     # Not valid base64 or not decodable as UTF-8
                     continue
         
@@ -244,8 +244,8 @@ class CovertInjectionDetector(AttackDetector):
             # If we found zero-width characters, check if they're used for obfuscation
             if zwc_count > 0:
                 # Compare original and normalized text to see what was hidden
-                original_words = processed_input.original_text.split()
-                normalized_words = processed_input.normalized_text.split()
+                processed_input.original_text.split()
+                processed_input.normalized_text.split()
                 
                 # Look for suspicious patterns in the normalized text
                 suspicious_indicators = [

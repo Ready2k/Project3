@@ -9,10 +9,9 @@ Tests for long-context burying attack detection including:
 """
 
 import pytest
-from unittest.mock import Mock, patch
 
 from app.security.context_attack_detector import ContextAttackDetector
-from app.security.attack_patterns import ProcessedInput, SecurityAction, AttackSeverity
+from app.security.attack_patterns import ProcessedInput, SecurityAction
 from app.security.defense_config import DetectorConfig
 
 
@@ -183,13 +182,13 @@ class TestContextAttackDetector:
         # This should be detected as potential split instruction
         attack_text = f"{section1}\n\n{section2}\n\n{section3}"
         
-        processed_input = ProcessedInput(
+        ProcessedInput(
             original_text=attack_text,
             normalized_text=attack_text
         )
         
         # Get analysis for debugging
-        analysis = self.detector._analyze_text_for_context_attacks(attack_text)
+        self.detector._analyze_text_for_context_attacks(attack_text)
         
         # This specific case might not trigger due to legitimate context
         # Let's test a more obvious split attack
@@ -458,7 +457,6 @@ class TestContextAttackDetector:
         assert isinstance(self.detector.get_confidence_threshold(), float)
         
         # Test config update
-        original_threshold = self.detector.config.confidence_threshold
         self.detector.update_config(confidence_threshold=0.9)
         assert self.detector.config.confidence_threshold == 0.9
         

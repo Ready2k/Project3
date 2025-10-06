@@ -8,7 +8,7 @@ This module provides safe import utilities and service resolution functionality:
 - Integration with the service registry
 """
 
-from typing import Any, Optional, Type, TypeVar, Callable, Dict, List
+from typing import Any, Optional, TypeVar, Dict
 import importlib
 import logging
 from app.core.registry import get_registry, ServiceNotFoundError

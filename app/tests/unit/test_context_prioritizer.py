@@ -1,8 +1,6 @@
 """Unit tests for requirement context prioritizer."""
 
 import pytest
-from unittest.mock import Mock, patch
-from typing import Dict, List
 
 from app.services.requirement_parsing.context_prioritizer import (
     RequirementContextPrioritizer, RequirementSource, ContextPriority,
@@ -445,7 +443,7 @@ class TestRequirementContextPrioritizer:
             ambiguities = prioritizer.detect_requirement_ambiguity(req)
             
             # Check if expected ambiguity type is detected
-            detected_types = [a.ambiguity_type for a in ambiguities]
+            [a.ambiguity_type for a in ambiguities]
             # Note: Some patterns might not match due to regex specificity
             # This is more of a smoke test
             assert isinstance(ambiguities, list)

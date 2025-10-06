@@ -7,12 +7,10 @@ including service registration, dependency validation, and configuration loading
 
 import sys
 import logging
-from typing import Dict, Any, List, Optional
-from pathlib import Path
+from typing import Dict, Any
 
-from app.core.registry import get_registry, ServiceRegistry
+from app.core.registry import get_registry
 from app.core.service_config import validate_startup_configuration, get_service_config_loader
-from app.core.dependencies import validate_startup_dependencies
 from app.core.service_registration import register_core_services, initialize_core_services
 
 logger = logging.getLogger(__name__)

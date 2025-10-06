@@ -6,15 +6,11 @@ including consistency checks, completeness validation, and quality assurance.
 """
 
 import pytest
-import json
-from typing import Dict, List, Any, Set, Optional, Tuple
-from pathlib import Path
+from typing import Dict, List, Any
 from dataclasses import dataclass
-from unittest.mock import Mock, patch
 
 from app.services.catalog.intelligent_manager import IntelligentCatalogManager
-from app.services.catalog.validator import CatalogValidator
-from app.services.catalog.models import TechEntry, ValidationResult
+from app.services.catalog.models import TechEntry
 
 
 @dataclass

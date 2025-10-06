@@ -6,18 +6,15 @@ bottleneck detection, and predictive insights for capacity planning.
 """
 
 import asyncio
-import json
 import time
-import statistics
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Union
+from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, asdict
 from enum import Enum
-from collections import defaultdict, deque
-import logging
+from collections import deque
 
 from app.core.service import ConfigurableService
-from app.utils.imports import require_service, optional_service
+from app.utils.imports import require_service
 
 
 class AnalyticsMetricType(Enum):
@@ -152,7 +149,7 @@ class PerformanceAnalytics(ConfigurableService):
         # Initialize logger
         try:
             self.logger = require_service('logger', context='PerformanceAnalytics')
-        except:
+        except Exception:
             import logging
             self.logger = logging.getLogger('PerformanceAnalytics')
         

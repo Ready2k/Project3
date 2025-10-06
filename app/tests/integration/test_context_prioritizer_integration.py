@@ -1,14 +1,12 @@
 """Integration tests for requirement context prioritizer."""
 
 import pytest
-from typing import Dict, List, Any
 
 from app.services.requirement_parsing.context_prioritizer import (
-    RequirementContextPrioritizer, RequirementSource, AmbiguityType
+    RequirementContextPrioritizer, AmbiguityType
 )
 from app.services.requirement_parsing.enhanced_parser import EnhancedRequirementParser
 from app.services.requirement_parsing.context_extractor import TechnologyContextExtractor
-from app.services.requirement_parsing.base import ParsedRequirements, TechContext
 
 
 class TestContextPrioritizerIntegration:

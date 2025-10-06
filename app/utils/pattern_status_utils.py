@@ -5,7 +5,7 @@ Utility functions for checking and displaying pattern enhancement
 and analytics status throughout the application.
 """
 
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Tuple
 import logging
 
 from app.utils.imports import optional_service

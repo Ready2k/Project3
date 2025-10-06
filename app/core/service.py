@@ -521,9 +521,9 @@ class ServiceLifecycleManager:
                 service.initialize()
                 initialized.append(service)
                 
-        except Exception as e:
+        except Exception:
             # Shutdown any services that were successfully initialized
-            self._logger.error(f"Service initialization failed, shutting down initialized services")
+            self._logger.error("Service initialization failed, shutting down initialized services")
             for service in reversed(initialized):
                 try:
                     service.shutdown()

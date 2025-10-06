@@ -4,10 +4,10 @@ import pytest
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from app.services.catalog.intelligent_manager import IntelligentCatalogManager
-from app.services.catalog.models import TechEntry, EcosystemType, MaturityLevel, ReviewStatus
+from app.services.catalog.models import EcosystemType, ReviewStatus
 
 
 class TestIntelligentCatalogManager:

@@ -1,15 +1,15 @@
 """Unit tests for base Jira authentication components."""
 
 import pytest
-from unittest.mock import Mock, AsyncMock
-from typing import Dict, Any
+from unittest.mock import Mock
+from typing import Any
 
 from app.services.jira_auth import (
     AuthResult, 
     AuthenticationHandler, 
     AuthenticationManager
 )
-from app.config import JiraAuthType, JiraConfig
+from app.config import JiraAuthType
 
 
 class MockAuthHandler(AuthenticationHandler):

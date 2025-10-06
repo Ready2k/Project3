@@ -1,15 +1,12 @@
 """Property-based tests using Hypothesis for edge cases and data validation."""
 
-import pytest
 from hypothesis import given, strategies as st, assume
 from hypothesis.strategies import composite
-import json
-from typing import Dict, Any
 
-from app.pattern.matcher import PatternMatcher, MatchResult
+from app.pattern.matcher import MatchResult
 from app.services.recommendation import RecommendationService
 from app.qa.question_loop import Question, QAResult
-from app.state.store import SessionState, QAExchange, PatternMatch, Recommendation
+from app.state.store import SessionState, QAExchange
 from app.exporters.json_exporter import JSONExporter
 from app.exporters.markdown_exporter import MarkdownExporter
 from app.utils.redact import PIIRedactor

@@ -5,7 +5,6 @@ the entire JIRA service stack, from configuration to HTTP clients.
 """
 
 import pytest
-import pytest_asyncio
 from unittest.mock import Mock, patch, AsyncMock
 from pathlib import Path
 import tempfile
@@ -13,8 +12,6 @@ import ssl
 
 from app.services.jira import JiraService, JiraConfig
 from app.services.ssl_handler import SSLHandler
-from app.services.deployment_detector import DeploymentDetector
-from app.services.api_version_manager import APIVersionManager
 
 
 # Sample valid certificate for testing

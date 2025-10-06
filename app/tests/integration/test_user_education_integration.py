@@ -5,11 +5,9 @@ Tests integration with AdvancedPromptDefender and end-to-end user guidance workf
 """
 
 import pytest
-import asyncio
-from unittest.mock import Mock, patch
 
 from app.security.advanced_prompt_defender import AdvancedPromptDefender
-from app.security.user_education import UserEducationSystem, GuidanceType
+from app.security.user_education import GuidanceType
 from app.security.defense_config import get_defense_config
 from app.security.attack_patterns import SecurityAction
 

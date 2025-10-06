@@ -1,8 +1,7 @@
 """Unit tests for Streamlit observability dashboard functionality."""
 
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-from datetime import datetime
+from unittest.mock import patch, MagicMock
 import sys
 from pathlib import Path
 

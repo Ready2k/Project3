@@ -25,8 +25,7 @@ import asyncio
 import time
 import statistics
 import threading
-from typing import List, Dict, Tuple
-from concurrent.futures import ThreadPoolExecutor
+from typing import List, Dict
 import psutil
 import os
 
@@ -236,7 +235,7 @@ class TestSingleRequestLatency:
             input_length = len(input_text)
             
             start_time = time.perf_counter()
-            decision = await defender.validate_input(input_text)
+            await defender.validate_input(input_text)
             end_time = time.perf_counter()
             
             latency_ms = (end_time - start_time) * 1000
@@ -460,7 +459,7 @@ class TestMemoryPerformance:
             input_size_kb = len(large_input) / 1024
             
             memory_before = self.get_memory_usage_mb()
-            decision = await defender.validate_input(large_input)
+            await defender.validate_input(large_input)
             memory_after = self.get_memory_usage_mb()
             
             memory_delta = memory_after - memory_before
@@ -596,7 +595,7 @@ class TestPerformanceRegression:
         p95_time = statistics.quantiles(times, n=20)[18] if len(times) >= 5 else max(times)
         
         # Record baseline metrics (in real implementation, these would be stored/compared)
-        baseline_metrics = {
+        {
             'avg_legitimate_time_ms': avg_time,
             'p95_legitimate_time_ms': p95_time,
             'max_legitimate_time_ms': max(times)
@@ -668,7 +667,6 @@ class TestResourceUtilization:
     async def test_cpu_utilization_efficiency(self, defender):
         """Test CPU utilization during processing."""
         import threading
-        import time
         
         # Monitor CPU usage during processing
         cpu_samples = []

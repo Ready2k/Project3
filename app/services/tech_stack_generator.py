@@ -1,6 +1,6 @@
 """Intelligent tech stack generation service using LLM analysis."""
 
-from typing import Dict, List, Any, Optional, Set, Tuple
+from typing import Dict, List, Any, Optional, Set
 import json
 from pathlib import Path
 import uuid
@@ -11,7 +11,6 @@ from app.llm.base import LLMProvider
 from app.utils.imports import require_service
 from app.utils.audit import log_llm_call
 from datetime import datetime
-import shutil
 
 # Import enhanced parsing and context components
 from app.services.requirement_parsing.enhanced_parser import EnhancedRequirementParser
@@ -71,7 +70,7 @@ class TechStackGenerator:
         # Get basic logger from service registry for backward compatibility
         try:
             self.logger = require_service('logger', context='TechStackGenerator')
-        except:
+        except Exception:
             # Fallback to basic logging if service registry not available
             import logging
             self.logger = logging.getLogger('TechStackGenerator')
@@ -296,7 +295,6 @@ class TechStackGenerator:
         # Initialize monitoring integration
         monitoring_session = None
         try:
-            from app.services.monitoring_integration_service import TechStackMonitoringIntegrationService
             monitoring_service = require_service('tech_stack_monitoring_integration', context='TechStackGenerator')
             
             # Start monitoring session
@@ -2440,4 +2438,3 @@ Respond with a JSON object containing:
             # Use basic logging as fallback
             import logging
             logging.error(f"Error during logging shutdown: {e}")
-        return tech_id

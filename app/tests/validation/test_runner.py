@@ -15,10 +15,6 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 import traceback
 
-from app.tests.validation.test_tech_stack_generation_comprehensive import TestTechStackGenerationComprehensive
-from app.tests.validation.test_catalog_consistency import TestCatalogConsistency
-from app.tests.performance.test_tech_stack_performance import TestTechStackPerformance
-from app.tests.fixtures.tech_stack_test_data import TechStackTestDataSets, TechStackValidationMetrics
 
 
 @dataclass
@@ -381,7 +377,7 @@ class TechStackValidationRunner:
                 for error in suite.errors:
                     print(f"    Error: {error}")
         
-        print(f"\nPerformance Metrics:")
+        print("\nPerformance Metrics:")
         perf = report.performance_metrics
         if perf.get("status") == "completed":
             print(f"  Thresholds Met: {'✓' if perf.get('thresholds_met') else '✗'}")
@@ -389,7 +385,7 @@ class TechStackValidationRunner:
         else:
             print(f"  Status: {perf.get('status', 'unknown')}")
         
-        print(f"\nCatalog Metrics:")
+        print("\nCatalog Metrics:")
         catalog = report.catalog_metrics
         if catalog.get("status") == "completed":
             print(f"  Consistency Score: {catalog.get('consistency_score', 0):.1%}")
@@ -398,7 +394,7 @@ class TechStackValidationRunner:
         else:
             print(f"  Status: {catalog.get('status', 'unknown')}")
         
-        print(f"\nAccuracy Metrics:")
+        print("\nAccuracy Metrics:")
         accuracy = report.accuracy_metrics
         if accuracy.get("status") == "completed":
             print(f"  Explicit Tech Inclusion: {accuracy.get('explicit_technology_inclusion_rate', 0):.1%}")
@@ -407,7 +403,7 @@ class TechStackValidationRunner:
         else:
             print(f"  Status: {accuracy.get('status', 'unknown')}")
         
-        print(f"\nRecommendations:")
+        print("\nRecommendations:")
         for i, rec in enumerate(report.recommendations, 1):
             print(f"  {i}. {rec}")
         

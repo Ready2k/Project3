@@ -1,10 +1,10 @@
 """Session management UI component."""
 
 import re
-from typing import Dict, Any, Optional, Pattern
+from typing import Dict, Any, Pattern
 import streamlit as st
 
-from app.utils.imports import require_service, optional_service
+from app.utils.imports import require_service
 
 
 class SessionManagementComponent:
@@ -100,7 +100,7 @@ class SessionManagementComponent:
                 
                 if result:
                     st.session_state.session_id = session_id
-                    st.success(f"✅ Session resumed successfully!")
+                    st.success("✅ Session resumed successfully!")
                     
                     # Show session details
                     phase = result.get('phase', 'unknown')

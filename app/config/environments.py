@@ -1,7 +1,7 @@
 """Environment-specific configuration management for AAA system."""
 
 import os
-from typing import Dict, Any, Optional, Type, TypeVar
+from typing import Dict, Any, Optional, TypeVar
 from pathlib import Path
 from enum import Enum
 import yaml
@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 from app.config.system_config import (
     SystemConfiguration, AutonomyConfig, PatternMatchingConfig, 
-    LLMGenerationConfig, RecommendationConfig, RateLimitConfig, SystemConfigurationManager
+    LLMGenerationConfig, RecommendationConfig, RateLimitConfig
 )
 from app.utils.logger import app_logger
 

@@ -4,7 +4,6 @@ Unit tests for BusinessLogicProtector.
 Tests detection of business logic and safety toggle manipulation attempts
 from Attack Pack v2 patterns 38-39 and related business logic attacks.
 """
-import pytest
 from unittest.mock import patch
 
 from app.security.business_logic_protector import BusinessLogicProtector

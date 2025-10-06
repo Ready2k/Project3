@@ -9,10 +9,8 @@ import pytest
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
 
 from app.services.recommendation import RecommendationService
-from app.services.pattern_creator import PatternCreator
 from app.llm.fakes import FakeLLM
 
 

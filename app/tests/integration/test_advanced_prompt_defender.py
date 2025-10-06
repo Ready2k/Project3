@@ -6,13 +6,11 @@ of security decisions, confidence scoring, and user guidance generation.
 """
 
 import pytest
-import asyncio
-from unittest.mock import Mock, patch
-from typing import List
+from unittest.mock import patch
 
 from app.security.advanced_prompt_defender import AdvancedPromptDefender, SecurityEventLogger
 from app.security.attack_patterns import SecurityAction, SecurityDecision, AttackSeverity
-from app.security.defense_config import AdvancedPromptDefenseConfig, DetectorConfig
+from app.security.defense_config import AdvancedPromptDefenseConfig
 
 
 class TestAdvancedPromptDefenderIntegration:
@@ -415,7 +413,7 @@ class TestSecurityEventLogger:
     
     def test_log_security_decision(self, logger):
         """Test logging of security decisions."""
-        from app.security.attack_patterns import AttackPattern, DetectionResult, SecurityAction, AttackSeverity
+        from app.security.attack_patterns import AttackPattern, DetectionResult, SecurityAction
         
         # Create test decision
         pattern = AttackPattern(

@@ -9,7 +9,7 @@ This detector identifies direct manipulation attempts including:
 """
 
 import re
-from typing import List, Optional
+from typing import List
 from abc import ABC, abstractmethod
 
 from app.security.attack_patterns import (

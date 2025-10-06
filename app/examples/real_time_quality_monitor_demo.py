@@ -9,14 +9,11 @@ Demonstrates the capabilities of the RealTimeQualityMonitor including:
 """
 
 import asyncio
-import json
 from datetime import datetime, timedelta
-from typing import Dict, List, Any
 
 from app.monitoring.real_time_quality_monitor import (
     RealTimeQualityMonitor,
-    QualityMetricType,
-    QualityAlertSeverity
+    QualityMetricType
 )
 
 
@@ -101,7 +98,7 @@ class RealTimeQualityMonitorDemo:
             
             print(f"   Overall Score: {quality_score.overall_score:.2f}")
             print(f"   Confidence: {quality_score.confidence:.2f}")
-            print(f"   Component Scores:")
+            print("   Component Scores:")
             for component, score in quality_score.component_scores.items():
                 print(f"     - {component}: {score:.2f}")
             
@@ -153,7 +150,7 @@ class RealTimeQualityMonitorDemo:
                     print(f"     - {inconsistency['technology']}: conflicts with {inconsistency['conflicting_ecosystems']}")
             
             if consistency_score.recommendations:
-                print(f"   💡 Recommendations:")
+                print("   💡 Recommendations:")
                 for rec in consistency_score.recommendations[:2]:  # Show first 2
                     print(f"     - {rec}")
     
@@ -297,7 +294,7 @@ class RealTimeQualityMonitorDemo:
         trend = await self.quality_monitor._analyze_quality_trend(QualityMetricType.EXTRACTION_ACCURACY)
         
         if trend:
-            print(f"\n📊 Trend Analysis Results:")
+            print("\n📊 Trend Analysis Results:")
             print(f"   Metric: {trend.metric_type.value}")
             print(f"   Direction: {trend.trend_direction}")
             print(f"   Strength: {trend.trend_strength:.2f}")
@@ -309,7 +306,7 @@ class RealTimeQualityMonitorDemo:
             # Check if degradation alert was created
             if trend.trend_direction == 'declining' and trend.trend_strength > 0.5:
                 await self.quality_monitor._create_degradation_alert(trend)
-                print(f"   🚨 Degradation alert created due to strong declining trend")
+                print("   🚨 Degradation alert created due to strong declining trend")
         else:
             print("   No trend data available (insufficient data points)")
     
@@ -326,7 +323,7 @@ class RealTimeQualityMonitorDemo:
         print(f"Active Alerts: {status['active_alerts']}")
         print(f"Last Updated: {status['last_updated']}")
         
-        print(f"\n📈 Quality Metrics:")
+        print("\n📈 Quality Metrics:")
         for metric_name, metric_data in status['metrics'].items():
             print(f"   {metric_name}:")
             print(f"     Status: {metric_data['status']}")
@@ -339,7 +336,7 @@ class RealTimeQualityMonitorDemo:
         trends = self.quality_monitor.get_quality_trends()
         
         if trends['trends']:
-            print(f"\n📊 Quality Trends:")
+            print("\n📊 Quality Trends:")
             for trend_name, trend_data in trends['trends'].items():
                 print(f"   {trend_name}:")
                 print(f"     Direction: {trend_data['trend_direction']}")
@@ -350,7 +347,7 @@ class RealTimeQualityMonitorDemo:
         all_alerts = self.quality_monitor.get_active_alerts()
         
         if all_alerts:
-            print(f"\n🚨 Alert Summary:")
+            print("\n🚨 Alert Summary:")
             severity_counts = {}
             for alert in all_alerts:
                 severity = alert['severity']
@@ -359,7 +356,7 @@ class RealTimeQualityMonitorDemo:
             for severity, count in severity_counts.items():
                 print(f"   {severity.upper()}: {count}")
         
-        print(f"\n📊 System Statistics:")
+        print("\n📊 System Statistics:")
         print(f"   Total Quality Scores: {len(self.quality_monitor.quality_scores)}")
         print(f"   Total Consistency Scores: {len(self.quality_monitor.consistency_scores)}")
         print(f"   Total Alerts Generated: {len(self.quality_monitor.quality_alerts)}")

@@ -1,12 +1,7 @@
 """Tests for catalog manager CLI."""
 
 import pytest
-import json
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from io import StringIO
-import sys
+from unittest.mock import Mock, patch
 
 from app.cli.catalog_manager import CatalogManagerCLI, create_parser
 from app.services.catalog.models import TechEntry, EcosystemType, MaturityLevel

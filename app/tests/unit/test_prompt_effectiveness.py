@@ -1,8 +1,7 @@
 """Tests for prompt effectiveness and LLM response quality."""
 
 import pytest
-import json
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, patch
 from typing import Dict, List, Any
 
 from app.services.context_aware_prompt_generator import ContextAwareLLMPromptGenerator

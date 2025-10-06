@@ -5,12 +5,10 @@ This module provides comprehensive user education, guidance messages, and appeal
 mechanisms for the advanced prompt attack defense system.
 """
 
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
-import json
-import re
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from app.security.attack_patterns import SecurityDecision, SecurityAction, AttackPattern
 from app.utils.logger import app_logger

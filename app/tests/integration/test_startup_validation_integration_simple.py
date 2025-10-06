@@ -15,7 +15,6 @@ import tempfile
 import os
 import yaml
 from unittest.mock import Mock, patch
-from typing import Dict, Any
 
 from app.core.startup import ApplicationStartup, StartupError
 from app.core.dependencies import ValidationResult
@@ -252,7 +251,7 @@ class TestStartupValidationIntegrationSimple:
             registry.health_check = Mock(return_value={'config': True, 'logger': True, 'cache': True})
             
             startup = ApplicationStartup(self.config_dir)
-            results = startup.run_startup_sequence()
+            startup.run_startup_sequence()
             
             # Generate and verify startup report
             report = startup.get_startup_report()

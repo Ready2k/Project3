@@ -2,11 +2,11 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from app.security.validation import InputValidator, SecurityValidator
 from app.security.headers import SecurityHeaders
 from app.security.middleware import RateLimitMiddleware, SecurityMiddleware
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 import time
 
 

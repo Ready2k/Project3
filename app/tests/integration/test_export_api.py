@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from app.exporters.service import ExportService
-from app.state.store import SessionState, Phase, Recommendation, DiskCacheStore
+from app.state.store import SessionState, Phase, Recommendation
 
 
 class TestExportIntegration:

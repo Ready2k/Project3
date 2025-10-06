@@ -2,7 +2,6 @@
 
 import pytest
 import base64
-from unittest.mock import Mock
 
 from app.services.jira_auth_handlers import (
     APITokenHandler,

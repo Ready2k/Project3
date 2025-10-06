@@ -4,7 +4,7 @@ import re
 import base64
 import urllib.parse
 import unicodedata
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Tuple, Dict
 from dataclasses import dataclass
 from app.utils.logger import app_logger
 
@@ -127,7 +127,7 @@ class InputPreprocessor:
                     decoded_content.append((match, decoded_str))
                     app_logger.info(f"Detected base64 content: {match[:20]}... -> {decoded_str[:50]}...")
                     
-            except Exception as e:
+            except Exception:
                 # Not valid base64, skip
                 continue
         

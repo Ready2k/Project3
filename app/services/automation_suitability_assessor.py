@@ -9,12 +9,11 @@ Handles the assessment of requirements for different types of automation:
 When agentic assessment fails, this service provides fallback analysis.
 """
 
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from enum import Enum
 
 from app.llm.base import LLMProvider
-from app.utils.imports import require_service
 
 
 class AutomationSuitability(Enum):

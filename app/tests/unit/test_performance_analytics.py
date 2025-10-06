@@ -3,10 +3,8 @@ Unit tests for Performance Analytics system.
 """
 
 import pytest
-import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, AsyncMock
-from typing import Dict, Any
 
 from app.monitoring.performance_analytics import (
     PerformanceAnalytics,
@@ -14,9 +12,7 @@ from app.monitoring.performance_analytics import (
     PerformanceBottleneck,
     UserSatisfactionAnalysis,
     PredictiveInsight,
-    AnalyticsReport,
-    BottleneckSeverity,
-    AnalyticsMetricType
+    BottleneckSeverity
 )
 
 

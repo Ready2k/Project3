@@ -5,7 +5,7 @@ to avoid circular dependencies.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from pathlib import Path
 import yaml
 
@@ -67,7 +67,7 @@ class PatternMatchingConfig:
 class LLMGenerationConfig:
     """Configuration for LLM generation parameters."""
     temperature: float = 0.3
-    max_tokens: int = 1000
+    max_tokens: int = 4000  # Increased for GPT-5 compatibility
     top_p: float = 1.0
     frequency_penalty: float = 0.0
     presence_penalty: float = 0.0

@@ -190,7 +190,7 @@ def register_core_services(registry: Optional[ServiceRegistry] = None,
         logger.info("✅ Registered audit logger service")
         
         # 10. Register Infrastructure Diagram Service (depends on config and logger)
-        infrastructure_diagram_config = config_overrides.get("infrastructure_diagram_service", {
+        config_overrides.get("infrastructure_diagram_service", {
             "output_format": "png",
             "dpi": 300,
             "font_size": 12,
@@ -243,7 +243,7 @@ def register_core_services(registry: Optional[ServiceRegistry] = None,
         logger.info("✅ Registered pattern analytics service")
         
         # 13. Register Pattern Enhancement Service (depends on config, logger, llm_provider_factory, enhanced_pattern_loader)
-        pattern_enhancement_config = config_overrides.get("pattern_enhancement_service", {
+        config_overrides.get("pattern_enhancement_service", {
             "enhancement_types": ["full", "technical", "agentic"],
             "default_enhancement_type": "full",
             "max_concurrent_enhancements": 3,
@@ -283,6 +283,19 @@ def register_core_services(registry: Optional[ServiceRegistry] = None,
         registry.register_singleton("pattern_enhancement_service", pattern_enhancement_service, dependencies=["config", "logger", "llm_provider_factory", "enhanced_pattern_loader"])
         registered_services.append("pattern_enhancement_service")
         logger.info("✅ Registered pattern enhancement service")
+        
+        # 14. Register Tech Stack Monitoring Integration Service (depends on config, logger)
+        monitoring_integration_config = config_overrides.get("tech_stack_monitoring_integration", {
+            "enable_monitoring": True,
+            "session_timeout": 3600,
+            "max_sessions": 100
+        })
+        
+        from app.services.monitoring_integration_service import TechStackMonitoringIntegrationService
+        monitoring_integration_service = TechStackMonitoringIntegrationService(monitoring_integration_config)
+        registry.register_singleton("tech_stack_monitoring_integration", monitoring_integration_service, dependencies=["config", "logger"])
+        registered_services.append("tech_stack_monitoring_integration")
+        logger.info("✅ Registered tech stack monitoring integration service")
         
         logger.info(f"Successfully registered {len(registered_services)} core services: {registered_services}")
         

@@ -4,10 +4,8 @@ Integration tests for Jira diagnostics and validation utilities.
 
 import pytest
 from unittest.mock import patch, Mock
-import httpx
 
 from app.services.jira_diagnostics import (
-    JiraDiagnostics,
     DiagnosticStatus,
     create_jira_diagnostics
 )

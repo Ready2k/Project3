@@ -12,15 +12,14 @@ import csv
 import sys
 import yaml
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Union
+from typing import List
 from datetime import datetime
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from app.services.catalog.intelligent_manager import IntelligentCatalogManager
-from app.services.catalog.models import TechEntry, EcosystemType, MaturityLevel, ReviewStatus
-from app.utils.imports import require_service
+from app.services.catalog.models import TechEntry, EcosystemType, ReviewStatus
 
 
 class BulkOperationsCLI:
@@ -268,7 +267,7 @@ class BulkOperationsCLI:
                 self.manager._rebuild_indexes()
                 self.manager._save_catalog()
             
-            print(f"\nImport Summary:")
+            print("\nImport Summary:")
             print(f"  Added: {added_count}")
             print(f"  Updated: {updated_count}")
             print(f"  Skipped: {skipped_count}")

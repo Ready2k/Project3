@@ -5,11 +5,10 @@ Provides comprehensive logging of LLM interactions including prompts, responses,
 processing time, token usage, and quality metrics.
 """
 
-from typing import Dict, Any, List, Optional, Union
-from dataclasses import dataclass, asdict
+from typing import Dict, Any, List, Optional
+from dataclasses import dataclass
 from datetime import datetime
 import time
-import json
 import hashlib
 
 from .tech_stack_logger import TechStackLogger, LogCategory
@@ -231,7 +230,7 @@ class LLMInteractionLogger:
                 LogCategory.LLM_INTERACTION,
                 "LLMInteractionLogger",
                 "complete_interaction",
-                f"LLM interaction completed successfully",
+                "LLM interaction completed successfully",
                 {
                     'request_id': request_id,
                     'total_duration_ms': total_duration_ms,

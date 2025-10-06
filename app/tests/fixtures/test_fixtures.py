@@ -2,8 +2,6 @@
 
 import pytest
 import json
-import tempfile
-from pathlib import Path
 from typing import Dict, List, Any
 
 from app.pattern.matcher import MatchResult

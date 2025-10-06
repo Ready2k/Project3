@@ -1,6 +1,5 @@
 """Pattern sanitization to prevent storage of malicious patterns."""
 
-import re
 import asyncio
 from typing import Dict, Any, List, Tuple
 from app.utils.logger import app_logger

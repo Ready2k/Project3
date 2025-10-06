@@ -1,8 +1,7 @@
 """Autonomy assessment service for evaluating agentic potential of requirements."""
 
 import json
-import re
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from dataclasses import dataclass
 from enum import Enum
 

@@ -9,8 +9,7 @@ import asyncio
 import pytest
 import time
 import threading
-from unittest.mock import Mock, patch, MagicMock
-from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import Mock, patch
 
 from app.security.performance_optimizer import (
     PerformanceOptimizer, LRUCache, ResourceLimiter, PerformanceMetrics,

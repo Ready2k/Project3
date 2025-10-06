@@ -2,7 +2,6 @@
 Integration tests for configuration and deployment management.
 Tests the interaction between deployment config, attack pack manager, and rollback manager.
 """
-import asyncio
 import json
 import pytest
 import tempfile
@@ -15,7 +14,7 @@ from app.security.deployment_config import (
     DeploymentConfig, FeatureFlag, AttackPackVersion, DeploymentStage, RollbackTrigger
 )
 from app.security.attack_pack_manager import AttackPackManager
-from app.security.rollback_manager import RollbackManager, HealthMetrics, RollbackStatus
+from app.security.rollback_manager import RollbackManager, HealthMetrics
 
 
 class TestConfigurationDeploymentIntegration:

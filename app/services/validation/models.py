@@ -1,11 +1,11 @@
 """Data models for technology compatibility validation."""
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Any, Tuple
+from typing import Dict, List, Optional, Any
 from enum import Enum
 from datetime import datetime
 
-from ..catalog.models import TechEntry, EcosystemType
+from ..catalog.models import EcosystemType
 
 
 class ConflictType(Enum):

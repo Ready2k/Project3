@@ -1,14 +1,13 @@
 """Agentic pattern matching engine that prioritizes autonomous solutions."""
 
 import json
-import asyncio
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 from pathlib import Path
 
 from app.services.autonomy_assessor import AutonomyAssessment, AutonomyAssessor
 from app.services.pattern_agentic_enhancer import PatternAgenticEnhancer
-from app.pattern.matcher import MatchResult, PatternMatcher
+from app.pattern.matcher import PatternMatcher
 from app.llm.base import LLMProvider
 from app.utils.logger import app_logger
 

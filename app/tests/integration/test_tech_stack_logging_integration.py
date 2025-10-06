@@ -1,11 +1,10 @@
 """Integration tests for tech stack generation logging."""
 
 import pytest
-import asyncio
 import tempfile
 import json
 from pathlib import Path
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock
 
 from app.services.tech_stack_generator import TechStackGenerator
 from app.services.tech_logging.tech_stack_logger import LogCategory
@@ -115,7 +114,7 @@ class TestTechStackLoggingIntegration:
         tech_stack_generator.enable_debug_mode(True)
         
         # Parse requirements (this would normally be called internally)
-        parsed_req = await tech_stack_generator._parse_requirements_enhanced(
+        await tech_stack_generator._parse_requirements_enhanced(
             sample_requirements, 
             {"banned_tools": ["MySQL"]}
         )

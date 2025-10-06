@@ -10,7 +10,7 @@ This detector identifies attacks in multiple languages including:
 
 import re
 import unicodedata
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Tuple
 from abc import ABC, abstractmethod
 
 from app.security.attack_patterns import (
@@ -457,12 +457,10 @@ class MultilingualAttackDetector(AttackDetector):
         text_lower = text.lower()
         
         # Check regex pattern match (highest weight)
-        regex_match = False
         if pattern.id in self._compiled_patterns:
             regex = self._compiled_patterns[pattern.id]
             if regex.search(text):
                 confidence += 0.4
-                regex_match = True
                 app_logger.debug(f"Regex match for pattern {pattern.id}")
         
         # Check semantic indicators (medium weight)

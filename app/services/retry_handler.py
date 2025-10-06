@@ -9,7 +9,6 @@ from enum import Enum
 import httpx
 from pydantic import BaseModel
 
-from app.utils.imports import require_service
 
 T = TypeVar('T')
 

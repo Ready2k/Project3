@@ -1,7 +1,7 @@
 """Agentic Necessity Assessor - Uses LLM to determine if requirements need agentic AI or traditional automation."""
 
 import json
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from dataclasses import dataclass
 from enum import Enum
 

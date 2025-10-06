@@ -10,7 +10,6 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
 from pathlib import Path
-import logging
 
 from app.core.service import ConfigurableService
 from app.utils.imports import require_service, optional_service
@@ -34,7 +33,7 @@ class EnhancedPatternLoader(ConfigurableService):
         # Initialize logger
         try:
             self.logger = require_service('logger', context='EnhancedPatternLoader')
-        except:
+        except Exception:
             import logging
             self.logger = logging.getLogger('EnhancedPatternLoader')
         
@@ -369,7 +368,7 @@ class EnhancedPatternLoader(ConfigurableService):
                     cache_key = f"pattern:{pattern_id}"
                     try:
                         self.cache_service.delete(cache_key)
-                    except:
+                    except Exception:
                         pass  # Ignore cache deletion errors
             
             # Reload patterns synchronously

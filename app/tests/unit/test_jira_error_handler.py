@@ -2,9 +2,7 @@
 Unit tests for Jira error handling and troubleshooting system.
 """
 
-import pytest
 import httpx
-from unittest.mock import Mock
 
 from app.services.jira_error_handler import (
     JiraErrorHandler,

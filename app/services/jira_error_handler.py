@@ -6,13 +6,12 @@ guidance for various Jira Data Center deployment scenarios.
 """
 
 from enum import Enum
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any
 from pydantic import BaseModel
 import re
 import httpx
-from app.utils.imports import require_service
 
-from app.config import JiraDeploymentType, JiraAuthType
+from app.config import JiraDeploymentType
 
 
 class JiraErrorType(str, Enum):

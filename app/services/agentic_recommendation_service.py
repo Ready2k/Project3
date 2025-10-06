@@ -250,10 +250,10 @@ class AgenticRecommendationService:
                 return llm_feasibility
         
         # Fallback to autonomy score-based assessment
-        self.logger.info(f"No LLM feasibility found, using autonomy score-based assessment")
+        self.logger.info("No LLM feasibility found, using autonomy score-based assessment")
         
         # Start with pattern's enhanced feasibility
-        base_feasibility = match.enhanced_pattern.get("feasibility", "Partially Automatable")
+        match.enhanced_pattern.get("feasibility", "Partially Automatable")
         
         # Aggressive agentic assessment - favor full automation
         if self.config_service.is_fully_automatable(match.autonomy_score):
@@ -310,7 +310,7 @@ class AgenticRecommendationService:
         required_integrations = constraints.get('required_integrations', [])
         compliance_requirements = constraints.get('compliance_requirements', [])
         data_sensitivity = constraints.get('data_sensitivity', '')
-        budget_constraints = constraints.get('budget_constraints', '')
+        constraints.get('budget_constraints', '')
         deployment_preference = constraints.get('deployment_preference', '')
         
         self.logger.info(f"Applying constraints to agentic tech stack: "
@@ -708,7 +708,7 @@ class AgenticRecommendationService:
                                                  necessity_assessment: Optional[AgenticNecessityAssessment] = None) -> List[Recommendation]:
         """Create recommendation for scope-limited scenarios."""
         
-        description = requirements.get('description', '')
+        requirements.get('description', '')
         
         # Even for limited scope, suggest agentic alternatives
         reasoning = (f"While this requirement involves physical components that cannot be directly automated, "
@@ -995,7 +995,7 @@ class AgenticRecommendationService:
         from app.services.multi_agent_designer import MultiAgentSystemDesign, AgentRole, AgentArchitectureType
         
         # Create a unique agent role based on the pattern and requirements
-        description = requirements.get('description', 'autonomous task')
+        requirements.get('description', 'autonomous task')
         
         # Generate a unique agent name based on the pattern and index
         base_agent_name = await self._generate_agent_name(requirements)
@@ -1092,7 +1092,7 @@ class AgenticRecommendationService:
         
         if not self.llm_provider:
             # Fallback if no LLM available
-            return f"Autonomous agent responsible for automating the described workflow"
+            return "Autonomous agent responsible for automating the described workflow"
         
         prompt = f"""You are an expert in agentic AI systems. Given a user requirement, generate a concise, professional description of what an autonomous AI agent will DO to solve this problem.
 
@@ -1130,7 +1130,7 @@ Respond with ONLY the responsibility statement, no other text."""
         except Exception as e:
             self.logger.error(f"Error generating agent responsibility: {e}")
             # Fallback to a generic but better description
-            return f"Autonomous agent responsible for automating and optimizing the workflow described in the requirements"
+            return "Autonomous agent responsible for automating and optimizing the workflow described in the requirements"
 
     async def _generate_agent_name(self, requirements: Dict[str, Any], suffix: str = None) -> str:
         """Generate a meaningful agent name based on requirements with optional suffix for uniqueness."""
@@ -1319,7 +1319,7 @@ Respond with ONLY the responsibility statement, no other text."""
             # Create the APAT pattern structure with rich, detailed content
             agentic_pattern = {
                 "pattern_id": enhanced_pattern["pattern_id"],
-                "name": rich_content.get("name", enhanced_pattern.get("name", f"Autonomous Agent Pattern")),
+                "name": rich_content.get("name", enhanced_pattern.get("name", "Autonomous Agent Pattern")),
                 "description": rich_content.get("description", self._sanitize_description(requirements.get("description", ""))),
                 "feasibility": enhanced_pattern.get("feasibility", "Fully Automatable"),
                 "pattern_type": rich_content.get("pattern_type", enhanced_pattern.get("pattern_type", ["autonomous_agent"])),

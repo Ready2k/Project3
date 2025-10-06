@@ -7,7 +7,7 @@ and can be registered in the service registry.
 
 import os
 import yaml
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, Optional
 from pathlib import Path
 
 from app.core.service import ConfigurableService

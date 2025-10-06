@@ -5,19 +5,18 @@ This module provides comprehensive diagnostic tools for troubleshooting
 Jira connectivity, configuration, and compatibility issues.
 """
 
-import asyncio
 import socket
 import ssl
 import time
 from enum import Enum
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 from urllib.parse import urlparse
 from pydantic import BaseModel
 import httpx
 from app.utils.imports import require_service
 
 from app.config import JiraConfig, JiraDeploymentType, JiraAuthType
-from app.services.jira_error_handler import JiraErrorHandler, JiraErrorDetail, create_jira_error_handler
+from app.services.jira_error_handler import create_jira_error_handler
 
 
 class DiagnosticStatus(str, Enum):
@@ -578,7 +577,7 @@ class JiraDiagnostics:
                 return DiagnosticResult(
                     name="Proxy Configuration",
                     status=DiagnosticStatus.FAIL,
-                    message=f"Proxy connection timeout",
+                    message="Proxy connection timeout",
                     suggestions=[
                         "Increase timeout value",
                         "Check proxy server availability",
@@ -632,7 +631,7 @@ class JiraDiagnostics:
                         suggestions = []
                         if not is_compatible:
                             suggestions.extend([
-                                f"Minimum supported version is 8.0.0",
+                                "Minimum supported version is 8.0.0",
                                 f"Current version {version} may not work properly",
                                 "Consider upgrading Jira Data Center"
                             ])

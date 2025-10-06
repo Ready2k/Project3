@@ -1,10 +1,9 @@
 """Results display UI component."""
 
-from typing import Dict, Any, List, Optional, Coroutine
+from typing import Dict, Any, List
 import streamlit as st
-import asyncio
 
-from app.utils.imports import require_service, optional_service
+from app.utils.imports import require_service
 from app.ui.mermaid_diagrams import mermaid_generator
 
 

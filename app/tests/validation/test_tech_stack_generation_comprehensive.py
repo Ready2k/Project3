@@ -6,12 +6,9 @@ including regression tests for the AWS Connect bug case and performance benchmar
 """
 
 import pytest
-import asyncio
 import time
 import json
-from typing import Dict, List, Any, Optional
-from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock
 
 from app.services.tech_stack_generator import TechStackGenerator
 from app.services.requirement_parsing.enhanced_parser import EnhancedRequirementParser
@@ -22,7 +19,6 @@ from app.services.context_aware_prompt_generator import ContextAwarePromptGenera
 from app.services.requirement_parsing.context_prioritizer import RequirementContextPrioritizer
 from app.services.ecosystem.intelligence import EcosystemIntelligence
 
-from app.tests.fixtures.test_fixtures import TestDataFixtures, MockDataGenerators, TestScenarios
 
 
 class TestTechStackGenerationComprehensive:
@@ -448,7 +444,7 @@ class TestTechStackGenerationComprehensive:
             # Mock appropriate response
             mock_response = {
                 "tech_stack": case["expected_inclusions"] + ["Python", "Docker"],
-                "reasoning": {tech: f"Explicitly mentioned" for tech in case["expected_inclusions"]},
+                "reasoning": {tech: "Explicitly mentioned" for tech in case["expected_inclusions"]},
                 "confidence_score": 0.9
             }
             
@@ -551,7 +547,7 @@ class TestTechStackGenerationComprehensive:
             # Mock appropriate response based on context
             mock_response = {
                 "tech_stack": requirements["explicit_technologies"] + ["Python"],
-                "reasoning": {tech: f"Explicitly mentioned" for tech in requirements["explicit_technologies"]},
+                "reasoning": {tech: "Explicitly mentioned" for tech in requirements["explicit_technologies"]},
                 "ecosystem_consistency": test_data["expected_ecosystem"],
                 "confidence_score": test_data["expected_confidence"]
             }
@@ -772,7 +768,7 @@ class TestTechStackGenerationMetrics:
         for case in test_cases:
             mock_response = {
                 "tech_stack": case["expected_inclusions"] + ["Docker", "Kubernetes"],
-                "reasoning": {tech: f"Explicitly mentioned" for tech in case["expected_inclusions"]},
+                "reasoning": {tech: "Explicitly mentioned" for tech in case["expected_inclusions"]},
                 "confidence_score": 0.9
             }
             

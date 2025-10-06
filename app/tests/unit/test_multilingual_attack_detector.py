@@ -2,11 +2,11 @@
 Unit tests for multilingual attack detector.
 """
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from app.security.multilingual_attack_detector import MultilingualAttackDetector
 from app.security.attack_patterns import (
-    ProcessedInput, DetectionResult, SecurityAction, AttackSeverity, AttackPattern
+    ProcessedInput, DetectionResult, SecurityAction, AttackPattern
 )
 from app.security.defense_config import DetectorConfig
 
@@ -68,7 +68,7 @@ class TestMultilingualAttackDetector:
         
         assert isinstance(result, DetectionResult)
         assert result.detector_name == "MultilingualAttackDetector"
-        assert result.is_attack == True  # Detected as legitimate business requirement
+        assert result.is_attack  # Detected as legitimate business requirement
         assert result.confidence >= 0.7
         assert result.suggested_action == SecurityAction.PASS
         assert len(result.matched_patterns) == 1
@@ -87,7 +87,7 @@ class TestMultilingualAttackDetector:
         
         result = detector.detect(sample_processed_input)
         
-        assert result.is_attack == True  # Detected as legitimate business requirement
+        assert result.is_attack  # Detected as legitimate business requirement
         assert result.suggested_action == SecurityAction.PASS
         assert len(result.matched_patterns) == 1
         assert result.matched_patterns[0].id == "PAT-034"
@@ -102,7 +102,7 @@ class TestMultilingualAttackDetector:
         
         result = detector.detect(sample_processed_input)
         
-        assert result.is_attack == True  # Detected as legitimate business requirement
+        assert result.is_attack  # Detected as legitimate business requirement
         assert result.suggested_action == SecurityAction.PASS
         assert len(result.matched_patterns) == 1
         assert result.matched_patterns[0].id == "PAT-034"
@@ -118,7 +118,7 @@ class TestMultilingualAttackDetector:
         
         result = detector.detect(sample_processed_input)
         
-        assert result.is_attack == True
+        assert result.is_attack
         assert result.confidence >= 0.7
         assert result.suggested_action == SecurityAction.BLOCK
         assert len(result.matched_patterns) == 1
@@ -137,7 +137,7 @@ class TestMultilingualAttackDetector:
         
         result = detector.detect(sample_processed_input)
         
-        assert result.is_attack == True
+        assert result.is_attack
         assert result.suggested_action == SecurityAction.BLOCK
         assert len(result.matched_patterns) == 1
         assert result.matched_patterns[0].id == "PAT-035"
@@ -152,7 +152,7 @@ class TestMultilingualAttackDetector:
         
         result = detector.detect(sample_processed_input)
         
-        assert result.is_attack == True
+        assert result.is_attack
         assert result.suggested_action == SecurityAction.BLOCK
         assert len(result.matched_patterns) == 1
         assert result.matched_patterns[0].id == "PAT-035"
@@ -167,7 +167,7 @@ class TestMultilingualAttackDetector:
         
         result = detector.detect(sample_processed_input)
         
-        assert result.is_attack == True
+        assert result.is_attack
         assert result.suggested_action == SecurityAction.BLOCK
         assert len(result.matched_patterns) == 1
         assert result.matched_patterns[0].id == "PAT-035"
@@ -182,7 +182,7 @@ class TestMultilingualAttackDetector:
         
         result = detector.detect(sample_processed_input)
         
-        assert result.is_attack == True
+        assert result.is_attack
         assert result.suggested_action == SecurityAction.BLOCK
         assert len(result.matched_patterns) == 1
         assert result.matched_patterns[0].id == "PAT-035"
@@ -197,7 +197,7 @@ class TestMultilingualAttackDetector:
         
         result = detector.detect(sample_processed_input)
         
-        assert result.is_attack == True
+        assert result.is_attack
         assert result.suggested_action == SecurityAction.BLOCK
         assert len(result.matched_patterns) == 1
         assert result.matched_patterns[0].id == "PAT-035"
@@ -212,7 +212,7 @@ class TestMultilingualAttackDetector:
         
         result = detector.detect(sample_processed_input)
         
-        assert result.is_attack == True
+        assert result.is_attack
         assert result.suggested_action == SecurityAction.BLOCK
         assert len(result.matched_patterns) == 1
         assert result.matched_patterns[0].id == "PAT-035"
@@ -262,7 +262,7 @@ class TestMultilingualAttackDetector:
         
         is_suspicious, patterns = detector.detect_language_switching_bypass(mixed_text)
         # Should detect suspicious patterns due to mixed languages with malicious content
-        assert is_suspicious == True or len(patterns) > 0  # Either suspicious or has patterns
+        assert is_suspicious or len(patterns) > 0  # Either suspicious or has patterns
         if patterns:
             assert any("malicious" in pattern.lower() or "multiple" in pattern.lower() for pattern in patterns)
     
@@ -371,7 +371,7 @@ class TestMultilingualAttackDetector:
         
         result = detector.detect(sample_processed_input)
         
-        assert result.is_attack == True
+        assert result.is_attack
         assert result.suggested_action == SecurityAction.BLOCK
         assert len(result.matched_patterns) == 1
         assert result.matched_patterns[0].id == "PAT-035"
@@ -394,7 +394,7 @@ class TestMultilingualAttackDetector:
             
             result = detector.detect(sample_processed_input)
             
-            assert result.is_attack == False
+            assert not result.is_attack
             assert result.confidence == 0.0
             assert len(result.matched_patterns) == 0
             assert result.suggested_action == SecurityAction.PASS
@@ -457,7 +457,7 @@ class TestMultilingualAttackDetector:
         
         result = detector.detect(sample_processed_input)
         
-        assert result.is_attack == True
+        assert result.is_attack
         assert len(result.evidence) > 0
         
         # Check that we have evidence with pattern information
@@ -477,7 +477,7 @@ class TestMultilingualAttackDetector:
         
         result = detector.detect(sample_processed_input)
         
-        assert result.is_attack == True
+        assert result.is_attack
         assert result.suggested_action == SecurityAction.BLOCK
         # Check that multiple languages are detected somewhere in the evidence
         evidence_text = " ".join(result.evidence)
@@ -507,7 +507,7 @@ class TestMultilingualAttackDetector:
         
         result = detector.detect(sample_processed_input)
         
-        assert result.is_attack == False
+        assert not result.is_attack
         assert result.confidence == 0.0
         assert len(result.matched_patterns) == 0
         assert result.suggested_action == SecurityAction.PASS
@@ -518,5 +518,5 @@ class TestMultilingualAttackDetector:
         
         result = detector.detect(sample_processed_input)
         
-        assert result.is_attack == False
+        assert not result.is_attack
         assert result.confidence == 0.0

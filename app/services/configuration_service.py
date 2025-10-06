@@ -5,12 +5,10 @@ that were previously hardcoded throughout the application.
 """
 
 from typing import Dict, Any, Optional
-from pathlib import Path
-import yaml
 from dataclasses import asdict
 
 from app.config.system_config import (
-    SystemConfiguration, SystemConfigurationManager,
+    SystemConfigurationManager,
     AutonomyConfig, PatternMatchingConfig, LLMGenerationConfig, RecommendationConfig
 )
 from app.utils.imports import require_service

@@ -2,13 +2,12 @@
 
 import pytest
 from unittest.mock import Mock, patch
-from typing import Dict, List, Set
 
 from app.services.context_aware_prompt_generator import (
     ContextAwareLLMPromptGenerator, PromptContext, PromptValidationResult
 )
 from app.services.requirement_parsing.base import (
-    TechContext, DomainContext, RequirementConstraints
+    TechContext, DomainContext
 )
 from app.services.catalog.models import TechEntry, EcosystemType, MaturityLevel
 

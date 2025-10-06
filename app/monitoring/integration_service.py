@@ -5,10 +5,8 @@ Integrates monitoring, quality assurance, and alerting systems
 with the tech stack generation workflow.
 """
 
-import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-import logging
+from datetime import datetime
+from typing import Dict, List, Optional, Any
 
 from app.core.service import ConfigurableService
 from app.utils.imports import require_service, optional_service
@@ -29,7 +27,7 @@ class MonitoringIntegrationService(ConfigurableService):
         super().__init__(config or {}, 'MonitoringIntegration')
         try:
             self.logger = require_service('logger', context='MonitoringIntegration')
-        except:
+        except Exception:
             # Fallback logger for testing/standalone use
             import logging
             self.logger = logging.getLogger('MonitoringIntegration')

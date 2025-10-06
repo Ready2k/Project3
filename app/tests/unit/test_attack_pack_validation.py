@@ -36,7 +36,6 @@ Coverage Summary:
 
 import pytest
 import asyncio
-from typing import List, Dict, Any
 
 from app.security.advanced_prompt_defender import AdvancedPromptDefender
 from app.security.attack_patterns import SecurityAction, SecurityDecision
@@ -788,7 +787,6 @@ class TestAttackPackValidation:
         all_patterns = defender.get_attack_patterns()
         
         # Expected categories from the attack pack
-        expected_categories = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M']
         
         # Get categories covered by patterns
         covered_categories = set(pattern.category for pattern in all_patterns)

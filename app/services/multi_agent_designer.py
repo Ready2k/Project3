@@ -1,8 +1,6 @@
 """Multi-agent system designer for complex autonomous workflows."""
 
-import json
-import asyncio
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from dataclasses import dataclass
 from enum import Enum
 
@@ -93,7 +91,6 @@ class MultiAgentSystemDesigner:
     def __init__(self, llm_provider: LLMProvider):
         self.llm_provider = llm_provider
         # Get logger from service registry
-        from app.utils.imports import require_service
         self.logger = require_service('logger', context='MultiAgentSystemDesigner')
         self.agent_roles = {
             "coordinator": "Orchestrates overall workflow and agent communication",

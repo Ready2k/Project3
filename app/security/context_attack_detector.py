@@ -9,9 +9,7 @@ This detector identifies long-context burying attacks including:
 """
 
 import re
-import hashlib
-from typing import List, Optional, Tuple, Dict, Set
-from abc import ABC, abstractmethod
+from typing import List, Dict
 
 from app.security.attack_patterns import (
     AttackPattern, ProcessedInput, DetectionResult, SecurityAction, AttackSeverity
@@ -585,7 +583,7 @@ class ContextAttackDetector:
     
     def get_text_analysis(self, text: str) -> Dict:
         """Get detailed analysis of text for debugging purposes."""
-        processed_input = ProcessedInput(
+        ProcessedInput(
             original_text=text,
             normalized_text=text,
             length_stats={'total_length': len(text), 'word_count': len(text.split())}

@@ -1,8 +1,7 @@
 """Unit tests for C4 diagram functionality."""
 
-import asyncio
 import pytest
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 import sys
 import os
 

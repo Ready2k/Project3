@@ -1,8 +1,7 @@
 """Unit tests for diagram analysis integration functionality."""
 
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
-from typing import Dict, List, Any, Optional
+from unittest.mock import patch
 
 # Import the functions we're testing
 import sys

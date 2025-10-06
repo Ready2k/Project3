@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 from app.services.requirement_parsing.context_extractor import TechnologyContextExtractor
 from app.services.requirement_parsing.base import (
     ParsedRequirements, ExplicitTech, ContextClues, RequirementConstraints,
-    DomainContext, TechContext, ExtractionMethod
+    DomainContext, TechContext
 )
 
 
