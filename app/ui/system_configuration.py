@@ -447,20 +447,20 @@ def render_configuration_management(config_manager: SystemConfigurationManager) 
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("💾 Save Configuration", use_container_width=True, key="save_config_btn"):
+        if st.button("💾 Save Configuration", width=content, key="save_config_btn"):
             if config_manager.save_config():
                 st.success("✅ Configuration saved successfully!")
             else:
                 st.error("❌ Failed to save configuration")
     
     with col2:
-        if st.button("🔄 Reset to Defaults", use_container_width=True, key="reset_config_btn"):
+        if st.button("🔄 Reset to Defaults", width=content, key="reset_config_btn"):
             config_manager.reset_to_defaults()
             st.success("✅ Configuration reset to defaults")
             st.rerun()
     
     with col3:
-        if st.button("📤 Export Configuration", use_container_width=True, key="export_config_btn"):
+        if st.button("📤 Export Configuration", width=content, key="export_config_btn"):
             config_dict = config_manager.export_config()
             st.download_button(
                 "Download Config",
@@ -540,7 +540,7 @@ def render_api_endpoints() -> None:
             st.caption(endpoint['description'])
         with col3:
             full_url = f"{api_base_url}{endpoint['path']}"
-            st.link_button("🔗 Open", full_url, use_container_width=True)
+            st.link_button("🔗 Open", full_url, width=content)
     
     st.write("### 🔒 Security")
     
@@ -568,7 +568,7 @@ def render_api_endpoints() -> None:
             st.caption(endpoint['description'])
         with col3:
             full_url = f"{api_base_url}{endpoint['path']}"
-            st.link_button("🔗 Open", full_url, use_container_width=True)
+            st.link_button("🔗 Open", full_url, width=content)
     
     st.write("### 📋 Core Analysis Workflow")
     
@@ -641,7 +641,7 @@ def render_api_endpoints() -> None:
                 st.caption("POST endpoint")
             else:
                 full_url = f"{api_base_url}{endpoint['path']}"
-                st.link_button("🔗 Open", full_url, use_container_width=True)
+                st.link_button("🔗 Open", full_url, width=content)
     
     st.write("### 🤖 LLM Provider Management")
     
@@ -744,7 +744,7 @@ def render_api_endpoints() -> None:
             st.caption(endpoint['description'])
         with col3:
             full_url = f"{api_base_url}{endpoint['path']}"
-            st.link_button("🔗 Open", full_url, use_container_width=True)
+            st.link_button("🔗 Open", full_url, width=content)
     
     # Quick API testing section
     st.write("---")
@@ -754,7 +754,7 @@ def render_api_endpoints() -> None:
     
     with col1:
         st.write("**Health Check Test**")
-        if st.button("🏥 Test Basic Health", use_container_width=True):
+        if st.button("🏥 Test Basic Health", width=content):
             try:
                 import requests
                 response = requests.get(f"{api_base_url}/health", timeout=10)
@@ -770,8 +770,8 @@ def render_api_endpoints() -> None:
     
     with col2:
         st.write("**Documentation Access**")
-        st.link_button("📖 Open Swagger UI", f"{api_base_url}/docs", use_container_width=True)
-        st.link_button("📋 Open ReDoc", f"{api_base_url}/redoc", use_container_width=True)
+        st.link_button("📖 Open Swagger UI", f"{api_base_url}/docs", width=content)
+        st.link_button("📋 Open ReDoc", f"{api_base_url}/redoc", width=content)
     
     # Usage tips
     st.write("---")
@@ -933,7 +933,7 @@ def render_audit_data_viewer(audit_logger):
                     # Display data with selection
                     st.dataframe(
                         df,
-                        use_container_width=True,
+                        width=content,
                         hide_index=True,
                         column_config={
                             "prompt": st.column_config.TextColumn("Prompt", width="medium"),
@@ -988,7 +988,7 @@ def render_audit_data_viewer(audit_logger):
                     # Display data
                     st.dataframe(
                         df,
-                        use_container_width=True,
+                        width=content,
                         hide_index=True,
                         column_config={
                             "created_at": st.column_config.DatetimeColumn("Created At"),
@@ -1040,7 +1040,7 @@ def render_audit_analytics(audit_logger):
             if not provider_df.empty:
                 st.dataframe(
                     provider_df,
-                    use_container_width=True,
+                    width=content,
                     hide_index=True,
                     column_config={
                         "avg_latency": st.column_config.NumberColumn("Avg Latency (ms)", format="%.1f"),
@@ -1062,7 +1062,7 @@ def render_audit_analytics(audit_logger):
             if not pattern_df.empty:
                 st.dataframe(
                     pattern_df,
-                    use_container_width=True,
+                    width=content,
                     hide_index=True,
                     column_config={
                         "avg_score": st.column_config.NumberColumn("Avg Score", format="%.3f"),
@@ -1265,7 +1265,7 @@ def render_security_data_viewer(security_logger):
                 st.dataframe(
                     display_df[['event_id', 'timestamp', 'action', 'confidence', 'alert_severity', 
                                'attack_count', 'input_length', 'processing_time_ms']],
-                    use_container_width=True,
+                    width=content,
                     hide_index=True,
                     column_config={
                         "timestamp": st.column_config.DatetimeColumn("Timestamp"),
@@ -1358,7 +1358,7 @@ def render_security_analytics(security_logger):
             if not action_df.empty:
                 st.dataframe(
                     action_df,
-                    use_container_width=True,
+                    width=content,
                     hide_index=True,
                     column_config={
                         "avg_confidence": st.column_config.NumberColumn("Avg Confidence", format="%.3f"),

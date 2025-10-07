@@ -11,8 +11,10 @@ services:
       - PYTHONPATH=/app
       - REDIS_URL=redis://redis:6379/0
       - LOGGING_LEVEL=INFO
+    # Note: For multiple replicas, use a load balancer like nginx
+    # For now, using single replica to avoid port conflicts
     deploy:
-      replicas: 2
+      replicas: 1
       resources:
         limits:
           cpus: '1.0'

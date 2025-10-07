@@ -271,7 +271,7 @@ class QualityDashboard(ConfigurableService):
                 )
         
         fig.update_layout(height=600, showlegend=True, title_text="Metrics Over Time")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width=content)
     
     def _render_accuracy_breakdown(self, dashboard_data: Dict[str, Any]) -> None:
         """Render accuracy metrics breakdown."""
@@ -306,7 +306,7 @@ class QualityDashboard(ConfigurableService):
         ))
         
         fig.update_layout(height=300)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width=content)
         
         # Accuracy details
         st.markdown(f"**Samples:** {accuracy_data.get('samples', 0)}")
@@ -348,7 +348,7 @@ class QualityDashboard(ConfigurableService):
         ))
         
         fig.update_layout(height=300)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width=content)
         
         # Performance details
         st.markdown(f"**Max Time:** {max_time:.1f}s")
@@ -409,7 +409,7 @@ class QualityDashboard(ConfigurableService):
                 return ''
             
             styled_df = df_alerts.style.applymap(color_level, subset=['Level'])
-            st.dataframe(styled_df, use_container_width=True)
+            st.dataframe(styled_df, width=content)
     
     def _render_qa_section(self) -> None:
         """Render quality assurance section."""
@@ -473,7 +473,7 @@ class QualityDashboard(ConfigurableService):
         
         if check_data:
             df_checks = pd.DataFrame(check_data)
-            st.dataframe(df_checks, use_container_width=True)
+            st.dataframe(df_checks, width=content)
         
         # QA report timestamp
         st.caption(f"Report generated: {latest_report.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -609,7 +609,7 @@ class QualityDashboard(ConfigurableService):
                 height=400
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width=content)
     
     def _render_distribution_analysis(self) -> None:
         """Render distribution analysis charts."""

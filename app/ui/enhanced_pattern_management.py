@@ -143,7 +143,7 @@ def render_pattern_overview(pattern_loader: EnhancedPatternLoader) -> None:
                 "Complexity": pattern.get("_complexity_score", 0.5)
             })
         
-        st.dataframe(capability_data, use_container_width=True)
+        st.dataframe(capability_data, width=content)
 
 
 def render_pattern_enhancement(pattern_loader: EnhancedPatternLoader, 
@@ -388,7 +388,7 @@ def render_pattern_comparison_details(pattern1: Dict[str, Any], pattern2: Dict[s
             "Pattern 2": "✅" if capabilities2.get(capability) else "❌"
         })
     
-    st.dataframe(comparison_data, use_container_width=True)
+    st.dataframe(comparison_data, width=content)
 
 
 def render_pattern_analytics(pattern_loader: EnhancedPatternLoader) -> None:

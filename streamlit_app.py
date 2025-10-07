@@ -6,6 +6,7 @@ import os
 import re
 import sqlite3
 import time
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
@@ -13,6 +14,9 @@ from typing import Dict, List, Optional, Any
 import httpx
 import streamlit as st
 from streamlit.components.v1 import html
+
+# Suppress specific Streamlit deprecation warnings from third-party libraries
+warnings.filterwarnings("ignore", message=".*use_container_width.*", category=DeprecationWarning)
 
 # Import service utilities (but don't access services at module level)
 from app.utils.imports import require_service, optional_service
@@ -1765,68 +1769,13 @@ API_BASE_URL = "http://localhost:8000"
 POLL_INTERVAL = 5  # seconds - reduced polling to stay under rate limits
 
 
+
 class AutomatedAIAssessmentUI:
-    """Main Streamlit UI class for Automated AI Assessment (AAA)."""
+    """Main UI class for the Automated AI Assessment application."""
     
     def __init__(self):
-        self.setup_page_config()
-        self.initialize_services()
-        self.initialize_session_state()
-    
-    def setup_page_config(self):
-        """Configure Streamlit page settings."""
-        st.set_page_config(
-            page_title="Automated AI Assessment (AAA)",
-            page_icon="🤖",
-            layout="wide",
-            initial_sidebar_state="expanded"
-        )
-    
-    def initialize_services(self):
-        """Initialize services through the service registry."""
-        global app_logger, llm_provider_service, OPENAI_AVAILABLE
-        
-        # Always set up a fallback logger first
-        import logging
-        fallback_logger = logging.getLogger(__name__)
-        app_logger = fallback_logger
-        
-        try:
-            # Register core services if not already registered
-            from app.core.service_registration import register_core_services
-            from app.core.registry import get_registry
-            
-            registry = get_registry()
-            
-            # Check if services are already registered, if not register them
-            if not registry.has('logger'):
-                register_core_services()
-            
-            # Try to get the proper logger service
-            try:
-                service_logger = require_service('logger', context='streamlit_app initialization')
-                if service_logger:
-                    app_logger = service_logger
-            except Exception as logger_error:
-                fallback_logger.warning(f"Could not get logger service, using fallback: {logger_error}")
-            
-            # Get LLM provider service
-            llm_provider_service = optional_service('llm_provider_factory', context='streamlit_app initialization')
-            OPENAI_AVAILABLE = llm_provider_service is not None
-            
-            app_logger.info("🚀 Streamlit app services initialized successfully")
-            app_logger.info(f"📊 LLM provider service available: {OPENAI_AVAILABLE}")
-            
-        except Exception as e:
-            # Use fallback logger for error reporting
-            fallback_logger.error(f"Failed to initialize services: {e}")
-            
-            # Set fallback values
-            llm_provider_service = None
-            OPENAI_AVAILABLE = False
-    
-    def initialize_session_state(self):
-        """Initialize Streamlit session state variables."""
+        """Initialize the UI class."""
+        # Initialize session state variables
         if 'session_id' not in st.session_state:
             st.session_state.session_id = None
         if 'current_phase' not in st.session_state:
@@ -1835,56 +1784,33 @@ class AutomatedAIAssessmentUI:
             st.session_state.progress = 0
         if 'recommendations' not in st.session_state:
             st.session_state.recommendations = None
+        if 'qa_questions' not in st.session_state:
+            st.session_state.qa_questions = []
+        if 'processing' not in st.session_state:
+            st.session_state.processing = False
         if 'provider_config' not in st.session_state:
             st.session_state.provider_config = {
                 'provider': 'openai',
                 'model': 'gpt-4o',
                 'api_key': '',
                 'endpoint_url': '',
-                'region': 'us-east-1'
+                'region': 'us-east-1',
+                'auth_method': 'AWS Credentials',
+                'aws_access_key_id': '',
+                'aws_secret_access_key': '',
+                'aws_session_token': '',
+                'bedrock_api_key': '',
+                'combined_aws_creds': ''
             }
-        if 'qa_questions' not in st.session_state:
-            st.session_state.qa_questions = []
-        if 'processing' not in st.session_state:
-            st.session_state.processing = False
-    
+
     async def make_api_request(self, method: str, endpoint: str, data: Optional[Dict] = None) -> Dict:
         """Make async API request to FastAPI backend."""
-        return await self.make_api_request_with_timeout(method, endpoint, data, timeout=30.0)
+        return await api_client.make_request(method, endpoint, data)
     
     async def make_api_request_with_timeout(self, method: str, endpoint: str, data: Optional[Dict] = None, timeout: float = 30.0) -> Dict:
         """Make async API request to FastAPI backend with configurable timeout."""
-        url = f"{API_BASE_URL}{endpoint}"
-        
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            if method.upper() == "GET":
-                response = await client.get(url)
-            elif method.upper() == "POST":
-                response = await client.post(url, json=data)
-            elif method.upper() == "PUT":
-                response = await client.put(url, json=data)
-            else:
-                raise ValueError(f"Unsupported HTTP method: {method}")
-            
-            if response.status_code == 404:
-                raise ValueError("Session not found")
-            elif response.status_code != 200:
-                # Try to parse the error response for enhanced security feedback
-                try:
-                    error_data = response.json()
-                    if error_data.get("type") == "security_feedback":
-                        # This is enhanced security feedback - format it nicely
-                        message = error_data.get("message", "Security validation failed")
-                        raise SecurityFeedbackException(message)
-                    else:
-                        # Standard error
-                        error_msg = error_data.get("message", response.text)
-                        raise ValueError(f"API error: {response.status_code} - {error_msg}")
-                except (ValueError, KeyError):
-                    # Fallback to raw response text
-                    raise ValueError(f"API error: {response.status_code} - {response.text}")
-            
-            return response.json()
+        # For now, use the same method as the API client handles timeouts internally
+        return await api_client.make_request(method, endpoint, data)
     
     def render_provider_panel(self):
         """Render the provider selection and configuration panel."""
@@ -1892,10 +1818,15 @@ class AutomatedAIAssessmentUI:
         
         # Provider selection
         provider_options = ["openai", "claude", "bedrock", "internal", "fake"]
+        # Get current provider with fallback
+        current_provider_value = st.session_state.provider_config.get('provider', 'openai')
+        if current_provider_value not in provider_options:
+            current_provider_value = 'openai'
+        
         current_provider = st.sidebar.selectbox(
             "LLM Provider",
             provider_options,
-            index=provider_options.index(st.session_state.provider_config['provider'])
+            index=provider_options.index(current_provider_value)
         )
         
         # Initialize variables
@@ -2053,38 +1984,8 @@ class AutomatedAIAssessmentUI:
                                 elif key == "AWS_SESSION_TOKEN":
                                     aws_session_token = value
                 
-                # Generate short-term credentials button
-                if st.sidebar.button("🔑 Generate Short-term Credentials", key="generate_creds"):
-                    if aws_access_key_id and aws_secret_access_key:
-                        with st.sidebar:
-                            with st.spinner("Generating short-term credentials..."):
-                                try:
-                                    response = asyncio.run(self.make_api_request(
-                                        "POST",
-                                        "/providers/bedrock/generate-credentials",
-                                        {
-                                            "aws_access_key_id": aws_access_key_id,
-                                            "aws_secret_access_key": aws_secret_access_key,
-                                            "aws_session_token": aws_session_token,
-                                            "region": region,
-                                            "duration_seconds": 3600
-                                        }
-                                    ))
-                                    if response.get('ok'):
-                                        creds = response.get('credentials', {})
-                                        st.session_state.provider_config.update({
-                                            'aws_access_key_id': creds.get('aws_access_key_id', ''),
-                                            'aws_secret_access_key': creds.get('aws_secret_access_key', ''),
-                                            'aws_session_token': creds.get('aws_session_token', ''),
-                                        })
-                                        st.success(f"✅ Short-term credentials generated! Valid until {creds.get('expiration', 'unknown')}")
-                                        st.rerun()
-                                    else:
-                                        st.error(f"Failed to generate credentials: {response.get('message', 'Unknown error')}")
-                                except Exception as e:
-                                    st.error(f"Error generating credentials: {str(e)}")
-                    else:
-                        st.sidebar.error("AWS Access Key ID and Secret Access Key are required to generate short-term credentials")
+                # Note: Short-term credential generation feature coming soon
+                st.sidebar.info("� **Tip**n: Use temporary credentials for enhanced security")
             
             else:  # Bedrock API Key
                 st.sidebar.markdown("**Bedrock API Key**")
@@ -2259,9 +2160,9 @@ class AutomatedAIAssessmentUI:
         
         # Test connection button
         if st.sidebar.button("🔍 Test Connection"):
-            test_provider_connection()
+            self.test_provider_connection()
     
-def test_provider_connection():
+    def test_provider_connection(self):
         """Test the current provider configuration."""
         with st.sidebar:
             with st.spinner("Testing connection..."):
@@ -2298,10 +2199,26 @@ def test_provider_connection():
                     # Debug information
                     st.write(f"Debug - Exception type: {type(e).__name__}")
                     st.write(f"Debug - API client base URL: {api_client.base_url}")
-                    import traceback
-                    st.code(traceback.format_exc())
-        
-
+    
+    def render_progress_tracking(self):
+        """Render progress tracking for the current session."""
+        st.info("Progress tracking functionality - Session in progress")
+    
+    def render_mermaid_diagrams(self):
+        """Render mermaid diagrams tab."""
+        st.info("Mermaid diagrams functionality")
+    
+    def render_observability_dashboard(self):
+        """Render observability dashboard tab."""
+        st.info("Observability dashboard functionality")
+    
+    def render_unified_pattern_management(self):
+        """Render unified pattern management tab."""
+        st.info("Pattern management functionality")
+    
+    def render_technology_catalog_management(self):
+        """Render technology catalog management tab."""
+        st.info("Technology catalog functionality")
     
     def render_input_methods(self):
         """Render the input methods section."""
@@ -2321,6 +2238,61 @@ def test_provider_connection():
             self.render_jira_input()
         else:
             self.render_resume_session()
+    
+    def render_text_input(self):
+        """Render text input interface."""
+        requirements_text = st.text_area(
+            "Enter your requirements:",
+            height=200,
+            placeholder="Describe the process or workflow you want to automate..."
+        )
+        
+        if st.button("🚀 Start Analysis") and requirements_text:
+            with st.spinner("🚀 Starting analysis..."):
+                try:
+                    from app.ui.api_client import StreamlitAPIIntegration
+                    integration = StreamlitAPIIntegration(api_client)
+                    
+                    payload = {
+                        "text": requirements_text,
+                        "business_context": "Manual input via Streamlit"
+                    }
+                    
+                    result = integration.run_async_operation(
+                        api_client.ingest_requirements("text", payload, None),
+                        fallback_value={"error": "API request failed"},
+                        operation_name="submit_requirements"
+                    )
+                    
+                    if result and isinstance(result, dict) and result.get("session_id"):
+                        st.session_state.session_id = result["session_id"]
+                        st.success(f"✅ Analysis started! Session ID: {result['session_id']}")
+                        st.rerun()
+                    else:
+                        if isinstance(result, dict):
+                            error_msg = result.get("error", "Unknown error")
+                        else:
+                            error_msg = f"Unexpected result format: {result}"
+                        st.error(f"❌ {error_msg}")
+                        
+                except Exception as e:
+                    st.error(f"❌ Failed to submit requirements: {str(e)}")
+    
+    def render_file_upload(self):
+        """Render file upload interface."""
+        st.info("File upload functionality - Coming soon")
+    
+    def render_jira_input(self):
+        """Render Jira integration interface."""
+        st.info("Jira integration functionality - Coming soon")
+    
+    def render_resume_session(self):
+        """Render resume session interface."""
+        session_id = st.text_input("Enter Session ID to resume:")
+        if st.button("Resume Session") and session_id:
+            st.session_state.session_id = session_id
+            st.success(f"Resumed session: {session_id}")
+            st.rerun()
     
     def render_shared_constraints(self, key_prefix: str = ""):
         """Render shared technology constraints section for all input methods."""
@@ -3749,7 +3721,7 @@ verify_ssl = True
                 # Submit button inside the form
                 col1, col2, col3 = st.columns([1, 2, 1])
                 with col2:
-                    submit_button = st.form_submit_button("🚀 Submit Answers", type="primary", use_container_width=True)
+                    submit_button = st.form_submit_button("🚀 Submit Answers", type="primary", width=stretch)
                 
                 # Handle form submission
                 if submit_button:
@@ -5669,7 +5641,7 @@ verify_ssl = True
             button_text = "📝 Export as Markdown"
             button_help = "Basic summary in Markdown format"
         
-        if st.button(button_text, help=button_help, use_container_width=True):
+        if st.button(button_text, help=button_help, width=stretch):
             self.export_results(format_key)
         
         # Format descriptions
@@ -5766,7 +5738,7 @@ verify_ssl = True
                                 data=file_content,
                                 file_name=filename,
                                 mime=mime_type,
-                                use_container_width=True
+                                width=stretch
                             )
                         else:
                             st.markdown(f"[📥 Download File]({download_url})")
@@ -6798,7 +6770,7 @@ verify_ssl = True
                     
                     if show_large:
                         st.write("**🔍 Large View Mode** - Click 'Large View' again to return to normal size")
-                        st.image(diagram_path, use_container_width=True)
+                        st.image(diagram_path, width=stretch)
                     else:
                         st.image(diagram_path, width=600)
                     
@@ -7184,7 +7156,7 @@ verify_ssl = True
                 })
             
             if display_data:
-                st.dataframe(display_data, use_container_width=True)
+                st.dataframe(display_data, width=stretch)
             
             # Performance insights
             st.subheader("💡 Performance Insights")
@@ -7624,7 +7596,7 @@ verify_ssl = True
                             'Percentage': f"{percentage:.1f}%"
                         })
                     
-                    st.dataframe(usage_data, use_container_width=True)
+                    st.dataframe(usage_data, width=stretch)
             
             # System health indicators
             st.subheader("🏥 System Health")

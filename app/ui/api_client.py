@@ -185,17 +185,32 @@ class StreamlitAPIIntegration:
     def run_async_operation(self, coro: Coroutine[Any, Any, Any], fallback_value: Any = None, operation_name: str = "api_operation") -> Any:
         """Run async operation in Streamlit context."""
         try:
-            # Check if we're in an async context
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # Create a task for the coroutine
-                asyncio.create_task(coro)
-                # For Streamlit, we need to handle this differently
-                # This is a simplified approach - in production you might want to use st.session_state
-                return None  # Placeholder - would need proper async handling
-            else:
-                # Run the coroutine
-                return loop.run_until_complete(coro)
+            # For Streamlit, we need to run the coroutine in a new event loop
+            # since Streamlit runs in a sync context but may have an event loop
+            try:
+                # Try to get the current loop
+                loop = asyncio.get_running_loop()
+                # If we're in an async context, we need to run in a thread
+                import concurrent.futures
+                import threading
+                
+                def run_in_thread():
+                    # Create a new event loop for this thread
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    try:
+                        return new_loop.run_until_complete(coro)
+                    finally:
+                        new_loop.close()
+                
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(run_in_thread)
+                    return future.result(timeout=30.0)  # 30 second timeout
+                    
+            except RuntimeError:
+                # No event loop running, we can run directly
+                return asyncio.run(coro)
+                
         except Exception as e:
             # Get logger service for error logging (with fallback)
             try:
