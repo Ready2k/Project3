@@ -3721,7 +3721,7 @@ verify_ssl = True
                 # Submit button inside the form
                 col1, col2, col3 = st.columns([1, 2, 1])
                 with col2:
-                    submit_button = st.form_submit_button("🚀 Submit Answers", type="primary", width=stretch)
+                    submit_button = st.form_submit_button("🚀 Submit Answers", type="primary", width='stretch')
                 
                 # Handle form submission
                 if submit_button:
@@ -5641,7 +5641,7 @@ verify_ssl = True
             button_text = "📝 Export as Markdown"
             button_help = "Basic summary in Markdown format"
         
-        if st.button(button_text, help=button_help, width=stretch):
+        if st.button(button_text, help=button_help, width='stretch'):
             self.export_results(format_key)
         
         # Format descriptions
@@ -5738,7 +5738,7 @@ verify_ssl = True
                                 data=file_content,
                                 file_name=filename,
                                 mime=mime_type,
-                                width=stretch
+                                width='stretch'
                             )
                         else:
                             st.markdown(f"[📥 Download File]({download_url})")
@@ -6770,7 +6770,7 @@ verify_ssl = True
                     
                     if show_large:
                         st.write("**🔍 Large View Mode** - Click 'Large View' again to return to normal size")
-                        st.image(diagram_path, width=stretch)
+                        st.image(diagram_path, width='stretch')
                     else:
                         st.image(diagram_path, width=600)
                     
@@ -7156,7 +7156,7 @@ verify_ssl = True
                 })
             
             if display_data:
-                st.dataframe(display_data, width=stretch)
+                st.dataframe(display_data, width='stretch')
             
             # Performance insights
             st.subheader("💡 Performance Insights")
@@ -7596,7 +7596,7 @@ verify_ssl = True
                             'Percentage': f"{percentage:.1f}%"
                         })
                     
-                    st.dataframe(usage_data, width=stretch)
+                    st.dataframe(usage_data, width='stretch')
             
             # System health indicators
             st.subheader("🏥 System Health")
@@ -9614,6 +9614,19 @@ verify_ssl = True
     
     def run(self):
         """Main application entry point."""
+        
+        # Simple CSS fix to remove width constraints from block container
+        st.markdown("""
+        <style>
+        /* Fix the main constraint: remove max-width limit and excessive padding */
+        .block-container {
+            max-width: none !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
         st.title("🤖 Automated AI Assessment (AAA)")
         st.markdown("*Assess automation feasibility of your requirements with AI*")
         

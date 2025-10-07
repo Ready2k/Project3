@@ -1085,7 +1085,7 @@ def render_integrated_monitoring_dashboard():
                     height=300
                 )
                 
-                st.plotly_chart(fig, width=content)
+                st.plotly_chart(fig, width='content')
                 
         except Exception as e:
             st.error(f"Error rendering live quality scores: {e}")
@@ -1137,7 +1137,7 @@ def render_integrated_monitoring_dashboard():
                 return ''
             
             styled_df = df.style.applymap(style_severity, subset=['Severity'])
-            st.dataframe(styled_df, width=content)
+            st.dataframe(styled_df, width='content')
             
         except Exception as e:
             st.error(f"Error rendering alerts table: {e}")
