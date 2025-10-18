@@ -4048,9 +4048,17 @@ verify_ssl = True
         
         st.header("🎯 Results & Recommendations")
         
+        # Add refresh recommendations button
+        col1, col2, col3 = st.columns([1, 1, 2])
+        with col1:
+            if st.button("🔄 Refresh Results", help="Reload recommendations from the latest analysis"):
+                st.session_state.recommendations = None
+                st.rerun()
+        
         # Add regenerate functionality (only show if we have requirements and recommendations)
         if st.session_state.get('requirements') and st.session_state.get('recommendations'):
-            self.render_regenerate_section()
+            with col2:
+                self.render_regenerate_section()
         
         # Show original requirements
         if st.session_state.get('requirements'):

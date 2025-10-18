@@ -1854,8 +1854,15 @@ async def generate_recommendations(request: RecommendRequest, response: Response
         session.progress = 100
         await store.update_session(request.session_id, session)
         
-        # Prepare response
-        overall_feasibility = recommendations[0].feasibility if recommendations else "Unknown"
+        # Prepare response - prioritize LLM analysis feasibility over pattern feasibility
+        llm_feasibility = session.requirements.get("llm_analysis_automation_feasibility")
+        if llm_feasibility and llm_feasibility in ["Automatable", "Fully Automatable", "Partially Automatable", "Not Automatable"]:
+            overall_feasibility = llm_feasibility
+            app_logger.info(f"Using LLM feasibility assessment from Q&A: {llm_feasibility}")
+        else:
+            overall_feasibility = recommendations[0].feasibility if recommendations else "Unknown"
+            app_logger.info(f"Using pattern-based feasibility: {overall_feasibility}")
+        
         all_tech_stack = []
         for rec in recommendations:
             all_tech_stack.extend(rec.tech_stack)

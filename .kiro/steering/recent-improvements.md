@@ -4,6 +4,73 @@ This document outlines recent improvements made to the AAA system and best pract
 
 ## Recent Major Improvements
 
+### 21. Feasibility Assessment Display Fix (October 2025)
+
+**Problem**: Critical feasibility display issue where UI showed "⚪ Feasibility: Unknown" despite LLM correctly analyzing requirements as "Automatable":
+- LLM analysis correctly determined feasibility as "Automatable" with 85% confidence
+- API `/recommend` endpoint was using pattern-based feasibility instead of LLM analysis
+- UI session state contained stale cached recommendations showing "Unknown" feasibility
+- Users saw incorrect feasibility assessment despite accurate backend analysis
+
+**Root Cause Analysis**:
+- **API Priority Issue**: `/recommend` endpoint prioritized pattern feasibility over LLM analysis feasibility
+- **UI Caching Issue**: Streamlit session state cached old recommendations without refresh mechanism
+- **Data Flow Problem**: LLM analysis stored as `llm_analysis_automation_feasibility` but API used pattern-based `recommendations[0].feasibility`
+
+**Solution**: Comprehensive feasibility assessment fix with API and UI improvements:
+
+**API Fix**:
+- **LLM Priority Logic**: Updated `/recommend` endpoint to prioritize LLM analysis feasibility over pattern-based feasibility
+- **Fallback Mechanism**: Graceful fallback to pattern feasibility when LLM analysis unavailable
+- **Logging Enhancement**: Added detailed logging to track which feasibility source is being used
+
+**UI Fix**:
+- **Refresh Button**: Added "🔄 Refresh Results" button to reload recommendations without restarting analysis
+- **Session State Management**: Proper clearing of cached recommendations to force fresh API calls
+- **User Experience**: Positioned refresh button prominently in Results section with helpful tooltip
+
+**Technical Implementation**:
+```python
+# API Fix - Prioritize LLM Analysis
+llm_feasibility = session.requirements.get("llm_analysis_automation_feasibility")
+if llm_feasibility and llm_feasibility in ["Automatable", "Fully Automatable", "Partially Automatable", "Not Automatable"]:
+    overall_feasibility = llm_feasibility
+    app_logger.info(f"Using LLM feasibility assessment from Q&A: {llm_feasibility}")
+else:
+    overall_feasibility = recommendations[0].feasibility if recommendations else "Unknown"
+    app_logger.info(f"Using pattern-based feasibility: {overall_feasibility}")
+
+# UI Fix - Refresh Button
+if st.button("🔄 Refresh Results", help="Reload recommendations from the latest analysis"):
+    st.session_state.recommendations = None
+    st.rerun()
+```
+
+**Files Modified**:
+- `app/api.py`: Updated `/recommend` endpoint to prioritize LLM analysis feasibility
+- `streamlit_app.py`: Added refresh button and improved session state management
+
+**Testing Results**:
+- ✅ API correctly returns "Automatable" for LLM-analyzed sessions
+- ✅ UI displays "🟢 Feasibility: Fully Automatable" after refresh
+- ✅ All feasibility types work correctly (Automatable, Partially Automatable, Not Automatable)
+- ✅ Refresh button provides immediate solution without restarting analysis
+- ✅ Backward compatibility maintained for existing sessions
+
+**Impact**:
+- ✅ Accurate feasibility display matching LLM analysis results
+- ✅ Enhanced user experience with easy refresh capability
+- ✅ Improved system reliability and data consistency
+- ✅ Better alignment between backend analysis and frontend display
+- ✅ Reduced user confusion about assessment accuracy
+
+**Best Practices Applied**:
+- Always prioritize contextual LLM analysis over generic pattern-based assessments
+- Provide user-friendly refresh mechanisms for cached data
+- Implement comprehensive logging to track data source decisions
+- Add graceful fallbacks when primary data sources are unavailable
+- Test all feasibility scenarios to ensure consistent behavior
+
 ### 20. Service Registry Fixes & Diagram Rendering (September 2025)
 
 **Problem**: Critical diagram rendering failures preventing users from viewing generated diagrams:
