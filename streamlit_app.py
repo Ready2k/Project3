@@ -4084,7 +4084,7 @@ verify_ssl = True
         rec = st.session_state.recommendations
         
         # Overall feasibility with better display
-        feasibility = rec['feasibility']
+        feasibility = rec.get('feasibility', 'Unknown')
         feasibility_info = {
             "Yes": {"color": "🟢", "label": "Fully Automatable", "desc": "This requirement can be completely automated with high confidence."},
             "Partial": {"color": "🟡", "label": "Partially Automatable", "desc": "This requirement can be mostly automated, but may need human oversight for some steps."},
