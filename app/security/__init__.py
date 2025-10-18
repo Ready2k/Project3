@@ -7,9 +7,9 @@ from .data_egress_detector import DataEgressDetector
 
 __all__ = [
     "SecurityMiddleware",
-    "RateLimitMiddleware", 
+    "RateLimitMiddleware",
     "InputValidator",
     "SecurityValidator",
     "SecurityHeaders",
-    "DataEgressDetector"
+    "DataEgressDetector",
 ]

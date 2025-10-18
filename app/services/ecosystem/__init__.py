@@ -8,16 +8,16 @@ from .intelligence import (
     IntegrationSuggestion,
     CompatibilityResult,
     EcosystemConsistencyResult,
-    DependencyGraph
+    DependencyGraph,
 )
 
 __all__ = [
-    'EcosystemIntelligence',
-    'IntegrationPattern',
-    'CompatibilityLevel',
-    'EcosystemMapping',
-    'IntegrationSuggestion',
-    'CompatibilityResult',
-    'EcosystemConsistencyResult',
-    'DependencyGraph'
+    "EcosystemIntelligence",
+    "IntegrationPattern",
+    "CompatibilityLevel",
+    "EcosystemMapping",
+    "IntegrationSuggestion",
+    "CompatibilityResult",
+    "EcosystemConsistencyResult",
+    "DependencyGraph",
 ]

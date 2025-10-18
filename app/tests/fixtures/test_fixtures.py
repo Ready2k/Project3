@@ -11,7 +11,7 @@ from app.qa.question_loop import Question, QAResult
 
 class TestDataFixtures:
     """Comprehensive test data fixtures."""
-    
+
     @pytest.fixture
     def sample_patterns(self) -> List[Dict[str, Any]]:
         """Sample pattern data for testing."""
@@ -33,8 +33,8 @@ class TestDataFixtures:
                 "examples": [
                     "CSV file processing",
                     "Data validation and cleaning",
-                    "Report generation"
-                ]
+                    "Report generation",
+                ],
             },
             {
                 "pattern_id": "PAT-002",
@@ -53,8 +53,8 @@ class TestDataFixtures:
                 "examples": [
                     "CRM synchronization",
                     "Payment processing",
-                    "Third-party data feeds"
-                ]
+                    "Third-party data feeds",
+                ],
             },
             {
                 "pattern_id": "PAT-003",
@@ -73,8 +73,8 @@ class TestDataFixtures:
                 "examples": [
                     "Daily sales reports",
                     "Performance dashboards",
-                    "Compliance reports"
-                ]
+                    "Compliance reports",
+                ],
             },
             {
                 "pattern_id": "PAT-004",
@@ -93,8 +93,8 @@ class TestDataFixtures:
                 "examples": [
                     "Legacy system migration",
                     "Cloud database migration",
-                    "Schema versioning"
-                ]
+                    "Schema versioning",
+                ],
             },
             {
                 "pattern_id": "PAT-005",
@@ -113,11 +113,11 @@ class TestDataFixtures:
                 "examples": [
                     "Customer support emails",
                     "Complex negotiations",
-                    "Sensitive communications"
-                ]
-            }
+                    "Sensitive communications",
+                ],
+            },
         ]
-    
+
     @pytest.fixture
     def sample_requirements(self) -> List[Dict[str, Any]]:
         """Sample requirements for testing."""
@@ -132,11 +132,17 @@ class TestDataFixtures:
                 "human_review": "optional",
                 "sla": {"response_time_ms": 30000},
                 "compliance": ["GDPR"],
-                "workflow_steps": ["download", "validate", "process", "store", "notify"],
+                "workflow_steps": [
+                    "download",
+                    "validate",
+                    "process",
+                    "store",
+                    "notify",
+                ],
                 "criticality": "high",
                 "existing_tools": ["Excel", "manual scripts"],
                 "budget": "medium",
-                "timeline": "3 months"
+                "timeline": "3 months",
             },
             {
                 "description": "Integrate with external payment API for order processing",
@@ -148,11 +154,17 @@ class TestDataFixtures:
                 "human_review": "required",
                 "sla": {"response_time_ms": 2000},
                 "compliance": ["PCI-DSS", "GDPR"],
-                "workflow_steps": ["validate", "authorize", "process", "confirm", "log"],
+                "workflow_steps": [
+                    "validate",
+                    "authorize",
+                    "process",
+                    "confirm",
+                    "log",
+                ],
                 "criticality": "critical",
                 "existing_tools": ["manual processing"],
                 "budget": "high",
-                "timeline": "6 months"
+                "timeline": "6 months",
             },
             {
                 "description": "Generate weekly sales reports automatically",
@@ -168,7 +180,7 @@ class TestDataFixtures:
                 "criticality": "medium",
                 "existing_tools": ["manual Excel reports"],
                 "budget": "low",
-                "timeline": "1 month"
+                "timeline": "1 month",
             },
             {
                 "description": "Migrate legacy customer database to cloud",
@@ -180,11 +192,17 @@ class TestDataFixtures:
                 "human_review": "required",
                 "sla": {"downtime_hours": 4},
                 "compliance": ["GDPR", "HIPAA"],
-                "workflow_steps": ["backup", "transform", "migrate", "validate", "cutover"],
+                "workflow_steps": [
+                    "backup",
+                    "transform",
+                    "migrate",
+                    "validate",
+                    "cutover",
+                ],
                 "criticality": "critical",
                 "existing_tools": ["legacy system"],
                 "budget": "high",
-                "timeline": "12 months"
+                "timeline": "12 months",
             },
             {
                 "description": "Handle customer support emails automatically",
@@ -196,14 +214,20 @@ class TestDataFixtures:
                 "human_review": "required",
                 "sla": {"response_time_ms": 3600000},
                 "compliance": ["GDPR"],
-                "workflow_steps": ["receive", "classify", "route", "respond", "escalate"],
+                "workflow_steps": [
+                    "receive",
+                    "classify",
+                    "route",
+                    "respond",
+                    "escalate",
+                ],
                 "criticality": "high",
                 "existing_tools": ["manual email handling"],
                 "budget": "medium",
-                "timeline": "6 months"
-            }
+                "timeline": "6 months",
+            },
         ]
-    
+
     @pytest.fixture
     def sample_match_results(self) -> List[MatchResult]:
         """Sample pattern match results."""
@@ -217,7 +241,7 @@ class TestDataFixtures:
                 tag_score=0.9,
                 vector_score=0.94,
                 blended_score=0.92,
-                rationale="High match for data processing automation with CSV files"
+                rationale="High match for data processing automation with CSV files",
             ),
             MatchResult(
                 pattern_id="PAT-003",
@@ -228,7 +252,7 @@ class TestDataFixtures:
                 tag_score=0.7,
                 vector_score=0.86,
                 blended_score=0.78,
-                rationale="Good match for automated reporting requirements"
+                rationale="Good match for automated reporting requirements",
             ),
             MatchResult(
                 pattern_id="PAT-002",
@@ -239,10 +263,10 @@ class TestDataFixtures:
                 tag_score=0.6,
                 vector_score=0.7,
                 blended_score=0.65,
-                rationale="Partial match - some integration aspects apply"
-            )
+                rationale="Partial match - some integration aspects apply",
+            ),
         ]
-    
+
     @pytest.fixture
     def sample_questions(self) -> List[Question]:
         """Sample Q&A questions."""
@@ -251,92 +275,90 @@ class TestDataFixtures:
                 text="What is the typical volume of data processed daily?",
                 field="data_volume",
                 template_category="volume_assessment",
-                question_type="text"
+                question_type="text",
             ),
             Question(
                 text="How sensitive is the data being processed?",
                 field="data_sensitivity",
                 template_category="security_assessment",
                 question_type="select",
-                options=["low", "medium", "high", "critical"]
+                options=["low", "medium", "high", "critical"],
             ),
             Question(
                 text="What is the required processing frequency?",
                 field="frequency",
                 template_category="workflow_variability",
                 question_type="select",
-                options=["real-time", "hourly", "daily", "weekly", "monthly", "on-demand"]
+                options=[
+                    "real-time",
+                    "hourly",
+                    "daily",
+                    "weekly",
+                    "monthly",
+                    "on-demand",
+                ],
             ),
             Question(
                 text="Are there any compliance requirements?",
                 field="compliance",
                 template_category="compliance_assessment",
                 question_type="multiselect",
-                options=["GDPR", "HIPAA", "PCI-DSS", "SOX", "None"]
+                options=["GDPR", "HIPAA", "PCI-DSS", "SOX", "None"],
             ),
             Question(
                 text="What systems need to be integrated?",
                 field="integrations",
                 template_category="integration_assessment",
-                question_type="text"
-            )
+                question_type="text",
+            ),
         ]
-    
+
     @pytest.fixture
     def sample_qa_result(self, sample_questions) -> QAResult:
         """Sample Q&A result."""
         return QAResult(
             complete=False,
             confidence=0.7,
-            next_questions=sample_questions[:3]  # First 3 questions
+            next_questions=sample_questions[:3],  # First 3 questions
         )
-    
+
     @pytest.fixture
     def sample_session_state(self, sample_requirements) -> SessionState:
         """Sample session state."""
         session = SessionState(
-            session_id="test-session-123",
-            requirements=sample_requirements[0]
+            session_id="test-session-123", requirements=sample_requirements[0]
         )
-        
+
         # Add some Q&A exchanges
         session.qa_exchanges = [
             QAExchange(
                 question="What is the data volume?",
-                answer="Approximately 10,000 records daily"
+                answer="Approximately 10,000 records daily",
             ),
             QAExchange(
                 question="How sensitive is the data?",
-                answer="Medium sensitivity - customer data but not financial"
-            )
+                answer="Medium sensitivity - customer data but not financial",
+            ),
         ]
-        
+
         # Add pattern matches
         session.pattern_matches = [
-            PatternMatch(
-                pattern_id="PAT-001",
-                score=0.92,
-                accepted=True
-            ),
-            PatternMatch(
-                pattern_id="PAT-003",
-                score=0.78,
-                accepted=True
-            )
+            PatternMatch(pattern_id="PAT-001", score=0.92, accepted=True),
+            PatternMatch(pattern_id="PAT-003", score=0.78, accepted=True),
         ]
-        
+
         # Add recommendations
         session.recommendations = [
             Recommendation(
                 pattern_id="PAT-001",
                 feasibility="Automatable",
                 confidence=0.92,
-                reasoning="Excellent match for data processing automation"
+                reasoning="Excellent match for data processing automation",
             )
         ]
-        
+
         return session
-    
+
     @pytest.fixture
     def sample_responses(self) -> Dict[str, str]:
         """Sample LLM responses for different scenarios."""
@@ -350,7 +372,6 @@ class TestDataFixtures:
 5. **Error Handling**: How should errors and exceptions be handled?
 
 These details will help determine the best automation approach.""",
-            
             "api_integration_questions": """For API integration automation, I need to clarify:
 
 1. **API Type**: What type of API are you integrating with (REST, GraphQL, SOAP)?
@@ -360,7 +381,6 @@ These details will help determine the best automation approach.""",
 5. **Error Recovery**: How should API failures be handled?
 
 This information will guide the integration strategy.""",
-            
             "reporting_questions": """For automated reporting, please provide:
 
 1. **Report Frequency**: How often should reports be generated?
@@ -370,7 +390,6 @@ This information will guide the integration strategy.""",
 5. **Customization**: Are there different report variants needed?
 
 These details will shape the reporting automation solution.""",
-            
             "feasibility_analysis": """Based on the requirements analysis, here's the feasibility assessment:
 
 **Automatable Aspects:**
@@ -390,7 +409,6 @@ These details will shape the reporting automation solution.""",
 - System monitoring
 
 **Recommendation:** Proceed with automation for core processes while maintaining human oversight for exceptions.""",
-            
             "technical_recommendations": """Technical Implementation Recommendations:
 
 **Architecture:**
@@ -411,28 +429,28 @@ These details will shape the reporting automation solution.""",
 3. Reporting and monitoring
 4. Error handling and recovery
 
-**Estimated Timeline:** 3-4 months for full implementation"""
+**Estimated Timeline:** 3-4 months for full implementation""",
         }
-    
+
     @pytest.fixture
     def pattern_files_directory(self, sample_patterns, tmp_path):
         """Create temporary directory with pattern files."""
         patterns_dir = tmp_path / "patterns"
         patterns_dir.mkdir()
-        
+
         for pattern in sample_patterns:
             pattern_file = patterns_dir / f"{pattern['pattern_id']}.json"
-            with open(pattern_file, 'w') as f:
+            with open(pattern_file, "w") as f:
                 json.dump(pattern, f, indent=2)
-        
+
         return patterns_dir
-    
+
     @pytest.fixture
     def question_templates_directory(self, tmp_path):
         """Create temporary directory with question templates."""
         templates_dir = tmp_path / "templates"
         templates_dir.mkdir()
-        
+
         templates = {
             "data_processing_questions": {
                 "domain": "data_processing",
@@ -442,16 +460,16 @@ These details will shape the reporting automation solution.""",
                         "text": "What is the typical daily volume of data?",
                         "field": "data_volume",
                         "type": "text",
-                        "required": True
+                        "required": True,
                     },
                     {
                         "text": "What is the data sensitivity level?",
                         "field": "data_sensitivity",
                         "type": "select",
                         "options": ["low", "medium", "high"],
-                        "required": True
-                    }
-                ]
+                        "required": True,
+                    },
+                ],
             },
             "api_integration_questions": {
                 "domain": "api_integration",
@@ -462,16 +480,16 @@ These details will shape the reporting automation solution.""",
                         "field": "api_type",
                         "type": "select",
                         "options": ["REST", "GraphQL", "SOAP", "Other"],
-                        "required": True
+                        "required": True,
                     },
                     {
                         "text": "What authentication method is required?",
                         "field": "auth_method",
                         "type": "select",
                         "options": ["API Key", "OAuth", "Basic Auth", "JWT"],
-                        "required": True
-                    }
-                ]
+                        "required": True,
+                    },
+                ],
             },
             "reporting_questions": {
                 "domain": "reporting",
@@ -482,32 +500,32 @@ These details will shape the reporting automation solution.""",
                         "field": "report_format",
                         "type": "multiselect",
                         "options": ["PDF", "Excel", "HTML", "CSV"],
-                        "required": True
+                        "required": True,
                     },
                     {
                         "text": "How should reports be distributed?",
                         "field": "distribution_method",
                         "type": "select",
                         "options": ["Email", "File Share", "API", "Dashboard"],
-                        "required": True
-                    }
-                ]
-            }
+                        "required": True,
+                    },
+                ],
+            },
         }
-        
+
         templates_file = templates_dir / "templates.json"
-        with open(templates_file, 'w') as f:
+        with open(templates_file, "w") as f:
             json.dump(templates, f, indent=2)
-        
+
         return templates_dir
-    
+
     @pytest.fixture
     def export_directory(self, tmp_path):
         """Create temporary directory for exports."""
         export_dir = tmp_path / "exports"
         export_dir.mkdir()
         return export_dir
-    
+
     @pytest.fixture
     def cache_directory(self, tmp_path):
         """Create temporary directory for caching."""
@@ -518,7 +536,7 @@ These details will shape the reporting automation solution.""",
 
 class MockDataGenerators:
     """Generators for creating mock test data."""
-    
+
     @staticmethod
     def generate_pattern(pattern_id: str, **overrides) -> Dict[str, Any]:
         """Generate a pattern with optional overrides."""
@@ -533,11 +551,11 @@ class MockDataGenerators:
             "tech_stack": ["Python"],
             "tags": ["test", "automation"],
             "complexity": "medium",
-            "estimated_effort": "2-4 weeks"
+            "estimated_effort": "2-4 weeks",
         }
         base_pattern.update(overrides)
         return base_pattern
-    
+
     @staticmethod
     def generate_requirements(**overrides) -> Dict[str, Any]:
         """Generate requirements with optional overrides."""
@@ -549,11 +567,11 @@ class MockDataGenerators:
             "volume": {"daily": 1000},
             "integrations": ["test_system"],
             "human_review": "optional",
-            "criticality": "medium"
+            "criticality": "medium",
         }
         base_requirements.update(overrides)
         return base_requirements
-    
+
     @staticmethod
     def generate_match_result(pattern_id: str, **overrides) -> MatchResult:
         """Generate a match result with optional overrides."""
@@ -566,29 +584,29 @@ class MockDataGenerators:
             "tag_score": 0.75,
             "vector_score": 0.85,
             "blended_score": 0.8,
-            "rationale": f"Test match for {pattern_id}"
+            "rationale": f"Test match for {pattern_id}",
         }
         defaults.update(overrides)
         return MatchResult(**defaults)
-    
+
     @staticmethod
     def generate_session_state(session_id: str, **overrides) -> SessionState:
         """Generate session state with optional overrides."""
         requirements = MockDataGenerators.generate_requirements()
         requirements.update(overrides.pop("requirements", {}))
-        
+
         session = SessionState(session_id=session_id, requirements=requirements)
-        
+
         # Apply any other overrides
         for key, value in overrides.items():
             setattr(session, key, value)
-        
+
         return session
 
 
 class TestScenarios:
     """Pre-defined test scenarios for common use cases."""
-    
+
     @pytest.fixture
     def data_processing_scenario(self):
         """Complete data processing automation scenario."""
@@ -600,7 +618,13 @@ class TestScenarios:
                 "data_sensitivity": "medium",
                 "volume": {"daily": 10000},
                 "integrations": ["database", "email"],
-                "workflow_steps": ["download", "validate", "process", "store", "notify"]
+                "workflow_steps": [
+                    "download",
+                    "validate",
+                    "process",
+                    "store",
+                    "notify",
+                ],
             },
             "expected_patterns": ["PAT-001", "PAT-003"],
             "expected_feasibility": "Automatable",
@@ -609,10 +633,10 @@ class TestScenarios:
             "expected_questions": [
                 "What is the data volume?",
                 "How sensitive is the data?",
-                "What validation rules are required?"
-            ]
+                "What validation rules are required?",
+            ],
         }
-    
+
     @pytest.fixture
     def api_integration_scenario(self):
         """Complete API integration scenario."""
@@ -624,7 +648,7 @@ class TestScenarios:
                 "data_sensitivity": "high",
                 "volume": {"daily": 5000},
                 "integrations": ["payment_gateway", "database"],
-                "compliance": ["PCI-DSS"]
+                "compliance": ["PCI-DSS"],
             },
             "expected_patterns": ["PAT-002"],
             "expected_feasibility": "Partially Automatable",
@@ -633,10 +657,10 @@ class TestScenarios:
             "expected_questions": [
                 "What type of API?",
                 "What authentication method?",
-                "What are the rate limits?"
-            ]
+                "What are the rate limits?",
+            ],
         }
-    
+
     @pytest.fixture
     def complex_migration_scenario(self):
         """Complex database migration scenario."""
@@ -649,7 +673,7 @@ class TestScenarios:
                 "volume": {"total_records": 1000000},
                 "integrations": ["legacy_db", "cloud_db", "backup_system"],
                 "compliance": ["GDPR", "HIPAA"],
-                "criticality": "critical"
+                "criticality": "critical",
             },
             "expected_patterns": ["PAT-004"],
             "expected_feasibility": "Partially Automatable",
@@ -658,10 +682,10 @@ class TestScenarios:
             "expected_questions": [
                 "What is the legacy database type?",
                 "What transformations are needed?",
-                "What is the acceptable downtime?"
-            ]
+                "What is the acceptable downtime?",
+            ],
         }
-    
+
     @pytest.fixture
     def not_automatable_scenario(self):
         """Scenario that should not be automated."""
@@ -672,7 +696,7 @@ class TestScenarios:
                 "frequency": "continuous",
                 "data_sensitivity": "high",
                 "human_review": "required",
-                "criticality": "critical"
+                "criticality": "critical",
             },
             "expected_patterns": ["PAT-005"],
             "expected_feasibility": "Not Automatable",
@@ -681,6 +705,6 @@ class TestScenarios:
             "expected_questions": [
                 "What type of communications?",
                 "What human judgment is required?",
-                "What are the risks of automation?"
-            ]
+                "What are the risks of automation?",
+            ],
         }

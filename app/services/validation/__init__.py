@@ -6,16 +6,16 @@ from .models import (
     ConflictSeverity,
     TechnologyConflict,
     EcosystemConsistencyResult,
-    ValidationReport
+    ValidationReport,
 )
 from .compatibility_validator import TechnologyCompatibilityValidator
 
 __all__ = [
-    'CompatibilityResult',
-    'ConflictType', 
-    'ConflictSeverity',
-    'TechnologyConflict',
-    'EcosystemConsistencyResult',
-    'ValidationReport',
-    'TechnologyCompatibilityValidator'
+    "CompatibilityResult",
+    "ConflictType",
+    "ConflictSeverity",
+    "TechnologyConflict",
+    "EcosystemConsistencyResult",
+    "ValidationReport",
+    "TechnologyCompatibilityValidator",
 ]

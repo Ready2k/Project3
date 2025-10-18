@@ -52,27 +52,37 @@ Examples:
 
 For detailed help on any tool, use:
   python -m app.cli.main <tool> --help
-        """
+        """,
     )
-    
-    subparsers = parser.add_subparsers(dest='tool', help='Available tools')
-    
+
+    subparsers = parser.add_subparsers(dest="tool", help="Available tools")
+
     # Catalog management
-    catalog_parser = subparsers.add_parser('catalog', help='Basic catalog management')
-    catalog_parser.add_argument('catalog_args', nargs=argparse.REMAINDER, help='Arguments for catalog tool')
-    
+    catalog_parser = subparsers.add_parser("catalog", help="Basic catalog management")
+    catalog_parser.add_argument(
+        "catalog_args", nargs=argparse.REMAINDER, help="Arguments for catalog tool"
+    )
+
     # Review management
-    review_parser = subparsers.add_parser('review', help='Review queue management')
-    review_parser.add_argument('review_args', nargs=argparse.REMAINDER, help='Arguments for review tool')
-    
+    review_parser = subparsers.add_parser("review", help="Review queue management")
+    review_parser.add_argument(
+        "review_args", nargs=argparse.REMAINDER, help="Arguments for review tool"
+    )
+
     # Bulk operations
-    bulk_parser = subparsers.add_parser('bulk', help='Bulk import/export operations')
-    bulk_parser.add_argument('bulk_args', nargs=argparse.REMAINDER, help='Arguments for bulk tool')
-    
+    bulk_parser = subparsers.add_parser("bulk", help="Bulk import/export operations")
+    bulk_parser.add_argument(
+        "bulk_args", nargs=argparse.REMAINDER, help="Arguments for bulk tool"
+    )
+
     # Dashboard
-    dashboard_parser = subparsers.add_parser('dashboard', help='Statistics and health monitoring')
-    dashboard_parser.add_argument('dashboard_args', nargs=argparse.REMAINDER, help='Arguments for dashboard tool')
-    
+    dashboard_parser = subparsers.add_parser(
+        "dashboard", help="Statistics and health monitoring"
+    )
+    dashboard_parser.add_argument(
+        "dashboard_args", nargs=argparse.REMAINDER, help="Arguments for dashboard tool"
+    )
+
     return parser
 
 
@@ -80,29 +90,29 @@ def main():
     """Main CLI entry point."""
     parser = create_parser()
     args = parser.parse_args()
-    
+
     if not args.tool:
         parser.print_help()
         sys.exit(1)
-    
+
     # Route to appropriate tool
-    if args.tool == 'catalog':
+    if args.tool == "catalog":
         # Replace sys.argv with catalog arguments
-        sys.argv = ['catalog_manager.py'] + args.catalog_args
+        sys.argv = ["catalog_manager.py"] + args.catalog_args
         catalog_main()
-    elif args.tool == 'review':
-        sys.argv = ['review_manager.py'] + args.review_args
+    elif args.tool == "review":
+        sys.argv = ["review_manager.py"] + args.review_args
         review_main()
-    elif args.tool == 'bulk':
-        sys.argv = ['bulk_operations.py'] + args.bulk_args
+    elif args.tool == "bulk":
+        sys.argv = ["bulk_operations.py"] + args.bulk_args
         bulk_main()
-    elif args.tool == 'dashboard':
-        sys.argv = ['catalog_dashboard.py'] + args.dashboard_args
+    elif args.tool == "dashboard":
+        sys.argv = ["catalog_dashboard.py"] + args.dashboard_args
         dashboard_main()
     else:
         parser.print_help()
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -19,7 +19,7 @@ from .tech_stack_monitor import (
     QualityAlert,
     PerformanceRecommendation,
     MetricType,
-    AlertLevel
+    AlertLevel,
 )
 
 from .quality_assurance import (
@@ -27,7 +27,7 @@ from .quality_assurance import (
     QACheckResult,
     QAReport,
     QACheckType,
-    QAStatus
+    QAStatus,
 )
 
 from .integration_service import MonitoringIntegrationService
@@ -35,63 +35,81 @@ from .integration_service import MonitoringIntegrationService
 # Dashboard imports with fallback
 try:
     from .quality_dashboard import QualityDashboard, render_quality_dashboard
+
     DASHBOARD_AVAILABLE = True
 except ImportError:
     # Fallback to simple dashboard if Plotly is not available
     from .simple_dashboard import SimpleMonitoringDashboard as QualityDashboard
-    from .simple_dashboard import render_simple_monitoring_dashboard as render_quality_dashboard
+    from .simple_dashboard import (
+        render_simple_monitoring_dashboard as render_quality_dashboard,
+    )
+
     DASHBOARD_AVAILABLE = False
 
 # Integrated dashboard and alert system
-from .integrated_dashboard import IntegratedMonitoringDashboard, render_integrated_monitoring_dashboard
-from .alert_system import AlertSystem, AlertRule, Alert, AlertSeverity, AlertStatus, NotificationChannel
+from .integrated_dashboard import (
+    IntegratedMonitoringDashboard,
+    render_integrated_monitoring_dashboard,
+)
+from .alert_system import (
+    AlertSystem,
+    AlertRule,
+    Alert,
+    AlertSeverity,
+    AlertStatus,
+    NotificationChannel,
+)
 
 # Performance optimization
-from .performance_optimizer import MonitoringPerformanceOptimizer, get_optimized_interval, should_skip_task
-from .optimization_manager import MonitoringOptimizationManager, optimize_monitoring_system
+from .performance_optimizer import (
+    MonitoringPerformanceOptimizer,
+    get_optimized_interval,
+    should_skip_task,
+)
+from .optimization_manager import (
+    MonitoringOptimizationManager,
+    optimize_monitoring_system,
+)
 
 __all__ = [
     # Core monitoring
-    'TechStackMonitor',
-    'TechStackMetric',
-    'QualityAlert',
-    'PerformanceRecommendation',
-    'MetricType',
-    'AlertLevel',
-    
+    "TechStackMonitor",
+    "TechStackMetric",
+    "QualityAlert",
+    "PerformanceRecommendation",
+    "MetricType",
+    "AlertLevel",
     # Quality assurance
-    'QualityAssuranceSystem',
-    'QACheckResult',
-    'QAReport',
-    'QACheckType',
-    'QAStatus',
-    
+    "QualityAssuranceSystem",
+    "QACheckResult",
+    "QAReport",
+    "QACheckType",
+    "QAStatus",
     # Integration
-    'MonitoringIntegrationService',
-    
+    "MonitoringIntegrationService",
     # Dashboard
-    'QualityDashboard',
-    'render_quality_dashboard',
-    
+    "QualityDashboard",
+    "render_quality_dashboard",
     # Integrated dashboard and alerting
-    'IntegratedMonitoringDashboard',
-    'render_integrated_monitoring_dashboard',
-    'AlertSystem',
-    'AlertRule',
-    'Alert',
-    'AlertSeverity',
-    'AlertStatus',
-    'NotificationChannel',
-    
+    "IntegratedMonitoringDashboard",
+    "render_integrated_monitoring_dashboard",
+    "AlertSystem",
+    "AlertRule",
+    "Alert",
+    "AlertSeverity",
+    "AlertStatus",
+    "NotificationChannel",
     # Performance optimization
-    'MonitoringPerformanceOptimizer',
-    'MonitoringOptimizationManager',
-    'optimize_monitoring_system',
-    'get_optimized_interval',
-    'should_skip_task'
+    "MonitoringPerformanceOptimizer",
+    "MonitoringOptimizationManager",
+    "optimize_monitoring_system",
+    "get_optimized_interval",
+    "should_skip_task",
 ]
 
 # Version information
-__version__ = '1.0.0'
-__author__ = 'Tech Stack Generation Team'
-__description__ = 'Comprehensive monitoring and quality assurance for tech stack generation'
+__version__ = "1.0.0"
+__author__ = "Tech Stack Generation Team"
+__description__ = (
+    "Comprehensive monitoring and quality assurance for tech stack generation"
+)

@@ -38,9 +38,11 @@ User Interface Enhancements:
 - Help Integration: Contextual guidance for session management features
 """
 
+
 def get_version():
     """Get the current version string."""
     return __version__
+
 
 def get_version_info():
     """Get version information as a dictionary."""
@@ -49,5 +51,5 @@ def get_version_info():
         "version_info": __version_info__,
         "release_name": RELEASE_NAME,
         "release_date": RELEASE_DATE,
-        "release_notes": RELEASE_NOTES
+        "release_notes": RELEASE_NOTES,
     }

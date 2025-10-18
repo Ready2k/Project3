@@ -9,35 +9,41 @@ from app.utils.logger import app_logger
 
 class AgentSystemExporter:
     """Exports agent system information to various formats."""
-    
+
     def __init__(self):
         self.export_timestamp = datetime.now().isoformat()
-    
-    def export_to_json(self, agent_system: AgentSystemDisplay, session_id: str) -> Dict[str, Any]:
+
+    def export_to_json(
+        self, agent_system: AgentSystemDisplay, session_id: str
+    ) -> Dict[str, Any]:
         """Export agent system to JSON format."""
-        
+
         app_logger.info(f"Exporting agent system to JSON for session {session_id}")
-        
+
         export_data = {
             "export_metadata": {
                 "session_id": session_id,
                 "export_timestamp": self.export_timestamp,
                 "export_format": "json",
-                "exporter_version": "1.0.0"
+                "exporter_version": "1.0.0",
             },
             "agent_system": {
                 "has_agents": agent_system.has_agents,
                 "system_autonomy_score": agent_system.system_autonomy_score,
                 "agent_count": len(agent_system.agent_roles),
-                "architecture_type": agent_system.coordination.architecture_type if agent_system.coordination else "single_agent"
+                "architecture_type": (
+                    agent_system.coordination.architecture_type
+                    if agent_system.coordination
+                    else "single_agent"
+                ),
             },
             "agent_roles": [],
             "coordination": None,
             "deployment_requirements": agent_system.deployment_requirements,
             "tech_stack_validation": agent_system.tech_stack_validation,
-            "implementation_guidance": agent_system.implementation_guidance
+            "implementation_guidance": agent_system.implementation_guidance,
         }
-        
+
         # Export agent roles
         for agent in agent_system.agent_roles:
             agent_data = {
@@ -53,10 +59,10 @@ class AgentSystemExporter:
                 "communication_requirements": agent.communication_requirements,
                 "performance_metrics": agent.performance_metrics,
                 "infrastructure_requirements": agent.infrastructure_requirements,
-                "security_requirements": agent.security_requirements
+                "security_requirements": agent.security_requirements,
             }
             export_data["agent_roles"].append(agent_data)
-        
+
         # Export coordination information
         if agent_system.coordination:
             export_data["coordination"] = {
@@ -66,196 +72,216 @@ class AgentSystemExporter:
                 "coordination_mechanisms": agent_system.coordination.coordination_mechanisms,
                 "interaction_patterns": agent_system.coordination.interaction_patterns,
                 "conflict_resolution": agent_system.coordination.conflict_resolution,
-                "workflow_distribution": agent_system.coordination.workflow_distribution
+                "workflow_distribution": agent_system.coordination.workflow_distribution,
             }
-        
+
         return export_data
-    
-    def export_to_markdown(self, agent_system: AgentSystemDisplay, session_id: str) -> str:
+
+    def export_to_markdown(
+        self, agent_system: AgentSystemDisplay, session_id: str
+    ) -> str:
         """Export agent system to Markdown format."""
-        
+
         app_logger.info(f"Exporting agent system to Markdown for session {session_id}")
-        
+
         md_content = []
-        
+
         # Header
         md_content.append("# Agentic Solution Design")
         md_content.append(f"**Session ID:** {session_id}")
-        md_content.append(f"**Export Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        md_content.append(
+            f"**Export Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
         md_content.append("")
-        
+
         # System Overview
         md_content.append("## System Overview")
-        md_content.append(f"- **System Autonomy Score:** {agent_system.system_autonomy_score:.1f}")
+        md_content.append(
+            f"- **System Autonomy Score:** {agent_system.system_autonomy_score:.1f}"
+        )
         md_content.append(f"- **Number of Agents:** {len(agent_system.agent_roles)}")
-        
+
         if agent_system.coordination:
-            architecture = agent_system.coordination.architecture_type.replace("_", " ").title()
+            architecture = agent_system.coordination.architecture_type.replace(
+                "_", " "
+            ).title()
             md_content.append(f"- **Architecture:** {architecture}")
         else:
             md_content.append("- **Architecture:** Single Agent")
-        
+
         md_content.append("")
-        
+
         # Agent Roles
         md_content.append("## Agent Roles")
-        
+
         for i, agent in enumerate(agent_system.agent_roles, 1):
             md_content.append(f"### {i}. {agent.name}")
-            md_content.append(f"**Autonomy Level:** {agent.autonomy_level:.1f} - {agent.autonomy_description}")
+            md_content.append(
+                f"**Autonomy Level:** {agent.autonomy_level:.1f} - {agent.autonomy_description}"
+            )
             md_content.append("")
             md_content.append("**Primary Responsibility:**")
             md_content.append(agent.responsibility)
             md_content.append("")
-            
+
             # Capabilities
             if agent.capabilities:
                 md_content.append("**Core Capabilities:**")
                 for capability in agent.capabilities:
                     md_content.append(f"- {capability}")
                 md_content.append("")
-            
+
             # Decision Boundaries
             if agent.decision_boundaries:
                 md_content.append("**Decision Boundaries:**")
                 for boundary in agent.decision_boundaries:
                     md_content.append(f"- {boundary}")
                 md_content.append("")
-            
+
             # Learning Capabilities
             if agent.learning_capabilities:
                 md_content.append("**Learning Capabilities:**")
                 for learning in agent.learning_capabilities:
                     md_content.append(f"- {learning}")
                 md_content.append("")
-            
+
             # Exception Handling
             md_content.append("**Exception Handling:**")
             md_content.append(agent.exception_handling)
             md_content.append("")
-            
+
             # Performance Metrics
             if agent.performance_metrics:
                 md_content.append("**Performance Metrics:**")
                 for metric in agent.performance_metrics:
                     md_content.append(f"- {metric}")
                 md_content.append("")
-            
+
             # Infrastructure Requirements
             if agent.infrastructure_requirements:
                 md_content.append("**Infrastructure Requirements:**")
                 for key, value in agent.infrastructure_requirements.items():
                     md_content.append(f"- **{key.replace('_', ' ').title()}:** {value}")
                 md_content.append("")
-            
+
             # Security Requirements
             if agent.security_requirements:
                 md_content.append("**Security Requirements:**")
                 for security in agent.security_requirements:
                     md_content.append(f"- {security}")
                 md_content.append("")
-        
+
         # Coordination
         if agent_system.coordination:
             md_content.append("## Agent Coordination")
-            md_content.append(f"**Architecture Type:** {agent_system.coordination.architecture_type.replace('_', ' ').title()}")
+            md_content.append(
+                f"**Architecture Type:** {agent_system.coordination.architecture_type.replace('_', ' ').title()}"
+            )
             md_content.append(agent_system.coordination.architecture_description)
             md_content.append("")
-            
+
             # Communication Protocols
             if agent_system.coordination.communication_protocols:
                 md_content.append("### Communication Protocols")
                 for protocol in agent_system.coordination.communication_protocols:
-                    md_content.append(f"**{protocol['type'].replace('_', ' ').title()}:**")
+                    md_content.append(
+                        f"**{protocol['type'].replace('_', ' ').title()}:**"
+                    )
                     md_content.append(f"- Participants: {protocol['participants']}")
                     md_content.append(f"- Format: {protocol['format']}")
                     md_content.append(f"- Reliability: {protocol['reliability']}")
                     md_content.append(f"- Latency: {protocol['latency']}")
                     md_content.append("")
-            
+
             # Coordination Mechanisms
             if agent_system.coordination.coordination_mechanisms:
                 md_content.append("### Coordination Mechanisms")
                 for mechanism in agent_system.coordination.coordination_mechanisms:
-                    md_content.append(f"**{mechanism['type'].replace('_', ' ').title()}:**")
+                    md_content.append(
+                        f"**{mechanism['type'].replace('_', ' ').title()}:**"
+                    )
                     md_content.append(f"- Participants: {mechanism['participants']}")
                     md_content.append(f"- Decision Criteria: {mechanism['criteria']}")
-                    md_content.append(f"- Conflict Resolution: {mechanism['conflict_resolution']}")
+                    md_content.append(
+                        f"- Conflict Resolution: {mechanism['conflict_resolution']}"
+                    )
                     md_content.append("")
-        
+
         # Tech Stack Validation
         md_content.append("## Tech Stack Validation")
-        
+
         tech_validation = agent_system.tech_stack_validation
         if tech_validation.get("is_agent_ready"):
             md_content.append("✅ **Tech stack is ready for agent deployment**")
         else:
-            md_content.append("⚠️ **Tech stack needs enhancements for agent deployment**")
-        
+            md_content.append(
+                "⚠️ **Tech stack needs enhancements for agent deployment**"
+            )
+
         md_content.append("")
-        
+
         # Available components
         if tech_validation.get("deployment_frameworks"):
             md_content.append("**Available Agent Frameworks:**")
             for framework in tech_validation["deployment_frameworks"]:
                 md_content.append(f"- ✅ {framework}")
             md_content.append("")
-        
+
         # Missing components
         if tech_validation.get("missing_components"):
             md_content.append("**Missing Components:**")
             for component in tech_validation["missing_components"]:
                 md_content.append(f"- ❌ {component}")
             md_content.append("")
-        
+
         # Recommended additions
         if tech_validation.get("recommended_additions"):
             md_content.append("**Recommended Additions:**")
             for addition in tech_validation["recommended_additions"]:
                 md_content.append(f"- ➕ {addition}")
             md_content.append("")
-        
+
         # Deployment Requirements
         if agent_system.deployment_requirements:
             md_content.append("## Deployment Requirements")
-            
+
             deploy_reqs = agent_system.deployment_requirements
-            
+
             if "architecture" in deploy_reqs:
                 md_content.append(f"**Architecture:** {deploy_reqs['architecture']}")
-            
+
             if "agent_count" in deploy_reqs:
                 md_content.append(f"**Agent Count:** {deploy_reqs['agent_count']}")
-            
+
             if "infrastructure_needs" in deploy_reqs:
                 md_content.append("**Infrastructure Needs:**")
                 for key, value in deploy_reqs["infrastructure_needs"].items():
                     md_content.append(f"- **{key.title()}:** {value}")
-            
+
             md_content.append("")
-        
+
         # Implementation Guidance
         if agent_system.implementation_guidance:
             md_content.append("## Implementation Guidance")
-            
+
             for guidance in agent_system.implementation_guidance:
                 title = guidance.get("title", "Guidance")
                 content = guidance.get("content", "")
-                
+
                 md_content.append(f"### {title}")
                 md_content.append(content)
                 md_content.append("")
-        
+
         return "\n".join(md_content)
-    
+
     def export_to_html(self, agent_system: AgentSystemDisplay, session_id: str) -> str:
         """Export agent system to interactive HTML format."""
-        
+
         app_logger.info(f"Exporting agent system to HTML for session {session_id}")
-        
+
         # Convert markdown to HTML (simplified version)
         markdown_content = self.export_to_markdown(agent_system, session_id)
-        
+
         html_template = f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -413,61 +439,67 @@ class AgentSystemExporter:
 </body>
 </html>
 """
-        
+
         return html_template
-    
+
     def _markdown_to_html(self, markdown_content: str) -> str:
         """Convert markdown content to HTML (simplified)."""
-        
+
         html_lines = []
-        lines = markdown_content.split('\n')
-        
+        lines = markdown_content.split("\n")
+
         for line in lines:
             line = line.strip()
-            
-            if line.startswith('# '):
-                html_lines.append(f'<h1>{line[2:]}</h1>')
-            elif line.startswith('## '):
-                html_lines.append(f'<h2>{line[3:]}</h2>')
-            elif line.startswith('### '):
-                html_lines.append(f'<h3>{line[4:]}</h3>')
-            elif line.startswith('**') and line.endswith('**'):
-                html_lines.append(f'<strong>{line[2:-2]}</strong>')
-            elif line.startswith('- '):
-                html_lines.append(f'<li>{line[2:]}</li>')
-            elif line.startswith('✅'):
+
+            if line.startswith("# "):
+                html_lines.append(f"<h1>{line[2:]}</h1>")
+            elif line.startswith("## "):
+                html_lines.append(f"<h2>{line[3:]}</h2>")
+            elif line.startswith("### "):
+                html_lines.append(f"<h3>{line[4:]}</h3>")
+            elif line.startswith("**") and line.endswith("**"):
+                html_lines.append(f"<strong>{line[2:-2]}</strong>")
+            elif line.startswith("- "):
+                html_lines.append(f"<li>{line[2:]}</li>")
+            elif line.startswith("✅"):
                 html_lines.append(f'<div class="status-ready">{line}</div>')
-            elif line.startswith('⚠️'):
+            elif line.startswith("⚠️"):
                 html_lines.append(f'<div class="status-warning">{line}</div>')
-            elif line.startswith('❌'):
+            elif line.startswith("❌"):
                 html_lines.append(f'<div class="status-error">{line}</div>')
-            elif line == '':
-                html_lines.append('<br>')
+            elif line == "":
+                html_lines.append("<br>")
             else:
-                html_lines.append(f'<p>{line}</p>')
-        
-        return '\n'.join(html_lines)
-    
-    def create_deployment_blueprint(self, agent_system: AgentSystemDisplay, session_id: str) -> Dict[str, Any]:
+                html_lines.append(f"<p>{line}</p>")
+
+        return "\n".join(html_lines)
+
+    def create_deployment_blueprint(
+        self, agent_system: AgentSystemDisplay, session_id: str
+    ) -> Dict[str, Any]:
         """Create a deployment blueprint with configuration files."""
-        
+
         blueprint = {
             "metadata": {
                 "session_id": session_id,
                 "created_at": self.export_timestamp,
-                "blueprint_version": "1.0.0"
+                "blueprint_version": "1.0.0",
             },
             "architecture": {
-                "type": agent_system.coordination.architecture_type if agent_system.coordination else "single_agent",
+                "type": (
+                    agent_system.coordination.architecture_type
+                    if agent_system.coordination
+                    else "single_agent"
+                ),
                 "agent_count": len(agent_system.agent_roles),
-                "autonomy_score": agent_system.system_autonomy_score
+                "autonomy_score": agent_system.system_autonomy_score,
             },
             "agents": [],
             "deployment_configs": {},
             "monitoring_configs": {},
-            "security_configs": {}
+            "security_configs": {},
         }
-        
+
         # Add agent specifications
         for agent in agent_system.agent_roles:
             agent_spec = {
@@ -476,33 +508,33 @@ class AgentSystemExporter:
                 "autonomy_level": agent.autonomy_level,
                 "capabilities": agent.capabilities,
                 "infrastructure": agent.infrastructure_requirements,
-                "security": agent.security_requirements
+                "security": agent.security_requirements,
             }
             blueprint["agents"].append(agent_spec)
-        
+
         # Add deployment configurations
         blueprint["deployment_configs"] = {
             "docker_compose": self._generate_docker_compose(agent_system),
             "kubernetes": self._generate_kubernetes_config(agent_system),
-            "environment_variables": self._generate_env_config(agent_system)
+            "environment_variables": self._generate_env_config(agent_system),
         }
-        
+
         # Add monitoring configurations
         blueprint["monitoring_configs"] = {
             "prometheus": self._generate_prometheus_config(agent_system),
-            "grafana_dashboard": self._generate_grafana_config(agent_system)
+            "grafana_dashboard": self._generate_grafana_config(agent_system),
         }
-        
+
         return blueprint
-    
+
     def _generate_docker_compose(self, agent_system: AgentSystemDisplay) -> str:
         """Generate Docker Compose configuration."""
-        
+
         compose_config = """version: '3.8'
 services:"""
-        
+
         for i, agent in enumerate(agent_system.agent_roles):
-            agent_name = agent.name.lower().replace(' ', '-')
+            agent_name = agent.name.lower().replace(" ", "-")
             compose_config += f"""
   {agent_name}:
     build: .
@@ -512,7 +544,7 @@ services:"""
       - REDIS_URL=redis://redis:6379
     depends_on:
       - redis"""
-        
+
         compose_config += """
   
   redis:
@@ -526,18 +558,21 @@ services:"""
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml"""
-        
+
         return compose_config
-    
+
     def _generate_kubernetes_config(self, agent_system: AgentSystemDisplay) -> str:
         """Generate Kubernetes deployment configuration."""
-        
-        k8s_config = """apiVersion: apps/v1
+
+        k8s_config = (
+            """apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: agent-system
 spec:
-  replicas: """ + str(len(agent_system.agent_roles)) + """
+  replicas: """
+            + str(len(agent_system.agent_roles))
+            + """
   selector:
     matchLabels:
       app: agent-system
@@ -547,9 +582,10 @@ spec:
         app: agent-system
     spec:
       containers:"""
-        
+        )
+
         for agent in agent_system.agent_roles:
-            agent_name = agent.name.lower().replace(' ', '-')
+            agent_name = agent.name.lower().replace(" ", "-")
             k8s_config += f"""
       - name: {agent_name}
         image: agent-system:latest
@@ -565,24 +601,28 @@ spec:
           limits:
             memory: "1Gi"
             cpu: "500m" """
-        
+
         return k8s_config
-    
+
     def _generate_env_config(self, agent_system: AgentSystemDisplay) -> Dict[str, str]:
         """Generate environment configuration."""
-        
+
         return {
-            "AGENT_SYSTEM_TYPE": agent_system.coordination.architecture_type if agent_system.coordination else "single_agent",
+            "AGENT_SYSTEM_TYPE": (
+                agent_system.coordination.architecture_type
+                if agent_system.coordination
+                else "single_agent"
+            ),
             "AGENT_COUNT": str(len(agent_system.agent_roles)),
             "SYSTEM_AUTONOMY_SCORE": str(agent_system.system_autonomy_score),
             "REDIS_URL": "redis://localhost:6379",
             "LOG_LEVEL": "INFO",
-            "MONITORING_ENABLED": "true"
+            "MONITORING_ENABLED": "true",
         }
-    
+
     def _generate_prometheus_config(self, agent_system: AgentSystemDisplay) -> str:
         """Generate Prometheus monitoring configuration."""
-        
+
         return """global:
   scrape_interval: 15s
 
@@ -596,10 +636,12 @@ scrape_configs:
   - job_name: 'redis'
     static_configs:
       - targets: ['localhost:6379']"""
-    
-    def _generate_grafana_config(self, agent_system: AgentSystemDisplay) -> Dict[str, Any]:
+
+    def _generate_grafana_config(
+        self, agent_system: AgentSystemDisplay
+    ) -> Dict[str, Any]:
         """Generate Grafana dashboard configuration."""
-        
+
         return {
             "dashboard": {
                 "title": "Agent System Performance",
@@ -607,18 +649,18 @@ scrape_configs:
                     {
                         "title": "Agent Response Time",
                         "type": "graph",
-                        "targets": [{"expr": "agent_response_time_seconds"}]
+                        "targets": [{"expr": "agent_response_time_seconds"}],
                     },
                     {
                         "title": "Decision Accuracy",
                         "type": "stat",
-                        "targets": [{"expr": "agent_decision_accuracy_ratio"}]
+                        "targets": [{"expr": "agent_decision_accuracy_ratio"}],
                     },
                     {
                         "title": "System Autonomy Score",
                         "type": "gauge",
-                        "targets": [{"expr": "agent_system_autonomy_score"}]
-                    }
-                ]
+                        "targets": [{"expr": "agent_system_autonomy_score"}],
+                    },
+                ],
             }
         }

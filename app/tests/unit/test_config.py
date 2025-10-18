@@ -24,11 +24,10 @@ class TestSettings:
 
     def test_env_override(self):
         """Test that environment variables override defaults."""
-        with patch.dict(os.environ, {
-            'PROVIDER': 'bedrock',
-            'MODEL': 'claude-3',
-            'LOGGING_LEVEL': 'DEBUG'
-        }):
+        with patch.dict(
+            os.environ,
+            {"PROVIDER": "bedrock", "MODEL": "claude-3", "LOGGING_LEVEL": "DEBUG"},
+        ):
             settings = Settings()
             assert settings.provider == "bedrock"
             assert settings.model == "claude-3"
@@ -37,21 +36,16 @@ class TestSettings:
     def test_yaml_config_loading(self):
         """Test loading configuration from YAML file."""
         config_data = {
-            'provider': 'claude',
-            'model': 'claude-3-sonnet',
-            'constraints': {
-                'unavailable_tools': ['selenium', 'playwright']
-            },
-            'timeouts': {
-                'llm': 30,
-                'http': 15
-            }
+            "provider": "claude",
+            "model": "claude-3-sonnet",
+            "constraints": {"unavailable_tools": ["selenium", "playwright"]},
+            "timeouts": {"llm": 30, "http": 15},
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = f.name
-        
+
         try:
             settings = load_settings(config_path=config_path)
             assert settings.provider == "claude"
@@ -63,17 +57,17 @@ class TestSettings:
 
     def test_env_precedence_over_yaml(self):
         """Test that environment variables take precedence over YAML."""
-        config_data = {'provider': 'claude', 'model': 'claude-3'}
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        config_data = {"provider": "claude", "model": "claude-3"}
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = f.name
-        
+
         try:
-            with patch.dict(os.environ, {'PROVIDER': 'openai'}):
+            with patch.dict(os.environ, {"PROVIDER": "openai"}):
                 settings = load_settings(config_path=config_path)
                 assert settings.provider == "openai"  # env wins
-                assert settings.model == "claude-3"   # yaml value
+                assert settings.model == "claude-3"  # yaml value
         finally:
             os.unlink(config_path)
 

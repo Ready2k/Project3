@@ -18,6 +18,7 @@ from app.llm.base import LLMProvider
 
 class AutomationSuitability(Enum):
     """Types of automation suitability."""
+
     AGENTIC = "agentic"
     TRADITIONAL = "traditional"
     NOT_SUITABLE = "not_suitable"
@@ -27,6 +28,7 @@ class AutomationSuitability(Enum):
 @dataclass
 class SuitabilityAssessment:
     """Result of automation suitability assessment."""
+
     suitability: AutomationSuitability
     confidence: float
     reasoning: str
@@ -39,47 +41,55 @@ class SuitabilityAssessment:
 
 class AutomationSuitabilityAssessor:
     """Assesses requirements for different types of automation suitability."""
-    
+
     def __init__(self, llm_provider: LLMProvider) -> None:
         """Initialize the assessor.
-        
+
         Args:
             llm_provider: LLM provider for generating assessments
         """
         self.llm_provider = llm_provider
-    
-    async def assess_automation_suitability(self, 
-                                          requirements: Dict[str, Any],
-                                          agentic_rejected: bool = False) -> SuitabilityAssessment:
+
+    async def assess_automation_suitability(
+        self, requirements: Dict[str, Any], agentic_rejected: bool = False
+    ) -> SuitabilityAssessment:
         """Assess what type of automation is suitable for the requirements.
-        
+
         Args:
             requirements: The requirements to assess
             agentic_rejected: Whether agentic assessment already rejected this
-            
+
         Returns:
             SuitabilityAssessment with recommendation and user choice info
         """
-        description = requirements.get('description', '')
-        constraints = requirements.get('constraints', {})
-        
-        self.logger.info(f"Assessing automation suitability for: {description[:100]}...")
+        description = requirements.get("description", "")
+        constraints = requirements.get("constraints", {})
+
+        self.logger.info(
+            f"Assessing automation suitability for: {description[:100]}..."
+        )
         self.logger.info(f"Agentic already rejected: {agentic_rejected}")
-        
+
         # Create assessment prompt
-        prompt = self._create_assessment_prompt(description, constraints, agentic_rejected)
-        
+        prompt = self._create_assessment_prompt(
+            description, constraints, agentic_rejected
+        )
+
         try:
             # Get LLM assessment
-            response = await self.llm_provider.generate(prompt, purpose="automation_suitability")
-            
+            response = await self.llm_provider.generate(
+                prompt, purpose="automation_suitability"
+            )
+
             # Parse response
             assessment = self._parse_assessment_response(response)
-            
-            self.logger.info(f"Automation suitability assessment: {assessment.suitability.value} (confidence: {assessment.confidence})")
-            
+
+            self.logger.info(
+                f"Automation suitability assessment: {assessment.suitability.value} (confidence: {assessment.confidence})"
+            )
+
             return assessment
-            
+
         except Exception as e:
             self.logger.error(f"Error in automation suitability assessment: {e}")
             # Return conservative fallback assessment
@@ -89,24 +99,26 @@ class AutomationSuitabilityAssessor:
                 reasoning="Unable to assess automation suitability due to technical error",
                 recommended_approach="Manual review recommended",
                 challenges=["Technical assessment error"],
-                next_steps=["Review requirements manually", "Consider consulting with automation experts"],
+                next_steps=[
+                    "Review requirements manually",
+                    "Consider consulting with automation experts",
+                ],
                 user_choice_required=True,
-                warning_message="Assessment failed - recommendations may not be accurate"
+                warning_message="Assessment failed - recommendations may not be accurate",
             )
-    
-    def _create_assessment_prompt(self, 
-                                description: str, 
-                                constraints: Dict[str, Any],
-                                agentic_rejected: bool) -> str:
+
+    def _create_assessment_prompt(
+        self, description: str, constraints: Dict[str, Any], agentic_rejected: bool
+    ) -> str:
         """Create the LLM prompt for automation suitability assessment."""
-        
+
         agentic_context = ""
         if agentic_rejected:
             agentic_context = """
 IMPORTANT CONTEXT: This requirement has already been assessed and REJECTED for Agentic AI automation.
 The agentic assessment determined this involves physical-world aspects or lacks sufficient digital control surfaces.
 """
-        
+
         return f"""You are an expert automation consultant specializing in both Agentic AI and Traditional Automation approaches.
 
 {agentic_context}
@@ -164,43 +176,49 @@ IMPORTANT:
 - Be honest about limitations - don't oversell automation capabilities
 - Consider the specific constraints provided
 """
-    
+
     def _parse_assessment_response(self, response: str) -> SuitabilityAssessment:
         """Parse the LLM response into a SuitabilityAssessment."""
         try:
             from app.utils.json_parser import parse_llm_json_response
-            
-            data = parse_llm_json_response(response, default_value={}, service_name="automation_suitability")
-            
+
+            data = parse_llm_json_response(
+                response, default_value={}, service_name="automation_suitability"
+            )
+
             if not isinstance(data, dict):
                 raise ValueError(f"Expected dict, got {type(data)}")
-            
+
             # Map string to enum
-            suitability_str = data.get('suitability', 'not_suitable')
+            suitability_str = data.get("suitability", "not_suitable")
             suitability_mapping = {
-                'agentic': AutomationSuitability.AGENTIC,
-                'traditional': AutomationSuitability.TRADITIONAL,
-                'hybrid': AutomationSuitability.HYBRID,
-                'not_suitable': AutomationSuitability.NOT_SUITABLE
+                "agentic": AutomationSuitability.AGENTIC,
+                "traditional": AutomationSuitability.TRADITIONAL,
+                "hybrid": AutomationSuitability.HYBRID,
+                "not_suitable": AutomationSuitability.NOT_SUITABLE,
             }
-            
-            suitability = suitability_mapping.get(suitability_str, AutomationSuitability.NOT_SUITABLE)
-            
+
+            suitability = suitability_mapping.get(
+                suitability_str, AutomationSuitability.NOT_SUITABLE
+            )
+
             return SuitabilityAssessment(
                 suitability=suitability,
-                confidence=float(data.get('confidence', 0.5)),
-                reasoning=data.get('reasoning', 'No reasoning provided'),
-                recommended_approach=data.get('recommended_approach', 'Manual review recommended'),
-                challenges=data.get('challenges', []),
-                next_steps=data.get('next_steps', []),
-                user_choice_required=bool(data.get('user_choice_required', True)),
-                warning_message=data.get('warning_message')
+                confidence=float(data.get("confidence", 0.5)),
+                reasoning=data.get("reasoning", "No reasoning provided"),
+                recommended_approach=data.get(
+                    "recommended_approach", "Manual review recommended"
+                ),
+                challenges=data.get("challenges", []),
+                next_steps=data.get("next_steps", []),
+                user_choice_required=bool(data.get("user_choice_required", True)),
+                warning_message=data.get("warning_message"),
             )
-            
+
         except Exception as e:
             self.logger.error(f"Error parsing automation suitability response: {e}")
             self.logger.error(f"Response was: {response}")
-            
+
             # Return conservative fallback
             return SuitabilityAssessment(
                 suitability=AutomationSuitability.NOT_SUITABLE,
@@ -210,35 +228,38 @@ IMPORTANT:
                 challenges=["Assessment parsing error"],
                 next_steps=["Review requirements manually"],
                 user_choice_required=True,
-                warning_message="Assessment parsing failed - recommendations may not be accurate"
+                warning_message="Assessment parsing failed - recommendations may not be accurate",
             )
-    
-    def should_proceed_with_traditional_patterns(self, assessment: SuitabilityAssessment) -> bool:
+
+    def should_proceed_with_traditional_patterns(
+        self, assessment: SuitabilityAssessment
+    ) -> bool:
         """Determine if we should proceed with traditional pattern matching.
-        
+
         Args:
             assessment: The suitability assessment result
-            
+
         Returns:
             True if we should proceed with traditional patterns
         """
-        return assessment.suitability in [
-            AutomationSuitability.TRADITIONAL,
-            AutomationSuitability.HYBRID
-        ] and assessment.confidence >= 0.6
-    
+        return (
+            assessment.suitability
+            in [AutomationSuitability.TRADITIONAL, AutomationSuitability.HYBRID]
+            and assessment.confidence >= 0.6
+        )
+
     def should_require_user_choice(self, assessment: SuitabilityAssessment) -> bool:
         """Determine if user choice is required before proceeding.
-        
+
         Args:
             assessment: The suitability assessment result
-            
+
         Returns:
             True if user should be asked before proceeding
         """
         return (
-            assessment.user_choice_required or
-            assessment.suitability == AutomationSuitability.NOT_SUITABLE or
-            assessment.confidence < 0.7 or
-            assessment.warning_message is not None
+            assessment.user_choice_required
+            or assessment.suitability == AutomationSuitability.NOT_SUITABLE
+            or assessment.confidence < 0.7
+            or assessment.warning_message is not None
         )

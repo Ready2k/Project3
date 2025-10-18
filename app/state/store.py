@@ -13,6 +13,7 @@ import redis.asyncio as redis
 
 class Phase(Enum):
     """Processing phases for session state machine."""
+
     PARSING = "PARSING"
     VALIDATING = "VALIDATING"
     QNA = "QNA"
@@ -24,40 +25,42 @@ class Phase(Enum):
 @dataclass
 class QAExchange:
     """Question and answer exchange data."""
+
     questions: List[str]
     answers: Dict[str, str]
     timestamp: datetime
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "questions": self.questions,
             "answers": self.answers,
-            "timestamp": self.timestamp.isoformat()
+            "timestamp": self.timestamp.isoformat(),
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "QAExchange":
         """Create from dictionary."""
         return cls(
             questions=data["questions"],
             answers=data["answers"],
-            timestamp=datetime.fromisoformat(data["timestamp"])
+            timestamp=datetime.fromisoformat(data["timestamp"]),
         )
 
 
 @dataclass
 class PatternMatch:
     """Pattern matching result data."""
+
     pattern_id: str
     score: float
     rationale: str
     confidence: float
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return asdict(self)
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "PatternMatch":
         """Create from dictionary."""
@@ -67,6 +70,7 @@ class PatternMatch:
 @dataclass
 class Recommendation:
     """Recommendation result data."""
+
     pattern_id: str
     feasibility: str
     confidence: float
@@ -76,11 +80,11 @@ class Recommendation:
     architecture_explanation: Optional[str] = None
     agent_roles: Optional[List[Dict[str, Any]]] = None
     necessity_assessment: Optional[Any] = None  # AgenticNecessityAssessment
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return asdict(self)
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Recommendation":
         """Create from dictionary."""
@@ -90,6 +94,7 @@ class Recommendation:
 @dataclass
 class SessionState:
     """Complete session state data."""
+
     session_id: str
     phase: Phase
     progress: int
@@ -101,7 +106,7 @@ class SessionState:
     created_at: datetime
     updated_at: datetime
     provider_config: Optional[Dict[str, Any]] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
@@ -115,9 +120,9 @@ class SessionState:
             "recommendations": [rec.to_dict() for rec in self.recommendations],
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
-            "provider_config": self.provider_config
+            "provider_config": self.provider_config,
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SessionState":
         """Create from dictionary."""
@@ -129,26 +134,28 @@ class SessionState:
             missing_fields=data["missing_fields"],
             qa_history=[QAExchange.from_dict(qa) for qa in data["qa_history"]],
             matches=[PatternMatch.from_dict(match) for match in data["matches"]],
-            recommendations=[Recommendation.from_dict(rec) for rec in data["recommendations"]],
+            recommendations=[
+                Recommendation.from_dict(rec) for rec in data["recommendations"]
+            ],
             created_at=datetime.fromisoformat(data["created_at"]),
             updated_at=datetime.fromisoformat(data["updated_at"]),
-            provider_config=data.get("provider_config")
+            provider_config=data.get("provider_config"),
         )
 
 
 class SessionStore(ABC):
     """Abstract base class for session storage."""
-    
+
     @abstractmethod
     async def get_session(self, session_id: str) -> Optional[SessionState]:
         """Retrieve session state by ID."""
         raise NotImplementedError("Subclasses must implement get_session")
-    
+
     @abstractmethod
     async def update_session(self, session_id: str, state: SessionState) -> None:
         """Store or update session state."""
         raise NotImplementedError("Subclasses must implement update_session")
-    
+
     @abstractmethod
     async def delete_session(self, session_id: str) -> None:
         """Delete session state."""
@@ -157,10 +164,10 @@ class SessionStore(ABC):
 
 class DiskCacheStore(SessionStore):
     """DiskCache-based session storage implementation."""
-    
+
     def __init__(self, cache_dir: str = "cache"):
         self.cache = diskcache.Cache(cache_dir)
-    
+
     async def get_session(self, session_id: str) -> Optional[SessionState]:
         """Retrieve session from disk cache."""
         try:
@@ -170,14 +177,14 @@ class DiskCacheStore(SessionStore):
             return SessionState.from_dict(data)
         except Exception:
             return None
-    
+
     async def update_session(self, session_id: str, state: SessionState) -> None:
         """Store session to disk cache."""
         try:
             self.cache.set(f"session:{session_id}", state.to_dict())
         except Exception as e:
             raise RuntimeError(f"Failed to store session: {e}")
-    
+
     async def delete_session(self, session_id: str) -> None:
         """Delete session from disk cache."""
         try:
@@ -188,10 +195,10 @@ class DiskCacheStore(SessionStore):
 
 class RedisStore(SessionStore):
     """Redis-based session storage implementation."""
-    
+
     def __init__(self, host: str = "localhost", port: int = 6379, db: int = 0):
         self.redis = redis.Redis(host=host, port=port, db=db)
-    
+
     async def get_session(self, session_id: str) -> Optional[SessionState]:
         """Retrieve session from Redis."""
         try:
@@ -201,7 +208,7 @@ class RedisStore(SessionStore):
             return SessionState.from_dict(json.loads(data.decode()))
         except Exception:
             return None
-    
+
     async def update_session(self, session_id: str, state: SessionState) -> None:
         """Store session to Redis."""
         try:
@@ -209,7 +216,7 @@ class RedisStore(SessionStore):
             await self.redis.set(f"session:{session_id}", data, ex=3600)  # 1 hour TTL
         except Exception as e:
             raise RuntimeError(f"Failed to store session: {e}")
-    
+
     async def delete_session(self, session_id: str) -> None:
         """Delete session from Redis."""
         try:

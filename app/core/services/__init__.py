@@ -12,8 +12,8 @@ from .security_service import SecurityService, AdvancedPromptDefenseService
 
 __all__ = [
     "LoggerService",
-    "ConfigService", 
+    "ConfigService",
     "CacheService",
     "SecurityService",
-    "AdvancedPromptDefenseService"
+    "AdvancedPromptDefenseService",
 ]

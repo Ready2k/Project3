@@ -48,23 +48,25 @@ class TestConfidencePatternE2E:
         return FakeLLM(responses={generic_hash: response_json}, seed=42)
 
     @pytest.mark.asyncio
-    async def test_confidence_extraction_e2e_flow(self, mock_settings, embedding_engine):
+    async def test_confidence_extraction_e2e_flow(
+        self, mock_settings, embedding_engine
+    ):
         """Test complete confidence extraction flow from LLM to display."""
         # Setup: Configure LLM to return specific confidence
         confidence_response = {
             "confidence": 0.73,
             "feasibility": "Partially Automatable",
             "explanation": "Some aspects can be automated, others require manual intervention.",
-            "tech_stack": ["Python", "FastAPI", "Redis"]
+            "tech_stack": ["Python", "FastAPI", "Redis"],
         }
         fake_llm_provider = self.create_fake_llm_with_response(confidence_response)
         pattern_creator = PatternCreator(mock_settings, fake_llm_provider)
-        
+
         recommendation_service = RecommendationService(
             settings=mock_settings,
             llm_provider=fake_llm_provider,
             embedding_engine=embedding_engine,
-            pattern_creator=pattern_creator
+            pattern_creator=pattern_creator,
         )
 
         # Test requirements with LLM confidence
@@ -72,7 +74,7 @@ class TestConfidencePatternE2E:
             "description": "Build a customer support chatbot with escalation to human agents",
             "llm_analysis_confidence_level": 0.73,
             "business_domain": "customer_service",
-            "complexity": "medium"
+            "complexity": "medium",
         }
 
         # Execute: Get recommendation
@@ -84,30 +86,32 @@ class TestConfidencePatternE2E:
         assert result["feasibility"] == "Partially Automatable"
 
     @pytest.mark.asyncio
-    async def test_confidence_fallback_to_pattern_based(self, mock_settings, embedding_engine):
+    async def test_confidence_fallback_to_pattern_based(
+        self, mock_settings, embedding_engine
+    ):
         """Test confidence fallback when LLM confidence is invalid."""
         # Setup: Configure LLM with invalid confidence
         invalid_response = {
             "confidence": "high",  # Invalid string value
             "feasibility": "Automatable",
             "explanation": "This can be automated.",
-            "tech_stack": ["React", "Express"]
+            "tech_stack": ["React", "Express"],
         }
         fake_llm_provider = self.create_fake_llm_with_response(invalid_response)
         pattern_creator = PatternCreator(mock_settings, fake_llm_provider)
-        
+
         recommendation_service = RecommendationService(
             settings=mock_settings,
             llm_provider=fake_llm_provider,
             embedding_engine=embedding_engine,
-            pattern_creator=pattern_creator
+            pattern_creator=pattern_creator,
         )
 
         # Test requirements without valid LLM confidence
         requirements = {
             "description": "Simple CRUD application for inventory management",
             "business_domain": "inventory",
-            "complexity": "low"
+            "complexity": "low",
         }
 
         # Execute: Get recommendation
@@ -119,7 +123,9 @@ class TestConfidencePatternE2E:
         assert result["feasibility"] == "Automatable"
 
     @pytest.mark.asyncio
-    async def test_pattern_creation_with_novel_technologies(self, mock_settings, embedding_engine):
+    async def test_pattern_creation_with_novel_technologies(
+        self, mock_settings, embedding_engine
+    ):
         """Test pattern creation when requirements contain novel technologies."""
         # Setup: Configure LLM for pattern creation
         pattern_response = {
@@ -131,7 +137,7 @@ class TestConfidencePatternE2E:
             "tech_stack": ["Ethereum", "Solidity", "Web3.js", "IPFS", "React"],
             "pattern_type": ["blockchain_integration", "supply_chain_automation"],
             "integrations": ["MetaMask", "Infura", "Pinata"],
-            "compliance": ["ISO_27001", "GDPR"]
+            "compliance": ["ISO_27001", "GDPR"],
         }
         fake_llm_provider = self.create_fake_llm_with_response(pattern_response)
         pattern_creator = PatternCreator(mock_settings, fake_llm_provider)
@@ -145,18 +151,18 @@ class TestConfidencePatternE2E:
             "tech_stack": ["MySQL", "PHP", "Apache"],
             "pattern_type": ["database_management"],
             "integrations": ["SAP", "Oracle"],
-            "compliance": ["SOX"]
+            "compliance": ["SOX"],
         }
-        
+
         pattern_file = Path(mock_settings.pattern_library_path) / "PAT-001.json"
-        with open(pattern_file, 'w') as f:
+        with open(pattern_file, "w") as f:
             json.dump(existing_pattern, f)
 
         recommendation_service = RecommendationService(
             settings=mock_settings,
             llm_provider=fake_llm_provider,
             embedding_engine=embedding_engine,
-            pattern_creator=pattern_creator
+            pattern_creator=pattern_creator,
         )
 
         # Test requirements with novel blockchain technologies
@@ -165,7 +171,7 @@ class TestConfidencePatternE2E:
             "business_domain": "supply_chain",
             "complexity": "high",
             "tech_stack": ["Ethereum", "Solidity", "Web3.js", "IPFS"],
-            "compliance_requirements": ["GDPR", "ISO_27001"]
+            "compliance_requirements": ["GDPR", "ISO_27001"],
         }
 
         # Execute: Get recommendation (should create new pattern)
@@ -177,7 +183,9 @@ class TestConfidencePatternE2E:
         assert "PAT-NEW-001" in result.get("pattern_id", "")
 
     @pytest.mark.asyncio
-    async def test_regression_existing_functionality(self, mock_settings, embedding_engine):
+    async def test_regression_existing_functionality(
+        self, mock_settings, embedding_engine
+    ):
         """Test that existing functionality still works after fixes."""
         # Setup: Standard response format
         standard_response = {
@@ -185,16 +193,16 @@ class TestConfidencePatternE2E:
             "confidence": 0.65,
             "explanation": "Some manual steps required for compliance verification",
             "tech_stack": ["Java", "Spring", "Oracle", "Apache_Kafka"],
-            "automation_percentage": 75
+            "automation_percentage": 75,
         }
         fake_llm_provider = self.create_fake_llm_with_response(standard_response)
         pattern_creator = PatternCreator(mock_settings, fake_llm_provider)
-        
+
         recommendation_service = RecommendationService(
             settings=mock_settings,
             llm_provider=fake_llm_provider,
             embedding_engine=embedding_engine,
-            pattern_creator=pattern_creator
+            pattern_creator=pattern_creator,
         )
 
         # Test standard requirements format
@@ -202,7 +210,7 @@ class TestConfidencePatternE2E:
             "description": "Financial reporting system with regulatory compliance",
             "business_domain": "finance",
             "complexity": "high",
-            "compliance_requirements": ["SOX", "GDPR"]
+            "compliance_requirements": ["SOX", "GDPR"],
         }
 
         # Execute: Get recommendation
@@ -213,7 +221,7 @@ class TestConfidencePatternE2E:
         assert "confidence" in result
         assert "explanation" in result
         assert "tech_stack" in result
-        
+
         # Verify: Values are correct
         assert result["feasibility"] == "Partially Automatable"
         assert result["confidence"] == 0.65
@@ -227,7 +235,7 @@ class TestConfidencePatternE2E:
             (0.0, "0.00%"),
             (0.5, "50.00%"),
             (0.8567, "85.67%"),
-            (1.0, "100.00%")
+            (1.0, "100.00%"),
         ]
 
         for confidence_value, expected_display in test_cases:
@@ -236,22 +244,22 @@ class TestConfidencePatternE2E:
                 "confidence": confidence_value,
                 "feasibility": "Automatable",
                 "explanation": "Test case",
-                "tech_stack": ["Python"]
+                "tech_stack": ["Python"],
             }
             fake_llm_provider = self.create_fake_llm_with_response(response)
             pattern_creator = PatternCreator(mock_settings, fake_llm_provider)
-            
+
             recommendation_service = RecommendationService(
                 settings=mock_settings,
                 llm_provider=fake_llm_provider,
                 embedding_engine=embedding_engine,
-                pattern_creator=pattern_creator
+                pattern_creator=pattern_creator,
             )
 
             # Test requirements
             requirements = {
                 "description": f"Test case for confidence {confidence_value}",
-                "llm_analysis_confidence_level": confidence_value
+                "llm_analysis_confidence_level": confidence_value,
             }
 
             # Execute: Get recommendation
@@ -259,15 +267,18 @@ class TestConfidencePatternE2E:
 
             # Verify: Confidence value and formatting
             assert result["confidence"] == confidence_value
-            
+
             # Test display formatting
             display_confidence = f"{result['confidence']:.2%}"
             assert display_confidence == expected_display
 
     @pytest.mark.asyncio
-    async def test_logging_and_monitoring_integration(self, mock_settings, embedding_engine, caplog):
+    async def test_logging_and_monitoring_integration(
+        self, mock_settings, embedding_engine, caplog
+    ):
         """Test that logging and monitoring work correctly for both fixes."""
         import logging
+
         caplog.set_level(logging.INFO)
 
         # Setup: Configure LLM response
@@ -275,23 +286,23 @@ class TestConfidencePatternE2E:
             "confidence": 0.91,
             "feasibility": "Automatable",
             "explanation": "Fully automatable with modern tools",
-            "tech_stack": ["Python", "FastAPI", "PostgreSQL"]
+            "tech_stack": ["Python", "FastAPI", "PostgreSQL"],
         }
         fake_llm_provider = self.create_fake_llm_with_response(response)
         pattern_creator = PatternCreator(mock_settings, fake_llm_provider)
-        
+
         recommendation_service = RecommendationService(
             settings=mock_settings,
             llm_provider=fake_llm_provider,
             embedding_engine=embedding_engine,
-            pattern_creator=pattern_creator
+            pattern_creator=pattern_creator,
         )
 
         # Test requirements
         requirements = {
             "description": "API for user management with authentication",
             "llm_analysis_confidence_level": 0.91,
-            "business_domain": "user_management"
+            "business_domain": "user_management",
         }
 
         # Execute: Get recommendation
@@ -299,10 +310,10 @@ class TestConfidencePatternE2E:
 
         # Verify: Proper logging occurred
         log_messages = [record.message for record in caplog.records]
-        
+
         # Check that some logging occurred (specific messages may vary)
         assert len(log_messages) > 0
-        
+
         # Verify result structure
         assert "confidence" in result
         assert "confidence_source" in result

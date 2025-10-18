@@ -11,6 +11,7 @@ from app.utils.imports import require_service
 
 # ---------- Helpers ----------
 
+
 def _extract_json(text: str) -> str:
     """Extract the first JSON object from text; fallback to raw text."""
     if not text:
@@ -32,6 +33,7 @@ def _round2(x: float) -> float:
 
 
 # ---------- Enums & Data Models ----------
+
 
 class ReasoningComplexity(Enum):
     SIMPLE = "simple"
@@ -97,23 +99,27 @@ class AutonomyAssessment:
 
 # ---------- Core Service ----------
 
+
 class AutonomyAssessor:
     """Service for assessing autonomous agent potential of requirements."""
 
     def __init__(self, llm_provider: LLMProvider):
         self.llm_provider = llm_provider
-        
+
         # Get logger from service registry
-        self.logger = require_service('logger', context='AutonomyAssessor')
-        
+        self.logger = require_service("logger", context="AutonomyAssessor")
+
         # Import configuration service for dynamic weights
         from app.services.configuration_service import get_config
+
         self.config_service = get_config()
-        
+
         # Use dynamic weights from configuration
         self.autonomy_weights = self.config_service.get_autonomy_weights()
 
-    async def assess_autonomy_potential(self, requirements: Dict[str, Any]) -> AutonomyAssessment:
+    async def assess_autonomy_potential(
+        self, requirements: Dict[str, Any]
+    ) -> AutonomyAssessment:
         """Assess how autonomous an AI agent can be for given requirements."""
 
         self.logger.info("Assessing autonomy potential for requirements")
@@ -122,7 +128,9 @@ class AutonomyAssessor:
 
         # Check if LLM provider is available
         if not self.llm_provider:
-            self.logger.warning("No LLM provider available, using default autonomy assessment")
+            self.logger.warning(
+                "No LLM provider available, using default autonomy assessment"
+            )
             return self._default_autonomy_assessment()
 
         # Analyze reasoning requirements
@@ -157,7 +165,9 @@ class AutonomyAssessor:
         )
 
         # Generate exception handling strategy
-        exception_strategy = self._generate_exception_handling_strategy(reasoning_needs, decision_scope)
+        exception_strategy = self._generate_exception_handling_strategy(
+            reasoning_needs, decision_scope
+        )
 
         assessment = AutonomyAssessment(
             overall_score=autonomy_score,
@@ -185,21 +195,29 @@ class AutonomyAssessor:
 
         return assessment
 
-    def _calculate_autonomy_score(self, reasoning: ReasoningNeeds, decisions: DecisionScope, workflow: WorkflowAutonomy) -> float:
+    def _calculate_autonomy_score(
+        self,
+        reasoning: ReasoningNeeds,
+        decisions: DecisionScope,
+        workflow: WorkflowAutonomy,
+    ) -> float:
         """Calculate weighted autonomy score."""
         weights = self.autonomy_weights
 
         score = (
             _clamp01(reasoning.autonomy_potential) * weights["reasoning_capability"]
             + _clamp01(decisions.independence_score) * weights["decision_independence"]
-            + _clamp01(workflow.exception_handling_score) * weights["exception_handling"]
+            + _clamp01(workflow.exception_handling_score)
+            * weights["exception_handling"]
             + _clamp01(workflow.learning_potential) * weights["learning_adaptation"]
             + _clamp01(workflow.self_monitoring_capability) * weights["self_monitoring"]
         )
 
         # Boost score for high-potential scenarios (aggressive autonomy assessment)
         if score > self.config_service.autonomy.high_autonomy_boost_threshold:
-            score = min(1.0, score * self.config_service.autonomy.autonomy_boost_multiplier)
+            score = min(
+                1.0, score * self.config_service.autonomy.autonomy_boost_multiplier
+            )
 
         return min(1.0, score)
 
@@ -213,7 +231,8 @@ class AutonomyAssessor:
 
         # High complexity or low workflow coverage suggests multi-agent
         if (
-            reasoning_needs.complexity_level in [ReasoningComplexity.COMPLEX, ReasoningComplexity.EXPERT]
+            reasoning_needs.complexity_level
+            in [ReasoningComplexity.COMPLEX, ReasoningComplexity.EXPERT]
             or workflow_autonomy.coverage_percentage < 0.7
         ):
             if autonomy_score > 0.8:
@@ -222,11 +241,17 @@ class AutonomyAssessor:
                 return AgentArchitecture.MULTI_AGENT
 
         # High autonomy with moderate complexity
-        elif autonomy_score > 0.8 and reasoning_needs.complexity_level == ReasoningComplexity.MODERATE:
+        elif (
+            autonomy_score > 0.8
+            and reasoning_needs.complexity_level == ReasoningComplexity.MODERATE
+        ):
             return AgentArchitecture.SINGLE_AGENT
 
         # Swarm for highly distributed tasks
-        elif workflow_autonomy.coverage_percentage > 0.9 and len(reasoning_needs.required_types) > 4:
+        elif (
+            workflow_autonomy.coverage_percentage > 0.9
+            and len(reasoning_needs.required_types) > 4
+        ):
             return AgentArchitecture.SWARM
 
         # Default to single agent for simpler cases
@@ -249,7 +274,10 @@ class AutonomyAssessor:
             ],
             reasoning_requirements=["logical", "causal"],
             decision_boundaries={
-                "autonomous_decisions": ["Process standard requests", "Apply business rules"],
+                "autonomous_decisions": [
+                    "Process standard requests",
+                    "Apply business rules",
+                ],
                 "escalation_triggers": ["Complex edge cases", "High-risk scenarios"],
                 "authority_level": "high",
             },
@@ -258,14 +286,20 @@ class AutonomyAssessor:
         )
 
     def _identify_autonomous_capabilities(
-        self, reasoning: ReasoningNeeds, decisions: DecisionScope, workflow: WorkflowAutonomy
+        self,
+        reasoning: ReasoningNeeds,
+        decisions: DecisionScope,
+        workflow: WorkflowAutonomy,
     ) -> List[str]:
         """Identify specific autonomous capabilities the agent will have."""
 
         capabilities = []
 
         # Reasoning capabilities
-        if ReasoningComplexity.COMPLEX in [reasoning.complexity_level] or reasoning.autonomy_potential > 0.8:
+        if (
+            ReasoningComplexity.COMPLEX in [reasoning.complexity_level]
+            or reasoning.autonomy_potential > 0.8
+        ):
             capabilities.extend(
                 [
                     "Advanced problem-solving through multi-step reasoning",
@@ -281,7 +315,10 @@ class AutonomyAssessor:
             capabilities.append("Causal analysis and impact assessment")
 
         # Decision-making capabilities
-        if decisions.independence_level in [DecisionAuthority.HIGH, DecisionAuthority.FULL]:
+        if decisions.independence_level in [
+            DecisionAuthority.HIGH,
+            DecisionAuthority.FULL,
+        ]:
             capabilities.extend(
                 [
                     "Autonomous decision making within defined parameters",
@@ -300,22 +337,34 @@ class AutonomyAssessor:
             )
 
         if workflow.exception_handling_score > 0.7:
-            capabilities.append("Exception resolution through reasoning rather than escalation")
+            capabilities.append(
+                "Exception resolution through reasoning rather than escalation"
+            )
 
         if workflow.learning_potential > 0.6:
             capabilities.append("Continuous learning and performance optimization")
 
         if workflow.self_monitoring_capability > 0.6:
-            capabilities.append("Self-monitoring and autonomous system health management")
+            capabilities.append(
+                "Self-monitoring and autonomous system health management"
+            )
 
         return capabilities
 
-    def _generate_exception_handling_strategy(self, reasoning: ReasoningNeeds, decisions: DecisionScope) -> str:
+    def _generate_exception_handling_strategy(
+        self, reasoning: ReasoningNeeds, decisions: DecisionScope
+    ) -> str:
         """Generate exception handling strategy description."""
 
-        if reasoning.complexity_level in [ReasoningComplexity.COMPLEX, ReasoningComplexity.EXPERT]:
+        if reasoning.complexity_level in [
+            ReasoningComplexity.COMPLEX,
+            ReasoningComplexity.EXPERT,
+        ]:
             return "Multi-layered reasoning approach: attempt logical analysis, then causal reasoning, then analogical problem-solving before escalation"
-        elif decisions.independence_level in [DecisionAuthority.HIGH, DecisionAuthority.FULL]:
+        elif decisions.independence_level in [
+            DecisionAuthority.HIGH,
+            DecisionAuthority.FULL,
+        ]:
             return "Autonomous resolution within authority boundaries, escalate only when exceeding decision parameters"
         else:
             return "Conservative autonomous resolution with proactive escalation for uncertain scenarios"
@@ -323,13 +372,14 @@ class AutonomyAssessor:
 
 # ---------- LLM-Facing Analyzers ----------
 
+
 class ReasoningAnalyzer:
     """Analyzes reasoning complexity and requirements."""
 
     def __init__(self, llm_provider: LLMProvider):
         self.llm_provider = llm_provider
         # Get logger from service registry
-        self.logger = require_service('logger', context='ReasoningAnalyzer')
+        self.logger = require_service("logger", context="ReasoningAnalyzer")
         self.reasoning_types = {
             "logical": "Step-by-step logical deduction and inference",
             "causal": "Understanding cause-and-effect relationships",
@@ -386,7 +436,9 @@ Respond with a single JSON object only (no code fences). JSON schema (keys only;
 """
 
         try:
-            response = await self.llm_provider.generate(prompt, purpose="reasoning_analysis")
+            response = await self.llm_provider.generate(
+                prompt, purpose="reasoning_analysis"
+            )
             self.logger.debug(f"Reasoning analysis response: {response[:200]}...")
 
             if not response or not response.strip():
@@ -411,8 +463,13 @@ Respond with a single JSON object only (no code fences). JSON schema (keys only;
             }
 
             return ReasoningNeeds(
-                complexity_level=complexity_map.get(analysis.get("overall_complexity", "moderate"), ReasoningComplexity.MODERATE),
-                autonomy_potential=_round2(_clamp01(analysis.get("autonomy_potential", 0.8))),  # optimistic default
+                complexity_level=complexity_map.get(
+                    analysis.get("overall_complexity", "moderate"),
+                    ReasoningComplexity.MODERATE,
+                ),
+                autonomy_potential=_round2(
+                    _clamp01(analysis.get("autonomy_potential", 0.8))
+                ),  # optimistic default
                 required_types=required_types or ["logical"],
                 challenges=analysis.get("challenges", []),
                 recommended_frameworks=analysis.get("frameworks", ["LangChain"]),
@@ -420,7 +477,9 @@ Respond with a single JSON object only (no code fences). JSON schema (keys only;
 
         except Exception as e:
             self.logger.error(f"Failed to analyze reasoning complexity: {e}")
-            self.logger.debug(f"Raw response was: {response if 'response' in locals() else 'No response received'}")
+            self.logger.debug(
+                f"Raw response was: {response if 'response' in locals() else 'No response received'}"
+            )
             return self._default_reasoning_analysis(description)
 
     def _default_reasoning_analysis(self, description: str) -> ReasoningNeeds:
@@ -442,9 +501,11 @@ class DecisionEvaluator:
     def __init__(self, llm_provider: LLMProvider):
         self.llm_provider = llm_provider
         # Get logger from service registry
-        self.logger = require_service('logger', context='DecisionEvaluator')
+        self.logger = require_service("logger", context="DecisionEvaluator")
 
-    async def map_decision_boundaries(self, requirements: Dict[str, Any]) -> DecisionScope:
+    async def map_decision_boundaries(
+        self, requirements: Dict[str, Any]
+    ) -> DecisionScope:
         """Map what decisions an agent can make autonomously."""
 
         description = requirements.get("description", "")
@@ -473,7 +534,9 @@ Respond with a single JSON object only (no code fences). JSON schema (keys only;
 """
 
         try:
-            response = await self.llm_provider.generate(prompt, purpose="decision_boundaries")
+            response = await self.llm_provider.generate(
+                prompt, purpose="decision_boundaries"
+            )
             self.logger.debug(f"Decision boundaries response: {response[:200]}...")
 
             if not response or not response.strip():
@@ -491,8 +554,13 @@ Respond with a single JSON object only (no code fences). JSON schema (keys only;
             }
 
             return DecisionScope(
-                independence_level=authority_map.get(analysis.get("independence_level", "medium"), DecisionAuthority.MEDIUM),
-                independence_score=_round2(_clamp01(analysis.get("independence_score", 0.7))),
+                independence_level=authority_map.get(
+                    analysis.get("independence_level", "medium"),
+                    DecisionAuthority.MEDIUM,
+                ),
+                independence_score=_round2(
+                    _clamp01(analysis.get("independence_score", 0.7))
+                ),
                 autonomous_decisions=analysis.get("autonomous_decisions", []),
                 escalation_triggers=analysis.get("escalation_triggers", []),
                 risk_factors=analysis.get("risk_factors", []),
@@ -500,7 +568,9 @@ Respond with a single JSON object only (no code fences). JSON schema (keys only;
 
         except Exception as e:
             self.logger.error(f"Failed to evaluate decision boundaries: {e}")
-            self.logger.debug(f"Raw response was: {response if 'response' in locals() else 'No response received'}")
+            self.logger.debug(
+                f"Raw response was: {response if 'response' in locals() else 'No response received'}"
+            )
             return self._default_decision_scope()
 
     def _default_decision_scope(self) -> DecisionScope:
@@ -509,7 +579,10 @@ Respond with a single JSON object only (no code fences). JSON schema (keys only;
         return DecisionScope(
             independence_level=DecisionAuthority.MEDIUM,
             independence_score=0.7,
-            autonomous_decisions=["Standard operational decisions", "Routine process execution"],
+            autonomous_decisions=[
+                "Standard operational decisions",
+                "Routine process execution",
+            ],
             escalation_triggers=["Exceptional circumstances", "High-risk scenarios"],
             risk_factors=["Data sensitivity", "Compliance requirements"],
         )
@@ -521,7 +594,7 @@ class WorkflowAnalyzer:
     def __init__(self, llm_provider: LLMProvider):
         self.llm_provider = llm_provider
         # Get logger from service registry
-        self.logger = require_service('logger', context='WorkflowAnalyzer')
+        self.logger = require_service("logger", context="WorkflowAnalyzer")
 
     async def evaluate_end_to_end_automation(
         self, workflow_steps: List[str], requirements: Dict[str, Any]
@@ -572,7 +645,9 @@ STRICT OUTPUT FORMAT:
         )
 
         try:
-            response = await self.llm_provider.generate(prompt, purpose="workflow_automation")
+            response = await self.llm_provider.generate(
+                prompt, purpose="workflow_automation"
+            )
             self.logger.debug(f"Workflow automation response: {response[:200]}...")
 
             if not response or not response.strip():
@@ -598,7 +673,9 @@ STRICT OUTPUT FORMAT:
 
         except Exception as e:
             self.logger.error(f"Failed to evaluate workflow automation: {e}")
-            self.logger.debug(f"Raw response was: {response if 'response' in locals() else 'No response received'}")
+            self.logger.debug(
+                f"Raw response was: {response if 'response' in locals() else 'No response received'}"
+            )
             return self._default_workflow_analysis()
 
     def _default_workflow_analysis(self) -> WorkflowAutonomy:
@@ -609,5 +686,8 @@ STRICT OUTPUT FORMAT:
             exception_handling_score=0.7,
             learning_potential=0.7,
             self_monitoring_capability=0.6,
-            automation_gaps=["Complex edge cases", "Regulatory compliance verification"],
+            automation_gaps=[
+                "Complex edge cases",
+                "Regulatory compliance verification",
+            ],
         )
