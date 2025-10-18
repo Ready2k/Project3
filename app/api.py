@@ -1,5 +1,14 @@
 """FastAPI application for Automated AI Assessment (AAA)."""
 
+# Load environment variables from .env file first
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not available
+except Exception:
+    pass  # Error loading .env file
+
 import json
 import os
 import time
@@ -40,6 +49,28 @@ def get_api_logger():
         return service_logger if service_logger else fallback_logger
     except Exception:
         return fallback_logger
+
+def safe_log_provider_config(config_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """Safely log provider config by masking sensitive fields."""
+    if not config_dict:
+        return config_dict
+    
+    safe_config = config_dict.copy()
+    sensitive_fields = [
+        'api_key', 'aws_access_key_id', 'aws_secret_access_key', 
+        'aws_session_token', 'bedrock_api_key'
+    ]
+    
+    for field in sensitive_fields:
+        if field in safe_config and safe_config[field]:
+            # Show only first 3 and last 3 characters for debugging
+            value = str(safe_config[field])
+            if len(value) > 6:
+                safe_config[field] = f"{value[:3]}...{value[-3:]}"
+            else:
+                safe_config[field] = "***"
+    
+    return safe_config
 
 # Use the helper function for logging
 app_logger = get_api_logger()
@@ -535,7 +566,11 @@ def create_llm_provider(provider_config: Optional[ProviderConfig] = None, sessio
     base_provider = None
     
     app_logger.info(f"Creating LLM provider for session {session_id}")
-    app_logger.info(f"Provider config: {provider_config.model_dump() if provider_config else 'None'}")
+    if provider_config:
+        safe_config = safe_log_provider_config(provider_config.model_dump())
+        app_logger.info(f"Provider config: {safe_config}")
+    else:
+        app_logger.info("Provider config: None")
     app_logger.info(f"Settings provider: {settings.provider}")
     
     if not provider_config:
@@ -1046,7 +1081,11 @@ async def ingest_requirements(request: IngestRequest, http_request: Request, res
         # Debug logging
         app_logger.info(f"🔍 Ingest request for session {session_id}")
         app_logger.info(f"Source: {request.source}")
-        app_logger.info(f"Provider config received: {request.provider_config.model_dump() if request.provider_config else 'None'}")
+        if request.provider_config:
+            safe_config = safe_log_provider_config(request.provider_config.model_dump())
+            app_logger.info(f"Provider config received: {safe_config}")
+        else:
+            app_logger.info("Provider config received: None")
         
         # Extract and validate requirements from payload
         requirements = {}
@@ -1214,7 +1253,8 @@ async def ingest_requirements(request: IngestRequest, http_request: Request, res
         
         # Store provider configuration in session for later use
         if request.provider_config:
-            app_logger.info(f"Stored provider config in session: {session_state.provider_config}")
+            safe_config = safe_log_provider_config(session_state.provider_config)
+            app_logger.info(f"Stored provider config in session: {safe_config}")
         
         # Store session
         store = get_session_store()
@@ -1270,7 +1310,8 @@ async def get_status(session_id: str, response: Response):
                 # Check if we have questions to ask
                 provider_config = None
                 if session.provider_config:
-                    app_logger.info(f"Creating ProviderConfig from: {session.provider_config}")
+                    safe_config = safe_log_provider_config(session.provider_config)
+                    app_logger.info(f"Creating ProviderConfig from: {safe_config}")
                     provider_config = ProviderConfig(**session.provider_config)
                 
                 question_loop = get_question_loop(provider_config, session_id)
@@ -1352,7 +1393,8 @@ async def get_qa_questions(session_id: str, response: Response):
         # Create provider config from session
         provider_config = None
         if session.provider_config:
-            app_logger.info(f"Retrieved provider config from session for questions: {session.provider_config}")
+            safe_config = safe_log_provider_config(session.provider_config)
+            app_logger.info(f"Retrieved provider config from session for questions: {safe_config}")
             provider_config = ProviderConfig(**session.provider_config)
         else:
             app_logger.warning("No provider config found in session for questions")
@@ -1611,7 +1653,8 @@ async def process_qa(session_id: str, request: QARequest, response: Response):
         # Create provider config from session
         provider_config = None
         if session.provider_config:
-            app_logger.info(f"Retrieved provider config from session: {session.provider_config}")
+            safe_config = safe_log_provider_config(session.provider_config)
+            app_logger.info(f"Retrieved provider config from session: {safe_config}")
             provider_config = ProviderConfig(**session.provider_config)
         else:
             app_logger.warning("No provider config found in session")
@@ -1984,7 +2027,8 @@ async def export_results(request: ExportRequest, response: Response):
                 
                 # Create LLM provider for comprehensive analysis
                 llm_provider = create_llm_provider(provider_config, request.session_id)
-                app_logger.info(f"Created LLM provider for comprehensive export: {session.provider_config}")
+                safe_config = safe_log_provider_config(session.provider_config)
+                app_logger.info(f"Created LLM provider for comprehensive export: {safe_config}")
             except Exception as e:
                 app_logger.warning(f"Could not create LLM provider for comprehensive export: {e}")
                 # Continue without LLM provider - will use fallback analysis

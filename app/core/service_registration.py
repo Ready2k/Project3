@@ -20,13 +20,15 @@ logger = logging.getLogger(__name__)
 
 
 def register_core_services(registry: Optional[ServiceRegistry] = None, 
-                          config_overrides: Optional[Dict[str, Dict[str, Any]]] = None) -> List[str]:
+                          config_overrides: Optional[Dict[str, Dict[str, Any]]] = None,
+                          skip_async_services: bool = False) -> List[str]:
     """
     Register all core services in the service registry.
     
     Args:
         registry: Service registry instance (uses global if None)
         config_overrides: Optional configuration overrides for services
+        skip_async_services: Skip services that require async initialization (for Streamlit)
         
     Returns:
         List of successfully registered service names
@@ -40,7 +42,17 @@ def register_core_services(registry: Optional[ServiceRegistry] = None,
     config_overrides = config_overrides or {}
     registered_services = []
     
-    logger.info("Starting core service registration...")
+    # Check if we're in a thread without an event loop (like Streamlit)
+    try:
+        import asyncio
+        asyncio.get_event_loop()
+        in_async_context = True
+    except RuntimeError:
+        in_async_context = False
+        skip_async_services = True
+        logger.warning("No event loop available, skipping async services")
+    
+    logger.info(f"Starting core service registration (async_context={in_async_context}, skip_async={skip_async_services})...")
     
     try:
         # 1. Register Configuration Service (no dependencies)
@@ -204,98 +216,123 @@ def register_core_services(registry: Optional[ServiceRegistry] = None,
         logger.info("✅ Registered infrastructure diagram service")
         
         # 11. Register Enhanced Pattern Loader Service (depends on config, logger, cache)
-        enhanced_pattern_loader_config = config_overrides.get("enhanced_pattern_loader", {
-            "pattern_library_path": "./data/patterns",
-            "enable_analytics": True,
-            "enable_caching": True,
-            "cache_ttl_seconds": 3600,
-            "enable_validation": True,
-            "auto_reload": False,
-            "performance_tracking": True
-        })
-        
-        from app.services.enhanced_pattern_loader import EnhancedPatternLoader
-        enhanced_pattern_loader = EnhancedPatternLoader(enhanced_pattern_loader_config)
-        enhanced_pattern_loader.initialize()  # Initialize the service
-        registry.register_singleton("enhanced_pattern_loader", enhanced_pattern_loader, dependencies=["config", "logger", "cache"])
-        registered_services.append("enhanced_pattern_loader")
-        logger.info("✅ Registered enhanced pattern loader service")
+        if not skip_async_services:
+            enhanced_pattern_loader_config = config_overrides.get("enhanced_pattern_loader", {
+                "pattern_library_path": "./data/patterns",
+                "enable_analytics": True,
+                "enable_caching": True,
+                "cache_ttl_seconds": 3600,
+                "enable_validation": True,
+                "auto_reload": False,
+                "performance_tracking": True
+            })
+            
+            try:
+                from app.services.enhanced_pattern_loader import EnhancedPatternLoader
+                enhanced_pattern_loader = EnhancedPatternLoader(enhanced_pattern_loader_config)
+                enhanced_pattern_loader.initialize()  # Initialize the service
+                registry.register_singleton("enhanced_pattern_loader", enhanced_pattern_loader, dependencies=["config", "logger", "cache"])
+                registered_services.append("enhanced_pattern_loader")
+                logger.info("✅ Registered enhanced pattern loader service")
+            except Exception as e:
+                logger.warning(f"Failed to register enhanced pattern loader service: {e}")
+        else:
+            logger.info("⏭️ Skipped enhanced pattern loader service (no async context)")
         
         # 12. Register Pattern Analytics Service (depends on config, logger, enhanced_pattern_loader)
-        pattern_analytics_config = config_overrides.get("pattern_analytics_service", {
-            "enable_real_time_analytics": True,
-            "analytics_retention_days": 30,
-            "performance_window_minutes": 60,
-            "trend_analysis_enabled": True,
-            "export_analytics": True,
-            "alert_thresholds": {
-                "low_success_rate": 0.7,
-                "high_response_time_ms": 1000,
-                "pattern_usage_spike": 5.0
-            }
-        })
-        
-        from app.services.pattern_analytics_service import PatternAnalyticsService
-        pattern_analytics_service = PatternAnalyticsService(pattern_analytics_config)
-        pattern_analytics_service.initialize()  # Initialize the service
-        registry.register_singleton("pattern_analytics_service", pattern_analytics_service, dependencies=["config", "logger", "enhanced_pattern_loader"])
-        registered_services.append("pattern_analytics_service")
-        logger.info("✅ Registered pattern analytics service")
+        if not skip_async_services:
+            pattern_analytics_config = config_overrides.get("pattern_analytics_service", {
+                "enable_real_time_analytics": True,
+                "analytics_retention_days": 30,
+                "performance_window_minutes": 60,
+                "trend_analysis_enabled": True,
+                "export_analytics": True,
+                "alert_thresholds": {
+                    "low_success_rate": 0.7,
+                    "high_response_time_ms": 1000,
+                    "pattern_usage_spike": 5.0
+                }
+            })
+            
+            try:
+                from app.services.pattern_analytics_service import PatternAnalyticsService
+                pattern_analytics_service = PatternAnalyticsService(pattern_analytics_config)
+                pattern_analytics_service.initialize()  # Initialize the service
+                registry.register_singleton("pattern_analytics_service", pattern_analytics_service, dependencies=["config", "logger", "enhanced_pattern_loader"])
+                registered_services.append("pattern_analytics_service")
+                logger.info("✅ Registered pattern analytics service")
+            except Exception as e:
+                logger.warning(f"Failed to register pattern analytics service: {e}")
+        else:
+            logger.info("⏭️ Skipped pattern analytics service (no async context)")
         
         # 13. Register Pattern Enhancement Service (depends on config, logger, llm_provider_factory, enhanced_pattern_loader)
-        config_overrides.get("pattern_enhancement_service", {
-            "enhancement_types": ["full", "technical", "agentic"],
-            "default_enhancement_type": "full",
-            "max_concurrent_enhancements": 3,
-            "enhancement_timeout_seconds": 300,
-            "enable_validation": True,
-            "backup_original_patterns": True,
-            "llm_provider": "openai",
-            "llm_model": "gpt-4o",
-            "temperature": 0.3,
-            "max_tokens": 4000
-        })
-        
-        from app.services.pattern_enhancement_service import PatternEnhancementService
-        
-        # Get the required dependencies
-        llm_factory_service = registry.get("llm_provider_factory")
-        enhanced_loader = registry.get("enhanced_pattern_loader")
-        
-        # Create a default LLM provider for the enhancement service
-        default_llm_config = {
-            "provider": "openai",
-            "model": "gpt-4o",
-            "temperature": 0.3,
-            "max_tokens": 4000
-        }
-        
-        # Create LLM provider instance
-        llm_provider_result = llm_factory_service.create_provider("openai", **default_llm_config)
-        
-        if not llm_provider_result.is_success():
-            # Fallback to fake provider for testing
-            llm_provider_result = llm_factory_service.create_provider("fake")
-        
-        llm_provider = llm_provider_result.value
-        
-        pattern_enhancement_service = PatternEnhancementService(enhanced_loader, llm_provider)
-        registry.register_singleton("pattern_enhancement_service", pattern_enhancement_service, dependencies=["config", "logger", "llm_provider_factory", "enhanced_pattern_loader"])
-        registered_services.append("pattern_enhancement_service")
-        logger.info("✅ Registered pattern enhancement service")
+        if not skip_async_services:
+            config_overrides.get("pattern_enhancement_service", {
+                "enhancement_types": ["full", "technical", "agentic"],
+                "default_enhancement_type": "full",
+                "max_concurrent_enhancements": 3,
+                "enhancement_timeout_seconds": 300,
+                "enable_validation": True,
+                "backup_original_patterns": True,
+                "llm_provider": "openai",
+                "llm_model": "gpt-4o",
+                "temperature": 0.3,
+                "max_tokens": 4000
+            })
+            
+            try:
+                from app.services.pattern_enhancement_service import PatternEnhancementService
+                
+                # Get the required dependencies
+                llm_factory_service = registry.get("llm_provider_factory")
+                enhanced_loader = registry.get("enhanced_pattern_loader")
+                
+                # Create a default LLM provider for the enhancement service
+                default_llm_config = {
+                    "provider": "openai",
+                    "model": "gpt-4o",
+                    "temperature": 0.3,
+                    "max_tokens": 4000
+                }
+                
+                # Create LLM provider instance
+                llm_provider_result = llm_factory_service.create_provider("openai", **default_llm_config)
+                
+                if not llm_provider_result.is_success():
+                    # Fallback to fake provider for testing
+                    llm_provider_result = llm_factory_service.create_provider("fake")
+                
+                llm_provider = llm_provider_result.value
+                
+                pattern_enhancement_service = PatternEnhancementService(enhanced_loader, llm_provider)
+                registry.register_singleton("pattern_enhancement_service", pattern_enhancement_service, dependencies=["config", "logger", "llm_provider_factory", "enhanced_pattern_loader"])
+                registered_services.append("pattern_enhancement_service")
+                logger.info("✅ Registered pattern enhancement service")
+            except Exception as e:
+                logger.warning(f"Failed to register pattern enhancement service: {e}")
+        else:
+            logger.info("⏭️ Skipped pattern enhancement service (no async context)")
         
         # 14. Register Tech Stack Monitoring Integration Service (depends on config, logger)
-        monitoring_integration_config = config_overrides.get("tech_stack_monitoring_integration", {
-            "enable_monitoring": True,
-            "session_timeout": 3600,
-            "max_sessions": 100
-        })
-        
-        from app.services.monitoring_integration_service import TechStackMonitoringIntegrationService
-        monitoring_integration_service = TechStackMonitoringIntegrationService(monitoring_integration_config)
-        registry.register_singleton("tech_stack_monitoring_integration", monitoring_integration_service, dependencies=["config", "logger"])
-        registered_services.append("tech_stack_monitoring_integration")
-        logger.info("✅ Registered tech stack monitoring integration service")
+        # Skip this service if we don't have async context (Streamlit issue)
+        if not skip_async_services:
+            monitoring_integration_config = config_overrides.get("tech_stack_monitoring_integration", {
+                "enable_monitoring": True,
+                "session_timeout": 3600,
+                "max_sessions": 100
+            })
+            
+            try:
+                from app.services.monitoring_integration_service import TechStackMonitoringIntegrationService
+                monitoring_integration_service = TechStackMonitoringIntegrationService(monitoring_integration_config)
+                registry.register_singleton("tech_stack_monitoring_integration", monitoring_integration_service, dependencies=["config", "logger"])
+                registered_services.append("tech_stack_monitoring_integration")
+                logger.info("✅ Registered tech stack monitoring integration service")
+            except Exception as e:
+                logger.warning(f"Failed to register tech stack monitoring integration service: {e}")
+        else:
+            logger.info("⏭️ Skipped tech stack monitoring integration service (no async context)")
         
         logger.info(f"Successfully registered {len(registered_services)} core services: {registered_services}")
         

@@ -292,22 +292,27 @@ class TechStackGenerator:
         Returns:
             List of recommended technologies
         """
-        # Initialize monitoring integration
+        # Initialize monitoring integration (optional)
         monitoring_session = None
+        session_id = None
         try:
-            monitoring_service = require_service('tech_stack_monitoring_integration', context='TechStackGenerator')
+            from app.utils.imports import optional_service
+            monitoring_service = optional_service('tech_stack_monitoring_integration', context='TechStackGenerator')
             
-            # Start monitoring session
-            monitoring_session = monitoring_service.start_generation_monitoring(
-                requirements=requirements,
-                metadata={
-                    'matches_count': len(matches),
-                    'has_constraints': constraints is not None,
-                    'generator_version': '2.0_enhanced'
-                }
-            )
-            
-            session_id = monitoring_session.session_id
+            if monitoring_service:
+                # Start monitoring session
+                monitoring_session = monitoring_service.start_generation_monitoring(
+                    requirements=requirements,
+                    metadata={
+                        'matches_count': len(matches),
+                        'has_constraints': constraints is not None,
+                        'generator_version': '2.0_enhanced'
+                    }
+                )
+                session_id = monitoring_session.session_id
+                self.logger.debug(f"Started monitoring session: {session_id}")
+            else:
+                self.logger.debug("Monitoring service not available, proceeding without monitoring")
             self.logger.info(f"Started monitoring session: {session_id}")
             
         except Exception as monitoring_error:

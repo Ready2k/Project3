@@ -1,5 +1,14 @@
 """Streamlit UI for Automated AI Assessment (AAA)."""
 
+# Load environment variables from .env file first
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not available
+except Exception:
+    pass  # Error loading .env file
+
 import json
 import time
 from typing import Dict, Any

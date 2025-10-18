@@ -1,5 +1,14 @@
 """Streamlit UI for Automated AI Assessment (AAA) application."""
 
+# Load environment variables from .env file first
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not available
+except Exception:
+    pass  # Error loading .env file
+
 import asyncio
 import json
 import os
@@ -57,7 +66,25 @@ def initialize_module_services():
         
         # Check if services are already registered, if not register them
         if not registry.has('logger'):
-            register_core_services(registry)
+            # Handle Streamlit threading issue - register services without async components
+            try:
+                # Try to register with async services first
+                register_core_services(registry, skip_async_services=False)
+            except RuntimeError as e:
+                if "There is no current event loop in thread" in str(e):
+                    # Streamlit threading issue - register services without async components
+                    import logging
+                    fallback_logger = logging.getLogger(__name__)
+                    fallback_logger.warning(f"Event loop issue in Streamlit thread, registering without async services: {e}")
+                    
+                    try:
+                        register_core_services(registry, skip_async_services=True)
+                        fallback_logger.info("Registered core services for Streamlit (async services skipped)")
+                    except Exception as reg_error:
+                        fallback_logger.error(f"Failed to register core services: {reg_error}")
+                        return False
+                else:
+                    raise
         
         # Get services
         app_logger = require_service('logger', context='streamlit_module')

@@ -415,7 +415,13 @@ class Settings(BaseSettings):
         updated_by="system"
     ))
 
-    model_config = {"env_file": ".env", "env_nested_delimiter": "_", "extra": "ignore"}
+    model_config = {
+        "env_file": ".env", 
+        "env_nested_delimiter": "_", 
+        "extra": "ignore",
+        "validate_default": True,
+        "case_sensitive": False
+    }
 
 
 def load_settings(config_path: Optional[str] = None) -> Settings:
@@ -423,6 +429,20 @@ def load_settings(config_path: Optional[str] = None) -> Settings:
     
     Environment variables take precedence over YAML configuration.
     """
+    # Load .env file if it exists
+    try:
+        from dotenv import load_dotenv
+        env_file = Path(".env")
+        if env_file.exists():
+            load_dotenv(env_file)
+            print(f"✅ Loaded environment variables from {env_file}")
+        else:
+            print("ℹ️ No .env file found, using system environment variables only")
+    except ImportError:
+        print("⚠️ python-dotenv not installed, .env file will not be loaded")
+    except Exception as e:
+        print(f"⚠️ Error loading .env file: {e}")
+    
     config_data = {}
     
     # Load from YAML if provided
