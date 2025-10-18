@@ -409,7 +409,7 @@ class QualityDashboard(ConfigurableService):
                 return ''
             
             styled_df = df_alerts.style.applymap(color_level, subset=['Level'])
-            st.dataframe(styled_df, width='content')
+            st.dataframe(styled_df, use_container_width=True)
     
     def _render_qa_section(self) -> None:
         """Render quality assurance section."""
@@ -473,7 +473,7 @@ class QualityDashboard(ConfigurableService):
         
         if check_data:
             df_checks = pd.DataFrame(check_data)
-            st.dataframe(df_checks, width='content')
+            st.dataframe(df_checks, use_container_width=True)
         
         # QA report timestamp
         st.caption(f"Report generated: {latest_report.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")

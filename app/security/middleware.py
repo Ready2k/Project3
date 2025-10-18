@@ -213,8 +213,8 @@ def setup_cors_middleware(app, allowed_origins: Optional[list] = None) -> None:
     if allowed_origins is None:
         # Default to localhost for development
         allowed_origins = [
-            "http://localhost:8501",  # Streamlit default
-            "http://127.0.0.1:8501",
+            "http://localhost:8500",  # Streamlit default
+            "http://127.0.0.1:8500",
             "http://localhost:3000",  # Common React dev server
             "http://127.0.0.1:3000"
         ]

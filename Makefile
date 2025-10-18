@@ -129,7 +129,7 @@ dashboard:
 up:
 	@echo "🚀 Starting both FastAPI backend and Streamlit UI..."
 	@echo "🔧 API will be available at: http://localhost:8000"
-	@echo "📱 Streamlit UI will be available at: http://localhost:8501"
+	@echo "📱 Streamlit UI will be available at: http://localhost:8500"
 	@echo ""
 	python3 -m uvicorn app.api:app --reload --host 0.0.0.0 --port 8000 &
 	sleep 3
@@ -163,7 +163,7 @@ ui:
 # Run Streamlit in browser (same as ui)
 streamlit:
 	@echo "🚀 Starting NEW Streamlit UI with Agent Solution tab..."
-	@echo "📱 The app will open in your browser at: http://localhost:8501"
+	@echo "📱 The app will open in your browser at: http://localhost:8500"
 	@echo "🔧 Make sure the FastAPI backend is running at: http://localhost:8000"
 	@echo "🤖 NEW: Includes dedicated Agent Solution tab for agentic AI designs!"
 	@echo ""
@@ -172,11 +172,11 @@ streamlit:
 # Run NEW interface directly (bypass run_streamlit.py)
 new-ui:
 	@echo "🚀 Starting NEW Streamlit UI directly..."
-	@echo "📱 The app will open in your browser at: http://localhost:8501"
+	@echo "📱 The app will open in your browser at: http://localhost:8500"
 	@echo "🔧 Make sure the FastAPI backend is running at: http://localhost:8000"
 	@echo "🤖 NEW: Includes dedicated Agent Solution tab for agentic AI designs!"
 	@echo ""
-	python3 -m streamlit run app/main.py --server.port 8501 --server.address 0.0.0.0 --browser.serverAddress localhost
+	python3 -m streamlit run app/main.py --server.port 8500 --server.address 0.0.0.0 --browser.serverAddress localhost
 
 # Test coverage
 coverage:
@@ -191,7 +191,7 @@ docker-build:
 docker-up:
 	@echo "🐳 Starting services with Docker Compose..."
 	@echo "🔧 API will be available at: http://localhost:8000"
-	@echo "📱 Streamlit UI will be available at: http://localhost:8501"
+	@echo "📱 Streamlit UI will be available at: http://localhost:8500"
 	@echo "🗄️  Redis will be available at: localhost:6379"
 	docker-compose up -d
 	@echo "✅ Services started! Check status with: make docker-logs"
@@ -228,7 +228,7 @@ help:
 	@echo "  make dev        - Start both API and Streamlit UI (recommended for local dev)"
 	@echo "  make up         - Same as dev"
 	@echo "  make api        - Start FastAPI backend only (http://localhost:8000)"
-	@echo "  make streamlit  - Start Streamlit UI only (http://localhost:8501)"
+	@echo "  make streamlit  - Start Streamlit UI only (http://localhost:8500)"
 	@echo "  make ui         - Same as streamlit"
 	@echo ""
 	@echo "🐳 Docker Development:"

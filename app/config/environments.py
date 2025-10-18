@@ -119,7 +119,7 @@ class APIConfig:
 class UIConfig:
     """UI configuration."""
     host: str = "0.0.0.0"
-    port: int = 8501
+    port: int = 8500
     title: str = "Automated AI Assessment (AAA)"
     theme: str = "light"
     sidebar_state: str = "expanded"

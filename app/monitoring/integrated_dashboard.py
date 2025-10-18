@@ -1137,7 +1137,7 @@ def render_integrated_monitoring_dashboard():
                 return ''
             
             styled_df = df.style.applymap(style_severity, subset=['Severity'])
-            st.dataframe(styled_df, width='content')
+            st.dataframe(styled_df, use_container_width=True)
             
         except Exception as e:
             st.error(f"Error rendering alerts table: {e}")

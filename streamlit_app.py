@@ -7156,7 +7156,7 @@ verify_ssl = True
                 })
             
             if display_data:
-                st.dataframe(display_data, width='stretch')
+                st.dataframe(display_data, use_container_width=True)
             
             # Performance insights
             st.subheader("💡 Performance Insights")
@@ -7596,7 +7596,7 @@ verify_ssl = True
                             'Percentage': f"{percentage:.1f}%"
                         })
                     
-                    st.dataframe(usage_data, width='stretch')
+                    st.dataframe(usage_data, use_container_width=True)
             
             # System health indicators
             st.subheader("🏥 System Health")

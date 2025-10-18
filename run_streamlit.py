@@ -21,15 +21,15 @@ def main():
     cmd = [
         sys.executable, "-m", "streamlit", "run", 
         str(streamlit_app),
-        "--server.port", "8501",
+        "--server.port", "8500",
         "--server.address", "0.0.0.0",
         "--browser.serverAddress", "localhost"
     ]
     
     app_logger.info("🚀 Starting Automated AI Assessment (AAA) Streamlit UI...")
-    app_logger.info("📱 The app will automatically open in your browser at: http://localhost:8501")
+    app_logger.info("📱 The app will automatically open in your browser at: http://localhost:8500")
     app_logger.info("🔧 Make sure the FastAPI backend is running at: http://localhost:8000")
-    app_logger.info("💡 If the browser doesn't open automatically, visit: http://localhost:8501")
+    app_logger.info("💡 If the browser doesn't open automatically, visit: http://localhost:8500")
     app_logger.info(f"Command: {' '.join(cmd)}")
     
     try:
