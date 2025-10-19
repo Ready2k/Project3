@@ -1,0 +1,128 @@
+## Critical Bug Fix Request: UI Data Flow Issue in Feasibility Assessment Display
+
+### Problem Description
+The AAA (Automated AI Assessment) system has a **deeper UI data processing bug** where the feasibility assessment displays "⚪ Feasibility: Unknown" and "Assessment pending" even though the API correctly returns proper feasibility values like "Partially Automatable".
+
+### Bug Status
+- **Previous Fix**: Cache clearing mechanism implemented ✅ (triggers fresh API calls)
+- **Current Issue**: UI data flow bug ❌ (doesn't use fresh API response correctly)
+
+### Confirmed Evidence
+
+#### ✅ API Layer Working Correctly
+```bash
+curl -X POST "http://localhost:8000/recommend" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "3c4bb8f9-b6ad-4e4b-8868-a28581b6786d", "top_k": 3}'
+```
+**Returns**: `{"feasibility":"Partially Automatable", "recommendations":[...], ...}`
+
+#### ❌ UI Layer Bug Persists
+**Session ID**: `3c4bb8f9-b6ad-4e4b-8868-a28581b6786d`
+- **API Response**: `"feasibility": "Partially Automatable"` ✅
+- **UI Display**: `"⚪ Feasibility: Unknown - Assessment pending"` ❌
+- **Other Data**: Key insights, challenges, 85% confidence all display correctly ✅
+
+### Root Cause Analysis
+
+The bug is **NOT** a caching issue but a **UI data processing issue**:
+
+1. **Response Processing Bug**: UI may not correctly extract `feasibility` from API response
+2. **Data Structure Mismatch**: API response structure vs UI expectations mismatch
+3. **State Override Bug**: Session state may override fresh API data
+4. **Display Logic Bug**: UI may use wrong data source for feasibility
+
+### Technical Context
+
+#### API Response Structure (Working)
+```json
+{
+  "feasibility": "Partially Automatable",  // ← This is correct
+  "recommendations": [...],
+  "tech_stack": [...],
+  "reasoning": "..."
+}
+```
+
+#### UI Code Location (Suspected Bug)
+**File**: `Project3/streamlit_app.py` around line 4122
+```python
+feasibility = rec.get('feasibility', 'Unknown')  // ← This may be the issue
+```
+
+#### Browser Test Evidence
+- Refresh button triggers fresh API calls ✅
+- Loading states work correctly ✅
+- API returns correct feasibility ✅
+- **UI still shows "Unknown" after fresh data** ❌
+
+### Investigation Required
+
+1. **Debug UI Data Flow**
+   - Add logging to see what `rec` object contains when feasibility is displayed
+   - Verify API response structure matches UI expectations
+   - Check if `st.session_state.recommendations` contains correct feasibility
+
+2. **Trace Response Processing**
+   - Follow data flow from API response → session state → UI display
+   - Identify where feasibility value gets lost or overridden
+   - Check for multiple feasibility assignments
+
+3. **Verify State Management**
+   - Ensure fresh API responses update session state correctly
+   - Check if cached session data overrides fresh API data
+   - Validate data precedence order (API vs session vs defaults)
+
+### Files to Examine
+
+**Primary Suspects**:
+- `Project3/streamlit_app.py` (lines 4120-4140) - Feasibility display logic
+- `Project3/streamlit_app.py` (lines 4030-4040) - API response storage
+- `Project3/app/api.py` (lines 2160-2200) - API response structure
+
+**Supporting Files**:
+- `Project3/FEASIBILITY_BUG_TEST_RESULTS.md` - Detailed test evidence
+- `Project3/FEASIBILITY_BUG_FIX_SUMMARY.md` - Previous fix attempt
+
+### Expected Fix Outcome
+
+After the fix:
+- Session `3c4bb8f9-b6ad-4e4b-8868-a28581b6786d` should display:
+  - **Before**: "⚪ Feasibility: Unknown - Assessment pending"
+  - **After**: "🟡 Feasibility: Partially Automatable - This requirement can be mostly automated, but may need human oversight for some steps."
+
+### Test Verification
+
+1. **Resume session** `3c4bb8f9-b6ad-4e4b-8868-a28581b6786d`
+2. **Verify feasibility** shows "Partially Automatable" not "Unknown"
+3. **Test refresh button** continues to work correctly
+4. **Test new sessions** to ensure fix doesn't break other functionality
+
+### Debug Strategy
+
+1. **Add Debug Logging**:
+   ```python
+   print(f"DEBUG: API response feasibility: {response.get('feasibility')}")
+   print(f"DEBUG: Session state feasibility: {st.session_state.recommendations.get('feasibility')}")
+   print(f"DEBUG: Display feasibility: {rec.get('feasibility')}")
+   ```
+
+2. **Trace Data Flow**:
+   - API response → `st.session_state.recommendations`
+   - Session state → `rec` variable
+   - `rec` variable → UI display
+
+3. **Check Data Structure**:
+   - Verify `rec` is the correct object containing feasibility
+   - Ensure no data transformation loses feasibility field
+   - Validate response structure consistency
+
+### Priority
+🔴 **Critical** - This is a core functionality bug affecting user trust in the system's accuracy.
+
+### Success Criteria
+- ✅ Feasibility displays correct API value ("Partially Automatable")
+- ✅ Refresh button continues to work
+- ✅ New sessions work correctly
+- ✅ No regression in other functionality
+- ✅ Debug logging removed after fix verification
