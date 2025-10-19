@@ -3489,6 +3489,9 @@ verify_ssl = True
                 time.sleep(POLL_INTERVAL)
                 st.rerun()
             elif phase == "DONE":
+                # Clear cached recommendations to force fresh fetch when analysis completes
+                if st.session_state.get('current_phase') != "DONE":
+                    st.session_state.recommendations = None
                 # Load final results
                 self.load_recommendations()
         
@@ -3789,38 +3792,21 @@ verify_ssl = True
     
     def render_regenerate_section(self):
         """Render the regenerate analysis section."""
-        # Simple regenerate button that uses current provider configuration
-        col1, col2, col3 = st.columns([1, 1, 2])
-        
         # Check if we have a valid provider configuration
         provider_config = st.session_state.get('provider_config', {})
         has_valid_provider = provider_config and provider_config.get('provider') and provider_config.get('model')
         
-        with col1:
-            button_disabled = not has_valid_provider
-            button_help = "Re-run analysis with current LLM provider settings" if has_valid_provider else "Configure an LLM provider in the sidebar first"
-            
-            if st.button(
-                "🔄 Regenerate Analysis", 
-                type="primary", 
-                help=button_help,
-                disabled=button_disabled
-            ):
-                self.regenerate_analysis()
+        button_disabled = not has_valid_provider
+        button_help = "Re-run analysis with current LLM provider settings" if has_valid_provider else "Configure an LLM provider in the sidebar first"
         
-        with col3:
-            # Show current provider info
-            if has_valid_provider:
-                current_provider = provider_config.get('provider', 'Unknown')
-                current_model = provider_config.get('model', 'Unknown')
-                st.caption(f"Using: {current_provider} - {current_model}")
-            else:
-                st.caption("⚠️ No LLM provider configured")
-        
-        if has_valid_provider:
-            st.caption("💡 Change the LLM provider in the sidebar to test different models, then regenerate to compare results.")
-        else:
-            st.caption("💡 Configure an LLM provider in the sidebar to enable regeneration.")
+        if st.button(
+            "🔄 Regenerate Analysis", 
+            type="primary", 
+            help=button_help,
+            disabled=button_disabled,
+            use_container_width=True
+        ):
+            self.regenerate_analysis()
     
     def regenerate_analysis(self):
         """Regenerate analysis using current provider configuration."""
@@ -4048,10 +4034,17 @@ verify_ssl = True
         
         st.header("🎯 Results & Recommendations")
         
-        # Add refresh recommendations button
-        col1, col2, col3 = st.columns([1, 1, 2])
+        # Debug toggle for feasibility data flow analysis
+        if st.checkbox("🔍 Debug Feasibility Data Flow", key="debug_feasibility_toggle"):
+            st.session_state.debug_feasibility = True
+        else:
+            st.session_state.debug_feasibility = False
+        
+        # Action buttons in a clean row
+        col1, col2, col3 = st.columns([2, 2, 3])
+        
         with col1:
-            if st.button("🔄 Refresh Results", help="Reload recommendations from the latest analysis"):
+            if st.button("🔄 Refresh Results", help="Reload recommendations from the latest analysis", use_container_width=True):
                 st.session_state.recommendations = None
                 st.rerun()
         
@@ -4059,6 +4052,19 @@ verify_ssl = True
         if st.session_state.get('requirements') and st.session_state.get('recommendations'):
             with col2:
                 self.render_regenerate_section()
+        
+        # Show current provider info in the third column
+        with col3:
+            provider_config = st.session_state.get('provider_config', {})
+            if provider_config and provider_config.get('provider') and provider_config.get('model'):
+                current_provider = provider_config.get('provider', 'Unknown')
+                current_model = provider_config.get('model', 'Unknown')
+                st.caption(f"Using: {current_provider} - {current_model}")
+                st.caption("💡 Change the LLM provider in the sidebar to test different models, then regenerate to compare results.")
+            else:
+                st.caption("⚠️ No LLM provider configured")
+        
+        st.divider()
         
         # Show original requirements
         if st.session_state.get('requirements'):
@@ -4118,8 +4124,44 @@ verify_ssl = True
         
         rec = st.session_state.recommendations
         
-        # Overall feasibility with better display
+        # DEBUG: Add logging to understand the data structure issue (only when debug enabled)
+        if st.session_state.get('debug_feasibility', False):
+            st.write("🔍 **DEBUG: Feasibility Data Flow**")
+            st.write(f"- rec type: {type(rec)}")
+            st.write(f"- rec keys: {list(rec.keys()) if isinstance(rec, dict) else 'Not a dict'}")
+            if isinstance(rec, dict):
+                st.write(f"- feasibility in rec: {'feasibility' in rec}")
+                st.write(f"- rec.get('feasibility'): {rec.get('feasibility', 'NOT_FOUND')}")
+                if 'recommendations' in rec:
+                    st.write(f"- rec['recommendations'] type: {type(rec['recommendations'])}")
+                    if isinstance(rec['recommendations'], list) and len(rec['recommendations']) > 0:
+                        st.write(f"- first recommendation keys: {list(rec['recommendations'][0].keys()) if isinstance(rec['recommendations'][0], dict) else 'Not a dict'}")
+        
+        # Overall feasibility with better display - get from top-level response
         feasibility = rec.get('feasibility', 'Unknown')
+        
+        # FALLBACK: If feasibility is still Unknown, try alternative sources
+        if feasibility == 'Unknown':
+            # Try to get from session state (stored separately by API client)
+            session_feasibility = st.session_state.get('feasibility', 'Unknown')
+            if session_feasibility != 'Unknown':
+                feasibility = session_feasibility
+                if st.session_state.get('debug_feasibility', False):
+                    st.write(f"- **🔄 Using session state feasibility: '{feasibility}'**")
+            # Try to get from individual recommendations
+            elif rec.get('recommendations') and len(rec['recommendations']) > 0:
+                first_rec = rec['recommendations'][0]
+                if isinstance(first_rec, dict):
+                    alt_feasibility = first_rec.get('feasibility', 'Unknown')
+                    if alt_feasibility != 'Unknown':
+                        feasibility = alt_feasibility
+                        if st.session_state.get('debug_feasibility', False):
+                            st.write(f"- **🔄 Using fallback feasibility from first recommendation: '{feasibility}'**")
+        
+        # DEBUG: Log the extracted feasibility
+        if st.session_state.get('debug_feasibility', False):
+            st.write(f"- **Final extracted feasibility: '{feasibility}'**")
+            st.markdown("---")
         feasibility_info = {
             "Yes": {"color": "🟢", "label": "Fully Automatable", "desc": "This requirement can be completely automated with high confidence."},
             "Partial": {"color": "🟡", "label": "Partially Automatable", "desc": "This requirement can be mostly automated, but may need human oversight for some steps."},
@@ -4132,31 +4174,54 @@ verify_ssl = True
         
         feas_info = feasibility_info.get(feasibility, {"color": "⚪", "label": feasibility, "desc": "Assessment pending."})
         
-        st.subheader(f"{feas_info['color']} Feasibility: {feas_info['label']}")
-        st.write(feas_info['desc'])
+        # Feasibility Assessment Card
+        with st.container():
+            st.markdown(f"### {feas_info['color']} Feasibility Assessment")
+            
+            # Create a nice info box for feasibility
+            if feas_info['color'] == "🟢":
+                st.success(f"**{feas_info['label']}** - {feas_info['desc']}")
+            elif feas_info['color'] == "🟡":
+                st.warning(f"**{feas_info['label']}** - {feas_info['desc']}")
+            elif feas_info['color'] == "🔴":
+                st.error(f"**{feas_info['label']}** - {feas_info['desc']}")
+            else:
+                st.info(f"**{feas_info['label']}** - {feas_info['desc']}")
         
-        # Enhanced LLM Analysis Display
+        st.divider()
+        
+        # Enhanced LLM Analysis Display in organized sections
         session_requirements = st.session_state.get('requirements', {})
         if session_requirements:
-            # Key Insights
-            key_insights = session_requirements.get('llm_analysis_key_insights', [])
-            if key_insights:
-                st.markdown("**🔍 Key Insights:**")
-                for insight in key_insights:
-                    st.markdown(f"• {insight}")
+            col1, col2 = st.columns(2)
             
-            # Automation Challenges
-            automation_challenges = session_requirements.get('llm_analysis_automation_challenges', [])
-            if automation_challenges:
-                st.markdown("**⚠️ Automation Challenges:**")
-                for challenge in automation_challenges:
-                    st.markdown(f"• {challenge}")
+            with col1:
+                # Key Insights
+                key_insights = session_requirements.get('llm_analysis_key_insights', [])
+                if key_insights:
+                    st.markdown("#### 🔍 Key Insights")
+                    for insight in key_insights:
+                        st.markdown(f"• {insight}")
+                
+                # Recommended Approach
+                recommended_approach = session_requirements.get('llm_analysis_recommended_approach', '')
+                if recommended_approach:
+                    st.markdown("#### 🎯 Recommended Approach")
+                    st.markdown(recommended_approach)
             
-            # Recommended Approach
-            recommended_approach = session_requirements.get('llm_analysis_recommended_approach', '')
-            if recommended_approach:
-                st.markdown("**🎯 Recommended Approach:**")
-                st.markdown(recommended_approach)
+            with col2:
+                # Automation Challenges
+                automation_challenges = session_requirements.get('llm_analysis_automation_challenges', [])
+                if automation_challenges:
+                    st.markdown("#### ⚠️ Automation Challenges")
+                    for challenge in automation_challenges:
+                        st.markdown(f"• {challenge}")
+                
+                # Confidence Level
+                confidence_level = session_requirements.get('llm_analysis_confidence_level', '')
+                if confidence_level:
+                    st.markdown("#### 📊 Confidence Level")
+                    st.markdown(f"**{confidence_level}**")
             
             # Next Steps
             next_steps = session_requirements.get('llm_analysis_next_steps', [])
@@ -4657,20 +4722,52 @@ verify_ssl = True
         
         # Individual recommendations
         if rec.get('recommendations'):
-            st.subheader("📋 Pattern Matches")
+            st.divider()
+            st.markdown("### 📋 Pattern Matches & Recommendations")
             
             for i, recommendation in enumerate(rec['recommendations']):
-                with st.expander(f"Pattern {i+1}: {recommendation.get('pattern_id', 'Unknown')}"):
-                    col1, col2 = st.columns([3, 1])
+                pattern_id = recommendation.get('pattern_id', 'Unknown')
+                pattern_name = recommendation.get('pattern_name', pattern_id)
+                confidence = recommendation.get('confidence', 0)
+                feasibility = recommendation.get('feasibility', 'Unknown')
+                
+                # Create a nice card-like display for each pattern
+                with st.container():
+                    # Header with pattern info
+                    col1, col2, col3 = st.columns([2, 1, 1])
                     
                     with col1:
-                        st.write(f"**Confidence:** {recommendation.get('confidence', 0):.2%}")
-                        if recommendation.get('reasoning'):
-                            st.write(f"**Rationale:** {recommendation['reasoning']}")
+                        st.markdown(f"**🎯 {pattern_name}**")
+                        st.caption(f"Pattern ID: {pattern_id}")
                     
                     with col2:
-                        feasibility_badge = recommendation.get('feasibility', 'Unknown')
-                        st.metric("Feasibility", feasibility_badge)
+                        # Confidence with color coding
+                        if confidence >= 0.8:
+                            st.success(f"**{confidence:.0%}** Confidence")
+                        elif confidence >= 0.6:
+                            st.warning(f"**{confidence:.0%}** Confidence")
+                        else:
+                            st.error(f"**{confidence:.0%}** Confidence")
+                    
+                    with col3:
+                        # Feasibility badge
+                        if feasibility in ["Yes", "Automatable", "Fully Automatable"]:
+                            st.success(f"✅ {feasibility}")
+                        elif feasibility in ["Partial", "Partially Automatable"]:
+                            st.warning(f"⚠️ {feasibility}")
+                        elif feasibility in ["No", "Not Automatable"]:
+                            st.error(f"❌ {feasibility}")
+                        else:
+                            st.info(f"ℹ️ {feasibility}")
+                    
+                    # Reasoning in expandable section
+                    if recommendation.get('reasoning'):
+                        with st.expander("📝 View Detailed Analysis", expanded=False):
+                            st.markdown(recommendation['reasoning'])
+                    
+                    # Add some spacing between patterns
+                    if i < len(rec['recommendations']) - 1:
+                        st.markdown("---")
         
         # Export buttons
         self.render_export_buttons()
@@ -5649,35 +5746,44 @@ verify_ssl = True
 
     def render_export_buttons(self):
         """Render export functionality."""
-        st.subheader("📤 Export Results")
+        st.divider()
+        st.markdown("### 📤 Export Results")
         
-        # Export format selection
-        export_format = st.selectbox(
-            "Choose export format:",
-            options=[
-                ("comprehensive", "📊 Comprehensive Report - Complete analysis with all details"),
-                ("json", "📄 JSON - Structured data format"),
-                ("md", "📝 Markdown - Basic summary format")
-            ],
-            format_func=lambda x: x[1],
-            help="Select the type of export you need"
-        )
+        # Create a clean layout for export options
+        col1, col2 = st.columns([2, 1])
         
-        format_key = export_format[0]
+        with col1:
+            # Export format selection
+            export_format = st.selectbox(
+                "Choose export format:",
+                options=[
+                    ("comprehensive", "📊 Comprehensive Report - Complete analysis with all details"),
+                    ("json", "📄 JSON - Structured data format"),
+                    ("md", "📝 Markdown - Basic summary format")
+                ],
+                format_func=lambda x: x[1],
+                help="Select the type of export you need"
+            )
         
-        # Export button with format-specific styling
-        if format_key == "comprehensive":
-            button_text = "📊 Generate Comprehensive Report"
-            button_help = "Includes: Original Requirements, Feasibility Assessment, Recommended Solutions, Tech Stack Analysis, Architecture Explanations, Pattern Matches, Q&A History, and Implementation Guidance"
-        elif format_key == "json":
-            button_text = "📄 Export as JSON"
-            button_help = "Structured data format suitable for integration with other systems"
-        else:
-            button_text = "📝 Export as Markdown"
-            button_help = "Basic summary in Markdown format"
-        
-        if st.button(button_text, help=button_help, width='stretch'):
-            self.export_results(format_key)
+        with col2:
+            format_key = export_format[0]
+            
+            # Export button with format-specific styling
+            if format_key == "comprehensive":
+                button_text = "📊 Generate Report"
+                button_help = "Complete analysis with all details"
+                button_type = "primary"
+            elif format_key == "json":
+                button_text = "📄 Export JSON"
+                button_help = "Structured data format"
+                button_type = "secondary"
+            else:
+                button_text = "📝 Export Markdown"
+                button_help = "Basic summary format"
+                button_type = "secondary"
+            
+            if st.button(button_text, help=button_help, type=button_type, use_container_width=True):
+                self.export_results(format_key)
         
         # Format descriptions
         with st.expander("ℹ️ Export Format Details"):

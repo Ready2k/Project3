@@ -331,6 +331,8 @@ class StreamlitAPIIntegration:
                     if result.get("complete"):
                         st.success("✅ Q&A complete! Moving to recommendations...")
                         st.session_state.qa_complete = True
+                        # Clear cached recommendations to force fresh fetch after Q&A completion
+                        st.session_state.recommendations = None
                     else:
                         st.session_state.next_questions = result.get(
                             "next_questions", []
@@ -359,8 +361,10 @@ class StreamlitAPIIntegration:
                 )
 
                 if result and not result.get("error"):
-                    st.session_state.recommendations = result.get("recommendations", [])
-                    st.session_state.feasibility = result.get("feasibility", "")
+                    # Store the full response for compatibility
+                    st.session_state.recommendations = result
+                    # Also store individual fields for easier access
+                    st.session_state.feasibility = result.get("feasibility", "Unknown")
                     st.session_state.tech_stack = result.get("tech_stack", [])
                     st.session_state.reasoning = result.get("reasoning", "")
                     return result
