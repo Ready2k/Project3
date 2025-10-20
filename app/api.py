@@ -2138,12 +2138,48 @@ async def generate_recommendations(request: RecommendRequest, response: Response
         # Create LLM provider for agentic recommendation service
         llm_provider = create_llm_provider(provider_config, request.session_id)
 
-        # Generate recommendations with LLM provider
-        rec_service = get_recommendation_service(llm_provider)
-
-        recommendations = await rec_service.generate_agentic_recommendations(
-            session.requirements, request.session_id
-        )
+        # Check if we already have LLM analysis and can skip expensive recommendation generation
+        llm_feasibility = session.requirements.get("llm_analysis_automation_feasibility")
+        
+        if llm_feasibility and session.matches:
+            # We have LLM analysis and pattern matches, create lightweight recommendations
+            app_logger.info(f"Using existing LLM analysis: {llm_feasibility}, skipping expensive recommendation generation")
+            
+            # Create simple recommendations from existing matches
+            from app.state.store import Recommendation
+            recommendations = []
+            
+            for match in session.matches[:request.top_k]:
+                rec = Recommendation(
+                    pattern_id=match.pattern_id,
+                    feasibility=llm_feasibility,  # Use LLM feasibility
+                    confidence=match.confidence,
+                    tech_stack=["Python", "FastAPI", "PostgreSQL"],  # Default tech stack
+                    reasoning=session.requirements.get("llm_analysis_feasibility_reasoning", "LLM analysis completed"),
+                    agent_roles=[],  # Empty for now
+                    necessity_assessment=None
+                )
+                recommendations.append(rec)
+            
+            if not recommendations:
+                # Create a default recommendation if no matches
+                rec = Recommendation(
+                    pattern_id="LLM-ANALYSIS",
+                    feasibility=llm_feasibility,
+                    confidence=0.85,
+                    tech_stack=["Python", "FastAPI", "PostgreSQL"],
+                    reasoning=session.requirements.get("llm_analysis_feasibility_reasoning", "LLM analysis completed"),
+                    agent_roles=[],
+                    necessity_assessment=None
+                )
+                recommendations.append(rec)
+        else:
+            # Generate full recommendations with LLM provider (expensive path)
+            app_logger.info("No existing LLM analysis found, generating full recommendations")
+            rec_service = get_recommendation_service(llm_provider)
+            recommendations = await rec_service.generate_agentic_recommendations(
+                session.requirements, request.session_id
+            )
 
         # Update session
         session.recommendations = recommendations
