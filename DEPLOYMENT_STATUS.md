@@ -82,7 +82,7 @@ docker-compose up -d
 
 # Verify deployment
 curl http://localhost:8000/health
-curl http://localhost:8501
+curl http://localhost:8500
 ```
 
 **✅ DEPLOYMENT SUCCESSFUL** - All containers running and healthy as of October 6, 2025

@@ -40,13 +40,13 @@
 ```bash
 NAME               STATUS                 PORTS
 project3-api-1     Up (healthy)          0.0.0.0:8000->8000/tcp
-project3-ui-1      Up (healthy)          0.0.0.0:8501->8501/tcp  
+project3-ui-1      Up (healthy)          0.0.0.0:8500->8500/tcp  
 project3-redis-1   Up (healthy)          0.0.0.0:6379->6379/tcp
 ```
 
 ### **Health Checks** ✅
 - **API**: `http://localhost:8000/health` - ✅ Responding (degraded - no LLM providers)
-- **UI**: `http://localhost:8501` - ✅ Streamlit running
+- **UI**: `http://localhost:8500` - ✅ Streamlit running
 - **Redis**: ✅ Healthy and accessible
 
 ### **System Status** ✅

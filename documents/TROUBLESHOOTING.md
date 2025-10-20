@@ -245,7 +245,7 @@ streamlit: command not found
 **Solution:**
 ```bash
 # Use Python module instead
-python3 -m streamlit run app/main.py --server.port 8501
+python3 -m streamlit run app/main.py --server.port 8500
 ```
 
 ### 🔄 UI Not Updating

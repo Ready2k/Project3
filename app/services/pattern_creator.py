@@ -5,6 +5,8 @@ from pathlib import Path
 
 from app.llm.base import LLMProvider
 from app.services.tech_stack_generator import TechStackGenerator
+from app.services.pattern_name_manager import PatternNameManager
+from app.services.pattern_deduplication_service import PatternDeduplicationService
 from app.utils.imports import require_service
 
 # Import enhanced components for integration
@@ -47,6 +49,12 @@ class PatternCreator:
             catalog_manager=self.catalog_manager,
             enable_debug_logging=False,
         )
+        
+        # Initialize pattern name manager to prevent duplicates
+        self.name_manager = PatternNameManager(pattern_library_path)
+        
+        # Initialize deduplication service to prevent identical patterns
+        self.deduplication_service = PatternDeduplicationService(pattern_library_path)
 
     async def create_pattern_from_requirements(
         self, requirements: Dict[str, Any], session_id: str
@@ -197,9 +205,23 @@ class PatternCreator:
 
             # Extract values from LLM analysis or use fallbacks with error handling
             try:
-                pattern_name = pattern_analysis.get(
+                proposed_name = pattern_analysis.get(
                     "pattern_name"
                 ) or self._generate_pattern_name(requirements, pattern_analysis)
+                
+                # Ensure unique pattern name using name manager
+                name_validation = self.name_manager.validate_and_suggest_name(
+                    proposed_name, requirements, pattern_analysis
+                )
+                
+                if not name_validation['is_unique'] or not name_validation['is_valid']:
+                    pattern_name = name_validation['suggested_name']
+                    self.logger.info(
+                        f"Pattern name adjusted for uniqueness: '{proposed_name}' → '{pattern_name}'"
+                    )
+                else:
+                    pattern_name = proposed_name
+                
                 feasibility = pattern_analysis.get(
                     "feasibility"
                 ) or self._determine_feasibility(requirements, pattern_analysis)
@@ -221,7 +243,9 @@ class PatternCreator:
 
                 # Validate extracted values
                 if not pattern_name or pattern_name.strip() == "":
-                    pattern_name = f"Automated Process {pattern_id}"
+                    pattern_name = self.name_manager.generate_unique_name(
+                        f"Automated Process {pattern_id}", requirements, pattern_analysis
+                    )
 
                 if feasibility not in [
                     "Automatable",
@@ -900,9 +924,16 @@ Generate a complete automation pattern analysis. Be specific to this exact requi
 7. Consider compliance requirements when selecting technologies and approaches
 8. Respect data sensitivity level and deployment preferences in your recommendations
 
+**NAMING REQUIREMENTS:**
+- Pattern names MUST be specific and descriptive, not generic
+- AVOID generic names like "Multi-Agent System", "Coordinator System", "Automation Pattern"
+- INCLUDE the specific use case/domain in the name (e.g., "Investment Portfolio Rebalancing System", "Customer Support Ticket Router")
+- For multi-agent systems, specify the agent count and purpose (e.g., "5-Agent Customer Support System")
+- Names should be unique and immediately convey what the system does
+
 Respond with ONLY a valid JSON object:
 {{
-    "pattern_name": "Specific descriptive name for this automation pattern",
+    "pattern_name": "Specific descriptive name that includes the use case/domain (NOT generic like 'Multi-Agent System')",
     "pattern_description": "Detailed description of what this pattern automates and how",
     "feasibility": "Automatable|Partially Automatable|Not Automatable",
     "pattern_types": ["specific", "pattern", "types", "broader_categories"],
@@ -1394,10 +1425,44 @@ IMPORTANT:
         return physical_pattern
 
     async def _save_pattern_securely(self, pattern: Dict[str, Any]) -> tuple[bool, str]:
-        """Save pattern to the library with security validation."""
+        """Save pattern to the library with security validation, name uniqueness, and deduplication checks."""
         from app.pattern.loader import PatternLoader
+        from app.services.pattern_name_validator import PatternNameValidator
 
-        # Use PatternLoader's secure save method
+        # 1. Check for duplicate patterns first
+        duplicate_check = self.deduplication_service.check_pattern_before_save(pattern)
+        
+        if duplicate_check['is_duplicate']:
+            self.logger.warning(
+                f"Pattern creation blocked - duplicate detected: {duplicate_check['message']}"
+            )
+            return False, f"Duplicate pattern detected: {duplicate_check['message']}"
+        
+        if duplicate_check['similar_patterns']:
+            self.logger.info(
+                f"Pattern has {len(duplicate_check['similar_patterns'])} similar patterns but proceeding with save"
+            )
+            for similar in duplicate_check['similar_patterns']:
+                self.logger.info(
+                    f"  Similar to {similar['pattern_id']} ({similar['pattern_name']}) - "
+                    f"{similar['similarity']:.1%} similarity"
+                )
+
+        # 2. Validate and fix pattern name if needed
+        validator = PatternNameValidator(self.pattern_library_path)
+        name_check = validator.check_pattern_name_before_save(pattern)
+        
+        if name_check['modified']:
+            self.logger.info(
+                f"Pattern name adjusted before save: '{name_check['old_name']}' → '{name_check['new_name']}' "
+                f"(reason: {name_check['reason']})"
+            )
+            pattern = name_check['pattern']  # Use the updated pattern
+            
+            # Invalidate name manager cache since we're adding a new pattern
+            self.name_manager.invalidate_cache()
+
+        # 3. Use PatternLoader's secure save method
         pattern_loader = PatternLoader(self.pattern_library_path)
         success, message = pattern_loader.save_pattern(pattern)
 

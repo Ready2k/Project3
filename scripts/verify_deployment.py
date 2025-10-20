@@ -37,7 +37,7 @@ def check_dockerfile() -> bool:
         ("Health check", "HEALTHCHECK" in content),
         ("Non-root user", "useradd" in content and "USER agentic" in content),
         ("Proper WORKDIR", "WORKDIR /app" in content),
-        ("Port exposure", "EXPOSE 8000 8501" in content),
+        ("Port exposure", "EXPOSE 8000 8500" in content),
     ]
     
     all_passed = True

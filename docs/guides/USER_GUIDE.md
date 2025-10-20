@@ -25,7 +25,7 @@ Complete guide to using the Automated AI Assessment (AAA) system for evaluating 
 ### Initial Setup
 
 1. **Access the System**
-   - Navigate to the Streamlit interface (typically http://localhost:8501)
+   - Navigate to the Streamlit interface (typically http://localhost:8500)
    - The system will load with the main Analysis tab active
 
 2. **Configure LLM Provider** (Sidebar)

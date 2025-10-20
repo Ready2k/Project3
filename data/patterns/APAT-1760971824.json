@@ -1,6 +1,6 @@
 {
   "pattern_id": "APAT-1760971824",
-  "name": "Custom Agentic Solution - None",
+  "name": "Agentic Reasoning Investment Portfolio System",
   "description": "Autonomous agent solution for: Scenario: Proactive Investment Rebalancing\nAs a retail investor\nI want the agent to monitor my portfolio and automatically rebalance it when market movements or my risk profile change\nSo that my inves...",
   "feasibility": "Automatable",
   "pattern_type": [
@@ -92,7 +92,9 @@
     "autonomy_score": 0.8800000000000001,
     "created_timestamp": "1760971824.646548",
     "llm_enhanced": true,
-    "enhanced_from_session": "ec64da41-7011-4529-bc29-fd0892033507"
+    "enhanced_from_session": "ec64da41-7011-4529-bc29-fd0892033507",
+    "name_updated": true,
+    "original_name": "Custom Agentic Solution - None"
   },
   "architecture_explanation": "The hierarchical agent architecture is utilized to distribute decision-making responsibilities across different agent levels. The top-level agent oversees the entire rebalancing process, while specialized sub-agents handle specific tasks such as risk assessment, data processing, and trade execution. This separation of concerns allows for better scalability and ensures that each part of the rebalancing process is optimized for accuracy and speed. The integration with a real-time data feed and a trading API allows the agent to act instantly on new information, while logging every decision supports transparency and compliance.",
   "enhanced_tech_stack": [

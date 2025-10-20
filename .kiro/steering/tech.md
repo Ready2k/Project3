@@ -55,7 +55,7 @@ make up
 
 # Start services individually
 make api        # FastAPI only (port 8000)
-make streamlit  # Streamlit UI only (port 8501)
+make streamlit  # Streamlit UI only (port 8500)
 make ui         # Same as streamlit
 ```
 

@@ -35,7 +35,7 @@ async def check_api_health(base_url: str = "http://localhost:8000") -> Dict[str,
         }
 
 
-async def check_ui_health(base_url: str = "http://localhost:8501") -> Dict[str, Any]:
+async def check_ui_health(base_url: str = "http://localhost:8500") -> Dict[str, Any]:
     """Check Streamlit UI health"""
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -120,7 +120,7 @@ async def run_health_checks(api_url: str, ui_url: str, redis_host: str, redis_po
 def main():
     parser = argparse.ArgumentParser(description="Health check for Automated AI Assessment (AAA) services")
     parser.add_argument("--api-url", default="http://localhost:8000", help="API base URL")
-    parser.add_argument("--ui-url", default="http://localhost:8501", help="UI base URL")
+    parser.add_argument("--ui-url", default="http://localhost:8500", help="UI base URL")
     parser.add_argument("--redis-host", default="localhost", help="Redis host")
     parser.add_argument("--redis-port", type=int, default=6379, help="Redis port")
     parser.add_argument("--json", action="store_true", help="Output JSON format")

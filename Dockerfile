@@ -67,7 +67,7 @@ RUN mkdir -p exports cache \
 USER agentic
 
 # Expose ports
-EXPOSE 8000 8501
+EXPOSE 8000 8500
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

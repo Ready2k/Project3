@@ -22,7 +22,7 @@ class AAA_APIClient:
         """Lazy initialization of async manager to avoid event loop issues."""
         if self._async_manager is None:
             self._async_manager = AsyncOperationManager(
-                max_concurrent=5, timeout_seconds=30.0
+                max_concurrent=5, timeout_seconds=180.0
             )
         return self._async_manager
 
@@ -33,7 +33,7 @@ class AAA_APIClient:
         url = f"{self.base_url}{endpoint}"
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=180.0) as client:
                 if method.upper() == "GET":
                     response = await client.get(url, params=data)
                 elif method.upper() == "POST":
@@ -136,7 +136,7 @@ class AAA_APIClient:
         url = f"{self.base_url}/providers/test"
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=180.0) as client:
                 response = await client.post(url, json=provider_config)
                 response.raise_for_status()
                 return response.json()
@@ -158,7 +158,7 @@ class AAA_APIClient:
         url = f"{self.base_url}/providers/models"
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=180.0) as client:
                 response = await client.post(url, json=provider_config)
                 response.raise_for_status()
                 return response.json()
@@ -234,7 +234,7 @@ class StreamlitAPIIntegration:
 
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     future = executor.submit(run_in_thread)
-                    return future.result(timeout=30.0)  # 30 second timeout
+                    return future.result(timeout=180.0)  # 180 second timeout
 
             except RuntimeError:
                 # No event loop running, we can run directly

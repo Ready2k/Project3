@@ -131,7 +131,11 @@ class SecurityValidator:
                 re.IGNORECASE,
             ),
             re.compile(
-                r"\b(extract|dump|steal|harvest)\s+(data|information|files?|credentials?)\b",
+                r"\b(dump|steal|harvest)\s+(data|information|files?|credentials?)\b",
+                re.IGNORECASE,
+            ),
+            re.compile(
+                r"\b(extract)\s+(credentials?|passwords?|secrets?|keys?|tokens?)\b",
                 re.IGNORECASE,
             ),
             # Code generation requests (CRITICAL - this system is for pattern analysis, not code generation)

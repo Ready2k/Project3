@@ -110,7 +110,7 @@ make dev
 
 This starts:
 - FastAPI server at http://localhost:8000
-- Streamlit UI at http://localhost:8501 (opens automatically)
+- Streamlit UI at http://localhost:8500 (opens automatically)
 
 ### Docker Deployment
 

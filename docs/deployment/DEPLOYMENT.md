@@ -57,7 +57,7 @@ make dev
 
 This starts:
 - FastAPI server at http://localhost:8000
-- Streamlit UI at http://localhost:8501 (opens automatically)
+- Streamlit UI at http://localhost:8500 (opens automatically)
 
 ### Individual Services
 
@@ -438,7 +438,7 @@ The application provides health check endpoints:
 curl http://localhost:8000/health
 
 # Streamlit health (Docker)
-curl http://localhost:8501/_stcore/health
+curl http://localhost:8500/_stcore/health
 ```
 
 ### Logging

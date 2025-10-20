@@ -41,7 +41,7 @@ class TestSecurityIntegration:
         response = client.options(
             "/health",
             headers={
-                "Origin": "http://localhost:8501",
+                "Origin": "http://localhost:8500",
                 "Access-Control-Request-Method": "GET",
             },
         )

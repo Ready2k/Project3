@@ -1,0 +1,130 @@
+{
+  "pattern_id": "APAT-1760971827",
+  "name": "Multi-Agent Coordinator_Based System",
+  "description": "Multi-agent system with 5 specialized agents for I need to create an intelligent document processing system that can automatically extract data from invoices, receipts, and contracts. The system should use AI to understand different document formats, validate extracted information against business rules, route documents for approval workflows, and integrate with our ERP system for automated data entry.",
+  "feasibility": "Fully Automatable",
+  "pattern_type": [
+    "multi_agent_system",
+    "hierarchical_agents"
+  ],
+  "autonomy_level": 1.0,
+  "reasoning_capabilities": [
+    "collaborative_reasoning",
+    "distributed_decision_making",
+    "system_coordination"
+  ],
+  "decision_scope": {
+    "autonomous_decisions": [
+      "agent_coordination",
+      "task_distribution",
+      "resource_allocation",
+      "exception_handling"
+    ],
+    "escalation_triggers": [
+      "system_wide_failures",
+      "conflicting_agent_decisions",
+      "resource_exhaustion"
+    ]
+  },
+  "exception_handling_strategy": {
+    "autonomous_resolution_approaches": [
+      "Multi-agent collaborative resolution",
+      "Distributed error recovery",
+      "Agent failover mechanisms"
+    ],
+    "reasoning_fallbacks": [
+      "Coordinator-based decision making",
+      "Consensus-based resolution",
+      "Fallback to single-agent mode"
+    ],
+    "escalation_criteria": [
+      "System-wide failures",
+      "Conflicting agent decisions",
+      "Resource exhaustion"
+    ]
+  },
+  "learning_mechanisms": [
+    "reinforcement_learning",
+    "performance_optimization",
+    "continuous_improvement"
+  ],
+  "tech_stack": [
+    "LangChain",
+    "Haystack",
+    "Apache Kafka",
+    "Redis",
+    "Docker",
+    "Kubernetes"
+  ],
+  "agent_architecture": "hierarchical_agents",
+  "input_requirements": [
+    "multi_agent_coordination",
+    "distributed_processing",
+    "system_monitoring",
+    "error_handling"
+  ],
+  "related_patterns": [
+    "APAT-001",
+    "APAT-002"
+  ],
+  "confidence_score": 1.0,
+  "constraints": {
+    "banned_tools": [],
+    "required_integrations": [
+      "LangChain",
+      "Haystack",
+      "Apache Kafka"
+    ]
+  },
+  "domain": "financial",
+  "complexity": "High",
+  "estimated_effort": "8-12 weeks",
+  "reasoning_types": [
+    "logical",
+    "causal",
+    "collaborative"
+  ],
+  "decision_boundaries": {
+    "autonomous_decisions": [
+      "agent_coordination",
+      "task_distribution",
+      "resource_allocation"
+    ],
+    "escalation_triggers": [
+      "system_failures",
+      "conflicting_decisions",
+      "resource_exhaustion"
+    ]
+  },
+  "autonomy_assessment": {
+    "overall_score": 0.8965000000000003,
+    "reasoning_complexity": "complex",
+    "workflow_coverage": 0.9,
+    "decision_independence": "high"
+  },
+  "self_monitoring_capabilities": [
+    "performance_tracking",
+    "error_detection",
+    "resource_monitoring"
+  ],
+  "integration_requirements": [
+    "Docker",
+    "Kubernetes"
+  ],
+  "created_from_session": "8be7ecba-9762-4056-9096-de67e5704d08",
+  "auto_generated": true,
+  "llm_insights": [
+    "Multi-agent coordination enables distributed processing",
+    "Collaborative reasoning improves decision accuracy",
+    "System-level monitoring ensures reliability"
+  ],
+  "llm_challenges": [
+    "Coordinating multiple agents effectively",
+    "Managing distributed decision making",
+    "Ensuring system-wide consistency"
+  ],
+  "llm_recommended_approach": "Implement coordinator_based architecture with specialized agent roles, use robust communication protocols, maintain comprehensive monitoring and error handling.",
+  "enhanced_by_llm": true,
+  "enhanced_from_session": "8be7ecba-9762-4056-9096-de67e5704d08",
+  "color": "🟢"
+}

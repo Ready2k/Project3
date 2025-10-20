@@ -132,14 +132,46 @@ class SecurityFeedbackGenerator:
     def _generate_out_of_scope_feedback(self, detected_terms: List[str]) -> str:
         """Generate feedback for out-of-scope requests."""
 
-        feedback_parts = [
-            "🔒 **Out of Scope**: This system is designed for business process automation, not code generation or security testing.",
-            "",
-        ]
+        # Analyze the detected terms to provide more specific feedback
+        has_code_generation = any(
+            term for term in detected_terms 
+            if any(code_word in term.lower() for code_word in ['write', 'generate', 'create', 'code', 'script', 'program'])
+        )
+        
+        has_security_testing = any(
+            term for term in detected_terms 
+            if any(sec_word in term.lower() for sec_word in ['test', 'vulnerability', 'security', 'penetration'])
+        )
+        
+        has_data_extraction = any(
+            term for term in detected_terms 
+            if 'extract' in term.lower() and any(sensitive in term.lower() for sensitive in ['credentials', 'passwords', 'secrets', 'keys'])
+        )
+
+        if has_code_generation:
+            feedback_parts = [
+                "🔒 **Code Generation Not Supported**: This system analyzes automation requirements and suggests patterns, but doesn't generate executable code.",
+                "",
+            ]
+        elif has_security_testing:
+            feedback_parts = [
+                "🔒 **Security Testing Not Supported**: This system is designed for business process automation, not security testing or vulnerability assessment.",
+                "",
+            ]
+        elif has_data_extraction:
+            feedback_parts = [
+                "🔒 **Security Concern**: Requests to extract sensitive data like credentials or passwords are not supported.",
+                "",
+            ]
+        else:
+            feedback_parts = [
+                "🔒 **Scope Clarification**: Your request contains terminology that may be outside the scope of business process automation.",
+                "",
+            ]
 
         # Show the specific problematic text
         if detected_terms:
-            feedback_parts.extend(["**Problematic text detected:**"])
+            feedback_parts.extend(["**Flagged terminology:**"])
 
             for term in detected_terms[:5]:  # Limit to first 5 matches
                 # Clean up the term for display
@@ -155,21 +187,23 @@ class SecurityFeedbackGenerator:
         feedback_parts.extend(
             [
                 "**To get help with your request:**",
-                "• Rephrase your requirement to focus on business automation needs",
-                "• Describe operational processes you want to streamline",
-                "• Emphasize monitoring, alerting, or workflow automation",
-                "• Avoid requesting executable code or security testing",
+                "• Focus on business processes you want to automate",
+                "• Describe workflows, monitoring, or operational tasks",
+                "• Emphasize business outcomes rather than technical implementation",
+                "• Use business-friendly language",
                 "",
-                "**Examples of valid requests:**",
-                "✅ 'Automate user onboarding workflow'",
-                "✅ 'Monitor system performance and create alerts'",
-                "✅ 'Streamline approval processes'",
-                "✅ 'Generate automated reports'",
+                "**Examples of supported automation requests:**",
+                "✅ 'Automate invoice processing and approval workflow'",
+                "✅ 'Monitor system performance and send alerts'",
+                "✅ 'Streamline customer onboarding process'",
+                "✅ 'Automate document processing and data entry'",
+                "✅ 'Create automated reporting dashboard'",
                 "",
-                "**Examples of invalid requests:**",
-                "❌ 'Write Python code for me'",
-                "❌ 'Generate a script I can run'",
-                "❌ 'Test security vulnerabilities'",
+                "**Examples of unsupported requests:**",
+                "❌ 'Write Python code to hack a database'",
+                "❌ 'Generate a script to extract passwords'",
+                "❌ 'Test for security vulnerabilities'",
+                "❌ 'Create malware or exploits'",
             ]
         )
 

@@ -89,9 +89,9 @@ make dev
    ```
 
 3. **Access the application**:
-   - The browser should open automatically to `http://localhost:8501`
+   - The browser should open automatically to `http://localhost:8500`
    - Ensure the API is running at `http://localhost:8000`
-   - If browser doesn't open, manually visit `http://localhost:8501`
+   - If browser doesn't open, manually visit `http://localhost:8500`
 
 ### Basic Workflow
 
@@ -148,7 +148,7 @@ The Streamlit UI communicates with the FastAPI backend through HTTP requests:
 ```
 ┌─────────────────┐    HTTP/JSON    ┌─────────────────┐
 │   Streamlit UI  │ ──────────────► │   FastAPI API   │
-│   (Port 8501)   │ ◄────────────── │   (Port 8000)   │
+│   (Port 8500)   │ ◄────────────── │   (Port 8000)   │
 └─────────────────┘                 └─────────────────┘
 ```
 

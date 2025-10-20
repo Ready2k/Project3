@@ -87,7 +87,7 @@ This document summarizes the comprehensive security measures implemented for Aut
 ### 3. CORS Configuration and Security Headers
 
 #### CORS Configuration (`app/security/middleware.py`)
-- **Allowed Origins**: Configurable whitelist (default: localhost:8501, 127.0.0.1:8501, localhost:3000, 127.0.0.1:3000)
+- **Allowed Origins**: Configurable whitelist (default: localhost:8500, 127.0.0.1:8500, localhost:3000, 127.0.0.1:3000)
 - **Credentials Disabled**: `allow_credentials=False` for security
 - **Method Restrictions**: Only allows GET and POST methods
 - **Header Restrictions**: Limited to necessary headers (Accept, Content-Type, Authorization, etc.)
@@ -183,7 +183,7 @@ OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 
 # Security Settings
-CORS_ALLOWED_ORIGINS=http://localhost:8501,http://127.0.0.1:8501
+CORS_ALLOWED_ORIGINS=http://localhost:8500,http://127.0.0.1:8500
 RATE_LIMIT_PER_MINUTE=60
 RATE_LIMIT_PER_HOUR=1000
 MAX_REQUEST_SIZE=10485760  # 10MB

@@ -170,6 +170,24 @@ async def startup_event():
 
         api_logger = require_service("logger", context="FastAPI startup")
         api_logger.info("🚀 FastAPI app services initialized successfully")
+        
+        # Run pattern name validation to prevent duplicates
+        try:
+            from app.services.startup_pattern_validator import startup_validator
+            
+            # Get pattern library path from settings
+            settings = load_settings()
+            pattern_library_path = Path(settings.pattern_library_path)
+            
+            validation_success = await startup_validator.run_startup_validation(pattern_library_path)
+            if validation_success:
+                api_logger.info("✅ Pattern name validation completed successfully")
+            else:
+                api_logger.warning("⚠️  Pattern name validation completed with errors")
+                
+        except Exception as validation_error:
+            api_logger.error(f"❌ Pattern name validation failed: {validation_error}")
+            # Continue startup even if validation fails
 
     except Exception as e:
         # Fallback to basic logging if service initialization fails

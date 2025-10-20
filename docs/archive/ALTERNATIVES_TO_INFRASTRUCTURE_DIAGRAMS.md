@@ -116,7 +116,7 @@ cd agentic_or_not
 # Run with Docker (includes Graphviz)
 docker-compose up
 
-# Access at http://localhost:8501
+# Access at http://localhost:8500
 ```
 
 The Docker environment includes:
