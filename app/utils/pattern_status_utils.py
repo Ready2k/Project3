@@ -22,6 +22,7 @@ def check_pattern_enhancement_status() -> Tuple[bool, str, Dict[str, Any]]:
         Tuple of (is_available, status_message, details)
     """
     try:
+        # First try to get the service
         enhanced_loader = optional_service(
             "enhanced_pattern_loader", context="PatternStatusUtils"
         )
@@ -41,6 +42,30 @@ def check_pattern_enhancement_status() -> Tuple[bool, str, Dict[str, Any]]:
                 details,
             )
         else:
+            # Try to register services if they're not available
+            try:
+                from app.core.service_registration import register_core_services
+                from app.core.registry import get_registry
+                
+                registry = get_registry()
+                if not registry.has('enhanced_pattern_loader'):
+                    logger.info("Attempting to register missing pattern services...")
+                    register_core_services(registry, skip_async_services=False)
+                
+                # Try again after registration
+                enhanced_loader = optional_service(
+                    "enhanced_pattern_loader", context="PatternStatusUtils"
+                )
+                
+                if enhanced_loader:
+                    return (
+                        True,
+                        "Pattern enhancement available: Services registered on demand.",
+                        {},
+                    )
+            except Exception as e:
+                logger.debug(f"Could not register services on demand: {e}")
+            
             return (
                 False,
                 "Pattern enhancement not available: Required services not registered.",
@@ -79,6 +104,30 @@ def check_pattern_analytics_status() -> Tuple[bool, str, Dict[str, Any]]:
                 details,
             )
         else:
+            # Try to register services if they're not available
+            try:
+                from app.core.service_registration import register_core_services
+                from app.core.registry import get_registry
+                
+                registry = get_registry()
+                if not registry.has('pattern_analytics_service'):
+                    logger.info("Attempting to register missing analytics services...")
+                    register_core_services(registry, skip_async_services=False)
+                
+                # Try again after registration
+                analytics_service = optional_service(
+                    "pattern_analytics_service", context="PatternStatusUtils"
+                )
+                
+                if analytics_service:
+                    return (
+                        True,
+                        "Pattern analytics available: Services registered on demand.",
+                        {},
+                    )
+            except Exception as e:
+                logger.debug(f"Could not register analytics services on demand: {e}")
+            
             return (
                 False,
                 "Pattern analytics not available: Enhanced pattern loader service not registered.",

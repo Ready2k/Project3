@@ -2142,38 +2142,42 @@ async def generate_recommendations(request: RecommendRequest, response: Response
         llm_feasibility = session.requirements.get("llm_analysis_automation_feasibility")
         
         if llm_feasibility:
-            # We have LLM analysis and pattern matches, create lightweight recommendations
-            app_logger.info(f"Using existing LLM analysis: {llm_feasibility}, skipping expensive recommendation generation")
+            # We have LLM analysis, but still generate agent roles for agentic solutions
+            app_logger.info(f"Using existing LLM analysis: {llm_feasibility}, generating lightweight recommendations with agent roles")
             
-            # Create simple recommendations from existing matches or default
-            from app.state.store import Recommendation
-            recommendations = []
+            # Generate agent roles using the agentic recommendation service
+            rec_service = get_recommendation_service(llm_provider)
+            recommendations = await rec_service.generate_agentic_recommendations(
+                session.requirements, request.session_id
+            )
             
-            if session.matches:
-                # Use existing matches if available
-                for match in session.matches[:request.top_k]:
-                    rec = Recommendation(
-                        pattern_id=match.pattern_id,
-                        feasibility=llm_feasibility,  # Use LLM feasibility
-                        confidence=match.confidence,
-                        tech_stack=["Python", "FastAPI", "PostgreSQL"],  # Default tech stack
-                        reasoning=session.requirements.get("llm_analysis_feasibility_reasoning", "LLM analysis completed"),
-                        agent_roles=[],  # Empty for now
-                        necessity_assessment=None
-                    )
-                    recommendations.append(rec)
-            else:
-                # Create a default recommendation based on LLM analysis
+            # If no recommendations generated, create a fallback with agent roles
+            if not recommendations:
+                from app.state.store import Recommendation
+                
+                # Create a basic agent role for single-agent systems
+                basic_agent_role = {
+                    "name": "Autonomous Workflow Agent",
+                    "responsibility": "Handles end-to-end automation workflow with autonomous decision-making capabilities",
+                    "capabilities": ["data_processing", "decision_making", "task_execution", "exception_handling", "learning_adaptation"],
+                    "autonomy_level": 0.85,
+                    "decision_authority": {"workflow_execution": "full", "exception_handling": "full", "data_validation": "full"},
+                    "interfaces": ["api_integration", "data_sources", "notification_systems"],
+                    "exception_handling": "Autonomous resolution with escalation protocols for critical failures",
+                    "learning_capabilities": ["pattern_recognition", "performance_optimization", "adaptive_workflows"],
+                    "communication_requirements": ["status_reporting", "alert_notifications", "audit_logging"]
+                }
+                
                 rec = Recommendation(
                     pattern_id="LLM-ANALYSIS",
                     feasibility=llm_feasibility,
                     confidence=0.85,
                     tech_stack=["Python", "FastAPI", "PostgreSQL"],
                     reasoning=session.requirements.get("llm_analysis_feasibility_reasoning", "LLM analysis completed"),
-                    agent_roles=[],
+                    agent_roles=[basic_agent_role],
                     necessity_assessment=None
                 )
-                recommendations.append(rec)
+                recommendations = [rec]
         else:
             # Generate full recommendations with LLM provider (expensive path)
             app_logger.info("No existing LLM analysis found, generating full recommendations")

@@ -68,12 +68,13 @@ class AAA_APIClient:
                 return {"error": f"API Error: {str(e)}"}
         except httpx.RequestError as e:
             # Get logger service for error logging (with fallback)
+            error_msg = f"Connection Error: {type(e).__name__}: {str(e)}"
             try:
                 app_logger = require_service("logger", context="api_request")
-                app_logger.error(f"API Connection Error: {e}")
+                app_logger.error(f"API {error_msg}")
             except Exception:
-                print(f"API Connection Error: {e}")
-            return {"error": f"Connection Error: {e}"}
+                print(f"API {error_msg}")
+            return {"error": error_msg}
         except Exception as e:
             # Get logger service for error logging (with fallback)
             try:
@@ -328,16 +329,21 @@ class StreamlitAPIIntegration:
                 )
 
                 if result and not result.get("error"):
-                    if result.get("complete"):
-                        st.success("✅ Q&A complete! Moving to recommendations...")
-                        st.session_state.qa_complete = True
-                        # Clear cached recommendations to force fresh fetch after Q&A completion
-                        st.session_state.recommendations = None
+                    # Check if result has the expected structure
+                    if isinstance(result, dict) and "complete" in result:
+                        if result.get("complete", False):
+                            st.success("✅ Q&A complete! Moving to recommendations...")
+                            st.session_state.qa_complete = True
+                            # Clear cached recommendations to force fresh fetch after Q&A completion
+                            st.session_state.recommendations = None
+                        else:
+                            st.session_state.next_questions = result.get(
+                                "next_questions", []
+                            )
+                        st.rerun()
                     else:
-                        st.session_state.next_questions = result.get(
-                            "next_questions", []
-                        )
-                    st.rerun()
+                        # Handle unexpected response structure
+                        st.error(f"❌ Unexpected response format: {type(result)} - {result}")
                 else:
                     error_msg = (
                         result.get("error", "Unknown error")

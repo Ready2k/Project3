@@ -268,7 +268,8 @@ def register_core_services(
         logger.info("✅ Registered infrastructure diagram service")
 
         # 11. Register Enhanced Pattern Loader Service (depends on config, logger, cache)
-        if not skip_async_services:
+        # Register even in non-async contexts with fallback behavior
+        if True:  # Always register, handle async internally
             enhanced_pattern_loader_config = config_overrides.get(
                 "enhanced_pattern_loader",
                 {
@@ -304,7 +305,8 @@ def register_core_services(
             logger.info("⏭️ Skipped enhanced pattern loader service (no async context)")
 
         # 12. Register Pattern Analytics Service (depends on config, logger, enhanced_pattern_loader)
-        if not skip_async_services:
+        # Register even in non-async contexts with fallback behavior
+        if True:  # Always register, handle async internally
             pattern_analytics_config = config_overrides.get(
                 "pattern_analytics_service",
                 {
@@ -343,7 +345,8 @@ def register_core_services(
             logger.info("⏭️ Skipped pattern analytics service (no async context)")
 
         # 13. Register Pattern Enhancement Service (depends on config, logger, llm_provider_factory, enhanced_pattern_loader)
-        if not skip_async_services:
+        # Register even in non-async contexts with fallback behavior
+        if True:  # Always register, handle async internally
             config_overrides.get(
                 "pattern_enhancement_service",
                 {

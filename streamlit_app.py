@@ -2239,9 +2239,7 @@ class AutomatedAIAssessmentUI:
         """Render observability dashboard tab."""
         st.info("Observability dashboard functionality")
     
-    def render_unified_pattern_management(self):
-        """Render unified pattern management tab."""
-        st.info("Pattern management functionality")
+
     
     def render_technology_catalog_management(self):
         """Render technology catalog management tab."""
@@ -3968,14 +3966,6 @@ verify_ssl = True
     
     def load_recommendations(self):
         """Load and display final recommendations."""
-        # Debug: Check what's in session state
-        if st.session_state.get('debug_feasibility', False):
-            st.write("🔍 **DEBUG: load_recommendations called**")
-            st.write(f"- st.session_state.recommendations is None: {st.session_state.recommendations is None}")
-            if st.session_state.recommendations is not None:
-                st.write(f"- st.session_state.recommendations type: {type(st.session_state.recommendations)}")
-                if isinstance(st.session_state.recommendations, dict):
-                    st.write(f"- st.session_state.recommendations keys: {list(st.session_state.recommendations.keys())}")
         
         if st.session_state.recommendations is None:
             try:
@@ -4043,10 +4033,6 @@ verify_ssl = True
         
         st.header("🎯 Results & Recommendations")
         
-        # Debug toggle for feasibility data flow analysis
-        debug_enabled = st.checkbox("🔍 Debug Feasibility Data Flow", key=f"debug_feasibility_{id(self)}")
-        st.session_state.debug_feasibility = debug_enabled
-        
         # Action buttons in a clean row
         col1, col2, col3 = st.columns([2, 2, 3])
         
@@ -4054,13 +4040,6 @@ verify_ssl = True
             if st.button("🔄 Refresh Results", help="Reload recommendations from the latest analysis", use_container_width=True):
                 st.session_state.recommendations = None
                 st.rerun()
-            
-            # Debug: Force API call button
-            if st.session_state.get('debug_feasibility', False):
-                if st.button("🔧 Force API Call", help="Force call to /recommend endpoint", use_container_width=True):
-                    st.session_state.recommendations = None
-                    # Force immediate reload
-                    self.load_recommendations()
         
         # Add regenerate functionality (only show if we have requirements and recommendations)
         if st.session_state.get('requirements') and st.session_state.get('recommendations'):
@@ -4138,23 +4117,11 @@ verify_ssl = True
         
         rec = st.session_state.recommendations
         
-        # DEBUG: Add logging to understand the data structure issue (only when debug enabled)
-        if st.session_state.get('debug_feasibility', False):
-            st.write("🔍 **DEBUG: Feasibility Data Flow**")
-            st.write(f"- rec type: {type(rec)}")
-            st.write(f"- rec keys: {list(rec.keys()) if isinstance(rec, dict) else 'Not a dict'}")
-            if isinstance(rec, dict):
-                st.write(f"- feasibility in rec: {'feasibility' in rec}")
-                st.write(f"- rec.get('feasibility'): {rec.get('feasibility', 'NOT_FOUND')}")
-                
-                # Show error if present
-                if 'error' in rec:
-                    st.error(f"🚨 **API ERROR**: {rec['error']}")
-                
-                if 'recommendations' in rec:
-                    st.write(f"- rec['recommendations'] type: {type(rec['recommendations'])}")
-                    if isinstance(rec['recommendations'], list) and len(rec['recommendations']) > 0:
-                        st.write(f"- first recommendation keys: {list(rec['recommendations'][0].keys()) if isinstance(rec['recommendations'][0], dict) else 'Not a dict'}")
+        # Show error if present
+        if isinstance(rec, dict) and 'error' in rec:
+            st.error(f"🚨 **API ERROR**: {rec['error']}")
+            return
+        
         
         # Overall feasibility with better display - get from top-level response
         feasibility = rec.get('feasibility', 'Unknown')
@@ -4165,8 +4132,6 @@ verify_ssl = True
             session_feasibility = st.session_state.get('feasibility', 'Unknown')
             if session_feasibility != 'Unknown':
                 feasibility = session_feasibility
-                if st.session_state.get('debug_feasibility', False):
-                    st.write(f"- **🔄 Using session state feasibility: '{feasibility}'**")
             # Try to get from individual recommendations
             elif rec.get('recommendations') and len(rec['recommendations']) > 0:
                 first_rec = rec['recommendations'][0]
@@ -4174,13 +4139,7 @@ verify_ssl = True
                     alt_feasibility = first_rec.get('feasibility', 'Unknown')
                     if alt_feasibility != 'Unknown':
                         feasibility = alt_feasibility
-                        if st.session_state.get('debug_feasibility', False):
-                            st.write(f"- **🔄 Using fallback feasibility from first recommendation: '{feasibility}'**")
-        
-        # DEBUG: Log the extracted feasibility
-        if st.session_state.get('debug_feasibility', False):
-            st.write(f"- **Final extracted feasibility: '{feasibility}'**")
-            st.markdown("---")
+
         feasibility_info = {
             "Yes": {"color": "🟢", "label": "Fully Automatable", "desc": "This requirement can be completely automated with high confidence."},
             "Partial": {"color": "🟡", "label": "Partially Automatable", "desc": "This requirement can be mostly automated, but may need human oversight for some steps."},
@@ -8380,12 +8339,14 @@ verify_ssl = True
             st.warning("⚠️ Pattern loader service not available. Pattern management features will be limited.")
         
         # Unified management tabs - all pattern functionality in one place
-        view_tab, edit_tab, create_tab, enhance_tab, analytics_tab = st.tabs([
+        view_tab, edit_tab, create_tab, search_tab, compare_tab, enhance_tab, export_tab = st.tabs([
             "👀 View Patterns", 
             "✏️ Edit Pattern", 
             "➕ Create Pattern", 
+            "🔍 Pattern Search",
+            "📋 Pattern Comparison",
             "🚀 Enhance Patterns",
-            "📊 Pattern Analytics"
+            "💾 Pattern Export"
         ])
         
         with view_tab:
@@ -8397,11 +8358,17 @@ verify_ssl = True
         with create_tab:
             self.render_pattern_creator(pattern_loader)
             
+        with search_tab:
+            self.render_pattern_search_tab(patterns, pattern_loader)
+            
+        with compare_tab:
+            self.render_pattern_comparison_tab(patterns, pattern_loader)
+            
         with enhance_tab:
             self.render_pattern_enhancement_tab()
             
-        with analytics_tab:
-            self.render_pattern_analytics_tab()
+        with export_tab:
+            self.render_pattern_export_tab(patterns, pattern_loader)
     
     def render_pattern_viewer(self, patterns: list):
         """Render the pattern viewer interface."""
@@ -9090,85 +9057,567 @@ verify_ssl = True
     
     def render_pattern_enhancement_tab(self):
         """Render the pattern enhancement functionality."""
+        st.subheader("🚀 Pattern Enhancement & Analytics")
+        st.markdown("Enhance patterns with AI, view analytics, and get comprehensive pattern insights.")
+        
+        # Create sub-tabs for different enhancement features
+        ai_enhance_tab, overview_tab, analytics_tab = st.tabs([
+            "🤖 AI Enhancement", 
+            "📊 Pattern Overview", 
+            "📈 Pattern Analytics"
+        ])
+        
+        with ai_enhance_tab:
+            self._render_ai_enhancement_interface()
+        
+        with overview_tab:
+            self._render_pattern_overview_interface()
+        
+        with analytics_tab:
+            self._render_pattern_analytics_interface()
+    
+    def _render_ai_enhancement_interface(self):
+        """Render the AI enhancement interface."""
+        st.markdown("### 🤖 AI-Powered Pattern Enhancement")
+        st.markdown("Use AI to improve and enhance existing patterns with better descriptions, tech stacks, and implementation guidance.")
+        
+        # Load patterns
         from app.utils.imports import optional_service
-        enhanced_loader = optional_service('enhanced_pattern_loader', context='pattern enhancement')
-        analytics_service = optional_service('pattern_analytics_service', context='pattern enhancement')
+        pattern_loader = optional_service('pattern_loader', context='pattern enhancement')
+        
+        if not pattern_loader:
+            st.error("❌ Pattern loader service not available. Cannot enhance patterns.")
+            return
+        
+        try:
+            patterns = pattern_loader.load_patterns()
+        except Exception as e:
+            st.error(f"❌ Error loading patterns: {str(e)}")
+            return
+        
+        if not patterns:
+            st.info("📝 No patterns found in the library. Create some patterns first to enhance them.")
+            return
+        
+        # Pattern selection
+        st.markdown("### 🎯 Select Pattern to Enhance")
+        
+        pattern_options = [f"{p.get('name', 'Unnamed')} ({p.get('pattern_id', 'No ID')})" for p in patterns]
+        selected_idx = st.selectbox("Choose a pattern to enhance:", range(len(patterns)), format_func=lambda x: pattern_options[x])
+        selected_pattern = patterns[selected_idx]
+        
+        # Show current pattern details
+        with st.expander("📋 Current Pattern Details", expanded=True):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown(f"**Pattern ID:** {selected_pattern.get('pattern_id', 'N/A')}")
+                st.markdown(f"**Name:** {selected_pattern.get('name', 'N/A')}")
+                st.markdown(f"**Domain:** {selected_pattern.get('domain', 'N/A')}")
+                st.markdown(f"**Feasibility:** {selected_pattern.get('feasibility', 'N/A')}")
+            
+            with col2:
+                st.markdown(f"**Complexity:** {selected_pattern.get('complexity', 'N/A')}")
+                st.markdown(f"**Autonomy Level:** {selected_pattern.get('autonomy_level', 0):.2f}")
+                st.markdown(f"**Confidence Score:** {selected_pattern.get('confidence_score', 0):.2f}")
+                st.markdown(f"**Enhanced by LLM:** {'✅ Yes' if selected_pattern.get('enhanced_by_llm', False) else '❌ No'}")
+            
+            st.markdown(f"**Description:** {selected_pattern.get('description', 'No description')}")
+            st.markdown(f"**Tech Stack:** {', '.join(selected_pattern.get('tech_stack', []))}")
+        
+        # Enhancement options
+        st.markdown("### 🎛️ Enhancement Options")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            enhance_description = st.checkbox("📝 Enhance Description", value=True, help="Improve pattern description with AI")
+            enhance_tech_stack = st.checkbox("🛠️ Enhance Tech Stack", value=True, help="Suggest better technologies")
+            enhance_implementation = st.checkbox("🏗️ Add Implementation Guidance", value=True, help="Add detailed implementation steps")
+        
+        with col2:
+            enhance_challenges = st.checkbox("⚠️ Identify Challenges", value=True, help="Identify potential implementation challenges")
+            enhance_insights = st.checkbox("💡 Add LLM Insights", value=True, help="Add AI-generated insights and recommendations")
+            update_autonomy = st.checkbox("🤖 Update Autonomy Assessment", value=False, help="Reassess autonomy level with AI")
+        
+        # Custom enhancement prompt
+        st.markdown("### 📝 Custom Enhancement Instructions (Optional)")
+        custom_prompt = st.text_area(
+            "Additional instructions for AI enhancement:",
+            placeholder="e.g., Focus on cloud-native technologies, emphasize security considerations, target enterprise environments...",
+            height=100
+        )
+        
+        # Enhancement button
+        if st.button("🚀 Enhance Pattern with AI", use_container_width=True):
+            if not any([enhance_description, enhance_tech_stack, enhance_implementation, enhance_challenges, enhance_insights, update_autonomy]):
+                st.warning("⚠️ Please select at least one enhancement option.")
+                return
+            
+            # Check provider configuration
+            provider_config = st.session_state.get('provider_config', {})
+            if not provider_config.get('api_key') and provider_config.get('provider') == 'openai':
+                st.error("❌ Please configure your LLM provider in the sidebar first.")
+                return
+            
+            with st.spinner("🤖 AI is enhancing your pattern... This may take a moment."):
+                try:
+                    # Build enhancement prompt
+                    enhancement_prompt = self._build_enhancement_prompt(
+                        selected_pattern, 
+                        enhance_description, enhance_tech_stack, enhance_implementation,
+                        enhance_challenges, enhance_insights, update_autonomy,
+                        custom_prompt
+                    )
+                    
+                    # Make LLM request
+                    enhanced_content = asyncio.run(make_llm_request(
+                        enhancement_prompt, 
+                        provider_config, 
+                        purpose="pattern_enhancement"
+                    ))
+                    
+                    if enhanced_content:
+                        # Parse and apply enhancements
+                        enhanced_pattern = self._apply_pattern_enhancements(
+                            selected_pattern.copy(), 
+                            enhanced_content,
+                            enhance_description, enhance_tech_stack, enhance_implementation,
+                            enhance_challenges, enhance_insights, update_autonomy
+                        )
+                        
+                        # Show enhanced pattern
+                        st.success("✅ Pattern enhanced successfully!")
+                        self._display_enhanced_pattern(selected_pattern, enhanced_pattern)
+                        
+                        # Save option
+                        if st.button("💾 Save Enhanced Pattern", use_container_width=True):
+                            self._save_enhanced_pattern(enhanced_pattern, pattern_loader)
+                    
+                except Exception as e:
+                    st.error(f"❌ Enhancement failed: {str(e)}")
+        
+        # Show enhancement history if available
+        if selected_pattern.get('enhanced_by_llm'):
+            with st.expander("📈 Enhancement History"):
+                st.markdown("**Previous LLM Insights:**")
+                for insight in selected_pattern.get('llm_insights', []):
+                    st.markdown(f"• {insight}")
+                
+                st.markdown("**Previous LLM Challenges:**")
+                for challenge in selected_pattern.get('llm_challenges', []):
+                    st.markdown(f"• {challenge}")
+                
+                if selected_pattern.get('llm_recommended_approach'):
+                    st.markdown(f"**LLM Recommended Approach:** {selected_pattern.get('llm_recommended_approach')}")
+    
+    def _build_enhancement_prompt(self, pattern, enhance_description, enhance_tech_stack, enhance_implementation, enhance_challenges, enhance_insights, update_autonomy, custom_prompt):
+        """Build the enhancement prompt for the LLM."""
+        prompt = f"""You are an expert in automation patterns and AI system design. Please enhance the following automation pattern based on the requested improvements.
+
+CURRENT PATTERN:
+- Pattern ID: {pattern.get('pattern_id', 'N/A')}
+- Name: {pattern.get('name', 'N/A')}
+- Description: {pattern.get('description', 'N/A')}
+- Domain: {pattern.get('domain', 'N/A')}
+- Feasibility: {pattern.get('feasibility', 'N/A')}
+- Tech Stack: {', '.join(pattern.get('tech_stack', []))}
+- Complexity: {pattern.get('complexity', 'N/A')}
+- Autonomy Level: {pattern.get('autonomy_level', 0)}
+- Pattern Types: {', '.join(pattern.get('pattern_type', []))}
+
+ENHANCEMENT REQUESTS:"""
+
+        if enhance_description:
+            prompt += "\n- ENHANCE DESCRIPTION: Improve the pattern description to be more detailed, clear, and actionable."
+        
+        if enhance_tech_stack:
+            prompt += "\n- ENHANCE TECH STACK: Suggest modern, relevant technologies that would be optimal for this pattern."
+        
+        if enhance_implementation:
+            prompt += "\n- ADD IMPLEMENTATION GUIDANCE: Provide step-by-step implementation guidance and best practices."
+        
+        if enhance_challenges:
+            prompt += "\n- IDENTIFY CHALLENGES: List potential implementation challenges and how to address them."
+        
+        if enhance_insights:
+            prompt += "\n- ADD INSIGHTS: Provide valuable insights about this automation pattern and its applications."
+        
+        if update_autonomy:
+            prompt += "\n- UPDATE AUTONOMY: Reassess the autonomy level (0.0-1.0) based on current AI capabilities."
+        
+        if custom_prompt:
+            prompt += f"\n- CUSTOM REQUIREMENTS: {custom_prompt}"
+        
+        prompt += """
+
+Please respond in JSON format with the following structure:
+{
+    "enhanced_description": "improved description if requested",
+    "enhanced_tech_stack": ["tech1", "tech2", "tech3"] if requested,
+    "implementation_guidance": "step-by-step guidance if requested",
+    "challenges": ["challenge1", "challenge2"] if requested,
+    "insights": ["insight1", "insight2"] if requested,
+    "recommended_approach": "overall recommendation if requested",
+    "updated_autonomy_level": 0.85 if requested,
+    "reasoning": "explanation of changes made"
+}
+
+Only include fields that were requested for enhancement. Ensure all suggestions are practical, modern, and relevant to the pattern's domain and use case."""
+        
+        return prompt
+    
+    def _apply_pattern_enhancements(self, pattern, enhanced_content, enhance_description, enhance_tech_stack, enhance_implementation, enhance_challenges, enhance_insights, update_autonomy):
+        """Apply the LLM enhancements to the pattern."""
+        try:
+            import json
+            from datetime import datetime
+            
+            # Parse LLM response
+            if enhanced_content.startswith('```json'):
+                enhanced_content = enhanced_content.replace('```json', '').replace('```', '').strip()
+            
+            enhancements = json.loads(enhanced_content)
+            
+            # Apply enhancements
+            if enhance_description and 'enhanced_description' in enhancements:
+                pattern['description'] = enhancements['enhanced_description']
+            
+            if enhance_tech_stack and 'enhanced_tech_stack' in enhancements:
+                pattern['tech_stack'] = enhancements['enhanced_tech_stack']
+            
+            if enhance_implementation and 'implementation_guidance' in enhancements:
+                pattern['implementation_guidance'] = enhancements['implementation_guidance']
+            
+            if enhance_challenges and 'challenges' in enhancements:
+                pattern['llm_challenges'] = enhancements['challenges']
+            
+            if enhance_insights and 'insights' in enhancements:
+                pattern['llm_insights'] = enhancements['insights']
+            
+            if 'recommended_approach' in enhancements:
+                pattern['llm_recommended_approach'] = enhancements['recommended_approach']
+            
+            if update_autonomy and 'updated_autonomy_level' in enhancements:
+                pattern['autonomy_level'] = enhancements['updated_autonomy_level']
+            
+            # Mark as enhanced
+            pattern['enhanced_by_llm'] = True
+            pattern['last_enhanced'] = datetime.now().isoformat()
+            pattern['enhancement_reasoning'] = enhancements.get('reasoning', 'Enhanced by AI')
+            
+            return pattern
+            
+        except Exception as e:
+            st.error(f"❌ Error parsing enhancement response: {str(e)}")
+            return pattern
+    
+    def _display_enhanced_pattern(self, original_pattern, enhanced_pattern):
+        """Display the enhanced pattern with before/after comparison."""
+        st.markdown("### 📊 Enhancement Results")
+        
+        # Show changes
+        changes_made = []
+        
+        if original_pattern.get('description') != enhanced_pattern.get('description'):
+            changes_made.append("📝 Description")
+        
+        if original_pattern.get('tech_stack') != enhanced_pattern.get('tech_stack'):
+            changes_made.append("🛠️ Tech Stack")
+        
+        if enhanced_pattern.get('implementation_guidance'):
+            changes_made.append("🏗️ Implementation Guidance")
+        
+        if enhanced_pattern.get('llm_challenges'):
+            changes_made.append("⚠️ Challenges Identified")
+        
+        if enhanced_pattern.get('llm_insights'):
+            changes_made.append("💡 Insights Added")
+        
+        if original_pattern.get('autonomy_level') != enhanced_pattern.get('autonomy_level'):
+            changes_made.append("🤖 Autonomy Level")
+        
+        if changes_made:
+            st.success(f"✅ **Changes Made:** {', '.join(changes_made)}")
+        
+        # Before/After comparison
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("#### 📋 Original Pattern")
+            with st.container():
+                st.markdown(f"**Description:** {original_pattern.get('description', 'N/A')}")
+                st.markdown(f"**Tech Stack:** {', '.join(original_pattern.get('tech_stack', []))}")
+                st.markdown(f"**Autonomy Level:** {original_pattern.get('autonomy_level', 0):.2f}")
+        
+        with col2:
+            st.markdown("#### ✨ Enhanced Pattern")
+            with st.container():
+                st.markdown(f"**Description:** {enhanced_pattern.get('description', 'N/A')}")
+                st.markdown(f"**Tech Stack:** {', '.join(enhanced_pattern.get('tech_stack', []))}")
+                st.markdown(f"**Autonomy Level:** {enhanced_pattern.get('autonomy_level', 0):.2f}")
+        
+        # Show new additions
+        if enhanced_pattern.get('implementation_guidance'):
+            with st.expander("🏗️ Implementation Guidance"):
+                st.markdown(enhanced_pattern['implementation_guidance'])
+        
+        if enhanced_pattern.get('llm_challenges'):
+            with st.expander("⚠️ Implementation Challenges"):
+                for challenge in enhanced_pattern['llm_challenges']:
+                    st.markdown(f"• {challenge}")
+        
+        if enhanced_pattern.get('llm_insights'):
+            with st.expander("💡 AI Insights"):
+                for insight in enhanced_pattern['llm_insights']:
+                    st.markdown(f"• {insight}")
+        
+        if enhanced_pattern.get('enhancement_reasoning'):
+            with st.expander("🤔 Enhancement Reasoning"):
+                st.markdown(enhanced_pattern['enhancement_reasoning'])
+    
+    def _save_enhanced_pattern(self, enhanced_pattern, pattern_loader):
+        """Save the enhanced pattern to file."""
+        try:
+            import json
+            import os
+            
+            pattern_id = enhanced_pattern.get('pattern_id')
+            file_path = f"data/patterns/{pattern_id}.json"
+            
+            # Ensure directory exists
+            os.makedirs("data/patterns", exist_ok=True)
+            
+            # Save enhanced pattern
+            with open(file_path, 'w') as f:
+                json.dump(enhanced_pattern, f, indent=2)
+            
+            # Refresh cache
+            pattern_loader.refresh_cache()
+            
+            st.success(f"✅ Enhanced pattern saved successfully!")
+            st.info(f"📁 Saved to: {file_path}")
+            st.balloons()
+            
+        except Exception as e:
+            st.error(f"❌ Error saving enhanced pattern: {str(e)}")
+    
+    def _render_pattern_overview_interface(self):
+        """Render the pattern overview interface."""
+        from app.utils.imports import optional_service
+        enhanced_loader = optional_service('enhanced_pattern_loader', context='pattern overview')
         
         if enhanced_loader:
-            from app.ui.enhanced_pattern_management import render_pattern_overview, render_pattern_analytics
-            
-            # Show success message
-            st.success("✅ Pattern enhancement available: Enhanced pattern system services are registered.")
-            
-            # Create tabs for different pattern management functions
-            overview_tab, analytics_tab = st.tabs(["📊 Pattern Overview", "📈 Pattern Analytics"])
-            
-            with overview_tab:
+            try:
+                from app.ui.enhanced_pattern_management import render_pattern_overview
                 render_pattern_overview(enhanced_loader)
-            
-            with analytics_tab:
-                render_pattern_analytics(enhanced_loader)
-            
-            # Show additional information about available features
-            with st.expander("ℹ️ Available Pattern Enhancement Features"):
-                st.markdown("""
-                **Enhanced Pattern Management Features:**
-                - 📊 **Pattern Overview**: Comprehensive statistics and capability matrix
-                - 📈 **Pattern Analytics**: Usage analytics and performance insights
-                - 🔍 **Pattern Search**: Advanced search and filtering capabilities
-                - 📋 **Pattern Comparison**: Side-by-side pattern comparison
-                - 💾 **Pattern Export**: Export patterns in multiple formats
-                
-                **Enhanced Pattern Loader Capabilities:**
-                - ✅ Real-time analytics and performance tracking
-                - ✅ Enhanced caching for improved performance
-                - ✅ Comprehensive pattern validation
-                - ✅ Usage statistics and monitoring
-                - ✅ Health checks and status reporting
-                """)
-            
+            except ImportError:
+                # Fallback if enhanced_pattern_management module is not available
+                st.info("📊 Enhanced pattern overview module not available. Showing basic overview.")
+                self._render_basic_pattern_overview()
         else:
-            # Use our utility function for dynamic status checking
-            from app.utils.pattern_status_utils import get_pattern_enhancement_error_or_success
-            status_msg = get_pattern_enhancement_error_or_success()
-            
-            if status_msg.startswith("✅"):
-                st.success(status_msg)
-                # If service is available but we couldn't get it, show debug info
-                st.warning("⚠️ Enhanced pattern loader service appears to be available but couldn't be accessed. Please check service registration.")
-            else:
-                st.info(status_msg)
-        
-        # Handle any exceptions during enhancement
-        try:
-            pass  # Enhancement logic is now in the if block above
-        except Exception as e:
-            st.error(f"❌ Error loading pattern enhancement: {e}")
-            app_logger.error(f"Pattern enhancement error: {e}")
+            st.info("📊 Enhanced pattern loader not available. Showing basic overview.")
+            self._render_basic_pattern_overview()
     
-    def render_pattern_analytics_tab(self):
-        """Render the pattern analytics functionality."""
+    def _render_pattern_analytics_interface(self):
+        """Render the pattern analytics interface."""
         from app.utils.imports import optional_service
         enhanced_loader = optional_service('enhanced_pattern_loader', context='pattern analytics')
+        analytics_service = optional_service('pattern_analytics_service', context='pattern analytics')
         
-        if enhanced_loader:
-            from app.ui.enhanced_pattern_management import render_pattern_analytics
-            
-            # Enhanced pattern loader is already available from service registry
-            
-            # Render the pattern analytics UI
-            render_pattern_analytics(enhanced_loader)
-            
+        if enhanced_loader and analytics_service:
+            try:
+                from app.ui.enhanced_pattern_management import render_pattern_analytics
+                render_pattern_analytics(enhanced_loader)
+            except ImportError:
+                # Fallback if enhanced_pattern_management module is not available
+                st.info("📈 Enhanced pattern analytics module not available. Showing basic analytics.")
+                self._render_basic_pattern_analytics()
         else:
-            st.error("❌ Pattern analytics not available: Enhanced pattern loader service not registered.")
-            st.info("💡 This feature requires the enhanced pattern system services to be registered.")
+            st.info("📈 Enhanced pattern analytics not available. Showing basic analytics.")
+            self._render_basic_pattern_analytics()
+    
+    def _render_basic_pattern_overview(self):
+        """Render basic pattern overview when enhanced services are not available."""
+        from app.utils.imports import optional_service
+        pattern_loader = optional_service('pattern_loader', context='basic pattern overview')
         
-        # Handle any exceptions during analytics
+        if not pattern_loader:
+            st.error("❌ Pattern loader service not available.")
+            return
+        
         try:
-            pass  # Analytics logic is now in the if block above
+            patterns = pattern_loader.load_patterns()
         except Exception as e:
-            st.error(f"❌ Error loading pattern analytics: {e}")
-            app_logger.error(f"Pattern analytics error: {e}")
+            st.error(f"❌ Error loading patterns: {str(e)}")
+            return
+        
+        if not patterns:
+            st.info("📝 No patterns found in the library.")
+            return
+        
+        # Basic statistics
+        st.markdown("### 📊 Pattern Library Statistics")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Total Patterns", len(patterns))
+        
+        with col2:
+            agentic_patterns = len([p for p in patterns if p.get('pattern_id', '').startswith('APAT')])
+            st.metric("Agentic Patterns", agentic_patterns)
+        
+        with col3:
+            enhanced_patterns = len([p for p in patterns if p.get('enhanced_by_llm', False)])
+            st.metric("Enhanced Patterns", enhanced_patterns)
+        
+        with col4:
+            avg_autonomy = sum(p.get('autonomy_level', 0) for p in patterns) / len(patterns) if patterns else 0
+            st.metric("Avg Autonomy Level", f"{avg_autonomy:.2f}")
+        
+        # Pattern capabilities matrix
+        st.markdown("### 📋 Pattern Capabilities Matrix")
+        
+        import pandas as pd
+        
+        matrix_data = []
+        for pattern in patterns:
+            matrix_data.append({
+                'Pattern ID': pattern.get('pattern_id', 'N/A'),
+                'Name': pattern.get('name', 'N/A')[:30] + ('...' if len(pattern.get('name', '')) > 30 else ''),
+                'Agentic': '✅' if pattern.get('pattern_id', '').startswith('APAT') else '❌',
+                'Tech Stack': '✅' if pattern.get('tech_stack') else '❌',
+                'Guidance': '✅' if pattern.get('implementation_guidance') else '❌',
+                'Effort Detail': '✅' if pattern.get('estimated_effort') else '❌',
+                'Complexity': pattern.get('complexity', 'N/A')
+            })
+        
+        if matrix_data:
+            df = pd.DataFrame(matrix_data)
+            st.dataframe(df, use_container_width=True)
+        
+        # Available pattern enhancement features info
+        with st.expander("ℹ️ Available Pattern Enhancement Features"):
+            st.markdown("""
+            **Enhanced Pattern Management Features:**
+            - 📊 **Pattern Overview**: Comprehensive statistics and capability matrix
+            - 📈 **Pattern Analytics**: Usage analytics and performance insights
+            - 🔍 **Pattern Search**: Advanced search and filtering capabilities
+            - 📋 **Pattern Comparison**: Side-by-side pattern comparison
+            - 💾 **Pattern Export**: Export patterns in multiple formats
+            - 🤖 **AI Enhancement**: Use AI to improve pattern descriptions and tech stacks
+            
+            **Enhanced Pattern Loader Capabilities:**
+            - ✅ Real-time analytics and performance tracking
+            - ✅ Enhanced caching for improved performance
+            - ✅ Comprehensive pattern validation
+            - ✅ Usage statistics and monitoring
+            - ✅ Health checks and status reporting
+            """)
+    
+    def _render_basic_pattern_analytics(self):
+        """Render basic pattern analytics when enhanced services are not available."""
+        from app.utils.imports import optional_service
+        pattern_loader = optional_service('pattern_loader', context='basic pattern analytics')
+        
+        if not pattern_loader:
+            st.error("❌ Pattern loader service not available.")
+            return
+        
+        try:
+            patterns = pattern_loader.load_patterns()
+        except Exception as e:
+            st.error(f"❌ Error loading patterns: {str(e)}")
+            return
+        
+        if not patterns:
+            st.info("📝 No patterns found in the library.")
+            return
+        
+        st.markdown("### 📈 Pattern Analytics Dashboard")
+        
+        # Pattern type distribution
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("#### 🏷️ Pattern Type Distribution")
+            
+            # Count pattern types
+            pattern_type_counts = {}
+            for pattern in patterns:
+                pattern_types = pattern.get('pattern_type', [])
+                if isinstance(pattern_types, list):
+                    for ptype in pattern_types:
+                        pattern_type_counts[ptype] = pattern_type_counts.get(ptype, 0) + 1
+            
+            if pattern_type_counts:
+                import pandas as pd
+                df_types = pd.DataFrame(list(pattern_type_counts.items()), columns=['Pattern Type', 'Count'])
+                st.bar_chart(df_types.set_index('Pattern Type'))
+            else:
+                st.info("No pattern type data available.")
+        
+        with col2:
+            st.markdown("#### 🎯 Feasibility Distribution")
+            
+            # Count feasibility levels
+            feasibility_counts = {}
+            for pattern in patterns:
+                feasibility = pattern.get('feasibility', 'Unknown')
+                feasibility_counts[feasibility] = feasibility_counts.get(feasibility, 0) + 1
+            
+            if feasibility_counts:
+                import pandas as pd
+                df_feasibility = pd.DataFrame(list(feasibility_counts.items()), columns=['Feasibility', 'Count'])
+                st.bar_chart(df_feasibility.set_index('Feasibility'))
+            else:
+                st.info("No feasibility data available.")
+        
+        # Autonomy level analysis
+        st.markdown("#### 🤖 Autonomy Level Analysis")
+        
+        autonomy_levels = [p.get('autonomy_level', 0) for p in patterns if p.get('autonomy_level') is not None]
+        
+        if autonomy_levels:
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric("Average Autonomy", f"{sum(autonomy_levels) / len(autonomy_levels):.2f}")
+            
+            with col2:
+                st.metric("Highest Autonomy", f"{max(autonomy_levels):.2f}")
+            
+            with col3:
+                st.metric("Lowest Autonomy", f"{min(autonomy_levels):.2f}")
+            
+            # Autonomy distribution chart
+            import pandas as pd
+            df_autonomy = pd.DataFrame({'Autonomy Level': autonomy_levels})
+            st.bar_chart(df_autonomy['Autonomy Level'].value_counts().sort_index())
+        else:
+            st.info("No autonomy level data available.")
+        
+        # Enhancement status
+        st.markdown("#### ✨ Enhancement Status")
+        
+        enhanced_count = len([p for p in patterns if p.get('enhanced_by_llm', False)])
+        not_enhanced_count = len(patterns) - enhanced_count
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.metric("Enhanced by AI", enhanced_count)
+        
+        with col2:
+            st.metric("Not Enhanced", not_enhanced_count)
+        
+        if enhanced_count > 0:
+            st.success(f"✅ {enhanced_count}/{len(patterns)} patterns have been enhanced by AI")
+        else:
+            st.info("💡 No patterns have been enhanced yet. Use the AI Enhancement tab to improve your patterns!")
+    
+
     
     def render_technology_catalog_management(self):
         """Render the technology catalog management interface."""
@@ -9966,6 +10415,325 @@ verify_ssl = True
             - **Pattern-Based Matching**: Reusable solution templates
             """)
 
+    def render_pattern_search_tab(self, patterns: list, pattern_loader):
+        """Render the pattern search functionality."""
+        st.subheader("🔍 Advanced Pattern Search")
+        st.markdown("Search and filter patterns using advanced criteria")
+        
+        # Search interface
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            search_query = st.text_input("🔍 Search patterns", placeholder="Enter keywords, pattern ID, or description...")
+        
+        with col2:
+            search_button = st.button("🔍 Search", use_container_width=True)
+        
+        # Filter options
+        st.markdown("### 🎛️ Filter Options")
+        filter_col1, filter_col2, filter_col3 = st.columns(3)
+        
+        with filter_col1:
+            domain_filter = st.selectbox("Domain", ["All"] + list(set([p.get('domain', 'Unknown') for p in patterns if p.get('domain')])))
+        
+        with filter_col2:
+            feasibility_filter = st.selectbox("Feasibility", ["All", "Automatable", "Partially Automatable", "Not Automatable"])
+        
+        with filter_col3:
+            pattern_type_filter = st.selectbox("Pattern Type", ["All", "agentic_reasoning", "autonomous_decision", "traditional_automation"])
+        
+        # Advanced filters
+        with st.expander("🔧 Advanced Filters"):
+            complexity_filter = st.selectbox("Complexity", ["All", "Low", "Medium", "High"])
+            autonomy_range = st.slider("Autonomy Level Range", 0.0, 1.0, (0.0, 1.0), step=0.1)
+            confidence_range = st.slider("Confidence Score Range", 0.0, 1.0, (0.0, 1.0), step=0.1)
+        
+        # Apply filters
+        filtered_patterns = patterns
+        
+        if search_query and (search_button or search_query):
+            filtered_patterns = [p for p in filtered_patterns if 
+                               search_query.lower() in p.get('name', '').lower() or
+                               search_query.lower() in p.get('description', '').lower() or
+                               search_query.lower() in p.get('pattern_id', '').lower()]
+        
+        if domain_filter != "All":
+            filtered_patterns = [p for p in filtered_patterns if p.get('domain') == domain_filter]
+        
+        if feasibility_filter != "All":
+            filtered_patterns = [p for p in filtered_patterns if p.get('feasibility') == feasibility_filter]
+        
+        if pattern_type_filter != "All":
+            filtered_patterns = [p for p in filtered_patterns if pattern_type_filter in p.get('pattern_type', [])]
+        
+        if complexity_filter != "All":
+            filtered_patterns = [p for p in filtered_patterns if p.get('complexity') == complexity_filter]
+        
+        # Apply autonomy and confidence filters
+        filtered_patterns = [p for p in filtered_patterns if 
+                           autonomy_range[0] <= p.get('autonomy_level', 0) <= autonomy_range[1] and
+                           confidence_range[0] <= p.get('confidence_score', 0) <= confidence_range[1]]
+        
+        # Display results
+        st.markdown(f"### 📊 Search Results ({len(filtered_patterns)} patterns found)")
+        
+        if filtered_patterns:
+            for pattern in filtered_patterns:
+                with st.expander(f"🎯 {pattern.get('name', 'Unnamed Pattern')} ({pattern.get('pattern_id', 'No ID')})"):
+                    col1, col2 = st.columns([2, 1])
+                    
+                    with col1:
+                        st.markdown(f"**Description:** {pattern.get('description', 'No description')}")
+                        st.markdown(f"**Domain:** {pattern.get('domain', 'Unknown')}")
+                        st.markdown(f"**Feasibility:** {pattern.get('feasibility', 'Unknown')}")
+                    
+                    with col2:
+                        st.metric("Autonomy Level", f"{pattern.get('autonomy_level', 0):.2f}")
+                        st.metric("Confidence", f"{pattern.get('confidence_score', 0):.2f}")
+                        st.metric("Complexity", pattern.get('complexity', 'Unknown'))
+        else:
+            st.info("🔍 No patterns match your search criteria. Try adjusting your filters.")
+
+    def render_pattern_comparison_tab(self, patterns: list, pattern_loader):
+        """Render the pattern comparison functionality."""
+        st.subheader("📋 Side-by-Side Pattern Comparison")
+        st.markdown("Compare patterns to understand their differences and similarities")
+        
+        if len(patterns) < 2:
+            st.warning("⚠️ Need at least 2 patterns to perform comparison.")
+            return
+        
+        # Pattern selection
+        col1, col2 = st.columns(2)
+        
+        pattern_options = [f"{p.get('name', 'Unnamed')} ({p.get('pattern_id', 'No ID')})" for p in patterns]
+        
+        with col1:
+            st.markdown("#### 🅰️ Pattern A")
+            pattern_a_idx = st.selectbox("Select first pattern", range(len(patterns)), format_func=lambda x: pattern_options[x], key="pattern_a")
+            pattern_a = patterns[pattern_a_idx]
+        
+        with col2:
+            st.markdown("#### 🅱️ Pattern B")
+            pattern_b_idx = st.selectbox("Select second pattern", range(len(patterns)), format_func=lambda x: pattern_options[x], key="pattern_b")
+            pattern_b = patterns[pattern_b_idx]
+        
+        if pattern_a_idx == pattern_b_idx:
+            st.warning("⚠️ Please select two different patterns for comparison.")
+            return
+        
+        # Comparison button
+        if st.button("🔍 Compare Patterns", use_container_width=True):
+            st.markdown("### 📊 Comparison Results")
+            
+            # Basic information comparison
+            st.markdown("#### 📋 Basic Information")
+            comparison_data = {
+                "Attribute": ["Pattern ID", "Name", "Domain", "Feasibility", "Complexity", "Autonomy Level", "Confidence Score"],
+                "Pattern A": [
+                    pattern_a.get('pattern_id', 'N/A'),
+                    pattern_a.get('name', 'N/A'),
+                    pattern_a.get('domain', 'N/A'),
+                    pattern_a.get('feasibility', 'N/A'),
+                    pattern_a.get('complexity', 'N/A'),
+                    f"{pattern_a.get('autonomy_level', 0):.2f}",
+                    f"{pattern_a.get('confidence_score', 0):.2f}"
+                ],
+                "Pattern B": [
+                    pattern_b.get('pattern_id', 'N/A'),
+                    pattern_b.get('name', 'N/A'),
+                    pattern_b.get('domain', 'N/A'),
+                    pattern_b.get('feasibility', 'N/A'),
+                    pattern_b.get('complexity', 'N/A'),
+                    f"{pattern_b.get('autonomy_level', 0):.2f}",
+                    f"{pattern_b.get('confidence_score', 0):.2f}"
+                ]
+            }
+            
+            import pandas as pd
+            df = pd.DataFrame(comparison_data)
+            st.dataframe(df, use_container_width=True)
+            
+            # Detailed comparison
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("#### 🅰️ Pattern A Details")
+                st.markdown(f"**Description:** {pattern_a.get('description', 'No description')}")
+                st.markdown(f"**Tech Stack:** {', '.join(pattern_a.get('tech_stack', []))}")
+                st.markdown(f"**Pattern Types:** {', '.join(pattern_a.get('pattern_type', []))}")
+                st.markdown(f"**Implementation Time:** {pattern_a.get('implementation_time', 'Unknown')}")
+            
+            with col2:
+                st.markdown("#### 🅱️ Pattern B Details")
+                st.markdown(f"**Description:** {pattern_b.get('description', 'No description')}")
+                st.markdown(f"**Tech Stack:** {', '.join(pattern_b.get('tech_stack', []))}")
+                st.markdown(f"**Pattern Types:** {', '.join(pattern_b.get('pattern_type', []))}")
+                st.markdown(f"**Implementation Time:** {pattern_b.get('implementation_time', 'Unknown')}")
+            
+            # Similarity analysis
+            st.markdown("#### 🔍 Similarity Analysis")
+            
+            # Calculate similarities
+            tech_stack_a = set(pattern_a.get('tech_stack', []))
+            tech_stack_b = set(pattern_b.get('tech_stack', []))
+            tech_similarity = len(tech_stack_a.intersection(tech_stack_b)) / max(len(tech_stack_a.union(tech_stack_b)), 1)
+            
+            pattern_types_a = set(pattern_a.get('pattern_type', []))
+            pattern_types_b = set(pattern_b.get('pattern_type', []))
+            type_similarity = len(pattern_types_a.intersection(pattern_types_b)) / max(len(pattern_types_a.union(pattern_types_b)), 1)
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Tech Stack Similarity", f"{tech_similarity:.1%}")
+            with col2:
+                st.metric("Pattern Type Similarity", f"{type_similarity:.1%}")
+            with col3:
+                autonomy_diff = abs(pattern_a.get('autonomy_level', 0) - pattern_b.get('autonomy_level', 0))
+                st.metric("Autonomy Difference", f"{autonomy_diff:.2f}")
+
+    def render_pattern_export_tab(self, patterns: list, pattern_loader):
+        """Render the pattern export functionality."""
+        st.subheader("💾 Pattern Export & Backup")
+        st.markdown("Export patterns in various formats for backup, sharing, or analysis")
+        
+        # Export options
+        st.markdown("### 📤 Export Options")
+        
+        export_col1, export_col2 = st.columns(2)
+        
+        with export_col1:
+            export_format = st.selectbox("Export Format", ["JSON", "CSV", "Markdown", "YAML"])
+            export_scope = st.selectbox("Export Scope", ["All Patterns", "Selected Patterns", "Filtered Patterns"])
+        
+        with export_col2:
+            include_metadata = st.checkbox("Include Metadata", value=True)
+            include_analytics = st.checkbox("Include Usage Analytics", value=False)
+        
+        # Pattern selection for selective export
+        if export_scope == "Selected Patterns":
+            st.markdown("#### 🎯 Select Patterns to Export")
+            selected_patterns = []
+            for i, pattern in enumerate(patterns):
+                if st.checkbox(f"{pattern.get('name', 'Unnamed')} ({pattern.get('pattern_id', 'No ID')})", key=f"export_select_{i}"):
+                    selected_patterns.append(pattern)
+            
+            if not selected_patterns:
+                st.warning("⚠️ Please select at least one pattern to export.")
+                return
+        else:
+            selected_patterns = patterns
+        
+        # Export button
+        if st.button("📤 Generate Export", use_container_width=True):
+            try:
+                import json
+                import csv
+                import yaml
+                from io import StringIO
+                from datetime import datetime
+                
+                export_data = {
+                    "export_info": {
+                        "generated_at": datetime.now().isoformat(),
+                        "format": export_format,
+                        "scope": export_scope,
+                        "pattern_count": len(selected_patterns),
+                        "include_metadata": include_metadata,
+                        "include_analytics": include_analytics
+                    },
+                    "patterns": selected_patterns
+                }
+                
+                if export_format == "JSON":
+                    export_content = json.dumps(export_data, indent=2, ensure_ascii=False)
+                    file_extension = "json"
+                    mime_type = "application/json"
+                
+                elif export_format == "CSV":
+                    output = StringIO()
+                    if selected_patterns:
+                        # Get all possible keys from all patterns
+                        all_keys = set()
+                        for pattern in selected_patterns:
+                            all_keys.update(pattern.keys())
+                        
+                        writer = csv.DictWriter(output, fieldnames=sorted(all_keys))
+                        writer.writeheader()
+                        for pattern in selected_patterns:
+                            # Convert lists and dicts to strings for CSV
+                            csv_row = {}
+                            for key, value in pattern.items():
+                                if isinstance(value, (list, dict)):
+                                    csv_row[key] = json.dumps(value)
+                                else:
+                                    csv_row[key] = value
+                            writer.writerow(csv_row)
+                    
+                    export_content = output.getvalue()
+                    file_extension = "csv"
+                    mime_type = "text/csv"
+                
+                elif export_format == "Markdown":
+                    md_content = f"# Pattern Library Export\n\n"
+                    md_content += f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                    md_content += f"**Pattern Count:** {len(selected_patterns)}\n\n"
+                    
+                    for pattern in selected_patterns:
+                        md_content += f"## {pattern.get('name', 'Unnamed Pattern')}\n\n"
+                        md_content += f"**ID:** {pattern.get('pattern_id', 'N/A')}\n"
+                        md_content += f"**Domain:** {pattern.get('domain', 'N/A')}\n"
+                        md_content += f"**Feasibility:** {pattern.get('feasibility', 'N/A')}\n"
+                        md_content += f"**Autonomy Level:** {pattern.get('autonomy_level', 0):.2f}\n\n"
+                        md_content += f"**Description:** {pattern.get('description', 'No description')}\n\n"
+                        
+                        if pattern.get('tech_stack'):
+                            md_content += f"**Tech Stack:** {', '.join(pattern.get('tech_stack', []))}\n\n"
+                        
+                        md_content += "---\n\n"
+                    
+                    export_content = md_content
+                    file_extension = "md"
+                    mime_type = "text/markdown"
+                
+                elif export_format == "YAML":
+                    export_content = yaml.dump(export_data, default_flow_style=False, allow_unicode=True)
+                    file_extension = "yaml"
+                    mime_type = "application/x-yaml"
+                
+                # Display export preview
+                st.markdown("### 📋 Export Preview")
+                with st.expander("👀 Preview Export Content"):
+                    if export_format in ["JSON", "YAML"]:
+                        st.code(export_content[:2000] + ("..." if len(export_content) > 2000 else ""), language=export_format.lower())
+                    elif export_format == "Markdown":
+                        st.markdown(export_content[:2000] + ("..." if len(export_content) > 2000 else ""))
+                    else:  # CSV
+                        st.text(export_content[:2000] + ("..." if len(export_content) > 2000 else ""))
+                
+                # Download button
+                filename = f"pattern_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_extension}"
+                
+                st.download_button(
+                    label=f"📥 Download {export_format} Export",
+                    data=export_content,
+                    file_name=filename,
+                    mime=mime_type,
+                    use_container_width=True
+                )
+                
+                st.success(f"✅ Export generated successfully! {len(selected_patterns)} patterns exported in {export_format} format.")
+                
+                # Export statistics
+                with st.expander("📊 Export Statistics"):
+                    st.metric("Patterns Exported", len(selected_patterns))
+                    st.metric("Export Size", f"{len(export_content):,} characters")
+                    st.metric("File Size", f"{len(export_content.encode('utf-8')):,} bytes")
+                
+            except Exception as e:
+                st.error(f"❌ Export failed: {str(e)}")
+                app_logger.error(f"Pattern export error: {e}")
+
 
 def main():
     """Main function to run the Streamlit app."""
@@ -9975,5 +10743,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

@@ -13,6 +13,10 @@ class PatternAgenticEnhancer:
     def __init__(self, llm_provider: LLMProvider, pattern_library_path: Path):
         self.llm_provider = llm_provider
         self.pattern_library_path = pattern_library_path
+        
+        # Get logger from service registry
+        from app.utils.imports import require_service
+        self.logger = require_service("logger", context="PatternAgenticEnhancer")
         self.agentic_frameworks = [
             "LangChain",
             "AutoGPT",

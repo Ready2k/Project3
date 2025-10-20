@@ -2,6 +2,7 @@
 
 import json
 import asyncio
+import time
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
@@ -2656,3 +2657,291 @@ Respond with ONLY the JSON object, no other text."""
                 f"Failed to save traditional automation pattern TRAD-AUTO-001: {e}"
             )
             return False
+    async def _create_new_agentic_pattern_recommendation(
+        self,
+        requirements: Dict[str, Any],
+        autonomy_assessment: AutonomyAssessment,
+        session_id: str,
+        necessity_assessment: Any,
+    ) -> Optional[Recommendation]:
+        """Create a new agentic pattern when no existing patterns match."""
+        
+        self.logger.info("Creating new agentic pattern from requirements")
+        
+        try:
+            # Generate a new pattern ID
+            import time
+            pattern_id = f"APAT-{int(time.time())}"
+            
+            # Create the new agentic pattern
+            new_pattern = await self._generate_new_agentic_pattern(
+                pattern_id, requirements, autonomy_assessment, session_id
+            )
+            
+            # Save the pattern to file
+            pattern_saved = await self._save_agentic_pattern(new_pattern, session_id)
+            
+            if not pattern_saved:
+                self.logger.warning("Failed to save new agentic pattern, continuing with in-memory pattern")
+            
+            # Create multi-agent design for the new pattern
+            multi_agent_design = await self._create_single_agent_design(
+                requirements, autonomy_assessment
+            )
+            
+            # Create recommendation from the new pattern
+            recommendation = Recommendation(
+                pattern_id=pattern_id,
+                feasibility="Automatable",
+                confidence=0.85,
+                tech_stack=new_pattern.get("tech_stack", ["Python", "FastAPI", "PostgreSQL"]),
+                reasoning=new_pattern.get("reasoning", "Custom agentic pattern created for this specific requirement"),
+                agent_roles=self._extract_agent_roles_from_design(multi_agent_design),
+                necessity_assessment=necessity_assessment,
+                enhanced_tech_stack=new_pattern.get("enhanced_tech_stack"),
+                architecture_explanation=new_pattern.get("architecture_explanation")
+            )
+            
+            self.logger.info(f"Successfully created new agentic pattern recommendation: {pattern_id}")
+            return recommendation
+            
+        except Exception as e:
+            self.logger.error(f"Failed to create new agentic pattern recommendation: {e}")
+            return None
+
+    async def _generate_new_agentic_pattern(
+        self,
+        pattern_id: str,
+        requirements: Dict[str, Any],
+        autonomy_assessment: AutonomyAssessment,
+        session_id: str,
+    ) -> Dict[str, Any]:
+        """Generate a new agentic pattern based on requirements."""
+        
+        # Extract key information from requirements
+        description = requirements.get("description", "Custom automation requirement")
+        domain = requirements.get("domain", "General")
+        
+        # Create the new pattern structure
+        new_pattern = {
+            "pattern_id": pattern_id,
+            "name": f"Custom Agentic Solution - {domain}",
+            "description": f"Autonomous agent solution for: {description[:200]}...",
+            "feasibility": "Automatable",
+            "pattern_type": [
+                "agentic_reasoning",
+                "autonomous_decision",
+                "exception_reasoning",
+                "continuous_learning"
+            ],
+            "input_requirements": [
+                "Complex decision-making scenarios",
+                "Dynamic environment adaptation",
+                "Exception handling capabilities",
+                "Autonomous reasoning requirements"
+            ],
+            "tech_stack": [
+                "Python",
+                "FastAPI",
+                "PostgreSQL",
+                "LangChain",
+                "OpenAI API"
+            ],
+            "confidence_score": 0.85,
+            "reasoning": f"Custom agentic pattern created for autonomous handling of: {description[:100]}...",
+            "category": "Agentic AI",
+            "tags": [
+                "agentic",
+                "autonomous",
+                "reasoning",
+                "adaptive",
+                "custom"
+            ],
+            "autonomy_level": autonomy_assessment.overall_score,
+            "complexity": "High" if autonomy_assessment.overall_score > 0.8 else "Medium",
+            "implementation_time": "3-6 weeks",
+            "maintenance_effort": "Medium",
+            "domain": domain,
+            "estimated_effort": "3-6 weeks",
+            "related_patterns": [],
+            "reasoning_types": [
+                "logical",
+                "causal",
+                "probabilistic",
+                "contextual"
+            ],
+            "decision_boundaries": {
+                "autonomous_decisions": [
+                    "Process complex scenarios independently",
+                    "Adapt to changing conditions",
+                    "Handle exceptions with reasoning",
+                    "Learn from outcomes"
+                ],
+                "escalation_triggers": [
+                    "Critical system failures",
+                    "Regulatory compliance issues",
+                    "High-risk decisions beyond authority"
+                ],
+                "decision_authority_level": "high"
+            },
+            "exception_handling_strategy": {
+                "autonomous_resolution_approaches": [
+                    "Contextual reasoning and adaptation",
+                    "Multi-step problem solving",
+                    "Learning from similar cases",
+                    "Dynamic strategy adjustment"
+                ],
+                "reasoning_fallbacks": [
+                    "Alternative solution pathways",
+                    "Confidence-based decision making",
+                    "Graceful degradation strategies"
+                ],
+                "escalation_criteria": [
+                    "Low confidence in decision",
+                    "Critical business impact",
+                    "Regulatory compliance concerns"
+                ]
+            },
+            "agentic_frameworks": [
+                "LangChain",
+                "OpenAI Assistants API"
+            ],
+            "reasoning_engines": [
+                "Neo4j",
+                "Prolog"
+            ],
+            "agent_architecture": autonomy_assessment.recommended_architecture.value,
+            "metadata": {
+                "creation_session": session_id,
+                "created_from_requirements": True,
+                "autonomy_score": autonomy_assessment.overall_score,
+                "created_timestamp": str(time.time()),
+                "llm_enhanced": True,
+                "enhanced_from_session": session_id
+            }
+        }
+        
+        # Use LLM to enhance the pattern with specific details
+        if self.llm_provider:
+            try:
+                enhanced_pattern = await self._llm_enhance_pattern(new_pattern, requirements)
+                new_pattern.update(enhanced_pattern)
+            except Exception as e:
+                self.logger.warning(f"LLM enhancement failed, using base pattern: {e}")
+        
+        return new_pattern
+
+    async def _save_agentic_pattern(self, pattern: Dict[str, Any], session_id: str) -> bool:
+        """Save the new agentic pattern to the patterns directory."""
+        
+        try:
+            from pathlib import Path
+            import json
+            
+            # Ensure patterns directory exists
+            patterns_dir = Path("data/patterns")
+            patterns_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Save pattern to file
+            pattern_file = patterns_dir / f"{pattern['pattern_id']}.json"
+            
+            with open(pattern_file, "w", encoding="utf-8") as f:
+                json.dump(pattern, f, indent=2, ensure_ascii=False)
+            
+            self.logger.info(f"Successfully saved new agentic pattern: {pattern_file}")
+            
+            # Log pattern creation for analytics
+            try:
+                await log_pattern_match(
+                    session_id=session_id,
+                    pattern_id=pattern["pattern_id"],
+                    score=pattern.get("confidence_score", 0.85),
+                    accepted=None,
+                )
+            except Exception as e:
+                self.logger.warning(f"Failed to log pattern creation: {e}")
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to save agentic pattern: {e}")
+            return False
+
+    async def _llm_enhance_pattern(self, pattern: Dict[str, Any], requirements: Dict[str, Any]) -> Dict[str, Any]:
+        """Use LLM to enhance the pattern with requirement-specific details."""
+        
+        description = requirements.get("description", "")
+        
+        prompt = f"""
+        Enhance this agentic pattern with specific details based on the requirement:
+        
+        REQUIREMENT: {description}
+        
+        CURRENT PATTERN: {json.dumps(pattern, indent=2)}
+        
+        Please provide enhancements for:
+        1. More specific tech_stack based on the requirement
+        2. Detailed reasoning for why this is the best agentic approach
+        3. Specific agent capabilities needed
+        4. Enhanced architecture explanation
+        
+        Return only a JSON object with the enhanced fields:
+        {{
+            "tech_stack": [...],
+            "reasoning": "...",
+            "architecture_explanation": "...",
+            "enhanced_tech_stack": [...]
+        }}
+        """
+        
+        try:
+            response = await self.llm_provider.generate(prompt, purpose="pattern_enhancement")
+            
+            # Parse LLM response
+            import re
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                enhancements = json.loads(json_match.group())
+                return enhancements
+            else:
+                self.logger.warning("LLM response did not contain valid JSON")
+                return {}
+                
+        except Exception as e:
+            self.logger.warning(f"LLM pattern enhancement failed: {e}")
+            return {}
+
+    def _extract_agent_roles_from_design(self, multi_agent_design) -> List[Dict[str, Any]]:
+        """Extract agent roles from multi-agent design."""
+        
+        if not multi_agent_design or not hasattr(multi_agent_design, 'agent_roles'):
+            # Create default agent roles
+            return [{
+                "name": "Autonomous Decision Agent",
+                "responsibility": "Handle end-to-end autonomous decision-making and task execution",
+                "capabilities": ["reasoning", "decision_making", "exception_handling", "learning"],
+                "autonomy_level": 0.9,
+                "decision_authority": {"workflow_execution": "full", "exception_handling": "full"},
+                "interfaces": ["api_integration", "data_processing", "notification_systems"],
+                "exception_handling": "Autonomous resolution with escalation for critical failures",
+                "learning_capabilities": ["pattern_recognition", "outcome_optimization", "adaptive_strategies"],
+                "communication_requirements": ["status_reporting", "alert_notifications", "audit_logging"]
+            }]
+        
+        # Convert multi-agent design roles to the expected format
+        agent_roles = []
+        for role in multi_agent_design.agent_roles:
+            agent_role = {
+                "name": role.name,
+                "responsibility": role.responsibility,
+                "capabilities": role.capabilities,
+                "autonomy_level": role.autonomy_level,
+                "decision_authority": role.decision_authority,
+                "interfaces": role.interfaces,
+                "exception_handling": role.exception_handling,
+                "learning_capabilities": role.learning_capabilities,
+                "communication_requirements": role.communication_requirements
+            }
+            agent_roles.append(agent_role)
+        
+        return agent_roles
