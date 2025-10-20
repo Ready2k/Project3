@@ -4044,7 +4044,8 @@ verify_ssl = True
         st.header("🎯 Results & Recommendations")
         
         # Debug toggle for feasibility data flow analysis
-        if st.checkbox("🔍 Debug Feasibility Data Flow", key="debug_feasibility_toggle"):
+        debug_key = f"debug_feasibility_toggle_{hash(st.session_state.get('session_id', 'default'))}"
+        if st.checkbox("🔍 Debug Feasibility Data Flow", key=debug_key):
             st.session_state.debug_feasibility = True
         else:
             st.session_state.debug_feasibility = False
@@ -4059,7 +4060,8 @@ verify_ssl = True
             
             # Debug: Force API call button
             if st.session_state.get('debug_feasibility', False):
-                if st.button("🔧 Force API Call", help="Force call to /recommend endpoint", use_container_width=True):
+                force_key = f"force_api_call_{hash(st.session_state.get('session_id', 'default'))}"
+                if st.button("🔧 Force API Call", help="Force call to /recommend endpoint", key=force_key, use_container_width=True):
                     st.session_state.recommendations = None
                     # Force immediate reload
                     self.load_recommendations()
