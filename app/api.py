@@ -2141,28 +2141,29 @@ async def generate_recommendations(request: RecommendRequest, response: Response
         # Check if we already have LLM analysis and can skip expensive recommendation generation
         llm_feasibility = session.requirements.get("llm_analysis_automation_feasibility")
         
-        if llm_feasibility and session.matches:
+        if llm_feasibility:
             # We have LLM analysis and pattern matches, create lightweight recommendations
             app_logger.info(f"Using existing LLM analysis: {llm_feasibility}, skipping expensive recommendation generation")
             
-            # Create simple recommendations from existing matches
+            # Create simple recommendations from existing matches or default
             from app.state.store import Recommendation
             recommendations = []
             
-            for match in session.matches[:request.top_k]:
-                rec = Recommendation(
-                    pattern_id=match.pattern_id,
-                    feasibility=llm_feasibility,  # Use LLM feasibility
-                    confidence=match.confidence,
-                    tech_stack=["Python", "FastAPI", "PostgreSQL"],  # Default tech stack
-                    reasoning=session.requirements.get("llm_analysis_feasibility_reasoning", "LLM analysis completed"),
-                    agent_roles=[],  # Empty for now
-                    necessity_assessment=None
-                )
-                recommendations.append(rec)
-            
-            if not recommendations:
-                # Create a default recommendation if no matches
+            if session.matches:
+                # Use existing matches if available
+                for match in session.matches[:request.top_k]:
+                    rec = Recommendation(
+                        pattern_id=match.pattern_id,
+                        feasibility=llm_feasibility,  # Use LLM feasibility
+                        confidence=match.confidence,
+                        tech_stack=["Python", "FastAPI", "PostgreSQL"],  # Default tech stack
+                        reasoning=session.requirements.get("llm_analysis_feasibility_reasoning", "LLM analysis completed"),
+                        agent_roles=[],  # Empty for now
+                        necessity_assessment=None
+                    )
+                    recommendations.append(rec)
+            else:
+                # Create a default recommendation based on LLM analysis
                 rec = Recommendation(
                     pattern_id="LLM-ANALYSIS",
                     feasibility=llm_feasibility,
