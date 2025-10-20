@@ -4044,7 +4044,7 @@ verify_ssl = True
         st.header("🎯 Results & Recommendations")
         
         # Debug toggle for feasibility data flow analysis
-        debug_enabled = st.checkbox("🔍 Debug Feasibility Data Flow")
+        debug_enabled = st.checkbox("🔍 Debug Feasibility Data Flow", key=f"debug_feasibility_{id(self)}")
         st.session_state.debug_feasibility = debug_enabled
         
         # Action buttons in a clean row
@@ -4146,6 +4146,11 @@ verify_ssl = True
             if isinstance(rec, dict):
                 st.write(f"- feasibility in rec: {'feasibility' in rec}")
                 st.write(f"- rec.get('feasibility'): {rec.get('feasibility', 'NOT_FOUND')}")
+                
+                # Show error if present
+                if 'error' in rec:
+                    st.error(f"🚨 **API ERROR**: {rec['error']}")
+                
                 if 'recommendations' in rec:
                     st.write(f"- rec['recommendations'] type: {type(rec['recommendations'])}")
                     if isinstance(rec['recommendations'], list) and len(rec['recommendations']) > 0:
