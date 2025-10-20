@@ -3968,6 +3968,15 @@ verify_ssl = True
     
     def load_recommendations(self):
         """Load and display final recommendations."""
+        # Debug: Check what's in session state
+        if st.session_state.get('debug_feasibility', False):
+            st.write("🔍 **DEBUG: load_recommendations called**")
+            st.write(f"- st.session_state.recommendations is None: {st.session_state.recommendations is None}")
+            if st.session_state.recommendations is not None:
+                st.write(f"- st.session_state.recommendations type: {type(st.session_state.recommendations)}")
+                if isinstance(st.session_state.recommendations, dict):
+                    st.write(f"- st.session_state.recommendations keys: {list(st.session_state.recommendations.keys())}")
+        
         if st.session_state.recommendations is None:
             try:
                 # Show progress indicator for recommendation generation
@@ -4047,6 +4056,13 @@ verify_ssl = True
             if st.button("🔄 Refresh Results", help="Reload recommendations from the latest analysis", use_container_width=True):
                 st.session_state.recommendations = None
                 st.rerun()
+            
+            # Debug: Force API call button
+            if st.session_state.get('debug_feasibility', False):
+                if st.button("🔧 Force API Call", help="Force call to /recommend endpoint", use_container_width=True):
+                    st.session_state.recommendations = None
+                    # Force immediate reload
+                    self.load_recommendations()
         
         # Add regenerate functionality (only show if we have requirements and recommendations)
         if st.session_state.get('requirements') and st.session_state.get('recommendations'):
